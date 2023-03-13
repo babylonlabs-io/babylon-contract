@@ -45,20 +45,6 @@
           }
         },
         "additionalProperties": false
-      },
-      {
-        "description": "Returns all (channel, reflect_account) pairs. No pagination - this is a test contract",
-        "type": "object",
-        "required": [
-          "list_accounts"
-        ],
-        "properties": {
-          "list_accounts": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
       }
     ]
   },
@@ -83,41 +69,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "list_accounts": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ListAccountsResponse",
-      "type": "object",
-      "required": [
-        "accounts"
-      ],
-      "properties": {
-        "accounts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/AccountInfo"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "AccountInfo": {
-          "type": "object",
-          "required": [
-            "account",
-            "channel_id"
-          ],
-          "properties": {
-            "account": {
-              "type": "string"
-            },
-            "channel_id": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
     }
   }
 }

@@ -23,20 +23,6 @@
         }
       },
       "additionalProperties": false
-    },
-    {
-      "description": "Returns all (channel, reflect_account) pairs. No pagination - this is a test contract",
-      "type": "object",
-      "required": [
-        "list_accounts"
-      ],
-      "properties": {
-        "list_accounts": {
-          "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
     }
   ]
 }
