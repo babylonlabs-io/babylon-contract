@@ -16,6 +16,15 @@ pub struct Config {
     pub placeholder_id: u64,
 }
 
+/// accounts is lookup of channel_id to reflect contract
+pub fn accounts(storage: &mut dyn Storage) -> Bucket<Addr> {
+    bucket(storage, PREFIX_ACCOUNTS)
+}
+
+pub fn accounts_read(storage: &dyn Storage) -> ReadonlyBucket<Addr> {
+    bucket_read(storage, PREFIX_ACCOUNTS)
+}
+
 pub fn config(storage: &mut dyn Storage) -> Singleton<Config> {
     singleton(storage, KEY_CONFIG)
 }
