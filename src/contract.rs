@@ -48,7 +48,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<QueryResponse> {
     }
 }
 
-pub fn query_account(deps: Deps, channel_id: String) -> StdResult<AccountResponse> {
+pub fn query_account(_deps: Deps, _channel_id: String) -> StdResult<AccountResponse> {
     Ok(AccountResponse {
         account: Some("TODO: replace me".to_owned()),
     })
@@ -72,8 +72,7 @@ pub fn ibc_channel_open(
     if let Some(counter_version) = msg.counterparty_version() {
         if counter_version != IBC_APP_VERSION {
             return Err(StdError::generic_err(format!(
-                "Counterparty version must be `{}`",
-                IBC_APP_VERSION
+                "Counterparty version must be `{IBC_APP_VERSION}`"
             )));
         }
     }
@@ -92,7 +91,7 @@ pub fn ibc_channel_connect(
     msg: IbcChannelConnectMsg,
 ) -> StdResult<IbcBasicResponse> {
     let channel = msg.channel();
-    let cfg = config(deps.storage).load()?;
+    let _cfg = config(deps.storage).load()?;
     let chan_id = &channel.endpoint.channel_id;
 
     Ok(IbcBasicResponse::new()
@@ -105,8 +104,8 @@ pub fn ibc_channel_connect(
 /// On closed channel, we take all tokens from reflect contract to this contract.
 /// We also delete the channel entry from accounts.
 pub fn ibc_channel_close(
-    deps: DepsMut,
-    env: Env,
+    _deps: DepsMut,
+    _env: Env,
     msg: IbcChannelCloseMsg,
 ) -> StdResult<IbcBasicResponse> {
     let channel = msg.channel();
@@ -152,7 +151,7 @@ pub fn ibc_packet_receive(
     .or_else(|e| {
         // we try to capture all app-level errors and convert them into
         // acknowledgement packets that contain an error code.
-        let acknowledgement = encode_ibc_error(format!("invalid packet: {}", e));
+        let acknowledgement = encode_ibc_error(format!("invalid packet: {e}"));
         Ok(IbcReceiveResponse::new()
             .set_ack(acknowledgement)
             .add_event(Event::new("ibc").add_attribute("packet", "receive")))
@@ -160,7 +159,7 @@ pub fn ibc_packet_receive(
 }
 
 // processes PacketMsg::WhoAmI variant
-fn receive_who_am_i(deps: DepsMut, caller: String) -> StdResult<IbcReceiveResponse> {
+fn receive_who_am_i(_deps: DepsMut, _caller: String) -> StdResult<IbcReceiveResponse> {
     let response = WhoAmIResponse {
         account: "placeholder".to_owned(),
     };

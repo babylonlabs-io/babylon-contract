@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Coin, ContractResult, CosmosMsg};
+use cosmwasm_std::ContractResult;
 
 /// Just needs to know the code_id of a reflect contract to spawn sub-accounts
 #[cw_serde]
