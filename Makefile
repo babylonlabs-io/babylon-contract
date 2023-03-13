@@ -2,9 +2,6 @@ DOCKER := $(shell which docker)
 CUR_DIR := $(shell pwd)
 CUR_BASENAME := $(shell basename $(CUR_DIR))
 
-build:
-	cargo wasm
-
 build-optimized:
 	$(DOCKER) run --rm -v "$(CUR_DIR)":/code \
 		--mount type=volume,source="$(CUR_BASENAME)_cache",target=/code/target \
