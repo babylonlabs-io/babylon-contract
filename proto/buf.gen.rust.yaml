@@ -1,0 +1,23 @@
+version: v1
+types:
+  include:
+    - babylon.btccheckpoint.v1.TransactionInfo
+    - babylon.btccheckpoint.v1.TransactionKey
+    - babylon.btclightclient.v1.BTCHeaderInfo
+    - babylon.checkpointing.v1.ValidatorWithBlsKeySet
+    - babylon.checkpointing.v1.ValidatorWithBlsKey
+    - babylon.checkpointing.v1.RawCheckpoint
+    - babylon.epoching.v1.Epoch
+    - babylon.zoneconcierge.v1.IndexedHeader
+    - babylon.zoneconcierge.v1.Forks
+    - babylon.zoneconcierge.v1.ProofEpochSealed
+    - babylon.zoneconcierge.v1.ProofFinalizedChainInfo
+plugins:
+  - name: prost
+    out: src/gen
+    opt:
+      - bytes=.
+      - compile_well_known_types
+      - extern_path=.google.protobuf=::pbjson_types
+      - extern_path=.cosmos.staking.v1beta1=super::vendor
+      - extern_path=.tendermint=tendermint_proto

@@ -164,6 +164,7 @@ fn receive_who_am_i(_deps: DepsMut, _caller: String) -> StdResult<IbcReceiveResp
         account: "placeholder".to_owned(),
     };
     let acknowledgement = to_binary(&AcknowledgementMsg::Ok(response))?;
+
     // and we are golden
     Ok(IbcReceiveResponse::new()
         .set_ack(acknowledgement)
