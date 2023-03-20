@@ -36,3 +36,18 @@ pub mod babylon {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::babylon::checkpointing::v1::RawCheckpoint;
+    use prost::Message;
+    use std::fs;
+
+    #[test]
+    fn test_deserialize_protobuf_bytes_from_go() {
+        let testdata_file = "./testdata/raw_ckpt.dat";
+        let testdata: &[u8] = &fs::read(testdata_file).unwrap();
+        let raw_ckpt = RawCheckpoint::decode(testdata).unwrap();
+        assert!(raw_ckpt.epoch_num == 12345);
+    }
+}
