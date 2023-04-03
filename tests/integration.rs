@@ -29,8 +29,9 @@ use babylon_contract::contract::IBC_APP_VERSION;
 use babylon_contract::msg::InstantiateMsg;
 
 // This line will test the output of cargo wasm
-static WASM: &[u8] =
-    include_bytes!("../target/wasm32-unknown-unknown/release/babylon_contract.wasm");
+// static WASM: &[u8] =
+//     include_bytes!("../target/wasm32-unknown-unknown/release/babylon_contract.wasm");
+static WASM: &[u8] = include_bytes!("../artifacts/babylon_contract.wasm");
 
 const CREATOR: &str = "creator";
 // code id of the reflect contract
