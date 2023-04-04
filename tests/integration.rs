@@ -16,6 +16,7 @@
 //!          //...
 //!      });
 //! 4. Anywhere you see query(&deps, ...) you must replace it with query(&mut deps, ...)
+//! TODO: Copy pasting tests here seems a hassle. Can we do something better?
 
 use cosmwasm_std::testing::mock_ibc_channel_open_try;
 use cosmwasm_std::{ContractResult, IbcOrder, Response};
@@ -25,7 +26,7 @@ use cosmwasm_vm::testing::{
 };
 use cosmwasm_vm::Instance;
 
-use babylon_contract::contract::IBC_APP_VERSION;
+use babylon_contract::ibc::IBC_APP_VERSION;
 use babylon_contract::msg::InstantiateMsg;
 
 // This line will test the output of cargo wasm

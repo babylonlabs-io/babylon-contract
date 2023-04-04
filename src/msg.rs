@@ -3,15 +3,12 @@ use cosmwasm_std::ContractResult;
 
 /// Just needs to know the code_id of a reflect contract to spawn sub-accounts
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub reflect_code_id: u64,
-}
+pub struct InstantiateMsg {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// Returns (reflect) account that is attached to this channel,
-    /// or none.
+    /// TODO: a boilerplate message. Replace with actual one.
     #[returns(AccountResponse)]
     Account { channel_id: String },
 }

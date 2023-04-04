@@ -45,6 +45,7 @@ hex = "0.4.3"
 sha2 = "0.10.6"
 bls12_381 = "0.8.0"
 tendermint = "0.30.0"
+thiserror = "1.0.40"
 
 babylon-proto = { path = "./proto" }
 babylon-bitcoin = { path = "./bitcoin" }
@@ -54,3 +55,4 @@ cosmwasm-vm = { version = "1.2.1", default-features = false, features = [
     "iterator",
     "stargate",
 ] }
+cw-multi-test = "0.16.2"
