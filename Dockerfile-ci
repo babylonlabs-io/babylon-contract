@@ -1,0 +1,15 @@
+FROM cosmwasm/rust-optimizer:0.12.12 as rust-optimizer
+
+# clang and llvm are required for compiling rust-secp256k1 in rust-bitcoin
+RUN apk update && \
+    apk add --no-cache clang llvm
+
+# CircleCI does not allow mounting folders 
+# so we should use COPY to put code in container
+# https://circleci.com/docs/building-docker-images/#mounting-folders
+COPY . /code
+WORKDIR /code
+
+ENTRYPOINT ["optimize.sh"]
+# Default argument when none is provided
+CMD ["."]

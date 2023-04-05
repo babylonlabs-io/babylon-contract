@@ -1,14 +1,12 @@
-use cosmwasm_std::{
-    from_slice, to_binary, Binary, DepsMut, Env, Event,
-    Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg,
-    IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdResult,
-};
 use crate::error::ContractError;
-use crate::msg::{
-    AcknowledgementMsg, PacketMsg, WhoAmIResponse,
-};
+use crate::msg::{AcknowledgementMsg, PacketMsg, WhoAmIResponse};
 use crate::state::config;
+use cosmwasm_std::{
+    from_slice, to_binary, Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder,
+    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never,
+    StdResult,
+};
 
 pub const IBC_APP_VERSION: &str = "babylon-contract-v1";
 
@@ -32,7 +30,9 @@ pub fn ibc_channel_open(
     // and only check the counterparty version.
     if let Some(counter_version) = msg.counterparty_version() {
         if counter_version != IBC_APP_VERSION {
-            return Err(ContractError::IbcInvalidCounterPartyVersion { version: IBC_APP_VERSION.to_string() });
+            return Err(ContractError::IbcInvalidCounterPartyVersion {
+                version: IBC_APP_VERSION.to_string(),
+            });
         }
     }
 
@@ -103,17 +103,17 @@ pub fn ibc_packet_receive(
         let caller = packet.dest.channel_id;
         let msg: PacketMsg = from_slice(&packet.data)?;
         match msg {
-            PacketMsg::WhoAmI {} => ibc_packet::who_am_i(deps, caller)
+            PacketMsg::WhoAmI {} => ibc_packet::who_am_i(deps, caller),
         }
     })()
-        .or_else(|e| {
-            // we try to capture all app-level errors and convert them into
-            // acknowledgement packets that contain an error code.
-            let acknowledgement = encode_ibc_error(format!("invalid packet: {e}"));
-            Ok(IbcReceiveResponse::new()
-                .set_ack(acknowledgement)
-                .add_event(Event::new("ibc").add_attribute("packet", "receive")))
-        })
+    .or_else(|e| {
+        // we try to capture all app-level errors and convert them into
+        // acknowledgement packets that contain an error code.
+        let acknowledgement = encode_ibc_error(format!("invalid packet: {e}"));
+        Ok(IbcReceiveResponse::new()
+            .set_ack(acknowledgement)
+            .add_event(Event::new("ibc").add_attribute("packet", "receive")))
+    })
 }
 
 // Methods to handle PacketMsg variants
@@ -133,7 +133,6 @@ mod ibc_packet {
             .add_attribute("action", "receive_who_am_i"))
     }
 }
-
 
 /// never should be called as we do not send packets
 pub fn ibc_packet_ack(
@@ -156,23 +155,19 @@ pub fn ibc_packet_timeout(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::contract::instantiate;
+    use crate::msg::InstantiateMsg;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_ibc_channel_open_try, mock_info, MockApi, MockQuerier,
         MockStorage,
     };
     use cosmwasm_std::OwnedDeps;
-    use crate::msg::InstantiateMsg;
-    use crate::contract::instantiate;
 
     const CREATOR: &str = "creator";
-    // code id of the reflect contract
-    const REFLECT_ID: u64 = 101;
 
     fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            reflect_code_id: REFLECT_ID,
-        };
+        let msg = InstantiateMsg {};
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());

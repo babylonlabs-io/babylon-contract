@@ -35,14 +35,10 @@ use babylon_contract::msg::InstantiateMsg;
 static WASM: &[u8] = include_bytes!("../artifacts/babylon_contract.wasm");
 
 const CREATOR: &str = "creator";
-// code id of the reflect contract
-const REFLECT_ID: u64 = 101;
 
 fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
     let mut deps = mock_instance(WASM, &[]);
-    let msg = InstantiateMsg {
-        reflect_code_id: REFLECT_ID,
-    };
+    let msg = InstantiateMsg {};
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -53,9 +49,7 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
 fn instantiate_works() {
     let mut deps = mock_instance(WASM, &[]);
 
-    let msg = InstantiateMsg {
-        reflect_code_id: 17,
-    };
+    let msg = InstantiateMsg {};
     let info = mock_info("creator", &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);
     let msgs = res.unwrap().messages;

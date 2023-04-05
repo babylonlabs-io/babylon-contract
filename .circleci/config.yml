@@ -1,0 +1,65 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/configuration-reference
+version: 2.1
+
+orbs:
+  aws-ecr: circleci/aws-ecr@8.2.1
+
+jobs:
+  local-build-test:
+    docker:
+      - image: circleci/rust:latest
+    steps:
+      - checkout
+      - run:
+          name: Set Rust nightly as default toolchain
+          command: |
+            rustup default nightly
+      - run:
+          name: Build Babylon contract
+          command: |
+            cargo build --verbose
+      - run:
+          name: Test generating schema
+          command: |
+            cargo schema
+      - run:
+          name: Unit tests
+          command: |
+            cargo unit-test
+  wasm-build-check-integration:
+    docker:
+      - image: circleci/rust:latest
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Set Rust nightly as default toolchain
+          command: |
+            rustup default nightly
+      - run:
+          name: Build optimised Wasm binary
+          command: |
+            make build-optimized-ci
+      - run:
+          name: Install cosmwasm-check
+          command: |
+            cargo install cosmwasm-check
+      - run:
+          name: Check the Wasm binary's validity against Wasm VM
+          command: |
+            cosmwasm-check /home/circleci/project/artifacts/babylon_contract.wasm
+      - run:
+          name: Integration tests based on CosmWasm
+          command: |
+            cargo integration-test
+
+# Orchestrate jobs using workflows
+# See: https://circleci.com/docs/configuration-reference/#workflows
+workflows:
+  local-tests:
+    jobs:
+      - local-build-test
+  wasm-tests:
+    jobs:
+      - wasm-build-check-integration
