@@ -38,7 +38,11 @@ const CREATOR: &str = "creator";
 
 fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
     let mut deps = mock_instance(WASM, &[]);
-    let msg = InstantiateMsg {};
+    let msg = InstantiateMsg {
+        network: babylon_bitcoin::chain_params::Network::Regtest,
+        btc_confirmation_depth: 10,
+        checkpoint_finalization_timeout: 100,
+    };
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -49,7 +53,11 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
 fn instantiate_works() {
     let mut deps = mock_instance(WASM, &[]);
 
-    let msg = InstantiateMsg {};
+    let msg = InstantiateMsg {
+        network: babylon_bitcoin::chain_params::Network::Regtest,
+        btc_confirmation_depth: 10,
+        checkpoint_finalization_timeout: 100,
+    };
     let info = mock_info("creator", &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);
     let msgs = res.unwrap().messages;

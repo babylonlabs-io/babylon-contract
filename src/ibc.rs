@@ -1,6 +1,5 @@
 use crate::error::ContractError;
 use crate::msg::{AcknowledgementMsg, PacketMsg, WhoAmIResponse};
-use crate::state::config;
 use cosmwasm_std::{
     from_slice, to_binary, Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse,
     IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder,
@@ -47,18 +46,20 @@ pub fn ibc_channel_open(
 /// Add the channel ID to the storage so that we know
 /// what channels we have open.
 pub fn ibc_channel_connect(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
     msg: IbcChannelConnectMsg,
 ) -> StdResult<IbcBasicResponse> {
     let channel = msg.channel();
-    let _cfg = config(deps.storage).load()?;
     let chan_id = &channel.endpoint.channel_id;
 
     Ok(IbcBasicResponse::new()
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
         .add_event(Event::new("ibc").add_attribute("channel", "connect")))
+
+    // TODO: upon finishing handshake with Babylon,
+    // initialising storage of BTCLightclient, Babylon epoch chain and CZ header chain
 }
 
 /// This is invoked on the IBC Channel Close message
@@ -167,7 +168,11 @@ mod tests {
 
     fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            network: babylon_bitcoin::chain_params::Network::Regtest,
+            btc_confirmation_depth: 10,
+            checkpoint_finalization_timeout: 100,
+        };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());

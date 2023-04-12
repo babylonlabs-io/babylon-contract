@@ -1,7 +1,37 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "InstantiateMsg",
-  "description": "Just needs to know the code_id of a reflect contract to spawn sub-accounts",
   "type": "object",
-  "additionalProperties": false
+  "required": [
+    "btc_confirmation_depth",
+    "checkpoint_finalization_timeout",
+    "network"
+  ],
+  "properties": {
+    "btc_confirmation_depth": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "checkpoint_finalization_timeout": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "network": {
+      "$ref": "#/definitions/Network"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Network": {
+      "type": "string",
+      "enum": [
+        "Mainnet",
+        "Testnet",
+        "Signet",
+        "Regtest"
+      ]
+    }
+  }
 }

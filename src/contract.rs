@@ -1,23 +1,23 @@
 use cosmwasm_std::{
-    to_binary, Deps, DepsMut, Empty, Env, MessageInfo,
-    QueryResponse, Reply, Response, StdResult,
+    to_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response, StdResult,
 };
 
-use crate::msg::{
-    AccountResponse, InstantiateMsg, QueryMsg,
-};
-use crate::state::{config, Config};
+use crate::msg::{AccountResponse, InstantiateMsg, QueryMsg};
+use crate::state::config;
 
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    // Create an empty config object for now
-    // TODO: fill with config variables later
-    let cfg = Config {};
-    config(deps.storage).save(&cfg)?;
+    // initialise config
+    let cfg = config::Config {
+        network: msg.network,
+        btc_confirmation_depth: msg.btc_confirmation_depth,
+        checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
+    };
+    config::init(deps.storage, cfg);
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
@@ -44,7 +44,6 @@ mod query {
     }
 }
 
-
 /// this is a no-op just to test how this integrates with wasmd
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
     Ok(Response::default())
@@ -58,8 +57,8 @@ pub fn execute(_deps: DepsMut, _env: Env, _info: MessageInfo, _msg: Empty) -> St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cw_multi_test::{App, ContractWrapper, Executor};
     use cosmwasm_std::Addr;
+    use cw_multi_test::{App, ContractWrapper, Executor};
 
     #[test]
     fn test_deserialize_btc_header() {
@@ -78,13 +77,17 @@ mod tests {
         let code_id = app.store_code(Box::new(code));
 
         app.instantiate_contract(
-                code_id,
-                Addr::unchecked("creator"),
-                &InstantiateMsg {},
-                &[],
-                "Contract",
-                None
-            )
-            .unwrap();
+            code_id,
+            Addr::unchecked("creator"),
+            &InstantiateMsg {
+                network: babylon_bitcoin::chain_params::Network::Regtest,
+                btc_confirmation_depth: 10,
+                checkpoint_finalization_timeout: 100,
+            },
+            &[],
+            "Contract",
+            None,
+        )
+        .unwrap();
     }
 }

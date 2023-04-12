@@ -1,9 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::ContractResult;
 
-/// Just needs to know the code_id of a reflect contract to spawn sub-accounts
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub network: babylon_bitcoin::chain_params::Network,
+    pub btc_confirmation_depth: u64,
+    pub checkpoint_finalization_timeout: u64,
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]

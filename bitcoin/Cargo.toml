@@ -10,3 +10,5 @@ description = "A wrapper of the rust-bitcoin library"
 bitcoin = "0.29.2"
 # bitcoin = { git = "https://github.com/babylonchain/rust-bitcoin" }
 hex = "0.4.3"
+serde = { version = "1.0.103", default-features = false, features = ["derive"] }
+schemars = "0.8.3"

@@ -1,5 +1,10 @@
 pub use bitcoin::consensus::deserialize;
+pub use bitcoin::consensus::encode::Error;
+pub use bitcoin::BlockHash;
 pub use bitcoin::BlockHeader;
+
+pub mod chain_params;
+pub mod pow;
 
 #[cfg(test)]
 mod tests {
