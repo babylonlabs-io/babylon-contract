@@ -2,7 +2,9 @@ use cosmwasm_std::{
     to_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response, StdResult,
 };
 
-use crate::msg::{AccountResponse, InstantiateMsg, QueryMsg};
+use crate::bindings::try_report_fork_header;
+use crate::msg::bindings::BabylonMsg;
+use crate::msg::contract::{AccountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config;
 
 pub fn instantiate(
@@ -49,16 +51,29 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
     Ok(Response::default())
 }
 
-/// this is a no-op for now as we don't have any messages
-pub fn execute(_deps: DepsMut, _env: Env, _info: MessageInfo, _msg: Empty) -> StdResult<Response> {
-    Ok(Response::default())
+pub fn execute(
+    _deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    msg: ExecuteMsg,
+) -> StdResult<Response<BabylonMsg>> {
+    // TESTING: trigger ForkHeader to print stuff at Cosmos zone side
+    // TODO: remember to remove
+    match msg {
+        crate::msg::contract::ExecuteMsg::Placeholder {} => {
+            Ok(try_report_fork_header(env).unwrap())
+        }
+    }
+
+    // Ok(Response::default())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::Addr;
-    use cw_multi_test::{App, ContractWrapper, Executor};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+
+    const CREATOR: &str = "creator";
 
     #[test]
     fn test_deserialize_btc_header() {
@@ -71,23 +86,14 @@ mod tests {
 
     #[test]
     fn instantiate_works() {
-        let mut app = App::default();
-
-        let code = ContractWrapper::new(execute, instantiate, query);
-        let code_id = app.store_code(Box::new(code));
-
-        app.instantiate_contract(
-            code_id,
-            Addr::unchecked("creator"),
-            &InstantiateMsg {
-                network: babylon_bitcoin::chain_params::Network::Regtest,
-                btc_confirmation_depth: 10,
-                checkpoint_finalization_timeout: 100,
-            },
-            &[],
-            "Contract",
-            None,
-        )
-        .unwrap();
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            network: babylon_bitcoin::chain_params::Network::Regtest,
+            btc_confirmation_depth: 10,
+            checkpoint_finalization_timeout: 100,
+        };
+        let info = mock_info(CREATOR, &[]);
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
     }
 }

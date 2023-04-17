@@ -27,7 +27,7 @@ use cosmwasm_vm::testing::{
 use cosmwasm_vm::Instance;
 
 use babylon_contract::ibc::IBC_APP_VERSION;
-use babylon_contract::msg::InstantiateMsg;
+use babylon_contract::msg::contract::InstantiateMsg;
 
 // This line will test the output of cargo wasm
 // static WASM: &[u8] =

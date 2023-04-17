@@ -1,19 +1,26 @@
-use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Reply,
-    IbcChannelOpenMsg, IbcChannelOpenResponse, IbcChannelConnectMsg, IbcBasicResponse,
-    IbcChannelCloseMsg, Empty, IbcPacketReceiveMsg, IbcReceiveResponse, Never,
-    IbcPacketAckMsg, IbcPacketTimeoutMsg,
-};
 use crate::error::ContractError;
+use cosmwasm_std::{
+    entry_point, Binary, Deps, DepsMut, Empty, Env, IbcBasicResponse, IbcChannelCloseMsg,
+    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Never, Reply,
+    Response, StdResult,
+};
+use msg::{bindings::BabylonMsg, contract::ExecuteMsg, contract::InstantiateMsg};
 
+mod bindings;
 pub mod contract;
-pub mod msg;
-pub mod state;
 pub mod error;
 pub mod ibc;
+pub mod msg;
+pub mod state;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: msg::InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> StdResult<Response> {
     contract::instantiate(deps, env, info, msg)
 }
 
@@ -23,7 +30,7 @@ pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> StdResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: msg::QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: msg::contract::QueryMsg) -> StdResult<Binary> {
     contract::query(deps, env, msg)
 }
 
@@ -33,7 +40,12 @@ pub fn migrate(deps: DepsMut, env: Env, msg: Empty) -> StdResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: Empty) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> StdResult<Response<BabylonMsg>> {
     contract::execute(deps, env, info, msg)
 }
 

@@ -3,9 +3,8 @@ use std::env::current_dir;
 use cosmwasm_schema::{export_schema, export_schema_with_title, schema_for, write_api};
 use cosmwasm_std::Empty;
 
-use babylon_contract::msg::{
-    AcknowledgementMsg, InstantiateMsg, PacketMsg, QueryMsg, WhoAmIResponse,
-};
+use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use babylon_contract::msg::ibc::{AcknowledgementMsg, PacketMsg, WhoAmIResponse};
 
 fn main() {
     // Clear & write standard API
@@ -13,6 +12,7 @@ fn main() {
         instantiate: InstantiateMsg,
         query: QueryMsg,
         migrate: Empty,
+        execute: ExecuteMsg,
     }
 
     // Schemas for inter-contract communication

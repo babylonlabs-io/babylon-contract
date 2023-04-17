@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::msg::{AcknowledgementMsg, PacketMsg, WhoAmIResponse};
+use crate::msg::ibc::{AcknowledgementMsg, PacketMsg, WhoAmIResponse};
 use cosmwasm_std::{
     from_slice, to_binary, Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse,
     IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder,
@@ -157,7 +157,7 @@ pub fn ibc_packet_timeout(
 mod tests {
     use super::*;
     use crate::contract::instantiate;
-    use crate::msg::InstantiateMsg;
+    use crate::msg::contract::InstantiateMsg;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_ibc_channel_open_try, mock_info, MockApi, MockQuerier,
         MockStorage,
