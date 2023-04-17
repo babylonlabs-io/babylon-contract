@@ -72,11 +72,11 @@ fn set_tip(storage: &mut dyn Storage, tip: &BtcHeaderInfo) {
     storage_tip.set(KEY_TIP, tip_bytes);
 }
 
-// insert_btc_headers inserts BTC headers that have passed the
+// insert_headers inserts BTC headers that have passed the
 // verification to the header chain storages, including
 // - insert all headers
 // - insert all hash-to-height indices
-fn insert_btc_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) {
+fn insert_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) {
     // append all headers
     let mut storage_headers = get_storage_headers(storage);
     for new_header in new_headers.iter() {
@@ -131,10 +131,10 @@ fn verify_headers(
     for new_header in new_headers.iter() {
         // decode last header to rust-bitcoin's type
         let last_btc_header: babylon_bitcoin::BlockHeader =
-            babylon_bitcoin::deserialize(&last_header.header).unwrap();
+            babylon_bitcoin::deserialize(last_header.header.as_ref()).unwrap();
         // decode this header to rust-bitcoin's type
         let btc_header_res: Result<babylon_bitcoin::BlockHeader, babylon_bitcoin::Error> =
-            babylon_bitcoin::deserialize(&new_header.header);
+            babylon_bitcoin::deserialize(new_header.header.as_ref());
         if btc_header_res.is_err() {
             return Err(error::BTCLightclientError::BTCHeaderDecodeError {});
         }
@@ -178,7 +178,7 @@ pub fn init(
 
     // decode this header to rust-bitcoin's type
     let base_btc_header_res: Result<babylon_bitcoin::BlockHeader, babylon_bitcoin::Error> =
-        babylon_bitcoin::deserialize(&base_header.header);
+        babylon_bitcoin::deserialize(base_header.header.as_ref());
     if base_btc_header_res.is_err() {
         return Err(error::BTCLightclientError::BTCHeaderDecodeError {});
     }
@@ -190,27 +190,18 @@ pub fn init(
     }
 
     // verify subsequent headers
-    verify_headers(&btc_network, base_header, &headers[1..headers.len()])?;
+    let new_headers = &headers[1..headers.len()];
+    verify_headers(&btc_network, base_header, new_headers)?;
 
-    // byte representation of the base header and its metadata
-    let height_bytes: &[u8] = &base_header.height.to_be_bytes()[..];
-    let hash_bytes: &[u8] = base_header.hash.as_ref();
-    let base_header_bytes: &[u8] = &base_header.encode_to_vec();
-
-    // initialise headers storage
-    let mut storage_headers = get_storage_headers(storage);
-    storage_headers.set(hash_bytes, base_header_bytes);
-
-    // initialise hash-to-height storage
-    let mut storage_h2h = get_storage_h2h(storage);
-    storage_h2h.set(hash_bytes, height_bytes);
-
-    // initialise tip storage
-    set_tip(storage, base_header);
+    // all good, set base header, insert all headers, and set tip
 
     // initialise base header
     // NOTE: not changeable in the future
     set_base_header(storage, base_header);
+    // insert all headers
+    insert_headers(storage, headers);
+    // set tip header
+    set_tip(storage, headers.last().unwrap());
 
     Ok(())
 }
@@ -234,28 +225,146 @@ pub fn handle_btc_headers_from_babylon(
     let cfg = super::config::get(storage).load()?;
     let btc_network = babylon_bitcoin::chain_params::get_chain_params(cfg.network);
 
-    // ensure the first header's previous header exists in KVStore
+    // decode the first header in these new headers
     let first_new_header = new_headers.first().unwrap();
     let first_new_btc_header_res: Result<babylon_bitcoin::BlockHeader, babylon_bitcoin::Error> =
-        babylon_bitcoin::deserialize(&first_new_header.header);
+        babylon_bitcoin::deserialize(first_new_header.header.as_ref());
     if first_new_btc_header_res.is_err() {
         return Err(error::BTCLightclientError::BTCHeaderDecodeError {});
     }
     let first_new_btc_header = first_new_btc_header_res.unwrap();
 
-    // get the previous header in storage
-    let last_hash = first_new_btc_header.prev_blockhash;
-    let last_header = get_header(storage, last_hash.to_vec().as_ref())?;
+    // ensure the first header's previous header exists in KVStore
+    // NOTE: prev_blockhash is in little endian
+    let mut last_hash: Vec<u8> = first_new_btc_header.prev_blockhash.as_ref().into();
+    last_hash.reverse(); // change to big endian
+    let last_header = get_header(storage, &last_hash)?;
 
     // verify each new header after last_header iteratively
     verify_headers(&btc_network, &last_header, new_headers)?;
 
     // all good, append all headers to the BTC light client stores
-    insert_btc_headers(storage, &new_headers);
+    insert_headers(storage, &new_headers);
 
     // update tip
     let new_tip = new_headers.last().unwrap();
     set_tip(storage, &new_tip);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::mock_dependencies;
+    use serde::{Deserialize, Serialize};
+    use std::fs::File;
+    use std::io::Read;
+
+    const BTC_LC_TESTDATA: &str = "src/state/testdata/btclightclient.json";
+
+    // intermediate structs for json -> BtcHeaderInfoSerde -> BtcHeaderInfo
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, Deserialize, Serialize)]
+    pub struct BtcHeaderInfoSerde {
+        pub header: String,
+        pub hash: String,
+        pub height: String,
+        pub work: String,
+    }
+
+    impl From<BtcHeaderInfoSerde> for BtcHeaderInfo {
+        fn from(a: BtcHeaderInfoSerde) -> Self {
+            BtcHeaderInfo {
+                header: hex::decode(a.header).unwrap().into(),
+                hash: hex::decode(a.hash).unwrap().into(),
+                height: a.height.parse::<u64>().unwrap(),
+                work: a.work.into(),
+            }
+        }
+    }
+
+    // convert the json file to a vector of BtcHeaderInfo
+    fn get_test_headers() -> Vec<BtcHeaderInfo> {
+        let mut file = File::open(BTC_LC_TESTDATA).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        let headers_serde: Vec<BtcHeaderInfoSerde> = serde_json::from_str(&contents).unwrap();
+        let headers: Vec<BtcHeaderInfo> = headers_serde
+            .into_iter()
+            .rev() // from low height to high height
+            .map(|a| BtcHeaderInfo::from(a))
+            .collect();
+        return headers;
+    }
+
+    // btc_lc_works simulates initialisation of BTC light client storage, then insertion of
+    // a number of headers. It ensures that the correctness of initialisation/insertion upon
+    // a list of correct BTC headers on Bitcoin mainnet.
+    #[test]
+    fn btc_lc_works() {
+        let test_headers_vec = get_test_headers();
+        let test_headers = test_headers_vec.as_slice();
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+
+        // set config first
+        let w = 10 as usize;
+        let cfg = super::super::config::Config {
+            network: babylon_bitcoin::chain_params::Network::Mainnet,
+            btc_confirmation_depth: 6,
+            checkpoint_finalization_timeout: w as u64,
+        };
+        super::super::config::init(&mut storage, cfg);
+
+        // testing initialisation with w+1 headers
+        let test_init_headers: &[BtcHeaderInfo] = &test_headers[0..w + 1];
+        init(&mut storage, test_init_headers).unwrap();
+
+        // ensure tip is set
+        let tip_expected = test_init_headers.last().unwrap();
+        let tip_actual = get_tip(&mut storage).unwrap();
+        assert!(*tip_expected == tip_actual);
+        // ensure base header is set
+        let base_expected = test_init_headers.first().unwrap();
+        let base_actual = get_base_header(&mut storage);
+        assert!(*base_expected == base_actual);
+        // ensure all headers are correctly inserted
+        for header_expected in test_init_headers.iter() {
+            let init_header_actual =
+                get_header(&mut storage, header_expected.hash.as_ref()).unwrap();
+            assert!(*header_expected == init_header_actual);
+
+            let actual_height_be = get_storage_h2h(&mut storage)
+                .get(header_expected.hash.as_ref())
+                .unwrap();
+            let actual_height_be_arr: [u8; 8] = actual_height_be.try_into().unwrap();
+            let actual_height = u64::from_be_bytes(actual_height_be_arr);
+            assert_eq!(header_expected.height, actual_height);
+        }
+
+        // handling subsequent headers
+        let test_new_headers = &test_headers[w + 1..test_headers.len()];
+        handle_btc_headers_from_babylon(&mut storage, test_new_headers).unwrap();
+
+        // ensure tip is set
+        let tip_expected = test_headers.last().unwrap();
+        let tip_actual = get_tip(&mut storage).unwrap();
+        assert!(*tip_expected == tip_actual);
+        // ensure all headers are correctly inserted
+        for header_expected in test_new_headers.iter() {
+            let init_header_actual =
+                get_header(&mut storage, header_expected.hash.as_ref()).unwrap();
+            assert!(*header_expected == init_header_actual);
+
+            let actual_height_be = get_storage_h2h(&mut storage)
+                .get(header_expected.hash.as_ref())
+                .unwrap();
+            let actual_height_be_arr: [u8; 8] = actual_height_be.try_into().unwrap();
+            let actual_height = u64::from_be_bytes(actual_height_be_arr);
+            assert_eq!(header_expected.height, actual_height);
+        }
+    }
+
+    // TODO: more tests on different scenarios, e.g., random number of headers and conflicted headers
 }

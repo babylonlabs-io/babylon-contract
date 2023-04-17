@@ -58,3 +58,4 @@ cosmwasm-vm = { version = "1.2.1", default-features = false, features = [
     "stargate",
 ] }
 cw-multi-test = "0.16.2"
+serde_json = "1.0.96"
