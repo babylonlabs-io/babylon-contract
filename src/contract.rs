@@ -4,7 +4,7 @@ use cosmwasm_std::{
 
 use crate::bindings::try_report_fork_header;
 use crate::msg::bindings::BabylonMsg;
-use crate::msg::contract::{AccountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::contract::{AccountResponse, ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config;
 
 pub fn instantiate(
@@ -13,9 +13,12 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
+    msg.validate()?;
+
     // initialise config
     let cfg = config::Config {
         network: msg.network,
+        babylon_tag: msg.babylon_tag.as_bytes().to_vec(),
         btc_confirmation_depth: msg.btc_confirmation_depth,
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
     };
@@ -89,6 +92,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             network: babylon_bitcoin::chain_params::Network::Regtest,
+            babylon_tag: "bbn0".to_string(), // TODO: use hex for encoding/decoding babylon tag
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
         };

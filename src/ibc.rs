@@ -170,6 +170,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             network: babylon_bitcoin::chain_params::Network::Regtest,
+            babylon_tag: "bbn0".to_string(),
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
         };

@@ -26,6 +26,33 @@ pub enum BTCLightclientError {
     BTCHeaderDecodeError {},
     #[error("The BTC header does not satisfy the difficulty requirement or is not consecutive")]
     BTCHeaderError {},
-    #[error("The BTC header is not found in the storage")]
-    BTCHeaderNotFoundError {},
+    #[error("The BTC header with hash {hash} is not found in the storage")]
+    BTCHeaderNotFoundError { hash: String },
+}
+
+#[derive(Error, Debug, PartialEq)]
+pub enum BabylonEpochChainError {
+    #[error("{0}")]
+    StdError(#[from] StdError),
+    #[error("The bytes cannot be decoded")]
+    DecodeError(#[from] prost::DecodeError),
+    #[error("The epoch {epoch_number} is not found in the storage")]
+    EpochNotFoundError { epoch_number: u64 },
+    #[error(
+        "The checkpoint is for epoch {ckpt_epoch_number} rather than the given epoch {epoch_number}"
+    )]
+    CheckpointNotMatchError {
+        ckpt_epoch_number: u64,
+        epoch_number: u64,
+    },
+    #[error("The checkpoint of epoch {epoch_number} is not found in the storage")]
+    CheckpointNotFoundError { epoch_number: u64 },
+    #[error("The BTC header with hash {hash} is not found in the storage")]
+    BTCHeaderNotFoundError { hash: String },
+    #[error("The BTC headers are not {w}-deep")]
+    BTCHeaderNotDeepEnough { w: u64 },
+    #[error("The checkpoint is not in the given BTC headers")]
+    CheckpointNotSubmitted {},
+    #[error("The epoch is not sealed by the epoch's validator set")]
+    EpochNotSealed {},
 }

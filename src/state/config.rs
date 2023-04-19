@@ -12,6 +12,7 @@ pub const KEY_CONFIG: &[u8] = b"config";
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     pub network: babylon_bitcoin::chain_params::Network,
+    pub babylon_tag: Vec<u8>,
     pub btc_confirmation_depth: u64,
     pub checkpoint_finalization_timeout: u64,
 }

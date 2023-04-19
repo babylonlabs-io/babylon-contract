@@ -17,6 +17,7 @@
 //!     - value: header
 
 use crate::error;
+use crate::utils::btc_light_client::verify_headers;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use cosmwasm_std::Storage;
 use cosmwasm_storage::{prefixed, PrefixedStorage};
@@ -60,10 +61,11 @@ fn set_base_header(storage: &mut dyn Storage, base_header: &BtcHeaderInfo) {
 }
 
 // getter/setter for chain tip
-pub fn get_tip(storage: &mut dyn Storage) -> Result<BtcHeaderInfo, prost::DecodeError> {
+pub fn get_tip(storage: &mut dyn Storage) -> BtcHeaderInfo {
     let storage_tip = get_storage_tip(storage);
     let tip_bytes = storage_tip.get(KEY_TIP).unwrap();
-    return BtcHeaderInfo::decode(tip_bytes.as_slice());
+    // NOTE: if init is successful, then tip header is guaranteed to be correct
+    return BtcHeaderInfo::decode(tip_bytes.as_slice()).unwrap();
 }
 
 fn set_tip(storage: &mut dyn Storage, tip: &BtcHeaderInfo) {
@@ -97,7 +99,7 @@ fn insert_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) {
 }
 
 // get_header retrieves the BTC header of a given hash
-fn get_header(
+pub fn get_header(
     storage: &mut dyn Storage,
     hash: &[u8],
 ) -> Result<BtcHeaderInfo, error::BTCLightclientError> {
@@ -106,7 +108,9 @@ fn get_header(
     // try to find the header with the given hash
     let header_res = storage_headers.get(hash);
     if header_res.is_none() {
-        return Err(error::BTCLightclientError::BTCHeaderNotFoundError {});
+        return Err(error::BTCLightclientError::BTCHeaderNotFoundError {
+            hash: hex::encode(hash),
+        });
     }
     let header_bytes = header_res.unwrap();
 
@@ -117,43 +121,6 @@ fn get_header(
     }
 
     return Ok(header_res.unwrap());
-}
-
-/// verify_headers verifies whether `new_headers` are valid consecutive headers
-/// after the given `first_header`
-fn verify_headers(
-    btc_network: &babylon_bitcoin::chain_params::Params,
-    first_header: &BtcHeaderInfo,
-    new_headers: &[BtcHeaderInfo],
-) -> Result<(), error::BTCLightclientError> {
-    // verify each new header iteratively
-    let mut last_header = first_header.clone();
-    for new_header in new_headers.iter() {
-        // decode last header to rust-bitcoin's type
-        let last_btc_header: babylon_bitcoin::BlockHeader =
-            babylon_bitcoin::deserialize(last_header.header.as_ref()).unwrap();
-        // decode this header to rust-bitcoin's type
-        let btc_header_res: Result<babylon_bitcoin::BlockHeader, babylon_bitcoin::Error> =
-            babylon_bitcoin::deserialize(new_header.header.as_ref());
-        if btc_header_res.is_err() {
-            return Err(error::BTCLightclientError::BTCHeaderDecodeError {});
-        }
-        let btc_header = btc_header_res.unwrap();
-
-        // validate whether btc_header extends last_btc_header
-        let res = babylon_bitcoin::pow::verify_next_header_pow(
-            btc_network,
-            &last_btc_header,
-            &btc_header,
-        );
-        if res.is_err() {
-            return Err(error::BTCLightclientError::BTCHeaderError {});
-        }
-
-        // this header is good, verify the next one
-        last_header = new_header.clone();
-    }
-    Ok(())
 }
 
 /// init initialises the BTC header chain storage
@@ -312,6 +279,7 @@ mod tests {
         let w = 10 as usize;
         let cfg = super::super::config::Config {
             network: babylon_bitcoin::chain_params::Network::Mainnet,
+            babylon_tag: b"bbn0".to_vec(),
             btc_confirmation_depth: 6,
             checkpoint_finalization_timeout: w as u64,
         };
@@ -323,7 +291,7 @@ mod tests {
 
         // ensure tip is set
         let tip_expected = test_init_headers.last().unwrap();
-        let tip_actual = get_tip(&mut storage).unwrap();
+        let tip_actual = get_tip(&mut storage);
         assert!(*tip_expected == tip_actual);
         // ensure base header is set
         let base_expected = test_init_headers.first().unwrap();
@@ -349,7 +317,7 @@ mod tests {
 
         // ensure tip is set
         let tip_expected = test_headers.last().unwrap();
-        let tip_actual = get_tip(&mut storage).unwrap();
+        let tip_actual = get_tip(&mut storage);
         assert!(*tip_expected == tip_actual);
         // ensure all headers are correctly inserted
         for header_expected in test_new_headers.iter() {

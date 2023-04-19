@@ -13,6 +13,7 @@ pub mod error;
 pub mod ibc;
 pub mod msg;
 pub mod state;
+mod utils;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(

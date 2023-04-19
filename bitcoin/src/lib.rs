@@ -1,5 +1,6 @@
 pub use bitcoin::consensus::deserialize;
 pub use bitcoin::consensus::encode::Error;
+pub use bitcoin::util::uint::Uint256;
 pub use bitcoin::BlockHash;
 pub use bitcoin::BlockHeader;
 
