@@ -19,6 +19,7 @@ pub mod babylon {
         pub mod v1 {
             include!("gen/babylon.checkpointing.v1.rs");
             // @@protoc_insertion_point(babylon.checkpointing.v1)
+            include!("impl/babylon.checkpointing.v1.impl.rs");
         }
     }
     pub mod epoching {

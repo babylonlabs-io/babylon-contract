@@ -9,7 +9,7 @@ license = "Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = ["proto"]
+members = ["proto", "bitcoin"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -43,11 +43,15 @@ serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 
 hex = "0.4.3"
 sha2 = "0.10.6"
-bls12_381 = "0.8.0"
+blst = "0.3.10"
 tendermint = "0.30.0"
+tendermint-proto = "0.30.0"
 thiserror = "1.0.40"
 prost = "0.11"
 prost-types = "0.11"
+ics23 = { version = "0.9.0", default-features = false, features = [
+    "host-functions",
+] }
 
 babylon-proto = { path = "./proto" }
 babylon-bitcoin = { path = "./bitcoin" }

@@ -23,6 +23,18 @@ pub struct Forks {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ChainInfo {
+    #[prost(string, tag="1")]
+    pub chain_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag="2")]
+    pub latest_header: ::core::option::Option<IndexedHeader>,
+    #[prost(message, optional, tag="3")]
+    pub latest_forks: ::core::option::Option<Forks>,
+    #[prost(uint64, tag="4")]
+    pub timestamped_headers_count: u64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ProofEpochSealed {
     #[prost(message, repeated, tag="1")]
     pub validator_set: ::prost::alloc::vec::Vec<super::super::checkpointing::v1::ValidatorWithBlsKey>,
@@ -42,5 +54,19 @@ pub struct ProofFinalizedChainInfo {
     pub proof_epoch_sealed: ::core::option::Option<ProofEpochSealed>,
     #[prost(message, repeated, tag="7")]
     pub proof_epoch_submitted: ::prost::alloc::vec::Vec<super::super::btccheckpoint::v1::TransactionInfo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryFinalizedChainInfoResponse {
+    #[prost(message, optional, tag="1")]
+    pub finalized_chain_info: ::core::option::Option<ChainInfo>,
+    #[prost(message, optional, tag="2")]
+    pub epoch_info: ::core::option::Option<super::super::epoching::v1::Epoch>,
+    #[prost(message, optional, tag="3")]
+    pub raw_checkpoint: ::core::option::Option<super::super::checkpointing::v1::RawCheckpoint>,
+    #[prost(message, optional, tag="4")]
+    pub btc_submission_key: ::core::option::Option<super::super::btccheckpoint::v1::SubmissionKey>,
+    #[prost(message, optional, tag="5")]
+    pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
 }
 // @@protoc_insertion_point(module)

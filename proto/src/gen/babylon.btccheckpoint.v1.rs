@@ -9,6 +9,12 @@ pub struct TransactionKey {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubmissionKey {
+    #[prost(message, repeated, tag="1")]
+    pub key: ::prost::alloc::vec::Vec<TransactionKey>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TransactionInfo {
     #[prost(message, optional, tag="1")]
     pub key: ::core::option::Option<TransactionKey>,

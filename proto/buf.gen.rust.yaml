@@ -4,6 +4,7 @@ types:
     - babylon.btccheckpoint.v1.TransactionInfo
     - babylon.btccheckpoint.v1.TransactionKey
     - babylon.btclightclient.v1.BTCHeaderInfo
+    - babylon.btclightclient.v1.QueryMainChainResponse
     - babylon.checkpointing.v1.ValidatorWithBlsKeySet
     - babylon.checkpointing.v1.ValidatorWithBlsKey
     - babylon.checkpointing.v1.RawCheckpoint
@@ -12,6 +13,7 @@ types:
     - babylon.zoneconcierge.v1.Forks
     - babylon.zoneconcierge.v1.ProofEpochSealed
     - babylon.zoneconcierge.v1.ProofFinalizedChainInfo
+    - babylon.zoneconcierge.v1.QueryFinalizedChainInfoResponse
 plugins:
   - name: prost
     out: src/gen
@@ -19,5 +21,5 @@ plugins:
       - bytes=.
       - compile_well_known_types
       - extern_path=.google.protobuf=::pbjson_types
-      - extern_path=.cosmos.staking.v1beta1=super::vendor
+      - extern_path=.cosmos=cosmos_sdk_proto::cosmos
       - extern_path=.tendermint=tendermint_proto

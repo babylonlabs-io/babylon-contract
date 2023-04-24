@@ -202,9 +202,7 @@ pub fn handle_btc_headers_from_babylon(
     let first_new_btc_header = first_new_btc_header_res.unwrap();
 
     // ensure the first header's previous header exists in KVStore
-    // NOTE: prev_blockhash is in little endian
-    let mut last_hash: Vec<u8> = first_new_btc_header.prev_blockhash.as_ref().into();
-    last_hash.reverse(); // change to big endian
+    let last_hash: Vec<u8> = first_new_btc_header.prev_blockhash.as_ref().into();
     let last_header = get_header(storage, &last_hash)?;
 
     // verify each new header after last_header iteratively
@@ -223,45 +221,17 @@ pub fn handle_btc_headers_from_babylon(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
     use cosmwasm_std::testing::mock_dependencies;
-    use serde::{Deserialize, Serialize};
-    use std::fs::File;
-    use std::io::Read;
+    use std::fs;
 
-    const BTC_LC_TESTDATA: &str = "src/state/testdata/btclightclient.json";
+    const TESTDATA: &str = "./testdata/btc_light_client.dat";
 
-    // intermediate structs for json -> BtcHeaderInfoSerde -> BtcHeaderInfo
-    #[allow(clippy::derive_partial_eq_without_eq)]
-    #[derive(Clone, PartialEq, Deserialize, Serialize)]
-    pub struct BtcHeaderInfoSerde {
-        pub header: String,
-        pub hash: String,
-        pub height: String,
-        pub work: String,
-    }
-
-    impl From<BtcHeaderInfoSerde> for BtcHeaderInfo {
-        fn from(a: BtcHeaderInfoSerde) -> Self {
-            BtcHeaderInfo {
-                header: hex::decode(a.header).unwrap().into(),
-                hash: hex::decode(a.hash).unwrap().into(),
-                height: a.height.parse::<u64>().unwrap(),
-                work: a.work.into(),
-            }
-        }
-    }
-
-    // convert the json file to a vector of BtcHeaderInfo
     fn get_test_headers() -> Vec<BtcHeaderInfo> {
-        let mut file = File::open(BTC_LC_TESTDATA).unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
-        let headers_serde: Vec<BtcHeaderInfoSerde> = serde_json::from_str(&contents).unwrap();
-        let headers: Vec<BtcHeaderInfo> = headers_serde
-            .into_iter()
-            .rev() // from low height to high height
-            .map(|a| BtcHeaderInfo::from(a))
-            .collect();
+        let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
+        let resp = QueryMainChainResponse::decode(testdata).unwrap();
+        let mut headers = resp.headers;
+        headers.reverse(); // from low to high
         return headers;
     }
 
@@ -278,7 +248,7 @@ mod tests {
         // set config first
         let w = 10 as usize;
         let cfg = super::super::config::Config {
-            network: babylon_bitcoin::chain_params::Network::Mainnet,
+            network: babylon_bitcoin::chain_params::Network::Testnet,
             babylon_tag: b"bbn0".to_vec(),
             btc_confirmation_depth: 6,
             checkpoint_finalization_timeout: w as u64,
