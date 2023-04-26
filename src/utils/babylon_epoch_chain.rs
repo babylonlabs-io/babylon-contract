@@ -62,8 +62,14 @@ pub fn verify_epoch_sealed(
     // Ensure The epoch medatata is committed to the app_hash of the sealer header
     let root = &sealer_header.app_hash;
     let epoch_info_key = super::cosmos_store::get_epoch_info_key(epoch.epoch_number);
-    let epoch_bytes = epoch.encode_to_vec();
     let epoch_merkle_proof = proof.proof_epoch_info.clone().unwrap();
+    // NOTE: the proof is generated at the 1st header of the next epoch
+    // At that time, the sealer header is not assigned to the epoch metadata
+    // and the proof does not include the sealer header.
+    // Thus, we need to unassign here
+    let mut epoch_no_sealer = epoch.clone();
+    epoch_no_sealer.sealer_header = None;
+    let epoch_bytes = epoch_no_sealer.encode_to_vec();
     super::cosmos_store::verify_store(
         root,
         super::cosmos_store::EPOCHING_STORE_KEY,
@@ -169,7 +175,7 @@ mod tests {
             .unwrap();
         // TODO: test does not work due to the bug of ProveEpochSealed in the testnet
         // will uncomment after getting valid testdata
-        // verify_epoch_sealed(&epoch, &raw_ckpt, &proof).unwrap();
+        verify_epoch_sealed(&epoch, &raw_ckpt, &proof).unwrap();
     }
 
     #[test]

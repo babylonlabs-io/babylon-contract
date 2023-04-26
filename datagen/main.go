@@ -41,7 +41,7 @@ func genTestDataForBabylonEpochChain() {
 	err = client.QueryZoneConcierge(func(ctx context.Context, queryClient zctypes.QueryClient) error {
 		var err error
 		req := &zctypes.QueryFinalizedChainInfoRequest{
-			ChainId: "osmo-test-4",
+			ChainId: "nibiru-itn-1",
 			Prove:   true,
 		}
 		resp, err = queryClient.FinalizedChainInfo(ctx, req)
