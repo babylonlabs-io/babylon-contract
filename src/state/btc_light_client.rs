@@ -246,11 +246,11 @@ mod tests {
         let mut storage = deps.storage;
 
         // set config first
-        let w = 10 as usize;
+        let w = 2 as usize;
         let cfg = super::super::config::Config {
             network: babylon_bitcoin::chain_params::Network::Testnet,
             babylon_tag: b"bbn0".to_vec(),
-            btc_confirmation_depth: 6,
+            btc_confirmation_depth: 1,
             checkpoint_finalization_timeout: w as u64,
         };
         super::super::config::init(&mut storage, cfg);

@@ -44,7 +44,7 @@ pub fn verify_store(
         ics23_proof.verify_membership(&specs, merkle_root, merkle_keys, value.to_vec(), 0);
     if verify_res.is_err() {
         println!("{:?}", verify_res);
-        return Err("failed to verify Merkle proof".to_string());
+        return Err("failed to verify Tendermint Merkle proof".to_string());
     }
 
     Ok(())

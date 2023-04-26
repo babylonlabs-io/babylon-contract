@@ -3,8 +3,11 @@ pub use bitcoin::consensus::encode::Error;
 pub use bitcoin::util::uint::Uint256;
 pub use bitcoin::BlockHash;
 pub use bitcoin::BlockHeader;
+pub use bitcoin::Transaction;
 
 pub mod chain_params;
+pub mod merkle;
+pub mod op_return;
 pub mod pow;
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+mod bitcoin;
 mod bls;
 mod cosmos_store;
 mod ics23_commitment;

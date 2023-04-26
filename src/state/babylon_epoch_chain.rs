@@ -147,7 +147,6 @@ fn verify_epoch_and_checkpoint(
     btc_headers: &[BlockHeader; NUM_BTC_TXS],
 ) -> Result<VerifiedEpochAndCheckpoint, error::BabylonEpochChainError> {
     let cfg = super::config::get(storage).load()?;
-    let btc_network = babylon_bitcoin::chain_params::get_chain_params(cfg.network);
 
     // ensure that raw_ckpt is corresponding to the epoch
     if epoch.epoch_number != raw_ckpt.epoch_num {
@@ -185,13 +184,8 @@ fn verify_epoch_and_checkpoint(
     }
 
     // verify the checkpoint is submitted, i.e., committed to the 2 BTC headers
-    let res_submitted = verify_checkpoint_submitted(
-        raw_ckpt,
-        txs_info,
-        btc_headers,
-        &btc_network.pow_limit,
-        &cfg.babylon_tag,
-    );
+    let res_submitted =
+        verify_checkpoint_submitted(raw_ckpt, txs_info, btc_headers, &cfg.babylon_tag);
     if res_submitted.is_err() {
         return Err(error::BabylonEpochChainError::CheckpointNotSubmitted {});
     }

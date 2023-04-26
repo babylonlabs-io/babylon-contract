@@ -85,6 +85,7 @@ dependencies = [
  "pbjson-types",
  "prost 0.11.8",
  "prost-types",
+ "sha2 0.10.6",
  "tendermint-proto 0.30.0",
 ]
 

@@ -1,10 +1,8 @@
 use babylon_bitcoin::BlockHeader;
-use babylon_bitcoin::Uint256;
 use babylon_proto::babylon::btccheckpoint::v1::TransactionInfo;
-use babylon_proto::babylon::checkpointing::v1::RawCheckpoint;
+use babylon_proto::babylon::checkpointing::v1::{RawCheckpoint, CURRENT_VERSION};
 use babylon_proto::babylon::epoching::v1::Epoch;
 use babylon_proto::babylon::zoneconcierge::v1::ProofEpochSealed;
-use core::panic;
 use prost::Message;
 
 pub const NUM_BTC_TXS: usize = 2;
@@ -96,19 +94,67 @@ pub fn verify_checkpoint_submitted(
     raw_ckpt: &RawCheckpoint,
     txs_info: &[TransactionInfo; NUM_BTC_TXS],
     btc_headers: &[BlockHeader; NUM_BTC_TXS],
-    pow_limit: &Uint256,
     babylon_tag: &[u8],
 ) -> Result<(), String> {
-    panic!("TODO: implement me")
+    // decoded checkpoint data
+    let mut checkpoint_data_arr: Vec<Vec<u8>> = vec![];
+
+    // for each tx info, verify the Merkle proof and extract checkpoint data
+    for i in 0..NUM_BTC_TXS {
+        let tx_info = &txs_info[i];
+        let btc_header = &btc_headers[i];
+        // verify Merkle proof and extract BTC tx
+        let btc_tx = super::bitcoin::parse_tx_info(tx_info, btc_header)?;
+        // extract OP_RETURN data
+        let checkpoint_data = super::bitcoin::extract_checkpoint_data(&btc_tx, babylon_tag, i)?;
+        checkpoint_data_arr.push(checkpoint_data);
+    }
+
+    // decode checkpoint_data array to raw checkpoint
+    let decode_raw_ckpt = RawCheckpoint::from_checkpoint_data(
+        CURRENT_VERSION,
+        checkpoint_data_arr[0].clone(),
+        checkpoint_data_arr[1].clone(),
+    )?;
+
+    // check if the decoded raw checkpoint is same as the given one
+    if decode_raw_ckpt.ne(raw_ckpt) {
+        return Err(
+            "Raw checkpoint decoded from BTC txs is different from the given one".to_string(),
+        );
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use babylon_proto::babylon::zoneconcierge::v1::QueryFinalizedChainInfoResponse;
+    use babylon_bitcoin::BlockHash;
+    use babylon_proto::babylon::{
+        btclightclient::v1::QueryMainChainResponse,
+        zoneconcierge::v1::QueryFinalizedChainInfoResponse,
+    };
+    use std::collections::HashMap;
     use std::fs;
 
     const TESTDATA: &str = "./testdata/finalized_chain_info.dat";
+    const BTCLC_TESTDATA: &str = "./testdata/btc_light_client.dat";
+
+    fn get_test_headers() -> HashMap<BlockHash, BlockHeader> {
+        let mut header_map: HashMap<BlockHash, BlockHeader> = HashMap::new();
+        let testdata: &[u8] = &fs::read(BTCLC_TESTDATA).unwrap();
+        let resp = QueryMainChainResponse::decode(testdata).unwrap();
+        let headers = resp.headers;
+        for header in headers.iter() {
+            let btc_header_bytes = header.header.clone();
+            let btc_header: babylon_bitcoin::BlockHeader =
+                babylon_bitcoin::deserialize(&btc_header_bytes).unwrap();
+            header_map.insert(btc_header.block_hash(), btc_header);
+        }
+
+        return header_map;
+    }
 
     #[test]
     fn verify_epoch_sealed_works() {
@@ -126,5 +172,28 @@ mod tests {
         // verify_epoch_sealed(&epoch, &raw_ckpt, &proof).unwrap();
     }
 
-    // TODO: more tests on different scenarios, e.g., random number of headers and conflicted headers
+    #[test]
+    fn verify_checkpoint_submitted_works() {
+        let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
+        let finalized_chain_info_resp = QueryFinalizedChainInfoResponse::decode(testdata).unwrap();
+        let raw_ckpt = finalized_chain_info_resp.raw_checkpoint.unwrap();
+        let txs_info = finalized_chain_info_resp
+            .proof
+            .unwrap()
+            .proof_epoch_submitted;
+        let txs_info_arr: &[TransactionInfo; NUM_BTC_TXS] =
+            &[txs_info[0].clone(), txs_info[1].clone()];
+
+        // BTC header map
+        let header_map = get_test_headers();
+        // get 2 btc headers
+        let k1: &[u8] = &txs_info[0].clone().key.unwrap().hash;
+        let k2: &[u8] = &txs_info[1].clone().key.unwrap().hash;
+        let btc_headers: &[BlockHeader; 2] =
+            &[*header_map.get(k1).unwrap(), *header_map.get(k2).unwrap()];
+
+        verify_checkpoint_submitted(&raw_ckpt, txs_info_arr, btc_headers, b"bbt0").unwrap();
+    }
+
+    // TODO: more tests on different scenarios
 }

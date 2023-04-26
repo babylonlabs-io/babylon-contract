@@ -1,4 +1,22 @@
 use bitvec::prelude::*;
+use sha2::{Digest, Sha256};
+
+// constants for txs that encode a BTC checkpoint
+pub const CURRENT_VERSION: u8 = 0;
+pub const TAG_LEN: usize = 4;
+pub const FIRST_PART_LEN: usize = 78;
+pub const FIRST_PART_HASH_LEN: usize = 10;
+pub const SECOND_PART_LEN: usize = 63;
+pub const HEADER_LEN: usize = 5;
+
+// constants for the BTC checkpoint
+pub const EPOCH_LEN: usize = 8;
+pub const LAST_COMMIT_HASH_LEN: usize = 32;
+pub const BITMAP_LEN: usize = 13;
+pub const ADDRESS_LEN: usize = 20;
+pub const BLS_SIG_LEN: usize = 48;
+
+pub const MERKLE_PROOF_ELEM_SIZE: usize = 32;
 
 impl ValidatorWithBlsKeySet {
     pub fn get_total_power(&self) -> u64 {
@@ -47,5 +65,52 @@ impl RawCheckpoint {
         let mut msg_bytes = self.epoch_num.to_be_bytes().to_vec();
         msg_bytes.extend(&self.last_commit_hash);
         return msg_bytes;
+    }
+
+    pub fn from_checkpoint_data(version: u8, f: Vec<u8>, s: Vec<u8>) -> Result<Self, String> {
+        if version > CURRENT_VERSION {
+            return Err(format!("not supported version"));
+        }
+        if f.len() != FIRST_PART_LEN - HEADER_LEN {
+            return Err(format!("not valid first part"));
+        }
+        if s.len() != SECOND_PART_LEN - HEADER_LEN {
+            return Err(format!("not valid second part"));
+        }
+        let first_hash = Sha256::digest(&f);
+        let exp_hash = &s[s.len() - FIRST_PART_HASH_LEN..];
+        if &first_hash[0..FIRST_PART_HASH_LEN] != exp_hash {
+            return Err(format!("parts do not connect"));
+        }
+
+        // all good, connect
+        let mut raw_ckpt_bytes: Vec<u8> = vec![];
+        raw_ckpt_bytes.extend(f);
+        raw_ckpt_bytes.extend(s);
+
+        // start decoding
+        let mut idx: usize = 0;
+        let mut epoch_num_bytes: [u8; 8] = [0u8; 8];
+        epoch_num_bytes.copy_from_slice(&raw_ckpt_bytes[idx..idx + EPOCH_LEN]);
+        let epoch_num = u64::from_be_bytes(epoch_num_bytes);
+        idx += EPOCH_LEN;
+        let last_commit_hash: Vec<u8> = raw_ckpt_bytes[idx..idx + LAST_COMMIT_HASH_LEN]
+            .to_vec()
+            .clone();
+        idx += LAST_COMMIT_HASH_LEN;
+        let bitmap: Vec<u8> = raw_ckpt_bytes[idx..idx + BITMAP_LEN].to_vec().clone();
+        idx += BITMAP_LEN;
+        let _: Vec<u8> = raw_ckpt_bytes[idx..idx + ADDRESS_LEN].to_vec().clone();
+        idx += ADDRESS_LEN;
+        let bls_multi_sig: Vec<u8> = raw_ckpt_bytes[idx..idx + BLS_SIG_LEN].to_vec().clone();
+
+        let raw_ckpt = RawCheckpoint {
+            epoch_num: epoch_num,
+            last_commit_hash: last_commit_hash.into(),
+            bitmap: bitmap.into(),
+            bls_multi_sig: bls_multi_sig.into(),
+        };
+
+        Ok(raw_ckpt)
     }
 }
