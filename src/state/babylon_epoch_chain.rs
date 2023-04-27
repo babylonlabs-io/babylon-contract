@@ -71,12 +71,15 @@ fn set_base_epoch(storage: &mut dyn Storage, base_epoch: &Epoch) {
 }
 
 // getter/setter for last finalised epoch
-pub fn get_last_finalized_epoch(storage: &mut dyn Storage) -> Result<Epoch, prost::DecodeError> {
+pub fn get_last_finalized_epoch(
+    storage: &mut dyn Storage,
+) -> Result<Epoch, error::BabylonEpochChainError> {
     let storage_last_finalized_epoch = get_storage_last_finalized_epoch(storage);
     let last_finalized_epoch_bytes = storage_last_finalized_epoch
         .get(KEY_LAST_FINALIZED_EPOCH)
-        .unwrap();
+        .ok_or(error::BabylonEpochChainError::NoFinalizedEpoch {})?;
     Epoch::decode(last_finalized_epoch_bytes.as_slice())
+        .map_err(|err| error::BabylonEpochChainError::DecodeError(err))
 }
 
 fn set_last_finalized_epoch(storage: &mut dyn Storage, last_finalized_epoch: &Epoch) {
@@ -93,13 +96,11 @@ pub fn get_epoch(
     let storage_epochs = get_storage_epochs(storage);
 
     // try to find the epoch metadata of the given epoch
-    let epoch_res = storage_epochs.get(&epoch_number.to_be_bytes());
-    if epoch_res.is_none() {
-        return Err(error::BabylonEpochChainError::EpochNotFoundError {
+    let epoch_bytes = storage_epochs.get(&epoch_number.to_be_bytes()).ok_or(
+        error::BabylonEpochChainError::EpochNotFoundError {
             epoch_number: epoch_number,
-        });
-    }
-    let epoch_bytes = epoch_res.unwrap();
+        },
+    )?;
 
     // try to decode the epoch
     let epoch_res = Epoch::decode(epoch_bytes.as_slice())?;
@@ -115,13 +116,11 @@ pub fn get_checkpoint(
     let storage_checkpoints = get_storage_checkpoints(storage);
 
     // try to find the checkpoint of the given epoch
-    let ckpt_res = storage_checkpoints.get(&epoch_number.to_be_bytes());
-    if ckpt_res.is_none() {
-        return Err(error::BabylonEpochChainError::CheckpointNotFoundError {
+    let ckpt_bytes = storage_checkpoints.get(&epoch_number.to_be_bytes()).ok_or(
+        error::BabylonEpochChainError::CheckpointNotFoundError {
             epoch_number: epoch_number,
-        });
-    }
-    let ckpt_bytes = ckpt_res.unwrap();
+        },
+    )?;
 
     // try to decode the checkpoint
     let ckpt_res = RawCheckpoint::decode(ckpt_bytes.as_slice())?;
@@ -162,14 +161,13 @@ fn verify_epoch_and_checkpoint(
     // ensure the given btc headers are in BTC light clients
     for btc_header in btc_headers {
         let hash = btc_header.block_hash();
-        let header_res = super::btc_light_client::get_header(storage, &hash);
-        if header_res.is_err() {
-            return Err(error::BabylonEpochChainError::BTCHeaderNotFoundError {
+        let header = super::btc_light_client::get_header(storage, &hash).map_err(|_| {
+            error::BabylonEpochChainError::BTCHeaderNotFoundError {
                 hash: hash.encode_hex(),
-            });
-        }
+            }
+        })?;
         // refresh min_height
-        let header_height = header_res.unwrap().height;
+        let header_height = header.height;
         if min_height > header_height {
             min_height = header_height;
         }
@@ -184,17 +182,12 @@ fn verify_epoch_and_checkpoint(
     }
 
     // verify the checkpoint is submitted, i.e., committed to the 2 BTC headers
-    let res_submitted =
-        verify_checkpoint_submitted(raw_ckpt, txs_info, btc_headers, &cfg.babylon_tag);
-    if res_submitted.is_err() {
-        return Err(error::BabylonEpochChainError::CheckpointNotSubmitted {});
-    }
+    verify_checkpoint_submitted(raw_ckpt, txs_info, btc_headers, &cfg.babylon_tag)
+        .map_err(|_| error::BabylonEpochChainError::CheckpointNotSubmitted {})?;
 
     // verify the epoch is sealed by its validator set
-    let res_sealed = verify_epoch_sealed(epoch, raw_ckpt, proof_epoch_sealed);
-    if res_sealed.is_err() {
-        return Err(error::BabylonEpochChainError::EpochNotSealed {});
-    }
+    verify_epoch_sealed(epoch, raw_ckpt, proof_epoch_sealed)
+        .map_err(|_| error::BabylonEpochChainError::EpochNotSealed {})?;
 
     // all good
     Ok(VerifiedEpochAndCheckpoint {

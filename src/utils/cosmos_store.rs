@@ -1,3 +1,5 @@
+use crate::utils::ics23_commitment::merkle::convert_tm_proto_to_ics_merkle_proof;
+
 // the below keys are hard-coded for now. They have to be consistent with the Babylon repo.
 // TODO: integration tests for ensuring them are same, or parameterise them upon instantiation
 // https://github.com/babylonchain/babylon/blob/v0.5.0/x/epoching/types/keys.go#L8
@@ -27,12 +29,8 @@ pub fn verify_store(
     proof: tendermint_proto::crypto::ProofOps,
 ) -> Result<(), String> {
     // convert tendermint_proto::crypto::ProofOps to ics23 proof
-    let ics23_proof_res =
-        crate::utils::ics23_commitment::merkle::convert_tm_proto_to_ics_merkle_proof(&proof);
-    if ics23_proof_res.is_err() {
-        return Err("failed to convert tendermint_proto::crypto::ProofOps to ibc::core::ics23_commitment::merkle::MerkleProof".to_string());
-    }
-    let ics23_proof = ics23_proof_res.unwrap();
+    let ics23_proof = convert_tm_proto_to_ics_merkle_proof(&proof)
+        .map_err(|err|format!("failed to convert tendermint_proto::crypto::ProofOps to ibc::core::ics23_commitment::merkle::MerkleProof: {:?}", err))?;
 
     // construct values for verifying Merkle proofs
     let specs = crate::utils::ics23_commitment::specs::ProofSpecs::default();
@@ -40,12 +38,9 @@ pub fn verify_store(
     let merkle_keys = vec![module_key.to_vec(), key.to_vec()];
 
     // verify
-    let verify_res =
-        ics23_proof.verify_membership(&specs, merkle_root, merkle_keys, value.to_vec(), 0);
-    if verify_res.is_err() {
-        println!("{:?}", verify_res);
-        return Err("failed to verify Tendermint Merkle proof".to_string());
-    }
+    ics23_proof
+        .verify_membership(&specs, merkle_root, merkle_keys, value.to_vec(), 0)
+        .map_err(|err| format!("failed to verify Tendermint Merkle proof: {:?}", err))?;
 
     Ok(())
 }

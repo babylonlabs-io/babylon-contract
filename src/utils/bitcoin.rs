@@ -25,11 +25,7 @@ pub fn parse_tx_info(
     let proof: Vec<&[u8]> = proof_chunks.collect();
 
     // get tx key
-    let tx_key_res = &tx_info.key;
-    if tx_key_res.is_none() {
-        return Err("empty tx key".to_string());
-    }
-    let tx_key = tx_key_res.as_ref().unwrap();
+    let tx_key = &tx_info.key.as_ref().ok_or("empty tx key".to_string())?;
 
     // get header hash in tx key and tx idx
     let header_hash = tx_key.hash.to_vec();
@@ -41,12 +37,8 @@ pub fn parse_tx_info(
     }
 
     // deserialise btc tx
-    let btc_tx_res: Result<Transaction, babylon_bitcoin::Error> =
-        babylon_bitcoin::deserialize(&tx_info.transaction);
-    if btc_tx_res.is_err() {
-        return Err("failed to decode BTC tx".to_string());
-    }
-    let btc_tx = btc_tx_res.unwrap();
+    let btc_tx: Transaction = babylon_bitcoin::deserialize(&tx_info.transaction)
+        .map_err(|err| format!("failed to decode BTC tx: {:?}", err))?;
 
     // verify Merkle proof
     if !babylon_bitcoin::merkle::verify_merkle_proof(&btc_tx, &proof, tx_idx, &root) {

@@ -38,6 +38,8 @@ pub enum BabylonEpochChainError {
     DecodeError(#[from] prost::DecodeError),
     #[error("The epoch {epoch_number} is not found in the storage")]
     EpochNotFoundError { epoch_number: u64 },
+    #[error("There is no finalized epoch yet")]
+    NoFinalizedEpoch {},
     #[error(
         "The checkpoint is for epoch {ckpt_epoch_number} rather than the given epoch {epoch_number}"
     )]

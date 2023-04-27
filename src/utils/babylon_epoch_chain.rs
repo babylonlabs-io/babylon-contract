@@ -29,11 +29,10 @@ pub fn verify_epoch_sealed(
     // This is different from the checkpoint verification rules in checkpointing,
     // where a checkpoint with valid BLS multisig but different lch signals a dishonest majority equivocation.
     let lch_in_ckpt: &[u8] = raw_ckpt.last_commit_hash.as_ref();
-    let sealer_header_res = epoch.sealer_header.as_ref();
-    if sealer_header_res.is_none() {
-        return Err("epoch's sealer_header is empty".to_string());
-    }
-    let sealer_header = sealer_header_res.unwrap();
+    let sealer_header = epoch
+        .sealer_header
+        .as_ref()
+        .ok_or("epoch's sealer_header is empty".to_string())?;
     let lch_in_sealer_header: &[u8] = &sealer_header.last_commit_hash;
     if !lch_in_ckpt.eq(lch_in_sealer_header) {
         return Err(format!("checkpoint's last_commit_hash ({}) is not equal to sealer header's last_commit_hash ({})", hex::encode(lch_in_ckpt), hex::encode(lch_in_sealer_header)));
@@ -46,11 +45,10 @@ pub fn verify_epoch_sealed(
     let val_set = babylon_proto::babylon::checkpointing::v1::ValidatorWithBlsKeySet {
         val_set: proof.validator_set.clone(),
     };
-    let subset_res = val_set.find_subset_with_power_sum(&raw_ckpt.bitmap);
-    if subset_res.is_err() {
-        return Err(format!("failed to get voted subset: {:?}", subset_res));
-    }
-    let (signer_set, signer_set_power) = subset_res.unwrap();
+    let (signer_set, signer_set_power) = val_set
+        .find_subset_with_power_sum(&raw_ckpt.bitmap)
+        .map_err(|err| format!("failed to get voted subset: {:?}", err))?;
+
     let threshold = val_set.get_total_power() / 3;
     // ensure the signerSet has > 1/3 voting power
     if signer_set_power <= threshold {
@@ -154,8 +152,7 @@ mod tests {
         let headers = resp.headers;
         for header in headers.iter() {
             let btc_header_bytes = header.header.clone();
-            let btc_header: babylon_bitcoin::BlockHeader =
-                babylon_bitcoin::deserialize(&btc_header_bytes).unwrap();
+            let btc_header: BlockHeader = babylon_bitcoin::deserialize(&btc_header_bytes).unwrap();
             header_map.insert(btc_header.block_hash(), btc_header);
         }
 

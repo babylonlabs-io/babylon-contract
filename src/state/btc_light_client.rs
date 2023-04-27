@@ -18,6 +18,7 @@
 
 use crate::error;
 use crate::utils::btc_light_client::verify_headers;
+use babylon_bitcoin::BlockHeader;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use cosmwasm_std::Storage;
 use cosmwasm_storage::{prefixed, PrefixedStorage};
@@ -106,21 +107,18 @@ pub fn get_header(
     let storage_headers = get_storage_headers(storage);
 
     // try to find the header with the given hash
-    let header_res = storage_headers.get(hash);
-    if header_res.is_none() {
-        return Err(error::BTCLightclientError::BTCHeaderNotFoundError {
-            hash: hex::encode(hash),
-        });
-    }
-    let header_bytes = header_res.unwrap();
+    let header_bytes =
+        storage_headers
+            .get(hash)
+            .ok_or(error::BTCLightclientError::BTCHeaderNotFoundError {
+                hash: hex::encode(hash),
+            })?;
 
     // try to decode the header
-    let header_res = BtcHeaderInfo::decode(header_bytes.as_slice());
-    if header_res.is_err() {
-        return Err(error::BTCLightclientError::BTCHeaderDecodeError {});
-    }
+    let header = BtcHeaderInfo::decode(header_bytes.as_slice())
+        .map_err(|_| error::BTCLightclientError::BTCHeaderDecodeError {})?;
 
-    return Ok(header_res.unwrap());
+    return Ok(header);
 }
 
 /// init initialises the BTC header chain storage
@@ -144,12 +142,8 @@ pub fn init(
     let base_header = headers.first().unwrap();
 
     // decode this header to rust-bitcoin's type
-    let base_btc_header_res: Result<babylon_bitcoin::BlockHeader, babylon_bitcoin::Error> =
-        babylon_bitcoin::deserialize(base_header.header.as_ref());
-    if base_btc_header_res.is_err() {
-        return Err(error::BTCLightclientError::BTCHeaderDecodeError {});
-    }
-    let base_btc_header = base_btc_header_res.unwrap();
+    let base_btc_header: BlockHeader = babylon_bitcoin::deserialize(base_header.header.as_ref())
+        .map_err(|_| error::BTCLightclientError::BTCHeaderDecodeError {})?;
 
     // verify the base header's pow
     if let Err(_) = babylon_bitcoin::pow::verify_header_pow(&btc_network, &base_btc_header) {
@@ -194,12 +188,9 @@ pub fn handle_btc_headers_from_babylon(
 
     // decode the first header in these new headers
     let first_new_header = new_headers.first().unwrap();
-    let first_new_btc_header_res: Result<babylon_bitcoin::BlockHeader, babylon_bitcoin::Error> =
-        babylon_bitcoin::deserialize(first_new_header.header.as_ref());
-    if first_new_btc_header_res.is_err() {
-        return Err(error::BTCLightclientError::BTCHeaderDecodeError {});
-    }
-    let first_new_btc_header = first_new_btc_header_res.unwrap();
+    let first_new_btc_header: BlockHeader =
+        babylon_bitcoin::deserialize(first_new_header.header.as_ref())
+            .map_err(|_| error::BTCLightclientError::BTCHeaderDecodeError {})?;
 
     // ensure the first header's previous header exists in KVStore
     let last_hash: Vec<u8> = first_new_btc_header.prev_blockhash.as_ref().into();
