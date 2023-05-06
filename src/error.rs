@@ -13,7 +13,26 @@ pub enum ContractError {
     IbcUnsupportedMethod {},
 }
 
-// TODO: refine error types, e.g., inserting a error msg string
+#[derive(Error, Debug, PartialEq)]
+pub enum CZHeaderChainError {
+    #[error("{0}")]
+    StdError(#[from] StdError),
+    #[error("The given headers during initialization cannot be verified")]
+    InitError {},
+    #[error("The bytes cannot be decoded")]
+    DecodeError(#[from] prost::DecodeError),
+    #[error("The TxProof cannot be decoded")]
+    TxProofDecodeError {},
+    #[error("The TxProof cannot be verified")]
+    TxProofError {},
+    #[error("The CZ header cannot be decoded")]
+    CZHeaderDecodeError {},
+    #[error("The CZ header with height {height} is not found in the storage")]
+    CZHeaderNotFoundError { height: u64 },
+    #[error("There is no finalized CZ header yet")]
+    NoCZHeader {},
+}
+
 #[derive(Error, Debug, PartialEq)]
 pub enum BTCLightclientError {
     #[error("{0}")]

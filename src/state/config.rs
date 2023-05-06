@@ -1,11 +1,10 @@
 //! Config is a singleton object in contract's storage
 
+use crate::state::KEY_CONFIG;
 use cosmwasm_std::Storage;
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-pub const KEY_CONFIG: &[u8] = b"config";
 
 /// Config is a singleton object in contract's storage
 // TODO: add necessary config entries to Config struct

@@ -20,6 +20,7 @@
 //! NOTE: the Babylon epoch chain is always finalised, i.e., w-deep on BTC.
 
 use crate::error;
+use crate::state::PREFIX_BABYLON_EPOCH_CHAIN;
 use crate::utils::babylon_epoch_chain::{
     verify_checkpoint_submitted, verify_epoch_sealed, NUM_BTC_TXS,
 };
@@ -33,7 +34,6 @@ use cosmwasm_storage::{prefixed, PrefixedStorage};
 use hex::ToHex;
 use prost::Message;
 
-pub const PREFIX_BABYLON_EPOCH_CHAIN: &[u8] = &[2];
 pub const KEY_EPOCHS: &[u8] = &[1];
 pub const KEY_CHECKPOINTS: &[u8] = &[2];
 pub const KEY_BASE_EPOCH: &[u8] = &[3];
@@ -103,9 +103,9 @@ pub fn get_epoch(
     )?;
 
     // try to decode the epoch
-    let epoch_res = Epoch::decode(epoch_bytes.as_slice())?;
+    let epoch = Epoch::decode(epoch_bytes.as_slice())?;
 
-    return Ok(epoch_res);
+    return Ok(epoch);
 }
 
 /// get_checkpoint retrieves the checkpoint of a given epoch

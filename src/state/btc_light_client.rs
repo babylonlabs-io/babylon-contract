@@ -17,6 +17,7 @@
 //!     - value: header
 
 use crate::error;
+use crate::state::PREFIX_BTC_LIGHT_CLIENT;
 use crate::utils::btc_light_client::verify_headers;
 use babylon_bitcoin::BlockHeader;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
@@ -24,7 +25,6 @@ use cosmwasm_std::Storage;
 use cosmwasm_storage::{prefixed, PrefixedStorage};
 use prost::Message;
 
-pub const PREFIX_BTC_LIGHT_CLIENT: &[u8] = &[1];
 pub const KEY_HEADERS: &[u8] = &[1];
 pub const KEY_HASH_TO_HEIGHT: &[u8] = &[2];
 pub const KEY_TIP: &[u8] = &[3];
