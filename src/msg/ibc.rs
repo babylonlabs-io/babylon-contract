@@ -1,18 +1,23 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::ContractResult;
+use cosmos_sdk_proto::ibc::core::channel::v1::{Acknowledgement, acknowledgement::Response};
 
-#[cw_serde]
-pub enum PacketMsg {
-    WhoAmI {},
+pub fn new_ack_res() -> Acknowledgement {
+    let resp = Response::Result(vec![]);
+    let ack = Acknowledgement {
+        response: Some(resp),
+    };
+    ack
 }
 
-/// All acknowledgements are wrapped in `ContractResult`.
-/// The success value depends on the PacketMsg variant.
-pub type AcknowledgementMsg<T> = ContractResult<T>;
+pub fn new_ack_err(emsg: String) -> Acknowledgement {
+    let resp = Response::Error(emsg);
+    let ack = Acknowledgement {
+        response: Some(resp),
+    };
+    ack
+}
 
-/// This is the success response we send on ack for PacketMsg::WhoAmI.
-/// Return the caller's account address on the remote chain
 #[cw_serde]
-pub struct WhoAmIResponse {
-    pub account: String,
+pub struct BtcTimestampResponse {
+    pub placeholder: String,
 }

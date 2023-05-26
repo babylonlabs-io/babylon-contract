@@ -82,7 +82,7 @@ pub fn ibc_packet_receive(
     deps: DepsMut,
     env: Env,
     msg: IbcPacketReceiveMsg,
-) -> Result<IbcReceiveResponse, Never> {
+) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
     ibc::ibc_packet_receive(deps, env, msg)
 }
 

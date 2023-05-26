@@ -1,4 +1,3 @@
-use crate::bindings::try_report_fork_header;
 use crate::msg::bindings::BabylonMsg;
 use crate::msg::contract::{AccountResponse, ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config;
@@ -17,9 +16,10 @@ pub fn instantiate(
     // initialise config
     let cfg = config::Config {
         network: msg.network,
-        babylon_tag: msg.babylon_tag.as_bytes().to_vec(),
+        babylon_tag: msg.babylon_tag,
         btc_confirmation_depth: msg.btc_confirmation_depth,
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
+        notify_cosmos_zone: msg.notify_cosmos_zone,
     };
     config::init(deps.storage, cfg);
 
@@ -55,19 +55,11 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
 
 pub fn execute(
     _deps: DepsMut,
-    env: Env,
+    _env: Env,
     _info: MessageInfo,
-    msg: ExecuteMsg,
+    _msg: ExecuteMsg,
 ) -> StdResult<Response<BabylonMsg>> {
-    // TESTING: trigger ForkHeader to print stuff at Cosmos zone side
-    // TODO: remember to remove
-    match msg {
-        crate::msg::contract::ExecuteMsg::Placeholder {} => {
-            Ok(try_report_fork_header(env).unwrap())
-        }
-    }
-
-    // Ok(Response::default())
+    Ok(Response::default())
 }
 
 #[cfg(test)]
@@ -91,9 +83,10 @@ mod tests {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             network: babylon_bitcoin::chain_params::Network::Regtest,
-            babylon_tag: "bbn0".to_string(), // TODO: use hex for encoding/decoding babylon tag
+            babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
+            notify_cosmos_zone: false,
         };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();

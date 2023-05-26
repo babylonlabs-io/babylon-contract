@@ -6,11 +6,17 @@
     "babylon_tag",
     "btc_confirmation_depth",
     "checkpoint_finalization_timeout",
-    "network"
+    "network",
+    "notify_cosmos_zone"
   ],
   "properties": {
     "babylon_tag": {
-      "type": "string"
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
     },
     "btc_confirmation_depth": {
       "type": "integer",
@@ -24,6 +30,9 @@
     },
     "network": {
       "$ref": "#/definitions/Network"
+    },
+    "notify_cosmos_zone": {
+      "type": "boolean"
     }
   },
   "additionalProperties": false,

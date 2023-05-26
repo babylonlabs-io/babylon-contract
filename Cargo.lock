@@ -57,6 +57,7 @@ dependencies = [
  "babylon-bitcoin",
  "babylon-proto",
  "blst",
+ "cosmos-sdk-proto",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",

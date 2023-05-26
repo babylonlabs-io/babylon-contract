@@ -72,8 +72,12 @@ pub enum BabylonEpochChainError {
     BTCHeaderNotFoundError { hash: String },
     #[error("The BTC headers are not {w}-deep")]
     BTCHeaderNotDeepEnough { w: u64 },
-    #[error("The checkpoint is not in the given BTC headers")]
-    CheckpointNotSubmitted {},
-    #[error("The epoch is not sealed by the epoch's validator set")]
-    EpochNotSealed {},
+    #[error("The checkpoint is not in the given BTC headers: {err_msg}")]
+    CheckpointNotSubmitted {err_msg: String},
+    #[error("The epoch is not sealed by the epoch's validator set: {err_msg}")]
+    EpochNotSealed {err_msg: String},
+    #[error("Transaction key is empty")]
+    EmptyTxKey {},
+    #[error("The BTC header cannot be decoded")]
+    BTCHeaderDecodeError {},
 }

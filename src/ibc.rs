@@ -1,13 +1,17 @@
 use crate::error::ContractError;
-use crate::msg::ibc::{AcknowledgementMsg, PacketMsg, WhoAmIResponse};
+use crate::msg::ibc::{new_ack_res, new_ack_err};
+use babylon_proto::babylon::zoneconcierge::v1::{ZoneconciergePacketData, BtcTimestamp, zoneconcierge_packet_data};
+use prost::Message;
 use cosmwasm_std::{
-    from_slice, to_binary, Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse,
+    DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse,
     IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder,
     IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never,
-    StdResult,
+    StdResult, StdError
 };
+use crate::msg::bindings::BabylonMsg;
 
-pub const IBC_APP_VERSION: &str = "babylon-contract-v1";
+pub const IBC_VERSION: &str = "zoneconcierge-1";
+pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
 
 /// This is executed during the ChannelOpenInit and ChannelOpenTry
 /// of the IBC 4-step channel protocol
@@ -16,35 +20,33 @@ pub const IBC_APP_VERSION: &str = "babylon-contract-v1";
 /// Here we ensure the ordering and version constraints.
 pub fn ibc_channel_open(
     _deps: DepsMut,
-    _env: Env,
+    env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
+	// the IBC channel has to be ordered
     let channel = msg.channel();
-
-    if channel.order != IbcOrder::Ordered {
+    if channel.order != IBC_ORDERING {
         return Err(ContractError::IbcUnorderedChannel {});
     }
 
     // In ibcv3 we don't check the version string passed in the message
     // and only check the counterparty version.
     if let Some(counter_version) = msg.counterparty_version() {
-        if counter_version != IBC_APP_VERSION {
+        if counter_version != IBC_VERSION {
             return Err(ContractError::IbcInvalidCounterPartyVersion {
-                version: IBC_APP_VERSION.to_string(),
+                version: IBC_VERSION.to_string(),
             });
         }
     }
 
     // We return the version we need (which could be different than the counterparty version)
     Ok(Some(Ibc3ChannelOpenResponse {
-        version: IBC_APP_VERSION.to_string(),
+        version: IBC_VERSION.to_string(),
     }))
 }
 
-/// Second part of the 4-step handshake, i.e.
+/// Second part of the 4-step handshake, i.e.,
 /// ChannelOpenAck and ChannelOpenConfirm.
-/// Add the channel ID to the storage so that we know
-/// what channels we have open.
 pub fn ibc_channel_connect(
     _deps: DepsMut,
     _env: Env,
@@ -57,9 +59,6 @@ pub fn ibc_channel_connect(
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
         .add_event(Event::new("ibc").add_attribute("channel", "connect")))
-
-    // TODO: upon finishing handshake with Babylon,
-    // initialising storage of BTCLightclient, Babylon epoch chain and CZ header chain
 }
 
 /// This is invoked on the IBC Channel Close message
@@ -76,12 +75,8 @@ pub fn ibc_channel_close(
     Ok(IbcBasicResponse::new()
         .add_attribute("action", "ibc_close")
         .add_attribute("channel_id", channel_id))
-}
 
-// this encode an error or error message into a proper acknowledgement to the recevier
-fn encode_ibc_error(msg: impl Into<String>) -> Binary {
-    // this cannot error, unwrap to keep the interface simple
-    to_binary(&AcknowledgementMsg::<()>::Err(msg.into())).unwrap()
+    // TODO: erase all contract state upon closing the channel
 }
 
 /// Invoked when an IBC packet is received
@@ -96,24 +91,27 @@ pub fn ibc_packet_receive(
     deps: DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
-) -> Result<IbcReceiveResponse, Never> {
+) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
     // put this in a closure so we can convert all error responses into acknowledgements
     (|| {
         let packet = msg.packet;
         // which local channel did this packet come on
         let caller = packet.dest.channel_id;
-        let msg: PacketMsg = from_slice(&packet.data)?;
-        match msg {
-            PacketMsg::WhoAmI {} => ibc_packet::who_am_i(deps, caller),
+        let zc_packet_data = ZoneconciergePacketData::decode(packet.data.as_slice())
+            .map_err(|e| StdError::generic_err(format!("failed to decode ZoneconciergePacketData: {e}")))?;
+        let zc_packet = zc_packet_data.packet.ok_or(StdError::generic_err("empty IBC packet"))?;
+        match zc_packet {
+            zoneconcierge_packet_data::Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
         }
     })()
     .or_else(|e| {
         // we try to capture all app-level errors and convert them into
         // acknowledgement packets that contain an error code.
-        let acknowledgement = encode_ibc_error(format!("invalid packet: {e}"));
+        let acknowledgement = new_ack_err(format!("invalid packet: {e}")); // TODO: design error ack format
         Ok(IbcReceiveResponse::new()
-            .set_ack(acknowledgement)
-            .add_event(Event::new("ibc").add_attribute("packet", "receive")))
+            .set_ack(acknowledgement.encode_to_vec())
+            .add_event(Event::new("ibc").add_attribute("packet", "receive"))
+        )
     })
 }
 
@@ -122,16 +120,31 @@ mod ibc_packet {
     use super::*;
 
     // processes PacketMsg::WhoAmI variant
-    pub fn who_am_i(_deps: DepsMut, _caller: String) -> StdResult<IbcReceiveResponse> {
-        let response = WhoAmIResponse {
-            account: "placeholder".to_owned(),
-        };
-        let acknowledgement = to_binary(&AcknowledgementMsg::Ok(response))?;
+    pub fn handle_btc_timestamp(deps: DepsMut, _caller: String, btc_ts: &BtcTimestamp) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
+        let storage = deps.storage;
+        let cfg = crate::state::config::get(storage).load()?;
 
-        // and we are golden
-        Ok(IbcReceiveResponse::new()
-            .set_ack(acknowledgement)
-            .add_attribute("action", "receive_who_am_i"))
+        // handle the BTC timestamp, i.e., verify the BTC timestamp and update the contract state
+        let msg_option = crate::state::handle_btc_timestamp(storage, btc_ts)?;
+
+        // construct response
+        let mut resp: IbcReceiveResponse<BabylonMsg> = IbcReceiveResponse::new();
+        // add attribute to response
+        resp = resp.add_attribute("action", "receive_btc_timestamp");
+        // add ack message to response
+        let acknowledgement = new_ack_res(); // TODO: design response format
+        resp = resp.set_ack(acknowledgement.encode_to_vec());
+
+        // if the BTC timestamp carries a Babylon message for the Cosmos zone, and
+        // the contract enables sending messages to the Cosmos zone, then
+        // add this message to response
+        if let Some(msg) = msg_option {
+            if cfg.notify_cosmos_zone {
+                resp = resp.add_message(msg);
+            }
+        } 
+
+        Ok(resp)
     }
 }
 
@@ -170,9 +183,10 @@ mod tests {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             network: babylon_bitcoin::chain_params::Network::Regtest,
-            babylon_tag: "bbn0".to_string(),
+            babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
+            notify_cosmos_zone: false,
         };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -185,14 +199,14 @@ mod tests {
         let mut deps = setup();
 
         let wrong_order =
-            mock_ibc_channel_open_try("channel-12", IbcOrder::Unordered, IBC_APP_VERSION);
+            mock_ibc_channel_open_try("channel-12", IbcOrder::Unordered, IBC_VERSION);
         ibc_channel_open(deps.as_mut(), mock_env(), wrong_order).unwrap_err();
 
         let wrong_version = mock_ibc_channel_open_try("channel-12", IbcOrder::Ordered, "reflect");
         ibc_channel_open(deps.as_mut(), mock_env(), wrong_version).unwrap_err();
 
         let valid_handshake =
-            mock_ibc_channel_open_try("channel-12", IbcOrder::Ordered, IBC_APP_VERSION);
+            mock_ibc_channel_open_try("channel-12", IBC_ORDERING, IBC_VERSION);
         ibc_channel_open(deps.as_mut(), mock_env(), valid_handshake).unwrap();
     }
 }

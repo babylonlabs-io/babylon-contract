@@ -137,7 +137,7 @@ mod tests {
     use babylon_bitcoin::BlockHash;
     use babylon_proto::babylon::{
         btclightclient::v1::QueryMainChainResponse,
-        zoneconcierge::v1::QueryFinalizedChainInfoResponse,
+        zoneconcierge::v1::FinalizedChainInfo,
     };
     use std::collections::HashMap;
     use std::fs;
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn verify_epoch_sealed_works() {
         let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
-        let finalized_chain_info_resp = QueryFinalizedChainInfoResponse::decode(testdata).unwrap();
+        let finalized_chain_info_resp = FinalizedChainInfo::decode(testdata).unwrap();
         let epoch = finalized_chain_info_resp.epoch_info.unwrap();
         let raw_ckpt = finalized_chain_info_resp.raw_checkpoint.unwrap();
         let proof = finalized_chain_info_resp
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn verify_checkpoint_submitted_works() {
         let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
-        let finalized_chain_info_resp = QueryFinalizedChainInfoResponse::decode(testdata).unwrap();
+        let finalized_chain_info_resp = FinalizedChainInfo::decode(testdata).unwrap();
         let raw_ckpt = finalized_chain_info_resp.raw_checkpoint.unwrap();
         let txs_info = finalized_chain_info_resp
             .proof

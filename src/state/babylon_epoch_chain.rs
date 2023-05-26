@@ -26,13 +26,18 @@ use crate::utils::babylon_epoch_chain::{
 };
 use babylon_bitcoin::BlockHeader;
 use babylon_proto::babylon::btccheckpoint::v1::TransactionInfo;
+use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use babylon_proto::babylon::checkpointing::v1::RawCheckpoint;
 use babylon_proto::babylon::epoching::v1::Epoch;
-use babylon_proto::babylon::zoneconcierge::v1::ProofEpochSealed;
-use cosmwasm_std::Storage;
+use babylon_proto::babylon::zoneconcierge::v1::{ProofEpochSealed, BtcTimestamp};
+use cosmos_sdk_proto::ics23::batch_entry::Proof;
+use cosmwasm_std::{Storage, StdError};
 use cosmwasm_storage::{prefixed, PrefixedStorage};
 use hex::ToHex;
 use prost::Message;
+use tendermint::merkle::proof;
+
+use super::btc_light_client;
 
 pub const KEY_EPOCHS: &[u8] = &[1];
 pub const KEY_CHECKPOINTS: &[u8] = &[2];
@@ -56,11 +61,18 @@ fn get_storage_last_finalized_epoch(storage: &mut dyn Storage) -> PrefixedStorag
     prefixed(storage, PREFIX_BABYLON_EPOCH_CHAIN)
 }
 
+// is_initialized checks if the BTC light client has been initialised or not
+// the check is done by checking existence of base epoch
+pub fn is_initialized(storage: &mut dyn Storage) -> bool {
+    let storage_base_epoch = get_storage_base_epoch(storage);
+    storage_base_epoch.get(KEY_BASE_EPOCH).is_some()
+}
+
 // getter/setter for base epoch
 pub fn get_base_epoch(storage: &mut dyn Storage) -> Epoch {
     let storage_base_epoch = get_storage_base_epoch(storage);
+    // NOTE: if init is successful, then base epoch is guaranteed to be in storage and decodable
     let base_epoch_bytes = storage_base_epoch.get(KEY_BASE_EPOCH).unwrap();
-    // NOTE: if init is successful, then base epoch is guaranteed to be correct
     return Epoch::decode(base_epoch_bytes.as_slice()).unwrap();
 }
 
@@ -143,7 +155,6 @@ fn verify_epoch_and_checkpoint(
     raw_ckpt: &RawCheckpoint,
     proof_epoch_sealed: &ProofEpochSealed,
     txs_info: &[TransactionInfo; NUM_BTC_TXS],
-    btc_headers: &[BlockHeader; NUM_BTC_TXS],
 ) -> Result<VerifiedEpochAndCheckpoint, error::BabylonEpochChainError> {
     let cfg = super::config::get(storage).load()?;
 
@@ -155,11 +166,27 @@ fn verify_epoch_and_checkpoint(
         });
     }
 
+    // get BTC headers from local BTC light client
+    let btc_headers: [BlockHeader; NUM_BTC_TXS] = txs_info
+        .iter()
+        .map(|tx_info| {
+            let tx_key = tx_info.key.clone().ok_or(error::BabylonEpochChainError::EmptyTxKey{})?;
+            let btc_header_hash = &tx_key.hash;
+            let btc_header_info = btc_light_client::get_header(storage, btc_header_hash)
+                .map_err(|_| error::BabylonEpochChainError::BTCHeaderNotFoundError{hash: hex::encode(btc_header_hash)})?;
+            let btc_header: BlockHeader = babylon_bitcoin::deserialize(&btc_header_info.header)
+                .map_err(|_| error::BabylonEpochChainError::BTCHeaderDecodeError {})?;
+            Ok(btc_header)
+        })
+        .collect::<Result<Vec<BlockHeader>, error::BabylonEpochChainError>>()?
+        .try_into()
+        .map_err(|_| error::BabylonEpochChainError::BTCHeaderDecodeError{})?;
+
     // this will be used for checking w-deep later
     let mut min_height: u64 = std::u64::MAX;
 
     // ensure the given btc headers are in BTC light clients
-    for btc_header in btc_headers {
+    for btc_header in btc_headers.iter() {
         let hash = btc_header.block_hash();
         let header = super::btc_light_client::get_header(storage, &hash).map_err(|_| {
             error::BabylonEpochChainError::BTCHeaderNotFoundError {
@@ -182,12 +209,12 @@ fn verify_epoch_and_checkpoint(
     }
 
     // verify the checkpoint is submitted, i.e., committed to the 2 BTC headers
-    verify_checkpoint_submitted(raw_ckpt, txs_info, btc_headers, &cfg.babylon_tag)
-        .map_err(|_| error::BabylonEpochChainError::CheckpointNotSubmitted {})?;
+    verify_checkpoint_submitted(raw_ckpt, txs_info, &btc_headers, &cfg.babylon_tag)
+        .map_err(|e| error::BabylonEpochChainError::CheckpointNotSubmitted {err_msg: e})?;
 
     // verify the epoch is sealed by its validator set
     verify_epoch_sealed(epoch, raw_ckpt, proof_epoch_sealed)
-        .map_err(|_| error::BabylonEpochChainError::EpochNotSealed {})?;
+        .map_err(|e| error::BabylonEpochChainError::EpochNotSealed {err_msg: e})?;
 
     // all good
     Ok(VerifiedEpochAndCheckpoint {
@@ -218,6 +245,20 @@ fn insert_epoch_and_checkpoint(
     set_last_finalized_epoch(storage, &verified_tuple.epoch);
 }
 
+/// extract_data_from_btc_ts extracts data needed for verifying Babylon epoch chain
+/// from a given BTC timestamp
+pub fn extract_data_from_btc_ts(
+    btc_ts: &BtcTimestamp
+) -> Result<(&Epoch, &RawCheckpoint, &ProofEpochSealed, [TransactionInfo; NUM_BTC_TXS]), StdError> {
+    let epoch = btc_ts.epoch_info.as_ref().ok_or(StdError::generic_err("empty epoch info"))?;
+    let raw_ckpt = btc_ts.raw_checkpoint.as_ref().ok_or(StdError::generic_err("empty raw checkpoint"))?;
+    let proof = btc_ts.proof.as_ref().ok_or(StdError::generic_err("empty proof"))?;
+    let proof_epoch_sealed = proof.proof_epoch_sealed.as_ref().ok_or(StdError::generic_err("empty proof_epoch_sealed"))?;
+    let txs_info: [TransactionInfo; NUM_BTC_TXS] = proof.proof_epoch_submitted.clone().try_into().map_err(|_| StdError::generic_err("proof_epoch_submitted is not correctly formatted"))?;
+
+    return Ok((epoch, raw_ckpt, proof_epoch_sealed, txs_info))
+}
+
 /// init initialises the Babylon epoch chain storage
 pub fn init(
     storage: &mut dyn Storage,
@@ -225,7 +266,6 @@ pub fn init(
     raw_ckpt: &RawCheckpoint,
     proof_epoch_sealed: &ProofEpochSealed,
     txs_info: &[TransactionInfo; NUM_BTC_TXS],
-    btc_headers: &[BlockHeader; NUM_BTC_TXS],
 ) -> Result<(), error::BabylonEpochChainError> {
     // verify epoch and checkpoint, including
     // - whether the epoch is sealed or not
@@ -236,7 +276,6 @@ pub fn init(
         raw_ckpt,
         proof_epoch_sealed,
         txs_info,
-        btc_headers,
     )?;
 
     // all good, init base
@@ -255,7 +294,6 @@ pub fn handle_epoch_and_checkpoint(
     raw_ckpt: &RawCheckpoint,
     proof_epoch_sealed: &ProofEpochSealed,
     txs_info: &[TransactionInfo; NUM_BTC_TXS],
-    btc_headers: &[BlockHeader; NUM_BTC_TXS],
 ) -> Result<(), error::BabylonEpochChainError> {
     // verify epoch and checkpoint, including
     // - whether the epoch/checkpoint are sealed or not
@@ -266,7 +304,6 @@ pub fn handle_epoch_and_checkpoint(
         raw_ckpt,
         proof_epoch_sealed,
         txs_info,
-        btc_headers,
     )?;
 
     // all good, insert everything and update last finalised epoch

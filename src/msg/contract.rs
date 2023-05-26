@@ -11,17 +11,20 @@ pub trait ContractMsg {
 #[cw_serde]
 pub struct InstantiateMsg {
     pub network: babylon_bitcoin::chain_params::Network,
-    pub babylon_tag: String,
+    pub babylon_tag: Vec<u8>,
     pub btc_confirmation_depth: u64,
     pub checkpoint_finalization_timeout: u64,
+    // notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised headers
+    // NOTE: if set true, then the Cosmos zone needs to integrate the corresponding message handler as well
+    pub notify_cosmos_zone: bool,
 }
 
 impl ContractMsg for InstantiateMsg {
     fn validate(&self) -> StdResult<()> {
-        if self.babylon_tag.as_bytes().len() != BABYLON_TAG_LEN {
+        if self.babylon_tag.len() != BABYLON_TAG_LEN {
             return Err(StdError::invalid_data_size(
                 BABYLON_TAG_LEN,
-                self.babylon_tag.as_bytes().len(),
+                self.babylon_tag.len(),
             ));
         }
 

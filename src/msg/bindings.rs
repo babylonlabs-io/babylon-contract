@@ -11,8 +11,6 @@ use cosmwasm_std::CosmosMsg;
 /// handling these messages
 #[cw_serde]
 pub enum BabylonMsg {
-    /// ForkHeader reports a fork with a valid QC
-    ForkHeader { placeholder: String }, // TODO: implement me!
     /// FinalizedHeader reports a BTC-finalised header
     /// can be used for many use cases, notably unbonding mature validators/delegations till this header
     FinalizedHeader {

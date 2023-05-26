@@ -26,7 +26,7 @@ use cosmwasm_vm::testing::{
 };
 use cosmwasm_vm::Instance;
 
-use babylon_contract::ibc::IBC_APP_VERSION;
+use babylon_contract::ibc::IBC_VERSION;
 use babylon_contract::msg::contract::InstantiateMsg;
 
 // This line will test the output of cargo wasm
@@ -40,9 +40,10 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
     let mut deps = mock_instance(WASM, &[]);
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
-        babylon_tag: "bbn0".to_string(),
+        babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 100,
+        notify_cosmos_zone: false,
     };
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
@@ -56,9 +57,10 @@ fn instantiate_works() {
 
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
-        babylon_tag: "bbn0".to_string(),
+        babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 100,
+        notify_cosmos_zone: false,
     };
     let info = mock_info("creator", &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);
@@ -71,13 +73,13 @@ fn enforce_version_in_handshake() {
     let mut deps = setup();
 
     let wrong_order =
-        mock_ibc_channel_open_try("channel-1234", IbcOrder::Unordered, IBC_APP_VERSION);
+        mock_ibc_channel_open_try("channel-1234", IbcOrder::Unordered, IBC_VERSION);
     ibc_channel_open(&mut deps, mock_env(), wrong_order).unwrap_err();
 
     let wrong_version = mock_ibc_channel_open_try("channel-1234", IbcOrder::Ordered, "reflect");
     ibc_channel_open(&mut deps, mock_env(), wrong_version).unwrap_err();
 
     let valid_handshake =
-        mock_ibc_channel_open_try("channel-1234", IbcOrder::Ordered, IBC_APP_VERSION);
+        mock_ibc_channel_open_try("channel-1234", IbcOrder::Ordered, IBC_VERSION);
     ibc_channel_open(&mut deps, mock_env(), valid_handshake).unwrap();
 }

@@ -46,6 +46,9 @@ sha2 = "0.10.6"
 blst = "0.3.10"
 tendermint = "0.30.0"
 tendermint-proto = "0.30.0"
+cosmos-sdk-proto = { version = "0.18.0", default-features = false, features = [
+    "cosmwasm",
+] }
 thiserror = "1.0.40"
 prost = "0.11"
 prost-types = "0.11"

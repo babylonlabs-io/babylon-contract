@@ -30,9 +30,9 @@ pub fn verify_tx_in_block(
 pub fn verify_block_in_epoch(
     header_app_hash: &[u8],
     app_hash_root: &[u8],
-    proof_block_in_epoch: &Proof,
+    proof_header_in_epoch: &Proof,
 ) -> Result<(), error::CZHeaderChainError> {
-    let merkle_proof = tendermint::merkle::Proof::try_from(proof_block_in_epoch.clone())
+    let merkle_proof = tendermint::merkle::Proof::try_from(proof_header_in_epoch.clone())
         .map_err(|_| error::CZHeaderChainError::TxProofDecodeError {})?;
 
     let verify_res = verify_tm_merkle_proof(&merkle_proof, app_hash_root, header_app_hash);
@@ -192,7 +192,7 @@ fn get_split_point(length: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use babylon_proto::babylon::zoneconcierge::v1::QueryFinalizedChainInfoResponse;
+    use babylon_proto::babylon::zoneconcierge::v1::FinalizedChainInfo;
     use prost::Message;
     use std::fs;
 
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn verify_tx_in_block_works() {
         let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
-        let finalized_chain_info_resp = QueryFinalizedChainInfoResponse::decode(testdata).unwrap();
+        let finalized_chain_info_resp = FinalizedChainInfo::decode(testdata).unwrap();
         let cz_header = &finalized_chain_info_resp
             .finalized_chain_info
             .unwrap()
@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn verify_block_in_epoch_works() {
         let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
-        let finalized_chain_info_resp = QueryFinalizedChainInfoResponse::decode(testdata).unwrap();
+        let finalized_chain_info_resp = FinalizedChainInfo::decode(testdata).unwrap();
 
         let app_hash_root = &finalized_chain_info_resp.epoch_info.unwrap().app_hash_root;
         let header_app_hash = &finalized_chain_info_resp
@@ -231,12 +231,12 @@ mod tests {
             .babylon_header
             .unwrap()
             .app_hash;
-        let proof_block_in_epoch = &finalized_chain_info_resp
+        let proof_header_in_epoch = &finalized_chain_info_resp
             .proof
             .unwrap()
             .proof_header_in_epoch
             .unwrap();
 
-        verify_block_in_epoch(header_app_hash, app_hash_root, proof_block_in_epoch).unwrap();
+        verify_block_in_epoch(header_app_hash, app_hash_root, proof_header_in_epoch).unwrap();
     }
 }

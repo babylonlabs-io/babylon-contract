@@ -35,6 +35,22 @@ pub struct ChainInfo {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FinalizedChainInfo {
+    #[prost(string, tag="1")]
+    pub chain_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag="2")]
+    pub finalized_chain_info: ::core::option::Option<ChainInfo>,
+    #[prost(message, optional, tag="3")]
+    pub epoch_info: ::core::option::Option<super::super::epoching::v1::Epoch>,
+    #[prost(message, optional, tag="4")]
+    pub raw_checkpoint: ::core::option::Option<super::super::checkpointing::v1::RawCheckpoint>,
+    #[prost(message, optional, tag="5")]
+    pub btc_submission_key: ::core::option::Option<super::super::btccheckpoint::v1::SubmissionKey>,
+    #[prost(message, optional, tag="6")]
+    pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ProofEpochSealed {
     #[prost(message, repeated, tag="1")]
     pub validator_set: ::prost::alloc::vec::Vec<super::super::checkpointing::v1::ValidatorWithBlsKey>,
@@ -57,16 +73,39 @@ pub struct ProofFinalizedChainInfo {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryFinalizedChainInfoResponse {
+pub struct ZoneconciergePacketData {
+    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1")]
+    pub packet: ::core::option::Option<zoneconcierge_packet_data::Packet>,
+}
+/// Nested message and enum types in `ZoneconciergePacketData`.
+pub mod zoneconcierge_packet_data {
+    #[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Packet {
+        #[prost(message, tag="1")]
+        BtcTimestamp(super::BtcTimestamp),
+    }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BtcTimestamp {
     #[prost(message, optional, tag="1")]
-    pub finalized_chain_info: ::core::option::Option<ChainInfo>,
-    #[prost(message, optional, tag="2")]
-    pub epoch_info: ::core::option::Option<super::super::epoching::v1::Epoch>,
+    pub header: ::core::option::Option<IndexedHeader>,
+    #[prost(message, repeated, tag="2")]
+    pub btc_headers: ::prost::alloc::vec::Vec<super::super::btclightclient::v1::BtcHeaderInfo>,
     #[prost(message, optional, tag="3")]
-    pub raw_checkpoint: ::core::option::Option<super::super::checkpointing::v1::RawCheckpoint>,
+    pub epoch_info: ::core::option::Option<super::super::epoching::v1::Epoch>,
     #[prost(message, optional, tag="4")]
-    pub btc_submission_key: ::core::option::Option<super::super::btccheckpoint::v1::SubmissionKey>,
+    pub raw_checkpoint: ::core::option::Option<super::super::checkpointing::v1::RawCheckpoint>,
     #[prost(message, optional, tag="5")]
+    pub btc_submission_key: ::core::option::Option<super::super::btccheckpoint::v1::SubmissionKey>,
+    #[prost(message, optional, tag="6")]
     pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryFinalizedChainsInfoResponse {
+    #[prost(message, repeated, tag="1")]
+    pub finalized_chains_info: ::prost::alloc::vec::Vec<FinalizedChainInfo>,
 }
 // @@protoc_insertion_point(module)

@@ -77,7 +77,7 @@ fn verify_cz_header(
     cz_header: &IndexedHeader,
     epoch: &Epoch,
     proof_tx_in_block: &TxProof,
-    proof_block_in_epoch: &Proof,
+    proof_header_in_epoch: &Proof,
 ) -> Result<(), error::CZHeaderChainError> {
     let cfg = super::config::get(storage).load()?;
 
@@ -98,7 +98,7 @@ fn verify_cz_header(
     utils::cz_header_chain::verify_block_in_epoch(
         &babylon_header_app_hash,
         &epoch.app_hash_root,
-        proof_block_in_epoch,
+        proof_header_in_epoch,
     )?;
 
     // TODO: check if IndexedHeader is conflicted or not. Still not sure if this check should happen
@@ -124,14 +124,14 @@ pub fn handle_cz_header(
     cz_header: &IndexedHeader,
     epoch: &Epoch,
     proof_tx_in_block: &TxProof,
-    proof_block_in_epoch: &Proof,
+    proof_header_in_epoch: &Proof,
 ) -> Result<(), error::CZHeaderChainError> {
     verify_cz_header(
         storage,
         cz_header,
         epoch,
         proof_tx_in_block,
-        proof_block_in_epoch,
+        proof_header_in_epoch,
     )?;
     insert_cz_header(storage, cz_header);
 

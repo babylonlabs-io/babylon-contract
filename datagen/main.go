@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"math/rand"
 	"os"
 	"time"
 
+	bbnparams "github.com/babylonchain/babylon/app/params"
 	bbndg "github.com/babylonchain/babylon/testutil/datagen"
 	zctypes "github.com/babylonchain/babylon/x/zoneconcierge/types"
 	bbncfg "github.com/babylonchain/rpc-client/config"
@@ -13,14 +15,15 @@ import (
 
 var (
 	ClientCfg = &bbncfg.BabylonQueryConfig{
-		RPCAddr: "http://rpc.devnet.babylonchain.io:26657",
+		RPCAddr: "https://rpc.devnet.babylonchain.io:443",
 		Timeout: time.Second * 10,
 	}
-	cdc = bbncfg.GetEncodingConfig()
+	cdc = bbnparams.GetEncodingConfig()
 )
 
 func genTestDataForProto() {
-	randomRawCkpt := bbndg.GenRandomRawCheckpoint()
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	randomRawCkpt := bbndg.GenRandomRawCheckpoint(r)
 	randomRawCkpt.EpochNum = 12345
 	randomRawCkptBytes, err := randomRawCkpt.Marshal()
 	if err != nil {
@@ -37,24 +40,31 @@ func genTestDataForBabylonEpochChain() {
 		panic(err)
 	}
 
-	var resp *zctypes.QueryFinalizedChainInfoResponse
+	chainListResp, err := client.ConnectedChainList()
+	if err != nil {
+		panic(err)
+	}
+	chainID := chainListResp.ChainIds[0]
+	var resp *zctypes.QueryFinalizedChainsInfoResponse
 	err = client.QueryZoneConcierge(func(ctx context.Context, queryClient zctypes.QueryClient) error {
 		var err error
-		req := &zctypes.QueryFinalizedChainInfoRequest{
-			ChainId: "nibiru-itn-1",
-			Prove:   true,
+		req := &zctypes.QueryFinalizedChainsInfoRequest{
+			ChainIds: []string{chainID},
+			Prove:    true,
 		}
-		resp, err = queryClient.FinalizedChainInfo(ctx, req)
+		resp, err = queryClient.FinalizedChainsInfo(ctx, req)
 		return err
 	})
 	if err != nil {
 		panic(err)
 	}
-	respBytes, err := cdc.Marshaler.Marshal(resp)
+
+	finalizedChainInfo := resp.FinalizedChainsInfo[0]
+	finalizedChainInfoBytes, err := cdc.Marshaler.Marshal(finalizedChainInfo)
 	if err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile("../testdata/finalized_chain_info.dat", respBytes, 0644); err != nil {
+	if err := os.WriteFile("../testdata/finalized_chain_info.dat", finalizedChainInfoBytes, 0644); err != nil {
 		panic(err)
 	}
 }

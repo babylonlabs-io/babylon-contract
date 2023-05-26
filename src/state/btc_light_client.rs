@@ -47,11 +47,18 @@ fn get_storage_base_header(storage: &mut dyn Storage) -> PrefixedStorage {
     prefixed(storage, PREFIX_BTC_LIGHT_CLIENT)
 }
 
+// is_initialized checks if the BTC light client has been initialised or not
+// the check is done by checking existence of base header
+pub fn is_initialized(storage: &mut dyn Storage) -> bool {
+    let storage_base_header = get_storage_base_header(storage);
+    storage_base_header.get(KEY_BASE_HEADER).is_some()
+}
+
 // getter/setter for base header
 pub fn get_base_header(storage: &mut dyn Storage) -> BtcHeaderInfo {
     let storage_base_header = get_storage_base_header(storage);
+    // NOTE: if init is successful, then base header is guaranteed to be in storage and decodable
     let base_header_bytes = storage_base_header.get(KEY_BASE_HEADER).unwrap();
-    // NOTE: if init is successful, then base header is guaranteed to be correct
     return BtcHeaderInfo::decode(base_header_bytes.as_slice()).unwrap();
 }
 
@@ -240,9 +247,10 @@ mod tests {
         let w = 2 as usize;
         let cfg = super::super::config::Config {
             network: babylon_bitcoin::chain_params::Network::Testnet,
-            babylon_tag: b"bbn0".to_vec(),
+            babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
             btc_confirmation_depth: 1,
             checkpoint_finalization_timeout: w as u64,
+            notify_cosmos_zone: false,
         };
         super::super::config::init(&mut storage, cfg);
 
