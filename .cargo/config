@@ -1,4 +1,0 @@
-[alias]
-unit-test = "test --lib"
-integration-test = "test --test integration"
-schema = "run schema"

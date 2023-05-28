@@ -1,14 +1,15 @@
 use crate::error::ContractError;
-use crate::msg::ibc::{new_ack_res, new_ack_err};
-use babylon_proto::babylon::zoneconcierge::v1::{ZoneconciergePacketData, BtcTimestamp, zoneconcierge_packet_data};
-use prost::Message;
-use cosmwasm_std::{
-    DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse,
-    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder,
-    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never,
-    StdResult, StdError
-};
 use crate::msg::bindings::BabylonMsg;
+use crate::msg::ibc::{new_ack_err, new_ack_res};
+use babylon_proto::babylon::zoneconcierge::v1::{
+    zoneconcierge_packet_data, BtcTimestamp, ZoneconciergePacketData,
+};
+use cosmwasm_std::{
+    DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannelCloseMsg,
+    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError, StdResult,
+};
+use prost::Message;
 
 pub const IBC_VERSION: &str = "zoneconcierge-1";
 pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
@@ -20,10 +21,10 @@ pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
 /// Here we ensure the ordering and version constraints.
 pub fn ibc_channel_open(
     _deps: DepsMut,
-    env: Env,
+    _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
-	// the IBC channel has to be ordered
+    // the IBC channel has to be ordered
     let channel = msg.channel();
     if channel.order != IBC_ORDERING {
         return Err(ContractError::IbcUnorderedChannel {});
@@ -97,11 +98,17 @@ pub fn ibc_packet_receive(
         let packet = msg.packet;
         // which local channel did this packet come on
         let caller = packet.dest.channel_id;
-        let zc_packet_data = ZoneconciergePacketData::decode(packet.data.as_slice())
-            .map_err(|e| StdError::generic_err(format!("failed to decode ZoneconciergePacketData: {e}")))?;
-        let zc_packet = zc_packet_data.packet.ok_or(StdError::generic_err("empty IBC packet"))?;
+        let zc_packet_data =
+            ZoneconciergePacketData::decode(packet.data.as_slice()).map_err(|e| {
+                StdError::generic_err(format!("failed to decode ZoneconciergePacketData: {e}"))
+            })?;
+        let zc_packet = zc_packet_data
+            .packet
+            .ok_or(StdError::generic_err("empty IBC packet"))?;
         match zc_packet {
-            zoneconcierge_packet_data::Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
+            zoneconcierge_packet_data::Packet::BtcTimestamp(btc_ts) => {
+                ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts)
+            }
         }
     })()
     .or_else(|e| {
@@ -110,8 +117,7 @@ pub fn ibc_packet_receive(
         let acknowledgement = new_ack_err(format!("invalid packet: {e}")); // TODO: design error ack format
         Ok(IbcReceiveResponse::new()
             .set_ack(acknowledgement.encode_to_vec())
-            .add_event(Event::new("ibc").add_attribute("packet", "receive"))
-        )
+            .add_event(Event::new("ibc").add_attribute("packet", "receive")))
     })
 }
 
@@ -120,7 +126,11 @@ mod ibc_packet {
     use super::*;
 
     // processes PacketMsg::WhoAmI variant
-    pub fn handle_btc_timestamp(deps: DepsMut, _caller: String, btc_ts: &BtcTimestamp) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
+    pub fn handle_btc_timestamp(
+        deps: DepsMut,
+        _caller: String,
+        btc_ts: &BtcTimestamp,
+    ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
         let storage = deps.storage;
         let cfg = crate::state::config::get(storage).load()?;
 
@@ -142,7 +152,7 @@ mod ibc_packet {
             if cfg.notify_cosmos_zone {
                 resp = resp.add_message(msg);
             }
-        } 
+        }
 
         Ok(resp)
     }
@@ -198,15 +208,13 @@ mod tests {
     fn enforce_version_in_handshake() {
         let mut deps = setup();
 
-        let wrong_order =
-            mock_ibc_channel_open_try("channel-12", IbcOrder::Unordered, IBC_VERSION);
+        let wrong_order = mock_ibc_channel_open_try("channel-12", IbcOrder::Unordered, IBC_VERSION);
         ibc_channel_open(deps.as_mut(), mock_env(), wrong_order).unwrap_err();
 
         let wrong_version = mock_ibc_channel_open_try("channel-12", IbcOrder::Ordered, "reflect");
         ibc_channel_open(deps.as_mut(), mock_env(), wrong_version).unwrap_err();
 
-        let valid_handshake =
-            mock_ibc_channel_open_try("channel-12", IBC_ORDERING, IBC_VERSION);
+        let valid_handshake = mock_ibc_channel_open_try("channel-12", IBC_ORDERING, IBC_VERSION);
         ibc_channel_open(deps.as_mut(), mock_env(), valid_handshake).unwrap();
     }
 }

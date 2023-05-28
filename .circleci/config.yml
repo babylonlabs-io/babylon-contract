@@ -12,21 +12,22 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Set Rust nightly as default toolchain
+          name: Set up Rust environment
           command: |
             rustup default nightly
+            rustup component add rustfmt clippy
       - run:
           name: Build Babylon contract
           command: |
-            cargo build --verbose
+            make build
       - run:
           name: Test generating schema
           command: |
-            cargo schema
+            make schema
       - run:
-          name: Unit tests
+          name: Check formats and run unit tests
           command: |
-            cargo unit-test
+            make test-ci
   wasm-build-check-integration:
     docker:
       - image: circleci/rust:latest
@@ -52,7 +53,7 @@ jobs:
       - run:
           name: Integration tests based on CosmWasm
           command: |
-            cargo integration-test
+            make integration-test
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows

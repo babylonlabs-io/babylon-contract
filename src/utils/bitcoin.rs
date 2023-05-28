@@ -38,7 +38,7 @@ pub fn parse_tx_info(
 
     // deserialise btc tx
     let btc_tx: Transaction = babylon_bitcoin::deserialize(&tx_info.transaction)
-        .map_err(|err| format!("failed to decode BTC tx: {:?}", err))?;
+        .map_err(|err| format!("failed to decode BTC tx: {err:?}"))?;
 
     // verify Merkle proof
     if !babylon_bitcoin::merkle::verify_merkle_proof(&btc_tx, &proof, tx_idx, &root) {
@@ -55,19 +55,17 @@ pub fn extract_checkpoint_data(
     idx: usize,
 ) -> Result<Vec<u8>, String> {
     // get OP_RETURN data
-    let op_return_data = babylon_bitcoin::op_return::extract_op_return_data(&btc_tx)?;
+    let op_return_data = babylon_bitcoin::op_return::extract_op_return_data(btc_tx)?;
 
     // verify OP_RETURN length
     if idx == 0 && op_return_data.len() != FIRST_PART_LEN {
         return Err(format!(
-            "invalid length. First part should have {} bytes",
-            FIRST_PART_LEN
+            "invalid length. First part should have {FIRST_PART_LEN} bytes"
         ));
     }
     if idx == 1 && op_return_data.len() != SECOND_PART_LEN {
         return Err(format!(
-            "invalid length. Second part should have {} bytes",
-            SECOND_PART_LEN
+            "invalid length. Second part should have {SECOND_PART_LEN} bytes"
         ));
     }
     // verify tag
@@ -82,14 +80,14 @@ pub fn extract_checkpoint_data(
     let ver_half = op_return_data[TAG_LEN];
     let version = ver_half & 0xf;
     if version > CURRENT_VERSION {
-        return Err(format!("header have invalid version"));
+        return Err("header have invalid version".to_string());
     }
     // verify idx
     let part = ver_half >> 4;
     if idx != part as usize {
-        return Err(format!("header have invalid part number"));
+        return Err("header have invalid part number".to_string());
     }
 
     let checkpoint_data = op_return_data[HEADER_LEN..op_return_data.len()].to_vec();
-    return Ok(checkpoint_data);
+    Ok(checkpoint_data)
 }

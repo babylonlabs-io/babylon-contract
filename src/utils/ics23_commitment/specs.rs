@@ -31,17 +31,12 @@ impl Default for ProofSpecs {
 
 impl From<Vec<Ics23ProofSpec>> for ProofSpecs {
     fn from(ics23_specs: Vec<Ics23ProofSpec>) -> Self {
-        Self(
-            ics23_specs
-                .into_iter()
-                .map(|ics23_spec| ics23_spec.into())
-                .collect(),
-        )
+        Self(ics23_specs.into_iter().collect())
     }
 }
 
 impl From<ProofSpecs> for Vec<Ics23ProofSpec> {
     fn from(specs: ProofSpecs) -> Self {
-        specs.0.into_iter().map(|spec| spec.into()).collect()
+        specs.0.into_iter().collect()
     }
 }

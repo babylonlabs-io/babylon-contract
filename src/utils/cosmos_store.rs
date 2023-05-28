@@ -11,14 +11,14 @@ pub fn get_epoch_info_key(epoch_number: u64) -> Vec<u8> {
     // see https://github.com/babylonchain/babylon/blob/v0.5.0/x/epoching/types/keys.go#L22
     let mut epoch_info_key = [0x12].to_vec();
     epoch_info_key.extend(epoch_number.to_be_bytes());
-    return epoch_info_key;
+    epoch_info_key
 }
 
 pub fn get_valset_key(epoch_number: u64) -> Vec<u8> {
     // see https://github.com/babylonchain/babylon/blob/v0.5.0/x/checkpointing/types/keys.go#L28
     let mut epoch_info_key = [0x3].to_vec();
     epoch_info_key.extend(epoch_number.to_be_bytes());
-    return epoch_info_key;
+    epoch_info_key
 }
 
 pub fn verify_store(
@@ -30,7 +30,7 @@ pub fn verify_store(
 ) -> Result<(), String> {
     // convert tendermint_proto::crypto::ProofOps to ics23 proof
     let ics23_proof = convert_tm_proto_to_ics_merkle_proof(&proof)
-        .map_err(|err|format!("failed to convert tendermint_proto::crypto::ProofOps to ibc::core::ics23_commitment::merkle::MerkleProof: {:?}", err))?;
+        .map_err(|err|format!("failed to convert tendermint_proto::crypto::ProofOps to ibc::core::ics23_commitment::merkle::MerkleProof: {err:?}"))?;
 
     // construct values for verifying Merkle proofs
     let specs = crate::utils::ics23_commitment::specs::ProofSpecs::default();
@@ -40,7 +40,7 @@ pub fn verify_store(
     // verify
     ics23_proof
         .verify_membership(&specs, merkle_root, merkle_keys, value.to_vec(), 0)
-        .map_err(|err| format!("failed to verify Tendermint Merkle proof: {:?}", err))?;
+        .map_err(|err| format!("failed to verify Tendermint Merkle proof: {err:?}"))?;
 
     Ok(())
 }

@@ -53,7 +53,7 @@ impl MerkleProof {
                             .map_err(|_| CommitmentError::InvalidMerkleProof)?;
 
                     if !verify_membership::<ics23::HostFunctionsManager>(
-                        proof, spec, &subroot, &key, &value,
+                        proof, spec, &subroot, key, &value,
                     ) {
                         return Err(CommitmentError::VerificationFailure);
                     }
@@ -84,5 +84,5 @@ pub fn convert_tm_proto_to_ics_merkle_proof(
         proofs.push(parsed);
     }
 
-    Ok(MerkleProof { proofs: proofs })
+    Ok(MerkleProof { proofs })
 }

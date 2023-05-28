@@ -47,7 +47,7 @@ pub fn verify_epoch_sealed(
     };
     let (signer_set, signer_set_power) = val_set
         .find_subset_with_power_sum(&raw_ckpt.bitmap)
-        .map_err(|err| format!("failed to get voted subset: {:?}", err))?;
+        .map_err(|err| format!("failed to get voted subset: {err:?}"))?;
 
     let threshold = val_set.get_total_power() / 3;
     // ensure the signerSet has > 1/3 voting power
@@ -136,8 +136,7 @@ mod tests {
     use super::*;
     use babylon_bitcoin::BlockHash;
     use babylon_proto::babylon::{
-        btclightclient::v1::QueryMainChainResponse,
-        zoneconcierge::v1::FinalizedChainInfo,
+        btclightclient::v1::QueryMainChainResponse, zoneconcierge::v1::FinalizedChainInfo,
     };
     use std::collections::HashMap;
     use std::fs;
@@ -156,7 +155,7 @@ mod tests {
             header_map.insert(btc_header.block_hash(), btc_header);
         }
 
-        return header_map;
+        header_map
     }
 
     #[test]

@@ -10,8 +10,8 @@ fn agg_pk(valset: &ValidatorWithBlsKeySet) -> Result<PublicKey, String> {
     }
 
     let agg_pk = AggregatePublicKey::aggregate_serialized(&pks, true)
-        .map_err(|err| format!("failed to aggregate BLS PKs: {:?}", err))?;
-    return Ok(agg_pk.to_public_key());
+        .map_err(|err| format!("failed to aggregate BLS PKs: {err:?}"))?;
+    Ok(agg_pk.to_public_key())
 }
 
 pub fn verify_multisig(
@@ -24,7 +24,7 @@ pub fn verify_multisig(
 
     // decode signature
     let sig = Signature::from_bytes(sig_bytes)
-        .map_err(|err| format!("failed to decode signature bytes with code {:?}", err))?;
+        .map_err(|err| format!("failed to decode signature bytes with code {err:?}"))?;
 
     // get agg pk from valset
     let agg_pk = agg_pk(valset)?;
@@ -34,8 +34,7 @@ pub fn verify_multisig(
     if res == blst::BLST_ERROR::BLST_SUCCESS {
         return Ok(());
     }
-    return Err(format!(
-        "failed to verify BLS multisignature with code {:?}",
-        res
-    ));
+    Err(format!(
+        "failed to verify BLS multisignature with code {res:?}"
+    ))
 }

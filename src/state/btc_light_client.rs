@@ -125,7 +125,7 @@ pub fn get_header(
     let header = BtcHeaderInfo::decode(header_bytes.as_slice())
         .map_err(|_| error::BTCLightclientError::BTCHeaderDecodeError {})?;
 
-    return Ok(header);
+    Ok(header)
 }
 
 /// init initialises the BTC header chain storage
@@ -153,7 +153,7 @@ pub fn init(
         .map_err(|_| error::BTCLightclientError::BTCHeaderDecodeError {})?;
 
     // verify the base header's pow
-    if let Err(_) = babylon_bitcoin::pow::verify_header_pow(&btc_network, &base_btc_header) {
+    if babylon_bitcoin::pow::verify_header_pow(&btc_network, &base_btc_header).is_err() {
         return Err(error::BTCLightclientError::BTCHeaderError {});
     }
 
@@ -207,11 +207,11 @@ pub fn handle_btc_headers_from_babylon(
     verify_headers(&btc_network, &last_header, new_headers)?;
 
     // all good, append all headers to the BTC light client stores
-    insert_headers(storage, &new_headers);
+    insert_headers(storage, new_headers);
 
     // update tip
     let new_tip = new_headers.last().unwrap();
-    set_tip(storage, &new_tip);
+    set_tip(storage, new_tip);
 
     Ok(())
 }
@@ -230,7 +230,7 @@ mod tests {
         let resp = QueryMainChainResponse::decode(testdata).unwrap();
         let mut headers = resp.headers;
         headers.reverse(); // from low to high
-        return headers;
+        headers
     }
 
     // btc_lc_works simulates initialisation of BTC light client storage, then insertion of
@@ -244,7 +244,7 @@ mod tests {
         let mut storage = deps.storage;
 
         // set config first
-        let w = 2 as usize;
+        let w = 2_usize;
         let cfg = super::super::config::Config {
             network: babylon_bitcoin::chain_params::Network::Testnet,
             babylon_tag: vec![0x1, 0x2, 0x3, 0x4],

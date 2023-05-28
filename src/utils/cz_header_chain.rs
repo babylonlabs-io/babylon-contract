@@ -63,8 +63,7 @@ fn verify_tm_merkle_proof(
     let computed_hash = compute_root_hash(proof);
     if computed_hash != root_hash {
         return Err(format!(
-            "invalid root hash: wanted {:X?} got {:X?}",
-            root_hash, computed_hash
+            "invalid root hash: wanted {root_hash:X?} got {computed_hash:X?}"
         ));
     }
     Ok(())
@@ -169,8 +168,8 @@ fn tmhash(data: &[u8]) -> Hash {
     let mut hasher = Sha256::new();
     hasher.update(data);
     let hash_bytes = hasher.finalize();
-    let hash = Hash::try_from(hash_bytes.to_vec()).unwrap();
-    return hash;
+
+    Hash::try_from(hash_bytes.to_vec()).unwrap()
 }
 
 // (ported from https://github.com/cometbft/cometbft/blob/v0.37.0/crypto/merkle/tree.go#L94-L106)

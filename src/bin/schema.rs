@@ -1,10 +1,9 @@
 use std::env::current_dir;
 
-use cosmwasm_schema::{export_schema, export_schema_with_title, schema_for, write_api};
+use cosmwasm_schema::write_api;
 use cosmwasm_std::Empty;
 
 use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use babylon_contract::msg::ibc::{BtcTimestampResponse};
 
 fn main() {
     // Clear & write standard API

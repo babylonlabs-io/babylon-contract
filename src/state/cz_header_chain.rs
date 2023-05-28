@@ -42,7 +42,7 @@ pub fn get_last_cz_header(
         .get(KEY_LAST_CZ_HEADER)
         .ok_or(error::CZHeaderChainError::NoCZHeader {})?;
     IndexedHeader::decode(last_cz_header_bytes.as_slice())
-        .map_err(|err| error::CZHeaderChainError::DecodeError(err))
+        .map_err(error::CZHeaderChainError::DecodeError)
 }
 
 fn set_last_cz_header(storage: &mut dyn Storage, last_cz_header: &IndexedHeader) {
@@ -61,12 +61,12 @@ pub fn get_cz_header(
     // try to find the indexed header at the given height
     let cz_header_bytes = storage_cz_headers
         .get(&height.to_be_bytes())
-        .ok_or(error::CZHeaderChainError::CZHeaderNotFoundError { height: height })?;
+        .ok_or(error::CZHeaderChainError::CZHeaderNotFoundError { height })?;
 
     // try to decode the indexed_header
     let indexed_header = IndexedHeader::decode(cz_header_bytes.as_slice())?;
 
-    return Ok(indexed_header);
+    Ok(indexed_header)
 }
 
 /// verify_cz_header verifies whether a CZ header is committed to a Babylon epoch, including
@@ -79,7 +79,7 @@ fn verify_cz_header(
     proof_tx_in_block: &TxProof,
     proof_header_in_epoch: &Proof,
 ) -> Result<(), error::CZHeaderChainError> {
-    let cfg = super::config::get(storage).load()?;
+    let _cfg = super::config::get(storage).load()?;
 
     let babylon_header = cz_header
         .babylon_header
