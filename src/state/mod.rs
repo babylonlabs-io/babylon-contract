@@ -84,16 +84,7 @@ pub fn handle_btc_timestamp(
 
         // Finalised CZ header verified, notify Cosmos zone about the newly finalised CZ header
         // Cosmos zone that deploys corresponding CosmWasm plugin will handle this message
-        let ts_babylon_header = cz_header
-            .babylon_header
-            .as_ref()
-            .ok_or(StdError::generic_err("empty babylon_header"))?;
-        let ts_time = ts_babylon_header
-            .time
-            .as_ref()
-            .ok_or(StdError::generic_err("empty time"))?
-            .seconds; // TODO: use time in IndexedHeader
-        let msg = msg_btc_finalized_header(cz_header.height as i64, ts_time);
+        let msg = msg_btc_finalized_header(cz_header)?;
         return Ok(Some(msg));
     }
 

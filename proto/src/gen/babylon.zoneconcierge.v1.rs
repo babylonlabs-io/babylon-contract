@@ -9,10 +9,12 @@ pub struct IndexedHeader {
     #[prost(uint64, tag="3")]
     pub height: u64,
     #[prost(message, optional, tag="4")]
+    pub time: ::core::option::Option<::pbjson_types::Timestamp>,
+    #[prost(message, optional, tag="5")]
     pub babylon_header: ::core::option::Option<tendermint_proto::types::Header>,
-    #[prost(uint64, tag="5")]
+    #[prost(uint64, tag="6")]
     pub babylon_epoch: u64,
-    #[prost(bytes="bytes", tag="6")]
+    #[prost(bytes="bytes", tag="7")]
     pub babylon_tx_hash: ::prost::bytes::Bytes,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
