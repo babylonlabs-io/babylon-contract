@@ -30,7 +30,7 @@ pub fn verify_multisig(
     let agg_pk = agg_pk(valset)?;
 
     // verify multisig
-    let res = sig.fast_aggregate_verify_pre_aggregated(true, msg, dst, &agg_pk);
+    let res = sig.verify(true, msg, dst, &[], &agg_pk, true);
     if res == blst::BLST_ERROR::BLST_SUCCESS {
         return Ok(());
     }

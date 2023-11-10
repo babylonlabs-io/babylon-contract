@@ -18,7 +18,7 @@ types:
     - babylon.zoneconcierge.v1.ZoneconciergePacketData
     - babylon.zoneconcierge.v1.BTCTimestamp
 plugins:
-  - name: prost
+  - plugin: buf.build/community/neoeinstein-prost:v0.2.3
     out: src/gen
     opt:
       - bytes=.

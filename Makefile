@@ -9,12 +9,10 @@ OPTIMIZER_IMAGE_TAG := "0.0.1"
 build:
 	@cargo build
 
-test-ci: fmt clippy test ## Run all the CI checks locally (in your actual toolchain)
+test-ci: lint test ## Run all the CI checks locally (in your actual toolchain)
 
-fmt: ## Check whether the code is formatted correctly
+lint: ## Check whether the code is formatted correctly
 	@cargo fmt --all -- --check
-
-clippy: ## Run clippy checks over all workspace members
 	@cargo check
 
 test:
@@ -28,7 +26,7 @@ schema:
 	
 proto-gen:
 	@echo "Generating Protobuf files"
-	@sh ./scripts/protocgen.sh
+	@bash ./scripts/protocgen.sh
 
 rust-optimizer-image:
 	@$(DOCKER) build -t $(OPTIMIZER_IMAGE_NAME):$(OPTIMIZER_IMAGE_TAG) -f ./Dockerfile-$(BUILDARCH) .
@@ -56,4 +54,4 @@ build-optimized-ci:
 		$(OPTIMIZER_IMAGE_NAME):$(OPTIMIZER_IMAGE_TAG)
 	@$(DOCKER) cp rust-optimizer-container:/code/artifacts /home/circleci/project/artifacts
 
-.PHONY: build test-ci fmt clippy test integration-test schema proto-gen rust-optimizer-image build-optimized build-optimized-ci
+.PHONY: build test-ci lint test integration-test schema proto-gen rust-optimizer-image build-optimized build-optimized-ci

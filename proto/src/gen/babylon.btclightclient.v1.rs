@@ -1,4 +1,12 @@
 // @generated
+/// BTCHeaderInfo is a structure that contains all relevant information about a
+/// BTC header
+///   - Full header bytes
+///   - Header hash for easy retrieval
+///   - Height of the header in the BTC chain
+///   - Total work spent on the header. This is the sum of the work corresponding
+///   to the header Bits field
+///     and the total work of the header.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BtcHeaderInfo {
@@ -11,6 +19,7 @@ pub struct BtcHeaderInfo {
     #[prost(bytes="bytes", tag="4")]
     pub work: ::prost::bytes::Bytes,
 }
+/// QueryMainChainResponse is response type for the Query/MainChain RPC method.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryMainChainResponse {
