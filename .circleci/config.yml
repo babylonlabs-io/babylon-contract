@@ -3,7 +3,8 @@
 version: 2.1
 
 orbs:
-  aws-ecr: circleci/aws-ecr@8.2.1
+  aws-cli: circleci/aws-cli@4.0
+  aws-s3: circleci/aws-s3@4.0
 
 jobs:
   local-build-test:
@@ -28,6 +29,7 @@ jobs:
           name: Check formats and run unit tests
           command: |
             make test-ci
+
   wasm-build-check-integration:
     docker:
       - image: circleci/rust:latest
@@ -54,6 +56,25 @@ jobs:
           name: Integration tests based on CosmWasm
           command: |
             make integration-test
+      - persist_to_workspace:
+          root: /home/circleci/project/artifacts
+          paths:
+            - babylon_contract.wasm
+
+  push-to-s3:
+    machine:
+      image: ubuntu-2204:2022.10.1
+      resource_class: large
+    steps:
+      - attach_workspace:
+          at: /tmp
+      - aws-cli/setup:
+          aws_access_key_id: AWS_ACCESS_KEY_ID
+          aws_secret_access_key: AWS_SECRET_ACCESS_KEY
+          region: "$AWS_REGION"
+      - aws-s3/copy:
+          from: /tmp/babylon_contract.wasm
+          to: $S3_BUCKET_PREFIX/$CIRCLE_PROJECT_REPONAME-$CIRCLE_SHA1.wasm
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows
@@ -64,3 +85,6 @@ workflows:
   wasm-tests:
     jobs:
       - wasm-build-check-integration
+      - push-to-s3:
+          requires:
+            - wasm-build-check-integration
