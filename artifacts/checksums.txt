@@ -1,0 +1,1 @@
+d0b8b691e77f190c28c7a9bcc40e84a7054da9e924ba24270ece4637b44b3a30  babylon_contract.wasm

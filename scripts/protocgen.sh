@@ -5,7 +5,7 @@
 
 set -eo pipefail
 
-cd proto
+cd packages/proto
 buf mod update
 buf generate --template buf.gen.rust.yaml
-cd ..
+cd ../..

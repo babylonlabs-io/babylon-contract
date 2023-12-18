@@ -20,7 +20,7 @@ tmp/
 /vendor
 **/*.rs.bk
 target/
-artifacts/
 *.iml
 .cargo-ok
 *.log
+./artifacts/checksums_intermediate.txt

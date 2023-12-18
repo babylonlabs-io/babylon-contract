@@ -1,68 +1,52 @@
-[package]
-name = "babylon-contract"
-version = "0.0.0"
-authors = ["BabylonChain Inc. <admin@babylonchain.io>"]
-edition = "2021"
-publish = false
-license = "Apache-2.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [workspace]
-members = ["proto", "bitcoin"]
+members   = ["packages/*", "contracts/*" ]
+resolver  = "2"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
+[workspace.package]
+edition       = "2021"
+version       = "0.1.0"
+license       = "Apache-2.0"
+repository    = "https://github.com/babylonchain/babylon-contract"
+authors       = ["BabylonChain Inc. <admin@babylonchain.io>"]
+publish       = false
+
+[workspace.dependencies]
+babylon-proto     = { path = "./packages/proto" }
+babylon-bitcoin   = { path = "./packages/bitcoin" }
+babylon-contract  = { path = "./contracts/babylon" }
+bitcoin           = "0.29.2"
+#bitcoin           = { git = "https://github.com/babylonchain/rust-bitcoin" }
+bitvec            = "1"
+blst              = "0.3.11"
+cosmos-sdk-proto  = { version = "0.18.0", default-features = false, features = ["cosmwasm"] }
+cosmwasm-schema   = "1.5.0"
+cosmwasm-std      = { version = "1.5.0", features = ["iterator", "ibc3"] }
+cw-storage-plus   = "1.1.0"
+hex               = "0.4.3"
+ics23             = { version = "0.9.0", default-features = false, features = ["host-functions"] }
+pbjson            = "0.5"
+pbjson-types      = "0.5"
+prost             = "0.11"
+prost-types       = "0.11"
+schemars          = "0.8.3"
+serde             = { version = "1.0.103", default-features = false, features = ["derive"] }
+sha2              = "0.10.6"
+tendermint        = "0.30.0"
+tendermint-proto  = "0.30.0"
+thiserror         = "1.0.40"
+
+# dev deps
+cosmwasm-vm       = { version = "1.5.0", default-features = false, features = ["iterator", "stargate"] }
+cw-multi-test     = "0.16.2"
+serde_json        = "1.0.96"
 
 [profile.release]
-opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-panic = 'abort'
-incremental = false
-overflow-checks = true
-
-[features]
-# Add feature "cranelift" to default if you need 32 bit or ARM support
-default = []
-# Use cranelift backend instead of singlepass. This is required for development on 32 bit or ARM machines.
-cranelift = ["cosmwasm-vm/cranelift"]
-# for quicker tests, cargo test --lib
-# for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces", "cosmwasm-vm/backtraces"]
-
-[dependencies]
-cosmwasm-schema = "1.5.0"
-cosmwasm-std = { version = "1.5.0", features = ["iterator", "ibc3"] }
-cosmwasm-storage = { version = "1.5.0", features = ["iterator"] }
-schemars = "0.8.3"
-serde = { version = "1.0.103", default-features = false, features = ["derive"] }
-
-hex = "0.4.3"
-sha2 = "0.10.6"
-blst = "0.3.11"
-tendermint = "0.30.0"
-tendermint-proto = "0.30.0"
-cosmos-sdk-proto = { version = "0.18.0", default-features = false, features = [
-    "cosmwasm",
-] }
-thiserror = "1.0.40"
-prost = "0.11"
-prost-types = "0.11"
-ics23 = { version = "0.9.0", default-features = false, features = [
-    "host-functions",
-] }
-
-babylon-proto = { path = "./proto" }
-babylon-bitcoin = { path = "./bitcoin" }
-
-[dev-dependencies]
-cosmwasm-vm = { version = "1.5.0", default-features = false, features = [
-    "iterator",
-    "stargate",
-] }
-cw-multi-test = "0.16.2"
-serde_json = "1.0.96"
+codegen-units     = 1
+debug             = false
+debug-assertions  = false
+lto               = true
+panic             = 'abort'
+rpath             = false
+opt-level         = 3
+overflow-checks   = true
+incremental       = false

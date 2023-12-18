@@ -1,96 +1,197 @@
 package main
 
 import (
-	"context"
 	"math/rand"
 	"os"
+	"testing"
 	"time"
 
-	bbnparams "github.com/babylonchain/babylon/app/params"
-	bbndg "github.com/babylonchain/babylon/testutil/datagen"
+	bbnapp "github.com/babylonchain/babylon/app"
+	txformat "github.com/babylonchain/babylon/btctxformatter"
+	"github.com/babylonchain/babylon/crypto/bls12381"
+	"github.com/babylonchain/babylon/testutil/datagen"
+	testhelper "github.com/babylonchain/babylon/testutil/helper"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
+	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	zctypes "github.com/babylonchain/babylon/x/zoneconcierge/types"
-	bbncfg "github.com/babylonchain/rpc-client/config"
-	bbnquery "github.com/babylonchain/rpc-client/query"
+	"github.com/boljen/go-bitmap"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/stretchr/testify/require"
 )
 
 var (
-	ClientCfg = &bbncfg.BabylonQueryConfig{
-		RPCAddr: "https://rpc.devnet.babylonchain.io:443",
-		Timeout: time.Second * 10,
-	}
-	cdc = bbnparams.GetEncodingConfig()
+	cdc = bbnapp.GetEncodingConfig().Codec
 )
 
-func genTestDataForProto() {
+func GenRawCheckpoint() {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	randomRawCkpt := bbndg.GenRandomRawCheckpoint(r)
+	randomRawCkpt := datagen.GenRandomRawCheckpoint(r)
 	randomRawCkpt.EpochNum = 12345
 	randomRawCkptBytes, err := randomRawCkpt.Marshal()
 	if err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile("../proto/testdata/raw_ckpt.dat", randomRawCkptBytes, 0644); err != nil {
+	if err := os.WriteFile("./packages/proto/testdata/raw_ckpt.dat", randomRawCkptBytes, 0644); err != nil {
 		panic(err)
 	}
 }
 
-func genTestDataForBabylonEpochChain() {
-	client, err := bbnquery.New(ClientCfg)
-	if err != nil {
-		panic(err)
-	}
-
-	chainListResp, err := client.ConnectedChainList()
-	if err != nil {
-		panic(err)
-	}
-	chainID := chainListResp.ChainIds[0]
-	var resp *zctypes.QueryFinalizedChainsInfoResponse
-	err = client.QueryZoneConcierge(func(ctx context.Context, queryClient zctypes.QueryClient) error {
-		var err error
-		req := &zctypes.QueryFinalizedChainsInfoRequest{
-			ChainIds: []string{chainID},
-			Prove:    true,
+func signBLSWithBitmap(blsSKs []bls12381.PrivateKey, bm bitmap.Bitmap, msg []byte) (bls12381.Signature, error) {
+	sigs := []bls12381.Signature{}
+	for i := 0; i < len(blsSKs); i++ {
+		if bitmap.Get(bm, i) {
+			sig := bls12381.Sign(blsSKs[i], msg)
+			sigs = append(sigs, sig)
 		}
-		resp, err = queryClient.FinalizedChainsInfo(ctx, req)
-		return err
-	})
-	if err != nil {
+	}
+	return bls12381.AggrSigList(sigs)
+}
+
+func GenBTCTimestamp(r *rand.Rand) {
+	t := &testing.T{}
+	h := testhelper.NewHelperWithValSet(t)
+	ek := &h.App.EpochingKeeper
+	zck := h.App.ZoneConciergeKeeper
+	var err error
+
+	// empty BTC timestamp
+	btcTs := &zctypes.BTCTimestamp{}
+	btcTs.Proof = &zctypes.ProofFinalizedChainInfo{}
+
+	// chain is at height 1 thus epoch 1
+
+	/*
+		generate CZ header and its inclusion proof to an epoch
+	*/
+	// enter block 11, 1st block of epoch 2
+	epochInterval := ek.GetParams(h.Ctx).EpochInterval
+	for j := 0; j < int(epochInterval); j++ {
+		h.Ctx, err = h.GenAndApplyEmptyBlock(r)
+		h.NoError(err)
+	}
+
+	// handle a random header from a random consumer chain
+	chainID := datagen.GenRandomHexStr(r, 10)
+	height := datagen.RandomInt(r, 100) + 1
+	ibctmHeader := datagen.GenRandomIBCTMHeader(r, chainID, height)
+	headerInfo := datagen.HeaderToHeaderInfo(ibctmHeader)
+	zck.HandleHeaderWithValidCommit(h.Ctx, datagen.GenRandomByteArray(r, 32), headerInfo, false)
+
+	// ensure the header is successfully inserted
+	indexedHeader, err := zck.GetHeader(h.Ctx, chainID, height)
+	h.NoError(err)
+
+	// enter block 21, 1st block of epoch 3
+	for j := 0; j < int(epochInterval); j++ {
+		h.Ctx, err = h.GenAndApplyEmptyBlock(r)
+		h.NoError(err)
+	}
+	// seal last epoch
+	h.Ctx, err = h.GenAndApplyEmptyBlock(r)
+	h.NoError(err)
+
+	epochWithHeader, err := ek.GetHistoricalEpoch(h.Ctx, indexedHeader.BabylonEpoch)
+	h.NoError(err)
+
+	// generate inclusion proof
+	proof, err := zck.ProveCZHeaderInEpoch(h.Ctx, indexedHeader, epochWithHeader)
+	h.NoError(err)
+
+	btcTs.EpochInfo = epochWithHeader
+	btcTs.Header = indexedHeader
+	btcTs.Proof.ProofCzHeaderInEpoch = proof
+
+	/*
+		seal the epoch and generate ProofEpochSealed
+	*/
+	// construct the rawCkpt
+	// Note that the BlsMultiSig will be generated and assigned later
+	bm := datagen.GenFullBitmap()
+	appHash := ckpttypes.AppHash(epochWithHeader.SealerHeaderHash)
+	rawCkpt := &ckpttypes.RawCheckpoint{
+		EpochNum:    epochWithHeader.EpochNumber,
+		AppHash:     &appHash,
+		Bitmap:      bm,
+		BlsMultiSig: nil,
+	}
+	// let the subset generate a BLS multisig over sealer header's app_hash
+	multiSig, err := signBLSWithBitmap(h.GenValidators.BlsPrivKeys, bm, rawCkpt.SignedMsg())
+	require.NoError(t, err)
+	// assign multiSig to rawCkpt
+	rawCkpt.BlsMultiSig = &multiSig
+
+	// prove
+	btcTs.Proof.ProofEpochSealed, err = zck.ProveEpochSealed(h.Ctx, epochWithHeader.EpochNumber)
+	require.NoError(t, err)
+
+	btcTs.RawCheckpoint = rawCkpt
+
+	/*
+		forge two BTC headers including the checkpoint
+	*/
+	// encode ckpt to BTC txs in BTC blocks
+	submitterAddr := datagen.GenRandomByteArray(r, txformat.AddressLength)
+	rawBTCCkpt, err := ckpttypes.FromRawCkptToBTCCkpt(rawCkpt, submitterAddr)
+	h.NoError(err)
+	testRawCkptData := datagen.EncodeRawCkptToTestData(rawBTCCkpt)
+	idxs := []uint64{datagen.RandomInt(r, 5) + 1, datagen.RandomInt(r, 5) + 1}
+	offsets := []uint64{datagen.RandomInt(r, 5) + 1, datagen.RandomInt(r, 5) + 1}
+	btcBlocks := []*datagen.BlockCreationResult{
+		datagen.CreateBlock(r, 1, uint32(idxs[0]+offsets[0]), uint32(idxs[0]), testRawCkptData.FirstPart),
+		datagen.CreateBlock(r, 2, uint32(idxs[1]+offsets[1]), uint32(idxs[1]), testRawCkptData.SecondPart),
+	}
+	// create MsgInsertBtcSpvProof for the rawCkpt
+	msgInsertBtcSpvProof := datagen.GenerateMessageWithRandomSubmitter([]*datagen.BlockCreationResult{btcBlocks[0], btcBlocks[1]})
+
+	// assign BTC submission key and ProofEpochSubmitted
+	btcTs.BtcSubmissionKey = &btcctypes.SubmissionKey{
+		Key: []*btcctypes.TransactionKey{
+			&btcctypes.TransactionKey{Index: uint32(idxs[0]), Hash: btcBlocks[0].HeaderBytes.Hash()},
+			&btcctypes.TransactionKey{Index: uint32(idxs[1]), Hash: btcBlocks[1].HeaderBytes.Hash()},
+		},
+	}
+	btcTs.Proof.ProofEpochSubmitted = []*btcctypes.TransactionInfo{
+		{
+			Key:         btcTs.BtcSubmissionKey.Key[0],
+			Transaction: msgInsertBtcSpvProof.Proofs[0].BtcTransaction,
+			Proof:       msgInsertBtcSpvProof.Proofs[0].MerkleNodes,
+		},
+		{
+			Key:         btcTs.BtcSubmissionKey.Key[1],
+			Transaction: msgInsertBtcSpvProof.Proofs[1].BtcTransaction,
+			Proof:       msgInsertBtcSpvProof.Proofs[1].MerkleNodes,
+		},
+	}
+
+	// save BTC timestamp as test data
+	btcTsBytes := cdc.MustMarshal(btcTs)
+	if err := os.WriteFile("./testdata/btc_timestamp.dat", btcTsBytes, 0644); err != nil {
 		panic(err)
 	}
 
-	finalizedChainInfo := resp.FinalizedChainsInfo[0]
-	finalizedChainInfoBytes, err := cdc.Marshaler.Marshal(finalizedChainInfo)
-	if err != nil {
+	// save BTC headers that include the BTC timestamp
+	if err := os.WriteFile("./testdata/btc_timestamp_header0.dat", btcBlocks[0].HeaderBytes, 0644); err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile("../testdata/finalized_chain_info.dat", finalizedChainInfoBytes, 0644); err != nil {
+	if err := os.WriteFile("./testdata/btc_timestamp_header1.dat", btcBlocks[1].HeaderBytes, 0644); err != nil {
 		panic(err)
 	}
 }
 
-func genTestDataForBTCLightclient() {
-	client, err := bbnquery.New(ClientCfg)
-	if err != nil {
-		panic(err)
-	}
-
-	resp, err := client.BTCMainChain(nil)
-	if err != nil {
-		panic(err)
-	}
-	respBytes, err := cdc.Marshaler.Marshal(resp)
-	if err != nil {
-		panic(err)
-	}
-	if err := os.WriteFile("../testdata/btc_light_client.dat", respBytes, 0644); err != nil {
+func GenBTCLightClient(r *rand.Rand) {
+	headers := datagen.NewBTCHeaderChainWithLength(r, 1, chaincfg.RegressionNetParams.PowLimit.Uint64(), 100).GetChainInfo()
+	resp := &btclctypes.QueryMainChainResponse{Headers: headers}
+	respBytes := cdc.MustMarshal(resp)
+	if err := os.WriteFile("./testdata/btc_light_client.dat", respBytes, 0644); err != nil {
 		panic(err)
 	}
 }
 
 // generating testdata for testing Go <-> Rust protobuf serialisation
 func main() {
-	genTestDataForProto()
-	genTestDataForBTCLightclient()
-	genTestDataForBabylonEpochChain()
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	GenRawCheckpoint()
+	GenBTCLightClient(r)
+	GenBTCTimestamp(r)
 }
