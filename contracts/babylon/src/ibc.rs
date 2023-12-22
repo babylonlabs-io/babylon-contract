@@ -186,7 +186,7 @@ mod tests {
         mock_dependencies, mock_env, mock_ibc_channel_open_try, mock_info, MockApi, MockQuerier,
         MockStorage,
     };
-    use cosmwasm_std::OwnedDeps;
+    use cosmwasm_std::{to_json_binary, OwnedDeps};
 
     const CREATOR: &str = "creator";
 
@@ -194,7 +194,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             network: babylon_bitcoin::chain_params::Network::Regtest,
-            babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
+            babylon_tag: to_json_binary(&[0x1, 0x2, 0x3, 0x4]).unwrap(),
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,

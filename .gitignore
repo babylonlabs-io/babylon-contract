@@ -23,4 +23,4 @@ target/
 *.iml
 .cargo-ok
 *.log
-./artifacts/checksums_intermediate.txt
+artifacts/checksums_intermediate.txt

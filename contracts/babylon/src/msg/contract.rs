@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{StdError, StdResult};
+use cosmwasm_std::{from_json, Binary, StdError, StdResult};
 
 const BABYLON_TAG_LEN: usize = 4;
 
@@ -11,7 +11,7 @@ pub trait ContractMsg {
 #[cw_serde]
 pub struct InstantiateMsg {
     pub network: babylon_bitcoin::chain_params::Network,
-    pub babylon_tag: Vec<u8>,
+    pub babylon_tag: Binary,
     pub btc_confirmation_depth: u64,
     pub checkpoint_finalization_timeout: u64,
     // notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised headers
@@ -21,13 +21,13 @@ pub struct InstantiateMsg {
 
 impl ContractMsg for InstantiateMsg {
     fn validate(&self) -> StdResult<()> {
-        if self.babylon_tag.len() != BABYLON_TAG_LEN {
+        let babylon_tag = from_json::<Vec<u8>>(&self.babylon_tag)?;
+        if babylon_tag.len() != BABYLON_TAG_LEN {
             return Err(StdError::invalid_data_size(
                 BABYLON_TAG_LEN,
-                self.babylon_tag.len(),
+                babylon_tag.len(),
             ));
         }
-
         Ok(())
     }
 }

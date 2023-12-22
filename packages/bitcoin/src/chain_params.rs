@@ -2,9 +2,10 @@ pub use bitcoin::consensus::Params;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// we re-implement the enum here since `rust-bitcoin`'s enum impelmentation
+// we re-implement the enum here since `rust-bitcoin`'s enum implementation
 // does not have `#[derive(Serialize, Deserialize)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Network {
     Mainnet,
     Testnet,

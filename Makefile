@@ -9,6 +9,9 @@ OPTIMIZER_IMAGE_TAG := "0.1.0"
 build:
 	@cargo build
 
+clean:
+	@cargo clean
+
 test-ci: lint test ## Run all the CI checks locally (in your actual toolchain)
 
 lint: ## Check whether the code is formatted correctly
@@ -58,4 +61,4 @@ build-optimized-ci:
 		$(OPTIMIZER_IMAGE_NAME):$(OPTIMIZER_IMAGE_TAG)
 	@$(DOCKER) cp rust-optimizer-container:/code/artifacts /home/circleci/project/artifacts
 
-.PHONY: build test-ci lint test integration-test schema proto-gen testdata rust-optimizer-image build-optimized build-optimized-ci
+.PHONY: build clean test-ci lint test integration-test schema proto-gen testdata rust-optimizer-image build-optimized build-optimized-ci
