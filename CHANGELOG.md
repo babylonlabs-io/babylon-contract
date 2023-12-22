@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.1.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.2.0...HEAD)
+
+## [v0.2.0](https://github.com/babylonchain/babylon-contract/tree/v0.2.0) (2023-12-22)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.1.0...v0.2.0)
+
+**Merged pull requests:**
+
+- API adjustments / serialisation support [\#37](https://github.com/babylonchain/babylon-contract/pull/37) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.1.0](https://github.com/babylonchain/babylon-contract/tree/v0.1.0) (2023-12-21)
 
