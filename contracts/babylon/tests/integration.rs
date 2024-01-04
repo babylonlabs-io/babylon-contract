@@ -19,7 +19,7 @@
 //! TODO: Copy pasting tests here seems a hassle. Can we do something better?
 
 use cosmwasm_std::testing::mock_ibc_channel_open_try;
-use cosmwasm_std::{to_json_binary, ContractResult, IbcOrder, Response};
+use cosmwasm_std::{ContractResult, IbcOrder, Response};
 use cosmwasm_vm::testing::{
     ibc_channel_open, instantiate, mock_env, mock_info, mock_instance, MockApi, MockQuerier,
     MockStorage,
@@ -40,7 +40,7 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
     let mut deps = mock_instance(WASM, &[]);
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
-        babylon_tag: to_json_binary(&[0x1, 0x2, 0x3, 0x4]).unwrap(),
+        babylon_tag: "01020304".to_string(),
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 100,
         notify_cosmos_zone: false,
@@ -57,7 +57,7 @@ fn instantiate_works() {
 
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
-        babylon_tag: to_json_binary(&[0x1, 0x2, 0x3, 0x4]).unwrap(),
+        babylon_tag: "01020304".to_string(),
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 100,
         notify_cosmos_zone: false,

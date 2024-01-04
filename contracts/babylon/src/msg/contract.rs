@@ -1,17 +1,20 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{from_json, Binary, StdError, StdResult};
+use cosmwasm_std::{StdError, StdResult};
 
-const BABYLON_TAG_LEN: usize = 4;
+const BABYLON_TAG_BYTES: usize = 4;
 
 // common functions for contract msgs
 pub trait ContractMsg {
     fn validate(&self) -> StdResult<()>;
+    fn babylon_tag_to_bytes(&self) -> StdResult<Vec<u8>>;
 }
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub network: babylon_bitcoin::chain_params::Network,
-    pub babylon_tag: Binary,
+    /// babylon_tag is a string encoding four bytes used for identification / tagging of the Babylon zone.
+    /// NOTE: this is a hex string, not raw bytes
+    pub babylon_tag: String,
     pub btc_confirmation_depth: u64,
     pub checkpoint_finalization_timeout: u64,
     // notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised headers
@@ -21,14 +24,23 @@ pub struct InstantiateMsg {
 
 impl ContractMsg for InstantiateMsg {
     fn validate(&self) -> StdResult<()> {
-        let babylon_tag = from_json::<Vec<u8>>(&self.babylon_tag)?;
-        if babylon_tag.len() != BABYLON_TAG_LEN {
+        if self.babylon_tag.len() != BABYLON_TAG_BYTES * 2 {
             return Err(StdError::invalid_data_size(
-                BABYLON_TAG_LEN,
-                babylon_tag.len(),
+                BABYLON_TAG_BYTES * 2,
+                self.babylon_tag.len(),
             ));
         }
+        let _ = self.babylon_tag_to_bytes()?;
         Ok(())
+    }
+
+    fn babylon_tag_to_bytes(&self) -> StdResult<Vec<u8>> {
+        hex::decode(&self.babylon_tag).map_err(|_| {
+            StdError::generic_err(format!(
+                "babylon_tag is not a valid hex string: {}",
+                self.babylon_tag
+            ))
+        })
     }
 }
 
@@ -37,24 +49,12 @@ pub enum ExecuteMsg {
     Placeholder {}, // TODO: remove
 }
 
-impl ContractMsg for ExecuteMsg {
-    fn validate(&self) -> StdResult<()> {
-        Ok(())
-    }
-}
-
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// TODO: a boilerplate message. Replace with actual one.
     #[returns(AccountResponse)]
     Account { channel_id: String },
-}
-
-impl ContractMsg for QueryMsg {
-    fn validate(&self) -> StdResult<()> {
-        Ok(())
-    }
 }
 
 #[cw_serde]

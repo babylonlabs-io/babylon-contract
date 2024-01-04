@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    from_json, to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
-    Response, StdResult,
+    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
+    StdResult,
 };
 
 use crate::msg::bindings::BabylonMsg;
@@ -17,8 +17,8 @@ pub fn instantiate(
 
     // initialise config
     let cfg = Config {
-        network: msg.network,
-        babylon_tag: from_json(&msg.babylon_tag)?,
+        network: msg.network.clone(),
+        babylon_tag: msg.babylon_tag_to_bytes()?,
         btc_confirmation_depth: msg.btc_confirmation_depth,
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
         notify_cosmos_zone: msg.notify_cosmos_zone,
@@ -85,7 +85,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             network: babylon_bitcoin::chain_params::Network::Regtest,
-            babylon_tag: to_json_binary(&[0x1, 0x2, 0x3, 0x4]).unwrap(),
+            babylon_tag: "01020304".to_string(),
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
