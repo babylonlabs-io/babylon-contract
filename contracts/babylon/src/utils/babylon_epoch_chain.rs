@@ -23,18 +23,18 @@ pub fn verify_epoch_sealed(
         ));
     }
 
-    // ensure the raw checkpoint's app_hash is same as in the header of the sealer header
+    // ensure the raw checkpoint's block_hash is same as in the header of the epoch metadata
     // NOTE: since this proof is assembled by a Babylon node who has verified the checkpoint,
     // the two lch values should always be the same, otherwise this Babylon node is malicious.
     // This is different from the checkpoint verification rules in checkpointing,
     // where a checkpoint with valid BLS multisig but different lch signals a dishonest majority equivocation.
-    let app_hash_in_ckpt: &[u8] = raw_ckpt.app_hash.as_ref();
-    let app_hash_in_sealer_header: &[u8] = epoch.sealer_header_hash.as_ref();
-    if !app_hash_in_ckpt.eq(app_hash_in_sealer_header) {
+    let block_hash_in_ckpt: &[u8] = raw_ckpt.block_hash.as_ref();
+    let block_hash_in_epoch: &[u8] = epoch.sealer_block_hash.as_ref();
+    if !block_hash_in_ckpt.eq(block_hash_in_epoch) {
         return Err(format!(
-            "checkpoint's app_hash ({}) is not equal to sealer header's app_hash ({})",
-            hex::encode(app_hash_in_ckpt),
-            hex::encode(app_hash_in_sealer_header)
+            "checkpoint's block_hash ({}) is not equal to epoch's sealer_block_hash ({})",
+            hex::encode(block_hash_in_ckpt),
+            hex::encode(block_hash_in_epoch)
         ));
     }
 
@@ -49,16 +49,15 @@ pub fn verify_epoch_sealed(
         .find_subset_with_power_sum(&raw_ckpt.bitmap)
         .map_err(|err| format!("failed to get voted subset: {err:?}"))?;
 
-    let threshold = val_set.get_total_power() / 3;
-    // ensure the signerSet has > 1/3 voting power
-    if signer_set_power <= threshold {
+    // ensure the signerSet has > 2/3 voting power
+    if signer_set_power * 3 <= val_set.get_total_power() * 2 {
         return Err("the BLS signature involves insufficient voting power".to_string());
     }
     // verify BLS multisig
     super::bls::verify_multisig(&raw_ckpt.bls_multi_sig, &signer_set, &raw_ckpt.signed_msg())?;
 
     // Ensure The epoch metadata is committed to the app_hash of the sealer header
-    let root = app_hash_in_sealer_header;
+    let root = &epoch.sealer_app_hash;
     let epoch_info_key = super::cosmos_store::get_epoch_info_key(epoch.epoch_number);
     let epoch_merkle_proof = proof
         .proof_epoch_info
@@ -69,7 +68,7 @@ pub fn verify_epoch_sealed(
     // and the proof does not include the sealer header.
     // Thus, we need to unassign here
     let mut epoch_no_sealer = epoch.clone();
-    epoch_no_sealer.sealer_header_hash = vec![].into();
+    epoch_no_sealer.sealer_app_hash = vec![].into();
     let epoch_bytes = epoch_no_sealer.encode_to_vec();
     super::cosmos_store::verify_store(
         root,

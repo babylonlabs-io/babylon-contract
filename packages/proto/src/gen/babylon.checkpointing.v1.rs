@@ -25,10 +25,10 @@ pub struct RawCheckpoint {
     /// epoch_num defines the epoch number the raw checkpoint is for
     #[prost(uint64, tag="1")]
     pub epoch_num: u64,
-    /// app_hash defines the 'AppHash' that individual BLS sigs are
-    /// signed on
+    /// block_hash defines the 'BlockID.Hash', which is the hash of
+    /// the block that individual BLS sigs are signed on
     #[prost(bytes="bytes", tag="2")]
-    pub app_hash: ::prost::bytes::Bytes,
+    pub block_hash: ::prost::bytes::Bytes,
     /// bitmap defines the bitmap that indicates the signers of the BLS multi sig
     #[prost(bytes="bytes", tag="3")]
     pub bitmap: ::prost::bytes::Bytes,

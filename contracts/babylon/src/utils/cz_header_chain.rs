@@ -17,7 +17,7 @@ pub fn verify_cz_header_in_epoch(
     }
 
     // Ensure the CZ header is committed to the app_hash of the sealer header
-    let root = &epoch.sealer_header_hash;
+    let root = &epoch.sealer_app_hash;
     let cz_header_key =
         super::cosmos_store::get_cz_header_key(&cz_header.chain_id, cz_header.height);
     let cz_header_bytes = cz_header.encode_to_vec();

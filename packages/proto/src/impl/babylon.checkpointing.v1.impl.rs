@@ -11,7 +11,7 @@ pub const HEADER_LEN: usize = 5;
 
 // constants for the BTC checkpoint
 pub const EPOCH_LEN: usize = 8;
-pub const APP_HASH_LEN: usize = 32;
+pub const BLOCK_HASH_LEN: usize = 32;
 pub const BITMAP_LEN: usize = 13;
 pub const ADDRESS_LEN: usize = 20;
 pub const BLS_SIG_LEN: usize = 48;
@@ -63,7 +63,7 @@ impl ValidatorWithBlsKeySet {
 impl RawCheckpoint {
     pub fn signed_msg(&self) -> Vec<u8> {
         let mut msg_bytes = self.epoch_num.to_be_bytes().to_vec();
-        msg_bytes.extend(&self.app_hash);
+        msg_bytes.extend(&self.block_hash);
         msg_bytes
     }
 
@@ -94,10 +94,10 @@ impl RawCheckpoint {
         epoch_num_bytes.copy_from_slice(&raw_ckpt_bytes[idx..idx + EPOCH_LEN]);
         let epoch_num = u64::from_be_bytes(epoch_num_bytes);
         idx += EPOCH_LEN;
-        let app_hash: Vec<u8> = raw_ckpt_bytes[idx..idx + APP_HASH_LEN]
+        let block_hash: Vec<u8> = raw_ckpt_bytes[idx..idx + BLOCK_HASH_LEN]
             .to_vec()
             .clone();
-        idx += APP_HASH_LEN;
+        idx += BLOCK_HASH_LEN;
         let bitmap: Vec<u8> = raw_ckpt_bytes[idx..idx + BITMAP_LEN].to_vec().clone();
         idx += BITMAP_LEN;
         let _: Vec<u8> = raw_ckpt_bytes[idx..idx + ADDRESS_LEN].to_vec().clone();
@@ -106,7 +106,7 @@ impl RawCheckpoint {
 
         let raw_ckpt = RawCheckpoint {
             epoch_num,
-            app_hash: app_hash.into(),
+            block_hash: block_hash.into(),
             bitmap: bitmap.into(),
             bls_multi_sig: bls_multi_sig.into(),
         };

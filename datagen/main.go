@@ -50,10 +50,13 @@ func signBLSWithBitmap(blsSKs []bls12381.PrivateKey, bm bitmap.Bitmap, msg []byt
 
 func GenBTCTimestamp(r *rand.Rand) {
 	t := &testing.T{}
-	h := testhelper.NewHelperWithValSet(t)
+	valSet, privSigner, err := datagen.GenesisValidatorSetWithPrivSigner(10)
+	if err != nil {
+		panic(err)
+	}
+	h := testhelper.NewHelperWithValSet(t, valSet, privSigner)
 	ek := &h.App.EpochingKeeper
 	zck := h.App.ZoneConciergeKeeper
-	var err error
 
 	// empty BTC timestamp
 	btcTs := &zctypes.BTCTimestamp{}
@@ -67,7 +70,7 @@ func GenBTCTimestamp(r *rand.Rand) {
 	// enter block 11, 1st block of epoch 2
 	epochInterval := ek.GetParams(h.Ctx).EpochInterval
 	for j := 0; j < int(epochInterval); j++ {
-		h.Ctx, err = h.GenAndApplyEmptyBlock(r)
+		h.Ctx, err = h.ApplyEmptyBlockWithVoteExtension(r)
 		h.NoError(err)
 	}
 
@@ -84,11 +87,11 @@ func GenBTCTimestamp(r *rand.Rand) {
 
 	// enter block 21, 1st block of epoch 3
 	for j := 0; j < int(epochInterval); j++ {
-		h.Ctx, err = h.GenAndApplyEmptyBlock(r)
+		h.Ctx, err = h.ApplyEmptyBlockWithVoteExtension(r)
 		h.NoError(err)
 	}
 	// seal last epoch
-	h.Ctx, err = h.GenAndApplyEmptyBlock(r)
+	h.Ctx, err = h.ApplyEmptyBlockWithVoteExtension(r)
 	h.NoError(err)
 
 	epochWithHeader, err := ek.GetHistoricalEpoch(h.Ctx, indexedHeader.BabylonEpoch)
@@ -108,15 +111,15 @@ func GenBTCTimestamp(r *rand.Rand) {
 	// construct the rawCkpt
 	// Note that the BlsMultiSig will be generated and assigned later
 	bm := datagen.GenFullBitmap()
-	appHash := ckpttypes.AppHash(epochWithHeader.SealerHeaderHash)
+	sealerBlockhash := ckpttypes.BlockHash(epochWithHeader.SealerBlockHash)
 	rawCkpt := &ckpttypes.RawCheckpoint{
 		EpochNum:    epochWithHeader.EpochNumber,
-		AppHash:     &appHash,
+		BlockHash:   &sealerBlockhash,
 		Bitmap:      bm,
 		BlsMultiSig: nil,
 	}
 	// let the subset generate a BLS multisig over sealer header's app_hash
-	multiSig, err := signBLSWithBitmap(h.GenValidators.BlsPrivKeys, bm, rawCkpt.SignedMsg())
+	multiSig, err := signBLSWithBitmap(h.GenValidators.GetBLSPrivKeys(), bm, rawCkpt.SignedMsg())
 	require.NoError(t, err)
 	// assign multiSig to rawCkpt
 	rawCkpt.BlsMultiSig = &multiSig

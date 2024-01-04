@@ -20,11 +20,15 @@ pub struct Epoch {
     /// It will be used for proving a block is in an epoch
     #[prost(bytes="bytes", tag="5")]
     pub app_hash_root: ::prost::bytes::Bytes,
-    /// sealer_header_hash is the app_hash of the sealer header, i.e., 2nd header 
+    /// sealer is the last block of the sealed epoch
+    /// sealer_app_hash points to the sealer but stored in the 1st header
     /// of the next epoch
-    /// This validator set has generated a BLS multisig on `app_hash` of
-    /// the sealer header
     #[prost(bytes="bytes", tag="6")]
-    pub sealer_header_hash: ::prost::bytes::Bytes,
+    pub sealer_app_hash: ::prost::bytes::Bytes,
+    /// sealer_block_hash is the hash of the sealer
+    /// the validator set has generated a BLS multisig on the hash,
+    /// i.e., hash of the last block in the epoch
+    #[prost(bytes="bytes", tag="7")]
+    pub sealer_block_hash: ::prost::bytes::Bytes,
 }
 // @@protoc_insertion_point(module)
