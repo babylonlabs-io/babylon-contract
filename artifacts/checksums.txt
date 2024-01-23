@@ -1,1 +1,2 @@
+127e23fe58567f88c207fdf789e901ac6f970e4c76e066d1e99083e13996255e  babylon_contract-aarch64.wasm
 1a8ccb0728f195185a1723fedfb7ab0577afd157bbb907702cbd069a5cc81db1  babylon_contract.wasm
