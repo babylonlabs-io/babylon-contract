@@ -11,14 +11,17 @@ pub struct ValidatorWithBlsKeySet {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ValidatorWithBlsKey {
+    /// validator_address is the address of the validator
     #[prost(string, tag="1")]
     pub validator_address: ::prost::alloc::string::String,
+    /// bls_pub_key is the BLS public key of the validator
     #[prost(bytes="bytes", tag="2")]
     pub bls_pub_key: ::prost::bytes::Bytes,
+    /// voting_power is the voting power of the validator at the given epoch
     #[prost(uint64, tag="3")]
     pub voting_power: u64,
 }
-/// RawCheckpoint wraps the BLS multi sig with meta data
+/// RawCheckpoint wraps the BLS multi sig with metadata
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RawCheckpoint {
