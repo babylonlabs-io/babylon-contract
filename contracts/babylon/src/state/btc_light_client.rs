@@ -9,7 +9,7 @@ use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
 use crate::error::BTCLightclientError;
 use crate::state::config::CONFIG;
-use crate::utils::btc_light_client::verify_headers;
+use crate::utils::btc_light_client::{total_work, verify_headers};
 
 pub const BTC_HEADERS: Map<&[u8], Vec<u8>> = Map::new("btc_lc_headers");
 pub const BTC_HEADER_BASE: Item<Vec<u8>> = Item::new("btc_lc_header_base");
@@ -53,13 +53,35 @@ fn set_tip(storage: &mut dyn Storage, tip: &BtcHeaderInfo) -> StdResult<()> {
 // - insert all headers
 // - insert all hash-to-height indices
 fn insert_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) -> StdResult<()> {
-    // append all headers
+    // Add all the headers by hash
     for new_header in new_headers.iter() {
         // insert header
         let hash_bytes: &[u8] = new_header.hash.as_ref();
         let header_bytes = new_header.encode_to_vec();
         BTC_HEADERS.save(storage, hash_bytes, &header_bytes)?;
         BTC_HEIGHTS.save(storage, hash_bytes, &new_header.height)?;
+    }
+    Ok(())
+}
+
+// remove_headers removes BTC headers from the header chain storages, including
+// - remove all headers from a fork, starting from the fork's tip
+// - remove all hash-to-height indices
+fn remove_headers(
+    storage: &mut dyn Storage,
+    tip_header: &BtcHeaderInfo,
+    parent_header: &BtcHeaderInfo,
+) -> Result<(), BTCLightclientError> {
+    // Remove all the headers by hash starting from the tip, until hitting the parent header
+    let mut rem_header = tip_header.clone();
+    while rem_header.hash != parent_header.hash {
+        // Remove header from storage
+        BTC_HEADERS.remove(storage, &rem_header.hash);
+        BTC_HEIGHTS.remove(storage, &rem_header.hash);
+        // Decode BTC header to get prev header hash
+        let rem_btc_header: BlockHeader = babylon_bitcoin::deserialize(rem_header.header.as_ref())
+            .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
+        rem_header = get_header(storage, rem_btc_header.prev_blockhash.as_ref())?;
     }
     Ok(())
 }
@@ -142,13 +164,15 @@ pub fn init(
 /// - BTC tip upon finalising epoch e
 /// such that Babylon contract maintains the same canonical BTC header chain
 /// as Babylon.
-/// TODO: implement fork choice and allow anyone to submit BTC headers to contract
 pub fn handle_btc_headers_from_babylon(
     storage: &mut dyn Storage,
     new_headers: &[BtcHeaderInfo],
 ) -> Result<(), BTCLightclientError> {
     let cfg = CONFIG.load(storage)?;
     let btc_network = babylon_bitcoin::chain_params::get_chain_params(cfg.network);
+
+    let cur_tip = get_tip(storage)?;
+    let cur_tip_hash = cur_tip.hash.clone();
 
     // decode the first header in these new headers
     let first_new_header = new_headers
@@ -158,21 +182,50 @@ pub fn handle_btc_headers_from_babylon(
         babylon_bitcoin::deserialize(first_new_header.header.as_ref())
             .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
 
-    // ensure the first header's previous header exists in KVStore
-    let last_hash: Vec<u8> = first_new_btc_header.prev_blockhash.as_ref().into();
-    let last_header = get_header(storage, &last_hash)?;
+    if first_new_btc_header.prev_blockhash.as_ref() == cur_tip_hash {
+        // Most common case: extending the current tip
 
-    // verify each new header after last_header iteratively
-    verify_headers(&btc_network, &last_header, new_headers)?;
+        // Verify each new header after `current_tip` iteratively
+        verify_headers(&btc_network, &cur_tip.clone(), new_headers)?;
 
-    // all good, append all headers to the BTC light client stores
-    insert_headers(storage, new_headers)?;
+        // All good, add all the headers to the BTC light client store
+        insert_headers(storage, new_headers)?;
 
-    // update tip
-    let new_tip = new_headers
-        .last()
-        .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
-    set_tip(storage, new_tip)?;
+        // Update tip
+        let new_tip = new_headers
+            .last()
+            .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
+        set_tip(storage, new_tip)?;
+    } else {
+        // Here we received a potential new fork
+        let parent_hash = first_new_btc_header.prev_blockhash.as_ref();
+        let fork_parent = get_header(storage, parent_hash)?;
+
+        // Verify each new header after `fork_parent` iteratively
+        verify_headers(&btc_network, &fork_parent, new_headers)?;
+
+        let new_tip = new_headers
+            .last()
+            .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
+
+        let new_tip_work = total_work(new_tip)?;
+        let cur_tip_work = total_work(&cur_tip)?;
+        if new_tip_work <= cur_tip_work {
+            return Err(BTCLightclientError::BTCChainWithNotEnoughWork(
+                new_tip_work,
+                cur_tip_work,
+            ));
+        }
+
+        // All good, add all the headers to the BTC light client store
+        insert_headers(storage, new_headers)?;
+
+        // Update tip
+        set_tip(storage, new_tip)?;
+
+        // Remove all headers from the old fork
+        remove_headers(storage, &cur_tip, &fork_parent)?;
+    }
     Ok(())
 }
 

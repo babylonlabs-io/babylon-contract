@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint256};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -49,6 +49,14 @@ pub enum BTCLightclientError {
     BTCHeaderError {},
     #[error("The BTC header with hash {hash} is not found in the storage")]
     BTCHeaderNotFoundError { hash: String },
+    #[error("The BTC header info cumulative work encoding is wrong")]
+    BTCWrongCumulativeWorkEncoding {},
+    #[error("The BTC header info {0} cumulative work is wrong. Expected {1}, got {2}, delta {3}")]
+    BTCWrongCumulativeWork(usize, Uint256, Uint256, Uint256),
+    #[error("The BTC header info {0} height is wrong. Expected {1}, got {2}")]
+    BTCWrongHeight(usize, u64, u64),
+    #[error("The new chain's work ({0}), is not better than the current chain's work ({1})")]
+    BTCChainWithNotEnoughWork(Uint256, Uint256),
 }
 
 #[derive(Error, Debug, PartialEq)]
