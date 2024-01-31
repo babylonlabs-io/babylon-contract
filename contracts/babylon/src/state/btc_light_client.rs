@@ -19,13 +19,13 @@ pub const BTC_TIP: Item<Vec<u8>> = Item::new("btc_lc_tip");
 // getters for storages
 
 // is_initialized checks if the BTC light client has been initialised or not
-// the check is done by checking existence of base header
+// the check is done by checking the existence of the base header
 pub fn is_initialized(storage: &mut dyn Storage) -> bool {
     BTC_HEADER_BASE.load(storage).is_ok()
 }
 
 // getter/setter for base header
-pub fn get_base_header(storage: &mut dyn Storage) -> Result<BtcHeaderInfo, BTCLightclientError> {
+pub fn get_base_header(storage: &dyn Storage) -> Result<BtcHeaderInfo, BTCLightclientError> {
     // NOTE: if init is successful, then base header is guaranteed to be in storage and decodable
     let base_header_bytes = BTC_HEADER_BASE.load(storage)?;
     BtcHeaderInfo::decode(base_header_bytes.as_slice()).map_err(BTCLightclientError::DecodeError)
@@ -37,7 +37,7 @@ fn set_base_header(storage: &mut dyn Storage, base_header: &BtcHeaderInfo) -> St
 }
 
 // getter/setter for chain tip
-pub fn get_tip(storage: &mut dyn Storage) -> Result<BtcHeaderInfo, BTCLightclientError> {
+pub fn get_tip(storage: &dyn Storage) -> Result<BtcHeaderInfo, BTCLightclientError> {
     let tip_bytes = BTC_TIP.load(storage)?;
     // NOTE: if init is successful, then tip header is guaranteed to be correct
     BtcHeaderInfo::decode(tip_bytes.as_slice()).map_err(BTCLightclientError::DecodeError)
@@ -88,7 +88,7 @@ fn remove_headers(
 
 // get_header retrieves the BTC header of a given hash
 pub fn get_header(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     hash: &[u8],
 ) -> Result<BtcHeaderInfo, BTCLightclientError> {
     // Try to find the header with the given hash
@@ -236,26 +236,12 @@ mod tests {
     use cosmwasm_std::testing::mock_dependencies;
     use std::fs;
 
-    const TESTDATA: &str = "../../testdata/btc_light_client.dat";
+    const TESTDATA_MAIN: &str = "../../testdata/btc_light_client.dat";
+    const TESTDATA_FORK: &str = "../../testdata/btc_light_client_fork.dat";
 
-    fn get_test_headers() -> Vec<BtcHeaderInfo> {
-        let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
-        let resp = QueryMainChainResponse::decode(testdata).unwrap();
-        resp.headers
-    }
-
-    // btc_lc_works simulates initialisation of BTC light client storage, then insertion of
-    // a number of headers. It ensures that the correctness of initialisation/insertion upon
-    // a list of correct BTC headers on Bitcoin regtest net.
-    #[test]
-    fn btc_lc_works() {
-        let test_headers_vec = get_test_headers();
-        let test_headers = test_headers_vec.as_slice();
-        let deps = mock_dependencies();
-        let mut storage = deps.storage;
-
+    fn setup(storage: &mut dyn Storage) -> usize {
         // set config first
-        let w = 2_usize;
+        let w: usize = 2;
         let cfg = super::super::config::Config {
             network: babylon_bitcoin::chain_params::Network::Regtest,
             babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
@@ -263,52 +249,305 @@ mod tests {
             checkpoint_finalization_timeout: w as u64,
             notify_cosmos_zone: false,
         };
-        CONFIG.save(&mut storage, &cfg).unwrap();
+        CONFIG.save(storage, &cfg).unwrap();
+        w
+    }
+
+    fn get_main_test_headers() -> Vec<BtcHeaderInfo> {
+        let testdata: &[u8] = &fs::read(TESTDATA_MAIN).unwrap();
+        let resp = QueryMainChainResponse::decode(testdata).unwrap();
+        resp.headers
+    }
+
+    fn get_fork_test_headers() -> Vec<BtcHeaderInfo> {
+        let testdata: &[u8] = &fs::read(TESTDATA_FORK).unwrap();
+        let resp = QueryMainChainResponse::decode(testdata).unwrap();
+        resp.headers
+    }
+
+    #[track_caller]
+    fn ensure_headers(storage: &dyn Storage, headers: &[BtcHeaderInfo]) {
+        for header_expected in headers.iter() {
+            let init_header_actual = get_header(storage, header_expected.hash.as_ref()).unwrap();
+            assert_eq!(*header_expected, init_header_actual);
+
+            let actual_height = BTC_HEIGHTS
+                .load(storage, header_expected.hash.as_ref())
+                .unwrap();
+            assert_eq!(header_expected.height, actual_height);
+        }
+    }
+
+    #[track_caller]
+    fn ensure_base_and_tip(storage: &dyn Storage, test_init_headers: &[BtcHeaderInfo]) {
+        // ensure the base header is set
+        let base_expected = test_init_headers.first().unwrap();
+        let base_actual = get_base_header(storage).unwrap();
+        assert_eq!(*base_expected, base_actual);
+        // ensure the tip header is set
+        let tip_expected = test_init_headers.last().unwrap();
+        let tip_actual = get_tip(storage).unwrap();
+        assert_eq!(*tip_expected, tip_actual);
+    }
+
+    // btc_lc_works simulates initialisation of BTC light client storage, then insertion of
+    // a number of headers. It ensures that the correctness of initialisation/insertion upon
+    // a list of correct BTC headers on Bitcoin regtest net.
+    #[test]
+    fn btc_lc_works() {
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+        let w = setup(&mut storage);
+
+        let test_headers = get_main_test_headers();
 
         // testing initialisation with w+1 headers
         let test_init_headers: &[BtcHeaderInfo] = &test_headers[0..w + 1];
         init(&mut storage, test_init_headers).unwrap();
 
-        // ensure tip is set
-        let tip_expected = test_init_headers.last().unwrap();
-        let tip_actual = get_tip(&mut storage).unwrap();
-        assert_eq!(*tip_expected, tip_actual);
-        // ensure base header is set
-        let base_expected = test_init_headers.first().unwrap();
-        let base_actual = get_base_header(&mut storage).unwrap();
-        assert_eq!(*base_expected, base_actual);
-        // ensure all headers are correctly inserted
-        for header_expected in test_init_headers.iter() {
-            let init_header_actual =
-                get_header(&mut storage, header_expected.hash.as_ref()).unwrap();
-            assert_eq!(*header_expected, init_header_actual);
+        ensure_base_and_tip(&storage, test_init_headers);
 
-            let actual_height = BTC_HEIGHTS
-                .load(&storage, header_expected.hash.as_ref())
-                .unwrap();
-            assert_eq!(header_expected.height, actual_height);
-        }
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, test_init_headers);
 
         // handling subsequent headers
         let test_new_headers = &test_headers[w + 1..test_headers.len()];
         handle_btc_headers_from_babylon(&mut storage, test_new_headers).unwrap();
 
         // ensure tip is set
-        let tip_expected = test_headers.last().unwrap();
-        let tip_actual = get_tip(&mut storage).unwrap();
-        assert_eq!(*tip_expected, tip_actual);
-        // ensure all headers are correctly inserted
-        for header_expected in test_new_headers.iter() {
-            let init_header_actual =
-                get_header(&mut storage, header_expected.hash.as_ref()).unwrap();
-            assert_eq!(*header_expected, init_header_actual);
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all new headers are correctly inserted
+        ensure_headers(&storage, test_new_headers);
+    }
 
-            let actual_height = BTC_HEIGHTS
+    // Must match `forkHeaderHeight` in datagen/main.go
+    const FORK_HEADER_HEIGHT: u64 = 90;
+
+    // btc_lc_fork_accepted simulates initialization of BTC light client storage,
+    // then insertion of a number of headers.
+    // It checks the correctness of the fork choice rule for an accepted fork.
+    #[test]
+    fn btc_lc_fork_accepted() {
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+        setup(&mut storage);
+
+        let test_headers = get_main_test_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_fork_test_headers();
+
+        // handling fork headers
+        handle_btc_headers_from_babylon(&mut storage, &test_fork_headers).unwrap();
+
+        // ensure the base header is set
+        let base_expected = test_headers.first().unwrap();
+        let base_actual = get_base_header(&storage).unwrap();
+        assert_eq!(*base_expected, base_actual);
+        // ensure the tip is set
+        let tip_expected = test_fork_headers.last().unwrap();
+        let tip_actual = get_tip(&storage).unwrap();
+        assert_eq!(*tip_expected, tip_actual);
+
+        // ensure all initial headers are still inserted
+        ensure_headers(&storage, &test_headers[..FORK_HEADER_HEIGHT as usize]);
+
+        // ensure all forked headers are correctly inserted
+        ensure_headers(&storage, &test_fork_headers);
+
+        // check that the original forked headers have been removed
+        for header_expected in test_headers[FORK_HEADER_HEIGHT as usize..].iter() {
+            assert!(get_header(&storage, header_expected.hash.as_ref()).is_err());
+            assert!(BTC_HEIGHTS
                 .load(&storage, header_expected.hash.as_ref())
-                .unwrap();
-            assert_eq!(header_expected.height, actual_height);
+                .is_err());
         }
     }
 
+    // btc_lc_fork_rejected simulates initialization of BTC light client storage,
+    // then insertion of a number of headers.
+    // It checks the correctness of the fork choice rule for a rejected fork.
+    #[test]
+    fn btc_lc_fork_rejected() {
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+        setup(&mut storage);
+
+        let test_headers = get_main_test_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure the base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_fork_test_headers();
+
+        // handling fork headers minus the last
+        let res = handle_btc_headers_from_babylon(
+            &mut storage,
+            &test_fork_headers[..test_fork_headers.len() - 1],
+        );
+        assert!(matches!(
+            res.unwrap_err(),
+            BTCLightclientError::BTCChainWithNotEnoughWork(_, _)
+        ));
+
+        // ensure base and tip are unchanged
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+    }
+
+    // btc_lc_fork_invalid simulates initialization of BTC light client storage,
+    // then insertion of a number of headers.
+    // It checks the correctness of the fork choice rule for an invalid fork (non-consecutive headers).
+    #[test]
+    fn btc_lc_fork_invalid() {
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+        setup(&mut storage);
+
+        let test_headers = get_main_test_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_fork_test_headers();
+
+        // Make the fork headers invalid
+        let mut invalid_fork_headers = test_fork_headers.clone();
+        invalid_fork_headers.push(test_fork_headers.last().unwrap().clone());
+
+        // handling invalid fork headers
+        let res = handle_btc_headers_from_babylon(&mut storage, &invalid_fork_headers);
+        assert!(matches!(
+            res.unwrap_err(),
+            BTCLightclientError::BTCHeaderError {}
+        ));
+
+        // ensure base and tip are unchanged
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure that all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+    }
+
+    // btc_lc_fork_invalid_height simulates initialization of BTC light client storage,
+    // then insertion of a number of headers.
+    // It checks the correctness of the fork choice rule for an invalid fork due to a wrong header
+    // height.
+    #[test]
+    fn btc_lc_fork_invalid_height() {
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+        setup(&mut storage);
+
+        let test_headers = get_main_test_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_fork_test_headers();
+
+        // Make the fork headers invalid due to one of the headers having the wrong height
+        let mut invalid_fork_headers = test_fork_headers.clone();
+        let mut wrong_header = invalid_fork_headers.last().unwrap().clone();
+        let height = wrong_header.height;
+        wrong_header.height += 1;
+        let len = invalid_fork_headers.len();
+        invalid_fork_headers[len - 1] = wrong_header;
+
+        // handling invalid fork headers
+        let res = handle_btc_headers_from_babylon(&mut storage, &invalid_fork_headers);
+        assert_eq!(
+            res.unwrap_err(),
+            BTCLightclientError::BTCWrongHeight(len - 1, height, height + 1)
+        );
+
+        // ensure base and tip are unchanged
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure that all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+    }
+
+    // btc_lc_fork_invalid_work simulates initialization of BTC light client storage,
+    // then insertion of a number of headers.
+    // It checks the correctness of the fork choice rule for an invalid fork due to a wrong header
+    // work.
+    #[test]
+    fn btc_lc_fork_invalid_work() {
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+        setup(&mut storage);
+
+        let test_headers = get_main_test_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_fork_test_headers();
+
+        // Make the fork headers invalid due to one of the headers having the wrong work
+        let wrong_header_index = test_fork_headers.len() / 2;
+        let mut invalid_fork_headers = test_fork_headers.clone();
+        let header = invalid_fork_headers[wrong_header_index].clone();
+        let work = header.work.clone();
+
+        let mut wrong_bytes = work.to_vec();
+        let wrong_byte_index = wrong_bytes.len() - 1;
+        let mut wrong_byte = wrong_bytes[wrong_byte_index];
+        // Break it gently (still in the valid '0' to '9' range)
+        wrong_byte ^= 1;
+        wrong_bytes[wrong_byte_index] = wrong_byte;
+
+        let mut wrong_header = header.clone();
+        wrong_header.work = prost::bytes::Bytes::from(wrong_bytes);
+        invalid_fork_headers[wrong_header_index] = wrong_header.clone();
+
+        // handling invalid fork headers
+        let res = handle_btc_headers_from_babylon(&mut storage, &invalid_fork_headers);
+        assert_eq!(
+            res.unwrap_err(),
+            BTCLightclientError::BTCWrongCumulativeWork(
+                wrong_header_index,
+                total_work(&header).unwrap(),
+                total_work(&wrong_header).unwrap(),
+            )
+        );
+
+        // ensure base and tip are eunchanged
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+    }
     // TODO: more tests on different scenarios, e.g., random number of headers and conflicted headers
 }

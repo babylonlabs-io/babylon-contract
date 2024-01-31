@@ -182,11 +182,28 @@ func GenBTCTimestamp(r *rand.Rand) {
 	}
 }
 
-func GenBTCLightClient(r *rand.Rand) {
-	headers := datagen.NewBTCHeaderChainWithLength(r, 1, chaincfg.RegressionNetParams.PowLimit.Uint64(), 100).GetChainInfo()
+const mainHeadersLength = 100
+const initialHeaderHeight = 1
+const forkHeaderHeight = 90
+
+func GenBTCLightClient(r *rand.Rand) []*btclctypes.BTCHeaderInfo {
+	headers := datagen.NewBTCHeaderChainWithLength(r, initialHeaderHeight, chaincfg.RegressionNetParams.PowLimit.Uint64(), mainHeadersLength).GetChainInfo()
 	resp := &btclctypes.QueryMainChainResponse{Headers: headers}
 	respBytes := cdc.MustMarshal(resp)
 	if err := os.WriteFile("./testdata/btc_light_client.dat", respBytes, 0644); err != nil {
+		panic(err)
+	}
+	return headers
+}
+
+func GenBTCLightClientFork(r *rand.Rand, forkHeader *btclctypes.BTCHeaderInfo) {
+	height := forkHeader.Height
+	length := mainHeadersLength - height + 1 // For an accepted fork
+
+	headers := datagen.NewBTCHeaderChainFromParentInfo(r, forkHeader, uint32(length)).GetChainInfo()
+	resp := &btclctypes.QueryMainChainResponse{Headers: headers}
+	respBytes := cdc.MustMarshal(resp)
+	if err := os.WriteFile("./testdata/btc_light_client_fork.dat", respBytes, 0644); err != nil {
 		panic(err)
 	}
 }
@@ -195,6 +212,7 @@ func GenBTCLightClient(r *rand.Rand) {
 func main() {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	GenRawCheckpoint()
-	GenBTCLightClient(r)
+	mainHeaders := GenBTCLightClient(r)
+	GenBTCLightClientFork(r, mainHeaders[forkHeaderHeight-initialHeaderHeight])
 	GenBTCTimestamp(r)
 }

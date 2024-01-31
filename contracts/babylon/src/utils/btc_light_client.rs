@@ -37,7 +37,6 @@ pub fn verify_headers(
                 i,
                 cum_work_old + header_work,
                 cum_work,
-                cum_work - cum_work_old - header_work,
             ));
         }
         cum_work_old = cum_work;
