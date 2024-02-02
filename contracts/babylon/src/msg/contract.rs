@@ -1,3 +1,4 @@
+use crate::msg::btc_header::BtcHeader;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{StdError, StdResult};
 
@@ -46,7 +47,11 @@ impl ContractMsg for InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Placeholder {}, // TODO: remove
+    BtcHeaders {
+        /// `headers` is a list of BTC headers. Typically:
+        /// - A given delta of headers a user wants to add to the tip of, or fork the BTC chain.
+        headers: Vec<BtcHeader>,
+    },
 }
 
 #[cw_serde]

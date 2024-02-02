@@ -1,8 +1,8 @@
 use crate::error;
 use crate::error::BTCLightclientError;
-use babylon_bitcoin::BlockHeader;
+use babylon_bitcoin::{BlockHeader, Uint256};
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
-use cosmwasm_std::{StdResult, Uint256};
+use cosmwasm_std::StdResult;
 use std::str::{from_utf8, FromStr};
 
 /// verify_headers verifies whether `new_headers` are valid consecutive headers
@@ -28,7 +28,7 @@ pub fn verify_headers(
         babylon_bitcoin::pow::verify_next_header_pow(btc_network, &last_btc_header, &btc_header)
             .map_err(|_| error::BTCLightclientError::BTCHeaderError {})?;
 
-        let header_work = Uint256::from_be_bytes(btc_header.work().to_be_bytes());
+        let header_work = btc_header.work();
         let cum_work = total_work(new_header)?;
 
         // Validate cumulative work
@@ -60,5 +60,6 @@ pub fn verify_headers(
 pub fn total_work(header: &BtcHeaderInfo) -> StdResult<Uint256> {
     // TODO: Use a better encoding (String / binary)
     let header_work = from_utf8(header.work.as_ref())?;
-    Uint256::from_str(header_work)
+    let header_work_cw = cosmwasm_std::Uint256::from_str(header_work)?;
+    Ok(Uint256::from_be_bytes(header_work_cw.to_be_bytes()))
 }

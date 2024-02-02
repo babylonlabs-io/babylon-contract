@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"math/rand"
 	"os"
 	"testing"
@@ -208,11 +209,74 @@ func GenBTCLightClientFork(r *rand.Rand, forkHeader *btclctypes.BTCHeaderInfo) {
 	}
 }
 
+// BtcHeader is a struct for serialising BTC headers.
+// Must match the json definition in the Rust code (`./contract/babylon/src/msg/btc_header.rs`).
+type BtcHeader struct {
+	// Originally protocol version, but repurposed for soft-fork signaling
+	Version int32 `json:"version"`
+	// Previous block header hash (hex string)
+	PrevBlockHash string `json:"prev_blockhash"`
+	// Merkle root hash (hex string)
+	MerkleRoot string `json:"merkle_root"`
+	// Block timestamp
+	Time uint32 `json:"time"`
+	// The target value below which the blockhash must lie, encoded as a
+	// a float (with well-defined rounding, of course).
+	Bits uint32 `json:"bits"`
+	// Block nonce
+	Nonce uint32 `json:"nonce"`
+}
+
+// `BtcHeaders` execute msg in Rust code (`./contract/babylon/src/msg/contract.rs`).
+type ExecuteMsg struct {
+	BtcHeaders *BtcHeaders `json:"btc_headers,omitempty"`
+}
+
+type BtcHeaders struct {
+	Headers []*BtcHeader `json:"headers"`
+}
+
+func GenBTCLightClientForkMessages(r *rand.Rand, forkHeader *btclctypes.BTCHeaderInfo) {
+	height := forkHeader.Height
+	length := mainHeadersLength - height + 1 // For an accepted fork
+
+	headers := datagen.NewBTCHeaderChainFromParentInfo(r, forkHeader, uint32(length)).GetChainInfo()
+	btc_headers := make([]*BtcHeader, len(headers))
+	for i := 0; i < len(headers); i++ {
+		// Decode the header's header to a BlockHeader struct
+		blockHeader := headers[i].Header.ToBlockHeader()
+
+		btc_headers[i] = &BtcHeader{
+			Version:       blockHeader.Version,
+			PrevBlockHash: blockHeader.PrevBlock.String(),
+			MerkleRoot:    blockHeader.MerkleRoot.String(),
+			Time:          uint32(blockHeader.Timestamp.Unix()),
+			Bits:          blockHeader.Bits,
+			Nonce:         blockHeader.Nonce,
+		}
+	}
+	headerChain := &ExecuteMsg{
+		BtcHeaders: &BtcHeaders{
+			Headers: btc_headers,
+		},
+	}
+
+	// Marshall to JSON
+	respBytes, err := json.Marshal(headerChain)
+	if err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile("./testdata/btc_light_client_fork_msg.json", respBytes, 0644); err != nil {
+		panic(err)
+	}
+}
+
 // generating testdata for testing Go <-> Rust protobuf serialisation
 func main() {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	GenRawCheckpoint()
 	mainHeaders := GenBTCLightClient(r)
 	GenBTCLightClientFork(r, mainHeaders[forkHeaderHeight-initialHeaderHeight])
+	GenBTCLightClientForkMessages(r, mainHeaders[forkHeaderHeight-initialHeaderHeight])
 	GenBTCTimestamp(r)
 }

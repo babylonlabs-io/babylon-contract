@@ -1,3 +1,4 @@
+use crate::error::ContractError;
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
     StdResult,
@@ -5,6 +6,7 @@ use cosmwasm_std::{
 
 use crate::msg::bindings::BabylonMsg;
 use crate::msg::contract::{AccountResponse, ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::btc_light_client::handle_btc_headers_from_user;
 use crate::state::config::{Config, CONFIG};
 
 pub fn instantiate(
@@ -56,12 +58,18 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
 }
 
 pub fn execute(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: ExecuteMsg,
-) -> StdResult<Response<BabylonMsg>> {
-    Ok(Response::default())
+    msg: ExecuteMsg,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    match msg {
+        ExecuteMsg::BtcHeaders { headers } => {
+            handle_btc_headers_from_user(deps.storage, &headers)?;
+            // TODO: Add events
+            Ok(Response::new())
+        }
+    }
 }
 
 #[cfg(test)]

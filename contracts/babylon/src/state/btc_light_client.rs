@@ -1,6 +1,7 @@
 //! btc_light_client is the storage for the BTC header chain
-use babylon_bitcoin::BlockHeader;
+use babylon_bitcoin::{BlockHash, BlockHeader};
 use prost::Message;
+use std::str::FromStr;
 
 use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::{Item, Map};
@@ -8,6 +9,7 @@ use cw_storage_plus::{Item, Map};
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
 use crate::error::BTCLightclientError;
+use crate::msg::btc_header::BtcHeader;
 use crate::state::config::CONFIG;
 use crate::utils::btc_light_client::{total_work, verify_headers};
 
@@ -229,15 +231,57 @@ pub fn handle_btc_headers_from_babylon(
     Ok(())
 }
 
+/// handle_btc_headers_from_user verifies and inserts a number of
+/// finalised BTC headers to the header chain storage, and update
+/// the chain tip.
+///
+/// This can be used as an alternative to `handle_btc_headers_from_babylon`, for cases in which
+/// Babylon itself is unavailable / unresponsive, and the user wants to submit BTC headers directly,
+/// such that the Babylon contract maintains the same canonical BTC header chain as Babylon.
+pub fn handle_btc_headers_from_user(
+    storage: &mut dyn Storage,
+    new_btc_headers: &[BtcHeader],
+) -> Result<(), BTCLightclientError> {
+    let first_new_btc_header = new_btc_headers
+        .first()
+        .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
+
+    // Decode the btc_header (byte-reversed) prev_blockhash
+    let prev_blockhash = BlockHash::from_str(&first_new_btc_header.prev_blockhash)?;
+
+    // Obtain previous header from storage
+    let previous_header = get_header(storage, &prev_blockhash)?;
+
+    // Convert new_headers to `BtcHeaderInfo`s
+    let mut cur_height = previous_header.height;
+    let mut cur_work = total_work(&previous_header)?;
+    let mut new_headers_info = vec![];
+    for new_btc_header in new_btc_headers.iter() {
+        let new_header_info = new_btc_header.to_btc_header_info(
+            cur_height,
+            babylon_bitcoin::Uint256::from_be_bytes(cur_work.to_be_bytes()),
+        )?;
+        cur_height += 1;
+        cur_work = total_work(&new_header_info)?;
+        new_headers_info.push(new_header_info);
+    }
+
+    // Call `handle_btc_headers_from_babylon`
+    handle_btc_headers_from_babylon(storage, &new_headers_info)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::msg::contract::ExecuteMsg;
     use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
+    use cosmwasm_std::from_json;
     use cosmwasm_std::testing::mock_dependencies;
     use std::fs;
 
     const TESTDATA_MAIN: &str = "../../testdata/btc_light_client.dat";
     const TESTDATA_FORK: &str = "../../testdata/btc_light_client_fork.dat";
+    const TESTDATA_FORK_MSG: &str = "../../testdata/btc_light_client_fork_msg.json";
 
     fn setup(storage: &mut dyn Storage) -> usize {
         // set config first
@@ -265,9 +309,17 @@ mod tests {
         resp.headers
     }
 
+    fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
+        let testdata: &[u8] = &fs::read(TESTDATA_FORK_MSG).unwrap();
+        let resp: ExecuteMsg = from_json(testdata).unwrap();
+        match resp {
+            ExecuteMsg::BtcHeaders { headers } => headers,
+        }
+    }
+
     #[track_caller]
     fn ensure_headers(storage: &dyn Storage, headers: &[BtcHeaderInfo]) {
-        for header_expected in headers.iter() {
+        for header_expected in headers {
             let init_header_actual = get_header(storage, header_expected.hash.as_ref()).unwrap();
             assert_eq!(*header_expected, init_header_actual);
 
@@ -275,6 +327,15 @@ mod tests {
                 .load(storage, header_expected.hash.as_ref())
                 .unwrap();
             assert_eq!(header_expected.height, actual_height);
+        }
+    }
+
+    #[track_caller]
+    fn ensure_btc_headers(storage: &dyn Storage, headers: &[BtcHeader]) {
+        // Existence / inclusion check only, as we don't have the height and cumulative work info
+        for header_expected in headers {
+            let block_header_expected: BlockHeader = header_expected.into();
+            get_header(storage, block_header_expected.block_hash().as_ref()).unwrap();
         }
     }
 
@@ -548,6 +609,57 @@ mod tests {
         ensure_base_and_tip(&storage, &test_headers);
         // ensure all headers are correctly inserted
         ensure_headers(&storage, &test_headers);
+    }
+
+    // btc_lc_fork_msg_accepted simulates initialization of BTC light client storage,
+    // then insertion of a number of headers through a user execution message.
+    // It checks the correctness of the fork choice rule for an accepted fork received through
+    // the `handle_btc_headers_from_user` function.
+    #[test]
+    fn btc_lc_fork_msg_accepted() {
+        let deps = mock_dependencies();
+        let mut storage = deps.storage;
+        setup(&mut storage);
+
+        let test_headers = get_main_test_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork messages headers
+        let test_fork_msg_headers = get_fork_msg_test_headers();
+
+        // handling fork headers
+        handle_btc_headers_from_user(&mut storage, &test_fork_msg_headers).unwrap();
+
+        // ensure the base header is set
+        let base_expected = test_headers.first().unwrap();
+        let base_actual = get_base_header(&storage).unwrap();
+        assert_eq!(*base_expected, base_actual);
+        // ensure the tip btc header is set and is correct
+        let tip_btc_expected: BlockHeader = test_fork_msg_headers.last().unwrap().into();
+        let tip_btc_actual: BlockHeader =
+            babylon_bitcoin::deserialize(get_tip(&storage).unwrap().header.as_ref()).unwrap();
+        assert_eq!(tip_btc_expected, tip_btc_actual);
+
+        // ensure all initial headers are still inserted
+        ensure_headers(&storage, &test_headers[..FORK_HEADER_HEIGHT as usize]);
+
+        // ensure all forked btc headers are correctly inserted
+        ensure_btc_headers(&storage, &test_fork_msg_headers);
+
+        // check that the original forked headers have been removed
+        for header_expected in test_headers[FORK_HEADER_HEIGHT as usize..].iter() {
+            assert!(get_header(&storage, header_expected.hash.as_ref()).is_err());
+            assert!(BTC_HEIGHTS
+                .load(&storage, header_expected.hash.as_ref())
+                .is_err());
+        }
     }
     // TODO: more tests on different scenarios, e.g., random number of headers and conflicted headers
 }

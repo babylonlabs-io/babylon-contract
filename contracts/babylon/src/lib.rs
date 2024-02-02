@@ -46,7 +46,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> StdResult<Response<BabylonMsg>> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     contract::execute(deps, env, info, msg)
 }
 

@@ -1,10 +1,13 @@
-use cosmwasm_std::{StdError, Uint256};
+use babylon_bitcoin::Uint256;
+use cosmwasm_std::StdError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     StdError(#[from] StdError),
+    #[error("{0}")]
+    BtcError(#[from] BTCLightclientError),
     #[error("The contract only supports ordered channels")]
     IbcUnorderedChannel {},
     #[error("Counterparty version must be `{version}`")]
@@ -41,6 +44,8 @@ pub enum BTCLightclientError {
     InitError {},
     #[error("The bytes cannot be decoded")]
     DecodeError(#[from] prost::DecodeError),
+    #[error("{0}")]
+    HashError(#[from] babylon_bitcoin::HexError),
     #[error("The BTC header cannot be decoded")]
     BTCHeaderDecodeError {},
     #[error("The BTC header is not being sent")]
