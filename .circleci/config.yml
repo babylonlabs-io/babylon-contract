@@ -20,15 +20,15 @@ jobs:
       - run:
           name: Build Babylon contract
           command: |
-            make build
+            cargo build
       - run:
           name: Test generating schema
           command: |
-            make schema
+            (cd ./contracts/babylon && cargo run --bin schema)
       - run:
           name: Check formats and run unit tests
           command: |
-            make test-ci
+            cargo test --lib
 
   wasm-build-check-integration:
     docker:
@@ -43,7 +43,7 @@ jobs:
       - run:
           name: Build optimised Wasm binary
           command: |
-            make build-optimized-ci
+            ./scripts/build-optimizer-ci.sh
       - run:
           name: Install cosmwasm-check
           command: |
@@ -55,7 +55,7 @@ jobs:
       - run:
           name: Integration tests based on CosmWasm
           command: |
-            make integration-test
+            cargo test --test integration
       - persist_to_workspace:
           root: /home/circleci/project/artifacts
           paths:
@@ -98,7 +98,7 @@ jobs:
       - run:
           name: Build optimised Wasm binary
           command: |
-            make build-optimized-ci
+            ./scripts/build-optimizer-ci.sh
       - persist_to_workspace:
           root: /home/circleci/project/artifacts
           paths:
@@ -138,10 +138,10 @@ jobs:
       - run:
           name: Build and run schema generator
           command: |
-            make schema
+            (cd ./contract/babylon && cargo run --bin schema)
       - run:
           name: Show data
-          command: ls -l ./schema
+          command: ls -l ./contracts/babylon/schema
       - run:
           name: Publish schemas on GitHub
           command: |
@@ -153,7 +153,7 @@ jobs:
               -c "$CIRCLE_SHA1" \
               -n "$TITLE" -b "$BODY" \
               -replace \
-              "$TAG" ./schema/
+              "$TAG" ./contracts/babylon/schema/
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows

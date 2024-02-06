@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DOCKER=$(which docker)
+CUR_DIR=$(pwd)
+CUR_BASENAME=$(basename $CUR_DIR)
+
+# Native arch
+BUILDARCH=$(uname -m)
+DOCKERFILE=./docker/Dockerfile-$BUILDARCH
+OPTIMIZER_IMAGE_NAME="babylonchain/rust-optimizer-$BUILDARCH"
+OPTIMIZER_IMAGE_TAG=$(sed -n -E 's/^FROM.*:([^\s]*)\s.*/\1/p' $DOCKERFILE)
+
+$DOCKER build -t $OPTIMIZER_IMAGE_NAME:$OPTIMIZER_IMAGE_TAG -f $DOCKERFILE .
+$DOCKER tag $OPTIMIZER_IMAGE_NAME:$OPTIMIZER_IMAGE_TAG $OPTIMIZER_IMAGE_NAME

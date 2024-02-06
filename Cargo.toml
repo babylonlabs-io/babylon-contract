@@ -10,6 +10,15 @@ repository    = "https://github.com/babylonchain/babylon-contract"
 authors       = ["BabylonChain Inc. <admin@babylonchain.io>"]
 publish       = false
 
+[workspace.metadata.scripts]
+gen-proto       = "./scripts/protocgen.sh"
+gen-data        = "go run datagen/main.go"
+gen-schema      = "./scripts/schema.sh"
+build-optimizer = "./scripts/build-optimizer.sh"
+optimize        = "./scripts/optimizer.sh"
+lint            = "./scripts/lint.sh"
+integration     = "./scripts/integration_test.sh"
+
 [workspace.dependencies]
 babylon-proto     = { path = "./packages/proto" }
 babylon-bitcoin   = { path = "./packages/bitcoin" }

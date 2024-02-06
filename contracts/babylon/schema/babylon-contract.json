@@ -1,6 +1,6 @@
 {
   "contract_name": "babylon-contract",
-  "contract_version": "0.1.0",
+  "contract_version": "0.2.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -15,12 +15,8 @@
     ],
     "properties": {
       "babylon_tag": {
-        "type": "array",
-        "items": {
-          "type": "integer",
-          "format": "uint8",
-          "minimum": 0.0
-        }
+        "description": "babylon_tag is a string encoding four bytes used for identification / tagging of the Babylon zone. NOTE: this is a hex string, not raw bytes",
+        "type": "string"
       },
       "btc_confirmation_depth": {
         "type": "integer",
@@ -44,10 +40,10 @@
       "Network": {
         "type": "string",
         "enum": [
-          "Mainnet",
-          "Testnet",
-          "Signet",
-          "Regtest"
+          "mainnet",
+          "testnet",
+          "signet",
+          "regtest"
         ]
       }
     }
@@ -59,17 +55,77 @@
       {
         "type": "object",
         "required": [
-          "placeholder"
+          "btc_headers"
         ],
         "properties": {
-          "placeholder": {
+          "btc_headers": {
             "type": "object",
+            "required": [
+              "headers"
+            ],
+            "properties": {
+              "headers": {
+                "description": "`headers` is a list of BTC headers. Typically: - A given delta of headers a user wants to add to the tip of, or fork the BTC chain.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/BtcHeader"
+                }
+              }
+            },
             "additionalProperties": false
           }
         },
         "additionalProperties": false
       }
-    ]
+    ],
+    "definitions": {
+      "BtcHeader": {
+        "description": "Bitcoin header.\n\nContains all the block's information except the actual transactions, but including a root of a [merkle tree] committing to all transactions in the block.\n\nThis struct is for use in RPC requests and responses. It has convenience helpers to convert to the internal representation (`BlockHeader`), and to the Babylon extended representation (`BtcHeaderInfo`). Adapted from `BlockHeader`.",
+        "type": "object",
+        "required": [
+          "bits",
+          "merkle_root",
+          "nonce",
+          "prev_blockhash",
+          "time",
+          "version"
+        ],
+        "properties": {
+          "bits": {
+            "description": "The target value below which the blockhash must lie, encoded as a a float (with well-defined rounding, of course).",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "merkle_root": {
+            "description": "The root hash of the merkle tree of transactions in the block. Encoded as a (byte-reversed) hex string.",
+            "type": "string"
+          },
+          "nonce": {
+            "description": "The nonce, selected to obtain a low enough blockhash.",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "prev_blockhash": {
+            "description": "Reference to the previous block in the chain. Encoded as a (byte-reversed) hex string.",
+            "type": "string"
+          },
+          "time": {
+            "description": "The timestamp of the block, as claimed by the miner.",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "version": {
+            "description": "Originally protocol version, but repurposed for soft-fork signaling.\n\n### Relevant BIPs\n\n* [BIP9 - Version bits with timeout and delay](https://github.com/bitcoin/bips/blob/master/bip-0009.mediawiki) (current usage) * [BIP34 - Block v2, Height in Coinbase](https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki)",
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "query": {
     "$schema": "http://json-schema.org/draft-07/schema#",

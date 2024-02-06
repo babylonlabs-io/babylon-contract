@@ -1,0 +1,8 @@
+[alias]
+unit-test = "test --lib"
+integration = "run-script integration"
+gen-data = "run-script gen-data"
+gen-proto = "run-script gen-proto"
+gen-schema = "run-script gen-schema"
+optimize = "run-script optimize"
+lint = "run-script lint"
