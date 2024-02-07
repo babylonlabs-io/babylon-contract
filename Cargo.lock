@@ -79,6 +79,7 @@ dependencies = [
  "cw-storage-plus",
  "hex",
  "ics23",
+ "pbjson-types",
  "prost",
  "tendermint-proto 0.30.0",
  "thiserror",

@@ -18,7 +18,7 @@ pub const CZ_HEADER_LAST: Item<Vec<u8>> = Item::new("cz_header_last");
 
 // getter/setter for last finalised CZ header
 pub fn get_last_cz_header(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
 ) -> Result<IndexedHeader, error::CZHeaderChainError> {
     let last_cz_header_bytes = CZ_HEADER_LAST
         .load(storage)
@@ -34,7 +34,7 @@ fn set_last_cz_header(storage: &mut dyn Storage, last_cz_header: &IndexedHeader)
 
 /// get_cz_header gets a CZ header of a given height
 pub fn get_cz_header(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     height: u64,
 ) -> Result<IndexedHeader, error::CZHeaderChainError> {
     // try to find the indexed header at the given height

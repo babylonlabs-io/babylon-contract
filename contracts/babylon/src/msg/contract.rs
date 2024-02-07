@@ -1,6 +1,10 @@
-use crate::msg::btc_header::BtcHeader;
+use crate::msg::epoch::EpochResponse;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{StdError, StdResult};
+
+use crate::msg::btc_header::BtcHeader;
+use crate::msg::cz_header::CzHeaderResponse;
+use crate::state::config::Config;
 
 const BABYLON_TAG_BYTES: usize = 4;
 
@@ -57,12 +61,35 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// TODO: a boilerplate message. Replace with actual one.
-    #[returns(AccountResponse)]
-    Account { channel_id: String },
-}
-
-#[cw_serde]
-pub struct AccountResponse {
-    pub account: Option<String>,
+    /// Config returns the current configuration of the babylon-contract
+    #[returns(Config)]
+    Config {},
+    /// BtcBaseHeader returns the base BTC header stored in the contract
+    #[returns(BtcHeader)]
+    BtcBaseHeader {},
+    /// BtcTipHeader returns the tip BTC header stored in the contract
+    #[returns(BtcHeader)]
+    BtcTipHeader {},
+    /// BtcHeader returns the BTC header information stored in the contract, by BTC hash.
+    /// Hash is the (byte-reversed) hex-encoded hash of the BTC header
+    #[returns(BtcHeader)]
+    BtcHeader { hash: String },
+    /// BabylonBaseEpoch returns the base Babylon epoch stored in the contract
+    #[returns(EpochResponse)]
+    BabylonBaseEpoch {},
+    /// BabylonLastEpoch returns the last babylon finalized epoch stored in the contract
+    #[returns(EpochResponse)]
+    BabylonLastEpoch {},
+    /// BabylonEpoch returns the Babylon epoch stored in the contract, by epoch number.
+    #[returns(BtcHeader)]
+    BabylonEpoch { epoch_number: u64 },
+    /// BabylonCheckpoint returns the Babylon checkpoint stored in the contract, by epoch number.
+    #[returns(EpochResponse)]
+    BabylonCheckpoint { epoch_number: u64 },
+    /// CzLastHeader returns the last CZ epoch stored in the contract
+    #[returns(CzHeaderResponse)]
+    CzLastHeader {},
+    /// CzHeader returns the CZ header stored in the contract, by CZ height.
+    #[returns(CzHeaderResponse)]
+    CzHeader { height: u64 },
 }

@@ -37,3 +37,4 @@ ics23            = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-vm      = { workspace = true }
+pbjson-types     = { workspace = true }

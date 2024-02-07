@@ -5,7 +5,8 @@ use cosmwasm_std::{
 };
 
 use crate::msg::bindings::BabylonMsg;
-use crate::msg::contract::{AccountResponse, ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::queries;
 use crate::state::btc_light_client::handle_btc_headers_from_user;
 use crate::state::config::{Config, CONFIG};
 
@@ -34,21 +35,23 @@ pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> StdResult<Response> {
     Ok(Response::default())
 }
 
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<QueryResponse> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
     match msg {
-        QueryMsg::Account { channel_id } => to_json_binary(&query::account(deps, channel_id)?),
-    }
-}
-
-mod query {
-    use super::*;
-
-    pub fn account(_deps: Deps, _channel_id: String) -> StdResult<AccountResponse> {
-        let resp = AccountResponse {
-            account: Some("TODO: replace me".to_owned()),
-        };
-
-        Ok(resp)
+        QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
+        QueryMsg::BtcBaseHeader {} => Ok(to_json_binary(&queries::btc_base_header(deps)?)?),
+        QueryMsg::BtcTipHeader {} => Ok(to_json_binary(&queries::btc_tip_header(deps)?)?),
+        QueryMsg::BtcHeader { hash } => Ok(to_json_binary(&queries::btc_header(deps, hash)?)?),
+        QueryMsg::BabylonBaseEpoch {} => Ok(to_json_binary(&queries::babylon_base_epoch(deps)?)?),
+        QueryMsg::BabylonLastEpoch {} => Ok(to_json_binary(&queries::babylon_last_epoch(deps)?)?),
+        QueryMsg::BabylonEpoch { epoch_number } => Ok(to_json_binary(&queries::babylon_epoch(
+            deps,
+            epoch_number,
+        )?)?),
+        QueryMsg::BabylonCheckpoint { epoch_number } => Ok(to_json_binary(
+            &queries::babylon_checkpoint(deps, epoch_number)?,
+        )?),
+        QueryMsg::CzLastHeader {} => Ok(to_json_binary(&queries::cz_last_header(deps)?)?),
+        QueryMsg::CzHeader { height } => Ok(to_json_binary(&queries::cz_header(deps, height)?)?),
     }
 }
 

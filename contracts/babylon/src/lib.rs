@@ -12,6 +12,7 @@ pub mod contract;
 pub mod error;
 pub mod ibc;
 pub mod msg;
+mod queries;
 pub mod state;
 mod utils;
 
@@ -31,7 +32,7 @@ pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> StdResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: msg::contract::QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: msg::contract::QueryMsg) -> Result<Binary, ContractError> {
     contract::query(deps, env, msg)
 }
 

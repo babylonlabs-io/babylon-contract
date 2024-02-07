@@ -1,5 +1,7 @@
 use babylon_bitcoin::Uint256;
 use cosmwasm_std::StdError;
+use prost::DecodeError;
+use std::str::Utf8Error;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -8,6 +10,12 @@ pub enum ContractError {
     StdError(#[from] StdError),
     #[error("{0}")]
     BtcError(#[from] BTCLightclientError),
+    #[error("{0}")]
+    BabylonEpochError(#[from] BabylonEpochChainError),
+    #[error("{0}")]
+    CzHeaderError(#[from] CZHeaderChainError),
+    #[error("{0}")]
+    HashError(#[from] babylon_bitcoin::HexError),
     #[error("The contract only supports ordered channels")]
     IbcUnorderedChannel {},
     #[error("Counterparty version must be `{version}`")]
@@ -43,11 +51,15 @@ pub enum BTCLightclientError {
     #[error("The given headers during initialization cannot be verified")]
     InitError {},
     #[error("The bytes cannot be decoded")]
-    DecodeError(#[from] prost::DecodeError),
+    DecodeError(#[from] DecodeError),
     #[error("{0}")]
     HashError(#[from] babylon_bitcoin::HexError),
+    #[error("The bytes cannot be decoded as string")]
+    DecodeUtf8Error(#[from] Utf8Error),
     #[error("The BTC header cannot be decoded")]
     BTCHeaderDecodeError {},
+    #[error("The BTC header cannot be encoded")]
+    BTCHeaderEncodeError {},
     #[error("The BTC header is not being sent")]
     BTCHeaderEmpty {},
     #[error("The BTC header does not satisfy the difficulty requirement or is not consecutive")]

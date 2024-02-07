@@ -31,7 +31,7 @@ pub fn is_initialized(storage: &mut dyn Storage) -> bool {
 }
 
 // getter/setter for base epoch
-pub fn get_base_epoch(storage: &mut dyn Storage) -> Result<Epoch, BabylonEpochChainError> {
+pub fn get_base_epoch(storage: &dyn Storage) -> Result<Epoch, BabylonEpochChainError> {
     // NOTE: if init is successful, then base epoch is guaranteed to be in storage and decodable
     let base_epoch_bytes = BABYLON_EPOCH_BASE.load(storage)?;
 
@@ -44,9 +44,7 @@ fn set_base_epoch(storage: &mut dyn Storage, base_epoch: &Epoch) -> StdResult<()
 }
 
 // getter/setter for last finalised epoch
-pub fn get_last_finalized_epoch(
-    storage: &mut dyn Storage,
-) -> Result<Epoch, BabylonEpochChainError> {
+pub fn get_last_finalized_epoch(storage: &dyn Storage) -> Result<Epoch, BabylonEpochChainError> {
     let last_finalized_epoch_bytes = BABYLON_EPOCH_EPOCH_LAST_FINALIZED
         .load(storage)
         .map_err(|_| BabylonEpochChainError::NoFinalizedEpoch {})?;
@@ -64,7 +62,7 @@ fn set_last_finalized_epoch(
 
 /// get_epoch retrieves the metadata of a given epoch
 pub fn get_epoch(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     epoch_number: u64,
 ) -> Result<Epoch, BabylonEpochChainError> {
     // try to find the epoch metadata of the given epoch
@@ -80,7 +78,7 @@ pub fn get_epoch(
 
 /// get_checkpoint retrieves the checkpoint of a given epoch
 pub fn get_checkpoint(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     epoch_number: u64,
 ) -> Result<RawCheckpoint, BabylonEpochChainError> {
     // try to find the checkpoint of the given epoch

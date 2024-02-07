@@ -231,13 +231,13 @@ pub fn handle_btc_headers_from_babylon(
     Ok(())
 }
 
-/// handle_btc_headers_from_user verifies and inserts a number of
-/// finalised BTC headers to the header chain storage, and update
-/// the chain tip.
+/// handle_btc_headers_from_user verifies and inserts a number of finalised BTC headers to the
+/// header chain storage, and updates the chain's tip.
 ///
 /// This can be used as an alternative to `handle_btc_headers_from_babylon`, for cases in which
-/// Babylon itself is unavailable / unresponsive, and the user wants to submit BTC headers directly,
-/// such that the Babylon contract maintains the same canonical BTC header chain as Babylon.
+/// Babylon itself is unavailable / unresponsive.
+/// The user wants to submit BTC headers directly, such that the Babylon contract maintains the same
+/// canonical BTC header chain as Babylon.
 pub fn handle_btc_headers_from_user(
     storage: &mut dyn Storage,
     new_btc_headers: &[BtcHeader],
@@ -334,7 +334,7 @@ mod tests {
     fn ensure_btc_headers(storage: &dyn Storage, headers: &[BtcHeader]) {
         // Existence / inclusion check only, as we don't have the height and cumulative work info
         for header_expected in headers {
-            let block_header_expected: BlockHeader = header_expected.into();
+            let block_header_expected: BlockHeader = header_expected.try_into().unwrap();
             get_header(storage, block_header_expected.block_hash().as_ref()).unwrap();
         }
     }
@@ -642,7 +642,8 @@ mod tests {
         let base_actual = get_base_header(&storage).unwrap();
         assert_eq!(*base_expected, base_actual);
         // ensure the tip btc header is set and is correct
-        let tip_btc_expected: BlockHeader = test_fork_msg_headers.last().unwrap().into();
+        let tip_btc_expected: BlockHeader =
+            test_fork_msg_headers.last().unwrap().try_into().unwrap();
         let tip_btc_actual: BlockHeader =
             babylon_bitcoin::deserialize(get_tip(&storage).unwrap().header.as_ref()).unwrap();
         assert_eq!(tip_btc_expected, tip_btc_actual);
