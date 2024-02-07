@@ -9,13 +9,12 @@ orbs:
 jobs:
   local-build-test:
     docker:
-      - image: circleci/rust:latest
+      - image: cimg/rust:1.75.0
     steps:
       - checkout
       - run:
           name: Set up Rust environment
           command: |
-            rustup default nightly
             rustup component add rustfmt clippy
       - run:
           name: Build Babylon contract
@@ -32,22 +31,18 @@ jobs:
 
   wasm-build-check-integration:
     docker:
-      - image: circleci/rust:latest
+      - image: cimg/rust:1.75.0
     steps:
       - checkout
       - setup_remote_docker
-      - run:
-          name: Set Rust nightly as default toolchain
-          command: |
-            rustup default nightly
       - run:
           name: Build optimised Wasm binary
           command: |
             ./scripts/build-optimizer-ci.sh
       - run:
           name: Install cosmwasm-check
-          command: |
-            cargo install cosmwasm-check
+          # Uses --debug for compilation speed
+          command: cargo install --locked --debug cosmwasm-check
       - run:
           name: Check the Wasm binary's validity against Wasm VM
           command: |
@@ -79,7 +74,7 @@ jobs:
   # This job roughly follows the instructions from https://circleci.com/blog/publishing-to-github-releases-via-circleci/
   build_and_upload_contracts:
     docker:
-      - image: circleci/rust:latest
+      - image: cimg/rust:1.75.0
     working_directory: /home/circleci/project
     steps:
       - checkout:
@@ -91,10 +86,6 @@ jobs:
       - run:
           name: Install ghr
           command: wget https://github.com/tcnksm/ghr/releases/download/v0.14.0/ghr_v0.14.0_linux_amd64.tar.gz -O - | tar -zxvf - -C /tmp/bin --wildcards --strip-components 1 */ghr
-      - run:
-          name: Set Rust nightly as default toolchain
-          command: |
-            rustup default nightly
       - run:
           name: Build optimised Wasm binary
           command: |
@@ -124,7 +115,7 @@ jobs:
 
   build_and_upload_schemas:
     docker:
-      - image: rust:1.67.0
+      - image: cimg/rust:1.75.0
     working_directory: /home/circleci/project
     steps:
       - checkout:

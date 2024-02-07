@@ -8,6 +8,8 @@ edition.workspace = true
 
 [dependencies]
 bitcoin   = { workspace = true }
-hex       = { workspace = true }
 serde     = { workspace = true }
 schemars  = { workspace = true }
+
+[dev-dependencies]
+hex       = { workspace = true }
