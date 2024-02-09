@@ -64,8 +64,10 @@ pub enum BTCLightclientError {
     BTCHeaderEmpty {},
     #[error("The BTC header does not satisfy the difficulty requirement or is not consecutive")]
     BTCHeaderError {},
-    #[error("The BTC header with hash {hash} is not found in the storage")]
-    BTCHeaderNotFoundError { hash: String },
+    #[error("The BTC header with height {height} is not found in the storage")]
+    BTCHeaderNotFoundError { height: u64 },
+    #[error("The BTC height with hash {hash} is not found in the storage")]
+    BTCHeightNotFoundError { hash: String },
     #[error("The BTC header info cumulative work encoding is wrong")]
     BTCWrongCumulativeWorkEncoding {},
     #[error("The BTC header info {0} cumulative work is wrong. Expected {1}, got {2}")]

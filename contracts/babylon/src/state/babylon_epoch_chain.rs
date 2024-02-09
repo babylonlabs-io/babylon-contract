@@ -1,9 +1,9 @@
 //! babylon_epoch_chain is the storage for the chain of **finalised** Babylon epochs.
 //! It maintains a chain of finalised Babylon epochs.
-//! NOTE: the Babylon epoch chain is always finalised, i.e., w-deep on BTC.
+//! NOTE: the Babylon epoch chain is always finalised, i.e. w-deep on BTC.
 use babylon_bitcoin::BlockHeader;
-use hex::ToHex;
 use prost::Message;
+use std::cmp::min;
 
 use cosmwasm_std::{StdError, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
@@ -14,6 +14,7 @@ use babylon_proto::babylon::epoching::v1::Epoch;
 use babylon_proto::babylon::zoneconcierge::v1::{BtcTimestamp, ProofEpochSealed};
 
 use crate::error::BabylonEpochChainError;
+use crate::state::btc_light_client::get_header_by_hash;
 use crate::state::config::CONFIG;
 use crate::utils::babylon_epoch_chain::{
     verify_checkpoint_submitted, verify_epoch_sealed, NUM_BTC_TXS,
@@ -127,10 +128,7 @@ fn verify_epoch_and_checkpoint(
                 .clone()
                 .ok_or(BabylonEpochChainError::EmptyTxKey {})?;
             let btc_header_hash = &tx_key.hash;
-            let btc_header_info = super::btc_light_client::get_header(storage, btc_header_hash)
-                .map_err(|_| BabylonEpochChainError::BTCHeaderNotFoundError {
-                    hash: hex::encode(btc_header_hash),
-                })?;
+            let btc_header_info = get_header_by_hash(storage, btc_header_hash.as_ref())?;
             let btc_header: BlockHeader = babylon_bitcoin::deserialize(&btc_header_info.header)
                 .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;
             Ok(btc_header)
@@ -145,16 +143,9 @@ fn verify_epoch_and_checkpoint(
     // ensure the given btc headers are in BTC light clients
     for btc_header in btc_headers.iter() {
         let hash = btc_header.block_hash();
-        let header = super::btc_light_client::get_header(storage, &hash).map_err(|_| {
-            BabylonEpochChainError::BTCHeaderNotFoundError {
-                hash: hash.encode_hex(),
-            }
-        })?;
+        let header = get_header_by_hash(storage, hash.as_ref())?;
         // refresh min_height
-        let header_height = header.height;
-        if min_height > header_height {
-            min_height = header_height;
-        }
+        min_height = min(min_height, header.height);
     }
 
     // ensure at least 1 given btc headers are finalised, i.e., w-deep

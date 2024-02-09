@@ -70,10 +70,13 @@ pub enum QueryMsg {
     /// BtcTipHeader returns the tip BTC header stored in the contract
     #[returns(BtcHeader)]
     BtcTipHeader {},
-    /// BtcHeader returns the BTC header information stored in the contract, by BTC hash.
+    /// BtcHeader returns the BTC header information stored in the contract, by BTC height.
+    #[returns(BtcHeader)]
+    BtcHeader { height: u64 },
+    /// BtcHeaderByHash returns the BTC header information stored in the contract, by BTC hash.
     /// Hash is the (byte-reversed) hex-encoded hash of the BTC header
     #[returns(BtcHeader)]
-    BtcHeader { hash: String },
+    BtcHeaderByHash { hash: String },
     /// BabylonBaseEpoch returns the base Babylon epoch stored in the contract
     #[returns(EpochResponse)]
     BabylonBaseEpoch {},

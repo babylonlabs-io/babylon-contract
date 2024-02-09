@@ -13,7 +13,7 @@ use crate::msg::btc_header::BtcHeader;
 use crate::state::config::CONFIG;
 use crate::utils::btc_light_client::{total_work, verify_headers};
 
-pub const BTC_HEADERS: Map<&[u8], Vec<u8>> = Map::new("btc_lc_headers");
+pub const BTC_HEADERS: Map<u64, Vec<u8>> = Map::new("btc_lc_headers");
 pub const BTC_HEADER_BASE: Item<Vec<u8>> = Item::new("btc_lc_header_base");
 pub const BTC_HEIGHTS: Map<&[u8], u64> = Map::new("btc_lc_heights");
 pub const BTC_TIP: Item<Vec<u8>> = Item::new("btc_lc_tip");
@@ -50,24 +50,23 @@ fn set_tip(storage: &mut dyn Storage, tip: &BtcHeaderInfo) -> StdResult<()> {
     BTC_TIP.save(storage, tip_bytes)
 }
 
-// insert_headers inserts BTC headers that have passed the
-// verification to the header chain storages, including
+// insert_headers inserts BTC headers that have passed the verification to the header chain
+// storages, including
 // - insert all headers
 // - insert all hash-to-height indices
 fn insert_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) -> StdResult<()> {
-    // Add all the headers by hash
+    // Add all the headers by height
     for new_header in new_headers.iter() {
         // insert header
         let hash_bytes: &[u8] = new_header.hash.as_ref();
         let header_bytes = new_header.encode_to_vec();
-        BTC_HEADERS.save(storage, hash_bytes, &header_bytes)?;
+        BTC_HEADERS.save(storage, new_header.height, &header_bytes)?;
         BTC_HEIGHTS.save(storage, hash_bytes, &new_header.height)?;
     }
     Ok(())
 }
 
 // remove_headers removes BTC headers from the header chain storages, including
-// - remove all headers from a fork, starting from the fork's tip
 // - remove all hash-to-height indices
 fn remove_headers(
     storage: &mut dyn Storage,
@@ -78,33 +77,47 @@ fn remove_headers(
     let mut rem_header = tip_header.clone();
     while rem_header.hash != parent_header.hash {
         // Remove header from storage
-        BTC_HEADERS.remove(storage, &rem_header.hash);
-        BTC_HEIGHTS.remove(storage, &rem_header.hash);
-        // Decode BTC header to get prev header hash
-        let rem_btc_header: BlockHeader = babylon_bitcoin::deserialize(rem_header.header.as_ref())
-            .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
-        rem_header = get_header(storage, rem_btc_header.prev_blockhash.as_ref())?;
+        BTC_HEIGHTS.remove(storage, rem_header.hash.as_ref());
+        // Obtain the previous header
+        rem_header = get_header(storage, rem_header.height - 1)?;
     }
     Ok(())
 }
 
-// get_header retrieves the BTC header of a given hash
+// get_header retrieves the BTC header of a given height
 pub fn get_header(
     storage: &dyn Storage,
-    hash: &[u8],
+    height: u64,
 ) -> Result<BtcHeaderInfo, BTCLightclientError> {
     // Try to find the header with the given hash
-    let header_bytes = BTC_HEADERS.load(storage, hash).map_err(|_| {
-        BTCLightclientError::BTCHeaderNotFoundError {
-            hash: hex::encode(hash),
-        }
-    })?;
+    let header_bytes = BTC_HEADERS
+        .load(storage, height)
+        .map_err(|_| BTCLightclientError::BTCHeaderNotFoundError { height })?;
 
     // Try to decode the header
     let header = BtcHeaderInfo::decode(header_bytes.as_slice())
         .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
 
     Ok(header)
+}
+
+// get_header_by_hash retrieves the BTC header of a given hash
+pub fn get_header_by_hash(
+    storage: &dyn Storage,
+    hash: &[u8],
+) -> Result<BtcHeaderInfo, BTCLightclientError> {
+    let height = get_header_height(storage, hash)?;
+    get_header(storage, height)
+}
+
+// get_header height retrieves the BTC header height of a given BTC hash
+pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u64, BTCLightclientError> {
+    let height = BTC_HEIGHTS.load(storage, hash).map_err(|_| {
+        BTCLightclientError::BTCHeightNotFoundError {
+            hash: hex::encode(hash),
+        }
+    })?;
+    Ok(height)
 }
 
 /// init initialises the BTC header chain storage
@@ -201,7 +214,7 @@ pub fn handle_btc_headers_from_babylon(
     } else {
         // Here we received a potential new fork
         let parent_hash = first_new_btc_header.prev_blockhash.as_ref();
-        let fork_parent = get_header(storage, parent_hash)?;
+        let fork_parent = get_header_by_hash(storage, parent_hash)?;
 
         // Verify each new header after `fork_parent` iteratively
         verify_headers(&btc_network, &fork_parent, new_headers)?;
@@ -219,14 +232,14 @@ pub fn handle_btc_headers_from_babylon(
             ));
         }
 
+        // Remove all headers from the old fork first
+        remove_headers(storage, &cur_tip, &fork_parent)?;
+
         // All good, add all the headers to the BTC light client store
         insert_headers(storage, new_headers)?;
 
         // Update tip
         set_tip(storage, new_tip)?;
-
-        // Remove all headers from the old fork
-        remove_headers(storage, &cur_tip, &fork_parent)?;
     }
     Ok(())
 }
@@ -250,7 +263,7 @@ pub fn handle_btc_headers_from_user(
     let prev_blockhash = BlockHash::from_str(&first_new_btc_header.prev_blockhash)?;
 
     // Obtain previous header from storage
-    let previous_header = get_header(storage, &prev_blockhash)?;
+    let previous_header = get_header_by_hash(storage, &prev_blockhash)?;
 
     // Convert new_headers to `BtcHeaderInfo`s
     let mut cur_height = previous_header.height;
@@ -274,6 +287,7 @@ pub fn handle_btc_headers_from_user(
 mod tests {
     use super::*;
     use crate::msg::contract::ExecuteMsg;
+    use crate::state::config::Config;
     use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
     use cosmwasm_std::from_json;
     use cosmwasm_std::testing::mock_dependencies;
@@ -286,7 +300,7 @@ mod tests {
     fn setup(storage: &mut dyn Storage) -> usize {
         // set config first
         let w: usize = 2;
-        let cfg = super::super::config::Config {
+        let cfg = Config {
             network: babylon_bitcoin::chain_params::Network::Regtest,
             babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
             btc_confirmation_depth: 1,
@@ -320,13 +334,10 @@ mod tests {
     #[track_caller]
     fn ensure_headers(storage: &dyn Storage, headers: &[BtcHeaderInfo]) {
         for header_expected in headers {
-            let init_header_actual = get_header(storage, header_expected.hash.as_ref()).unwrap();
-            assert_eq!(*header_expected, init_header_actual);
-
-            let actual_height = BTC_HEIGHTS
-                .load(storage, header_expected.hash.as_ref())
-                .unwrap();
+            let actual_height = get_header_height(storage, header_expected.hash.as_ref()).unwrap();
             assert_eq!(header_expected.height, actual_height);
+            let header_actual = get_header(storage, header_expected.height).unwrap();
+            assert_eq!(*header_expected, header_actual);
         }
     }
 
@@ -335,7 +346,7 @@ mod tests {
         // Existence / inclusion check only, as we don't have the height and cumulative work info
         for header_expected in headers {
             let block_header_expected: BlockHeader = header_expected.try_into().unwrap();
-            get_header(storage, block_header_expected.block_hash().as_ref()).unwrap();
+            get_header_by_hash(storage, block_header_expected.block_hash().as_ref()).unwrap();
         }
     }
 
@@ -424,12 +435,9 @@ mod tests {
         // ensure all forked headers are correctly inserted
         ensure_headers(&storage, &test_fork_headers);
 
-        // check that the original forked headers have been removed
+        // check that the original forked headers have been removed from the hash-to-height map
         for header_expected in test_headers[FORK_HEADER_HEIGHT as usize..].iter() {
-            assert!(get_header(&storage, header_expected.hash.as_ref()).is_err());
-            assert!(BTC_HEIGHTS
-                .load(&storage, header_expected.hash.as_ref())
-                .is_err());
+            assert!(get_header_height(&storage, header_expected.hash.as_ref()).is_err());
         }
     }
 
@@ -654,12 +662,9 @@ mod tests {
         // ensure all forked btc headers are correctly inserted
         ensure_btc_headers(&storage, &test_fork_msg_headers);
 
-        // check that the original forked headers have been removed
+        // check that the original forked headers have been removed from the hash-to-height map
         for header_expected in test_headers[FORK_HEADER_HEIGHT as usize..].iter() {
-            assert!(get_header(&storage, header_expected.hash.as_ref()).is_err());
-            assert!(BTC_HEIGHTS
-                .load(&storage, header_expected.hash.as_ref())
-                .is_err());
+            assert!(get_header_height(&storage, header_expected.hash.as_ref()).is_err());
         }
     }
     // TODO: more tests on different scenarios, e.g., random number of headers and conflicted headers

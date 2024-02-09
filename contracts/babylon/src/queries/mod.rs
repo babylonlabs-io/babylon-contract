@@ -5,7 +5,7 @@ use crate::msg::epoch::{CheckpointResponse, EpochResponse};
 use crate::state::babylon_epoch_chain::{
     get_base_epoch, get_checkpoint, get_epoch, get_last_finalized_epoch,
 };
-use crate::state::btc_light_client::{get_base_header, get_header, get_tip};
+use crate::state::btc_light_client::{get_base_header, get_header, get_header_by_hash, get_tip};
 use crate::state::config::{Config, CONFIG};
 use crate::state::cz_header_chain::{get_cz_header, get_last_cz_header};
 use babylon_bitcoin::BlockHash;
@@ -26,9 +26,17 @@ pub fn btc_tip_header(_deps: Deps) -> Result<BtcHeaderResponse, BTCLightclientEr
     BtcHeaderResponse::try_from(&btc_header_info)
 }
 
-pub fn btc_header(deps: Deps, hash: String) -> Result<BtcHeaderResponse, BTCLightclientError> {
-    let hash = BlockHash::from_str(&hash)?;
-    let btc_header_info = get_header(deps.storage, hash.as_ref())?;
+pub fn btc_header(deps: Deps, height: u64) -> Result<BtcHeaderResponse, BTCLightclientError> {
+    let btc_header_info = get_header(deps.storage, height)?;
+    BtcHeaderResponse::try_from(&btc_header_info)
+}
+
+pub fn btc_header_by_hash(
+    deps: Deps,
+    hash: &str,
+) -> Result<BtcHeaderResponse, BTCLightclientError> {
+    let hash = BlockHash::from_str(hash)?;
+    let btc_header_info = get_header_by_hash(deps.storage, hash.as_ref())?;
     BtcHeaderResponse::try_from(&btc_header_info)
 }
 
