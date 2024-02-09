@@ -2,7 +2,29 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.2.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.3.0...HEAD)
+
+## [v0.3.0](https://github.com/babylonchain/babylon-contract/tree/v0.3.0) (2024-02-09)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.2.0...v0.3.0)
+
+**Closed issues:**
+
+- Get rid of Makefile [\#48](https://github.com/babylonchain/babylon-contract/issues/48)
+
+**Merged pull requests:**
+
+- Add queries [\#55](https://github.com/babylonchain/babylon-contract/pull/55) ([maurolacy](https://github.com/maurolacy))
+- Update CI rust image to a more recent version \(1.75.0\) [\#54](https://github.com/babylonchain/babylon-contract/pull/54) ([maurolacy](https://github.com/maurolacy))
+- Remove Makefile [\#53](https://github.com/babylonchain/babylon-contract/pull/53) ([maurolacy](https://github.com/maurolacy))
+- BtcHeaders message handler [\#52](https://github.com/babylonchain/babylon-contract/pull/52) ([maurolacy](https://github.com/maurolacy))
+- Fork choice tests [\#51](https://github.com/babylonchain/babylon-contract/pull/51) ([maurolacy](https://github.com/maurolacy))
+- Fork choice rule impl [\#50](https://github.com/babylonchain/babylon-contract/pull/50) ([maurolacy](https://github.com/maurolacy))
+- Point to public repo [\#47](https://github.com/babylonchain/babylon-contract/pull/47) ([maurolacy](https://github.com/maurolacy))
+- Update cosmwasm [\#46](https://github.com/babylonchain/babylon-contract/pull/46) ([maurolacy](https://github.com/maurolacy))
+- Upgrade comswasm to v1.5.1 [\#44](https://github.com/babylonchain/babylon-contract/pull/44) ([maurolacy](https://github.com/maurolacy))
+- chore: bump Babylon with ABCI++ [\#41](https://github.com/babylonchain/babylon-contract/pull/41) ([SebastianElvis](https://github.com/SebastianElvis))
+- Babylon tag format [\#40](https://github.com/babylonchain/babylon-contract/pull/40) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.2.0](https://github.com/babylonchain/babylon-contract/tree/v0.2.0) (2023-12-22)
 
