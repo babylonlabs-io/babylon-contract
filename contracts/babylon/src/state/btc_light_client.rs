@@ -1,10 +1,11 @@
 //! btc_light_client is the storage for the BTC header chain
-use babylon_bitcoin::{BlockHash, BlockHeader};
+use babylon_bitcoin::{BlockHash, BlockHeader, Uint256};
 use prost::Message;
 use std::str::FromStr;
 
+use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{StdResult, Storage};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Bound, Item, Map};
 
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
@@ -120,6 +121,35 @@ pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u64, BTCL
     Ok(height)
 }
 
+// Settings for pagination
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
+
+// get_headers retrieves the BTC headers after a given height, up to limit headers
+pub fn get_headers(
+    storage: &dyn Storage,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    reverse: Option<bool>,
+) -> Result<Vec<BtcHeaderInfo>, BTCLightclientError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start_after = start_after.map(Bound::exclusive);
+    let (start, end, order) = if reverse.unwrap_or(false) {
+        (None, start_after, Descending)
+    } else {
+        (start_after, None, Ascending)
+    };
+
+    BTC_HEADERS
+        .range_raw(storage, start, end, order)
+        .take(limit)
+        .map(|item| {
+            let (_, v) = item?;
+            Ok(BtcHeaderInfo::decode(&*v)?)
+        })
+        .collect()
+}
+
 /// init initialises the BTC header chain storage
 /// It takes BTC headers between
 /// - the BTC tip upon the last finalised epoch
@@ -166,6 +196,28 @@ pub fn init(
         headers.last().ok_or(BTCLightclientError::InitError {})?,
     )?;
     Ok(())
+}
+
+/// `init_from_user` initialises the BTC header chain storage.
+/// Alternative to `init`, in which a user sends the initial batch of headers, instead of Babylon.
+///
+/// Starts from zero work and heights. Mostly useful for integration tests.
+pub fn init_from_user(
+    storage: &mut dyn Storage,
+    headers: &[BtcHeader],
+) -> Result<(), BTCLightclientError> {
+    let mut prev_height = 0;
+    let mut prev_work = Uint256::from_u64(0).unwrap();
+    let headers = headers
+        .iter()
+        .map(|header| {
+            let btc_header = header.to_btc_header_info(prev_height, prev_work)?;
+            prev_height = btc_header.height;
+            prev_work = total_work(&btc_header)?;
+            Ok(btc_header)
+        })
+        .collect::<Result<Vec<BtcHeaderInfo>, BTCLightclientError>>()?;
+    init(storage, &headers)
 }
 
 /// handle_btc_headers_from_babylon verifies and inserts a number of
@@ -284,7 +336,7 @@ pub fn handle_btc_headers_from_user(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::msg::contract::ExecuteMsg;
     use crate::state::config::Config;
@@ -297,7 +349,7 @@ mod tests {
     const TESTDATA_FORK: &str = "../../testdata/btc_light_client_fork.dat";
     const TESTDATA_FORK_MSG: &str = "../../testdata/btc_light_client_fork_msg.json";
 
-    fn setup(storage: &mut dyn Storage) -> usize {
+    pub(crate) fn setup(storage: &mut dyn Storage) -> usize {
         // set config first
         let w: usize = 2;
         let cfg = Config {
@@ -311,7 +363,7 @@ mod tests {
         w
     }
 
-    fn get_main_test_headers() -> Vec<BtcHeaderInfo> {
+    pub(crate) fn get_main_test_headers() -> Vec<BtcHeaderInfo> {
         let testdata: &[u8] = &fs::read(TESTDATA_MAIN).unwrap();
         let resp = QueryMainChainResponse::decode(testdata).unwrap();
         resp.headers
@@ -667,5 +719,4 @@ mod tests {
             assert!(get_header_height(&storage, header_expected.hash.as_ref()).is_err());
         }
     }
-    // TODO: more tests on different scenarios, e.g., random number of headers and conflicted headers
 }

@@ -7,7 +7,7 @@ use cosmwasm_std::{
 use crate::msg::bindings::BabylonMsg;
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::state::btc_light_client::handle_btc_headers_from_user;
+use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
 
 pub fn instantiate(
@@ -44,6 +44,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::BtcHeaderByHash { hash } => {
             Ok(to_json_binary(&queries::btc_header_by_hash(deps, &hash)?)?)
         }
+        QueryMsg::BtcHeaders {
+            start_after,
+            limit,
+            reverse,
+        } => Ok(to_json_binary(&queries::btc_headers(
+            deps,
+            start_after,
+            limit,
+            reverse,
+        )?)?),
         QueryMsg::BabylonBaseEpoch {} => Ok(to_json_binary(&queries::babylon_base_epoch(deps)?)?),
         QueryMsg::BabylonLastEpoch {} => Ok(to_json_binary(&queries::babylon_last_epoch(deps)?)?),
         QueryMsg::BabylonEpoch { epoch_number } => Ok(to_json_binary(&queries::babylon_epoch(
@@ -70,8 +80,14 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        ExecuteMsg::BtcHeaders { headers } => {
-            handle_btc_headers_from_user(deps.storage, &headers)?;
+        ExecuteMsg::BtcHeaders {
+            headers: btc_headers,
+        } => {
+            if btc_light_client::is_initialized(deps.storage) {
+                btc_light_client::handle_btc_headers_from_user(deps.storage, &btc_headers)?;
+            } else {
+                btc_light_client::init_from_user(deps.storage, &btc_headers)?;
+            }
             // TODO: Add events
             Ok(Response::new())
         }

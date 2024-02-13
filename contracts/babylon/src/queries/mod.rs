@@ -1,11 +1,13 @@
 use crate::error::{BTCLightclientError, BabylonEpochChainError, CZHeaderChainError};
-use crate::msg::btc_header::BtcHeaderResponse;
+use crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse};
 use crate::msg::cz_header::CzHeaderResponse;
 use crate::msg::epoch::{CheckpointResponse, EpochResponse};
 use crate::state::babylon_epoch_chain::{
     get_base_epoch, get_checkpoint, get_epoch, get_last_finalized_epoch,
 };
-use crate::state::btc_light_client::{get_base_header, get_header, get_header_by_hash, get_tip};
+use crate::state::btc_light_client::{
+    get_base_header, get_header, get_header_by_hash, get_headers, get_tip,
+};
 use crate::state::config::{Config, CONFIG};
 use crate::state::cz_header_chain::{get_cz_header, get_last_cz_header};
 use babylon_bitcoin::BlockHash;
@@ -40,6 +42,22 @@ pub fn btc_header_by_hash(
     BtcHeaderResponse::try_from(&btc_header_info)
 }
 
+pub fn btc_headers(
+    deps: Deps,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    reverse: Option<bool>,
+) -> Result<BtcHeadersResponse, BTCLightclientError> {
+    let headers = get_headers(deps.storage, start_after, limit, reverse)?;
+
+    Ok(BtcHeadersResponse {
+        headers: headers
+            .iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?,
+    })
+}
+
 pub fn babylon_base_epoch(deps: Deps) -> Result<EpochResponse, BabylonEpochChainError> {
     let epoch = get_base_epoch(deps.storage)?;
     Ok(EpochResponse::from(&epoch))
@@ -68,10 +86,149 @@ pub fn babylon_checkpoint(
 
 pub fn cz_last_header(deps: Deps) -> Result<CzHeaderResponse, CZHeaderChainError> {
     let header = get_last_cz_header(deps.storage)?;
-    CzHeaderResponse::try_from(&header)
+    Ok(CzHeaderResponse::from(&header))
 }
 
 pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZHeaderChainError> {
     let header = get_cz_header(deps.storage, height)?;
-    CzHeaderResponse::try_from(&header)
+    Ok(CzHeaderResponse::from(&header))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::btc_light_client::{init, tests::setup};
+    use cosmwasm_std::testing::mock_dependencies;
+
+    #[test]
+    fn btc_headers_work() {
+        let mut deps = mock_dependencies();
+        setup(deps.as_mut().storage);
+
+        let test_headers = crate::state::btc_light_client::tests::get_main_test_headers();
+
+        init(deps.as_mut().storage, &test_headers).unwrap();
+
+        // get headers
+        let headers = btc_headers(deps.as_ref(), None, None, None)
+            .unwrap()
+            .headers;
+        assert_eq!(headers.len(), 10); // default limit
+
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(header, &TryFrom::try_from(&test_headers[i]).unwrap());
+        }
+
+        // get next 5 headers
+        let headers = btc_headers(
+            deps.as_ref(),
+            Some(headers.last().unwrap().height),
+            Some(5),
+            None,
+        )
+        .unwrap()
+        .headers;
+        assert_eq!(headers.len(), 5);
+
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(header, &TryFrom::try_from(&test_headers[i + 10]).unwrap());
+        }
+
+        // get next 30 headers
+        let headers = btc_headers(
+            deps.as_ref(),
+            Some(headers.last().unwrap().height),
+            Some(100),
+            None,
+        )
+        .unwrap()
+        .headers;
+        assert_eq!(headers.len(), 30); // max limit
+
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(header, &TryFrom::try_from(&test_headers[i + 15]).unwrap());
+        }
+
+        // get the last headers
+        let headers = btc_headers(deps.as_ref(), Some(90), Some(30), None)
+            .unwrap()
+            .headers;
+
+        assert_eq!(headers.len(), 10); // no more headers than that
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(header, &TryFrom::try_from(&test_headers[i + 90]).unwrap());
+        }
+    }
+
+    #[test]
+    fn btc_headers_reverse_order_work() {
+        let mut deps = mock_dependencies();
+        crate::state::btc_light_client::tests::setup(deps.as_mut().storage);
+
+        let test_headers = crate::state::btc_light_client::tests::get_main_test_headers();
+
+        init(deps.as_mut().storage, &test_headers).unwrap();
+
+        // get headers in reverse order
+        let headers = btc_headers(deps.as_ref(), None, None, Some(true))
+            .unwrap()
+            .headers;
+        assert_eq!(headers.len(), 10); // default limit
+
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(
+                header,
+                &TryFrom::try_from(&test_headers[100 - i - 1]).unwrap()
+            );
+        }
+
+        // get previous 5 headers
+        let headers = btc_headers(
+            deps.as_ref(),
+            Some(headers.last().unwrap().height),
+            Some(5),
+            Some(true),
+        )
+        .unwrap()
+        .headers;
+        assert_eq!(headers.len(), 5);
+
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(
+                header,
+                &TryFrom::try_from(&test_headers[100 - 10 - i - 1]).unwrap()
+            );
+        }
+
+        // get previous 30 headers
+        let headers = btc_headers(
+            deps.as_ref(),
+            Some(headers.last().unwrap().height),
+            Some(100),
+            Some(true),
+        )
+        .unwrap()
+        .headers;
+        assert_eq!(headers.len(), 30); // max limit
+
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(
+                header,
+                &TryFrom::try_from(&test_headers[100 - 15 - i - 1]).unwrap()
+            );
+        }
+
+        // get the first ten headers
+        let headers = btc_headers(deps.as_ref(), Some(11), Some(30), Some(true))
+            .unwrap()
+            .headers;
+
+        assert_eq!(headers.len(), 10); // no more headers than that
+        for (i, header) in headers.iter().enumerate() {
+            assert_eq!(
+                header,
+                &TryFrom::try_from(&test_headers[100 - 90 - i - 1]).unwrap()
+            );
+        }
+    }
 }

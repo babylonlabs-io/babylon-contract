@@ -129,7 +129,7 @@ jobs:
       - run:
           name: Build and run schema generator
           command: |
-            (cd ./contract/babylon && cargo run --bin schema)
+            (cd ./contracts/babylon && cargo run --bin schema)
       - run:
           name: Show data
           command: ls -l ./contracts/babylon/schema

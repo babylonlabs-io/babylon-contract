@@ -3,20 +3,238 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "TODO: a boilerplate message. Replace with actual one.",
+      "description": "Config returns the current configuration of the babylon-contract",
       "type": "object",
       "required": [
-        "account"
+        "config"
       ],
       "properties": {
-        "account": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BtcBaseHeader returns the base BTC header stored in the contract",
+      "type": "object",
+      "required": [
+        "btc_base_header"
+      ],
+      "properties": {
+        "btc_base_header": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BtcTipHeader returns the tip BTC header stored in the contract",
+      "type": "object",
+      "required": [
+        "btc_tip_header"
+      ],
+      "properties": {
+        "btc_tip_header": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BtcHeader returns the BTC header information stored in the contract, by BTC height.",
+      "type": "object",
+      "required": [
+        "btc_header"
+      ],
+      "properties": {
+        "btc_header": {
           "type": "object",
           "required": [
-            "channel_id"
+            "height"
           ],
           "properties": {
-            "channel_id": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BtcHeaderByHash returns the BTC header information stored in the contract, by BTC hash.\n\n`hash` is the (byte-reversed) hex-encoded hash of the BTC header",
+      "type": "object",
+      "required": [
+        "btc_header_by_hash"
+      ],
+      "properties": {
+        "btc_header_by_hash": {
+          "type": "object",
+          "required": [
+            "hash"
+          ],
+          "properties": {
+            "hash": {
               "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BtcHeaders returns the canonical BTC chain stored in the contract.\n\n`start_after` is the height of the header to start after, or `None` to start from the base",
+      "type": "object",
+      "required": [
+        "btc_headers"
+      ],
+      "properties": {
+        "btc_headers": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "reverse": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BabylonBaseEpoch returns the base Babylon epoch stored in the contract",
+      "type": "object",
+      "required": [
+        "babylon_base_epoch"
+      ],
+      "properties": {
+        "babylon_base_epoch": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BabylonLastEpoch returns the last babylon finalized epoch stored in the contract",
+      "type": "object",
+      "required": [
+        "babylon_last_epoch"
+      ],
+      "properties": {
+        "babylon_last_epoch": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BabylonEpoch returns the Babylon epoch stored in the contract, by epoch number.",
+      "type": "object",
+      "required": [
+        "babylon_epoch"
+      ],
+      "properties": {
+        "babylon_epoch": {
+          "type": "object",
+          "required": [
+            "epoch_number"
+          ],
+          "properties": {
+            "epoch_number": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BabylonCheckpoint returns the Babylon checkpoint stored in the contract, by epoch number.",
+      "type": "object",
+      "required": [
+        "babylon_checkpoint"
+      ],
+      "properties": {
+        "babylon_checkpoint": {
+          "type": "object",
+          "required": [
+            "epoch_number"
+          ],
+          "properties": {
+            "epoch_number": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "CzLastHeader returns the last CZ epoch stored in the contract",
+      "type": "object",
+      "required": [
+        "cz_last_header"
+      ],
+      "properties": {
+        "cz_last_header": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "CzHeader returns the CZ header stored in the contract, by CZ height.",
+      "type": "object",
+      "required": [
+        "cz_header"
+      ],
+      "properties": {
+        "cz_header": {
+          "type": "object",
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false

@@ -1,4 +1,3 @@
-use crate::error::CZHeaderChainError;
 use babylon_proto::babylon::zoneconcierge::v1::IndexedHeader;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Timestamp;
@@ -39,12 +38,10 @@ pub struct CzHeaderResponse {
     pub babylon_tx_hash: String,
 }
 
-impl TryFrom<&IndexedHeader> for CzHeaderResponse {
-    type Error = CZHeaderChainError;
-
-    /// Convert from `&IndexedHeader` to `CzHeaderResponse`.
-    fn try_from(header: &IndexedHeader) -> Result<Self, Self::Error> {
-        Ok(CzHeaderResponse {
+/// Convert from `&IndexedHeader` to `CzHeaderResponse`.
+impl From<&IndexedHeader> for CzHeaderResponse {
+    fn from(header: &IndexedHeader) -> Self {
+        CzHeaderResponse {
             chain_id: header.chain_id.clone(),
             hash: hex::encode(&header.hash),
             height: header.height,
@@ -56,7 +53,14 @@ impl TryFrom<&IndexedHeader> for CzHeaderResponse {
             babylon_header_height: header.babylon_header_height,
             babylon_epoch: header.babylon_epoch,
             babylon_tx_hash: hex::encode(&header.babylon_tx_hash),
-        })
+        }
+    }
+}
+
+/// Convert from `IndexedHeader` to `CzHeaderResponse`.
+impl From<IndexedHeader> for CzHeaderResponse {
+    fn from(header: IndexedHeader) -> Self {
+        Self::from(&header)
     }
 }
 
@@ -80,7 +84,7 @@ mod tests {
             babylon_tx_hash: prost::bytes::Bytes::from("babylon_tx_hash"),
         };
 
-        let indexed_header_response = CzHeaderResponse::try_from(&indexed_header).unwrap();
+        let indexed_header_response = CzHeaderResponse::from(&indexed_header);
 
         assert_eq!(indexed_header_response.chain_id, "chain_id");
         assert_eq!(indexed_header_response.hash, hex::encode("hash"));

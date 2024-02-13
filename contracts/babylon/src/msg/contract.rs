@@ -1,9 +1,9 @@
-use crate::msg::epoch::EpochResponse;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{StdError, StdResult};
 
-use crate::msg::btc_header::BtcHeader;
+use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
 use crate::msg::cz_header::CzHeaderResponse;
+use crate::msg::epoch::EpochResponse;
 use crate::state::config::Config;
 
 const BABYLON_TAG_BYTES: usize = 4;
@@ -65,18 +65,28 @@ pub enum QueryMsg {
     #[returns(Config)]
     Config {},
     /// BtcBaseHeader returns the base BTC header stored in the contract
-    #[returns(BtcHeader)]
+    #[returns(BtcHeaderResponse)]
     BtcBaseHeader {},
     /// BtcTipHeader returns the tip BTC header stored in the contract
-    #[returns(BtcHeader)]
+    #[returns(BtcHeaderResponse)]
     BtcTipHeader {},
     /// BtcHeader returns the BTC header information stored in the contract, by BTC height.
-    #[returns(BtcHeader)]
+    #[returns(BtcHeaderResponse)]
     BtcHeader { height: u64 },
     /// BtcHeaderByHash returns the BTC header information stored in the contract, by BTC hash.
-    /// Hash is the (byte-reversed) hex-encoded hash of the BTC header
-    #[returns(BtcHeader)]
+    ///
+    /// `hash` is the (byte-reversed) hex-encoded hash of the BTC header
+    #[returns(BtcHeaderResponse)]
     BtcHeaderByHash { hash: String },
+    /// BtcHeaders returns the canonical BTC chain stored in the contract.
+    ///
+    /// `start_after` is the height of the header to start after, or `None` to start from the base
+    #[returns(BtcHeadersResponse)]
+    BtcHeaders {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        reverse: Option<bool>,
+    },
     /// BabylonBaseEpoch returns the base Babylon epoch stored in the contract
     #[returns(EpochResponse)]
     BabylonBaseEpoch {},
@@ -84,7 +94,7 @@ pub enum QueryMsg {
     #[returns(EpochResponse)]
     BabylonLastEpoch {},
     /// BabylonEpoch returns the Babylon epoch stored in the contract, by epoch number.
-    #[returns(BtcHeader)]
+    #[returns(EpochResponse)]
     BabylonEpoch { epoch_number: u64 },
     /// BabylonCheckpoint returns the Babylon checkpoint stored in the contract, by epoch number.
     #[returns(EpochResponse)]

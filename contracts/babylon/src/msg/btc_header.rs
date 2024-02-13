@@ -86,14 +86,14 @@ impl TryFrom<BtcHeaderInfo> for BtcHeader {
 impl TryFrom<&BtcHeader> for BlockHeader {
     type Error = BTCLightclientError;
 
-    fn try_from(val: &BtcHeader) -> Result<Self, Self::Error> {
+    fn try_from(header: &BtcHeader) -> Result<Self, Self::Error> {
         Ok(Self {
-            version: val.version,
-            prev_blockhash: BlockHash::from_str(&val.prev_blockhash)?,
-            merkle_root: TxMerkleNode::from_str(&val.merkle_root)?,
-            time: val.time,
-            bits: val.bits,
-            nonce: val.nonce,
+            version: header.version,
+            prev_blockhash: BlockHash::from_str(&header.prev_blockhash)?,
+            merkle_root: TxMerkleNode::from_str(&header.merkle_root)?,
+            time: header.time,
+            bits: header.bits,
+            nonce: header.nonce,
         })
     }
 }
@@ -102,29 +102,29 @@ impl TryFrom<&BtcHeader> for BlockHeader {
 impl TryFrom<BtcHeader> for BlockHeader {
     type Error = BTCLightclientError;
 
-    fn try_from(val: BtcHeader) -> Result<Self, Self::Error> {
-        Self::try_from(&val)
+    fn try_from(header: BtcHeader) -> Result<Self, Self::Error> {
+        Self::try_from(&header)
     }
 }
 
 /// Convert &BlockHeader to/into BtcHeader
 impl From<&BlockHeader> for BtcHeader {
-    fn from(val: &BlockHeader) -> Self {
+    fn from(header: &BlockHeader) -> Self {
         Self {
-            version: val.version,
-            prev_blockhash: val.prev_blockhash.to_string(),
-            merkle_root: val.merkle_root.to_string(),
-            time: val.time,
-            bits: val.bits,
-            nonce: val.nonce,
+            version: header.version,
+            prev_blockhash: header.prev_blockhash.to_string(),
+            merkle_root: header.merkle_root.to_string(),
+            time: header.time,
+            bits: header.bits,
+            nonce: header.nonce,
         }
     }
 }
 
 /// Convert BlockHeader to/into BtcHeader
 impl From<BlockHeader> for BtcHeader {
-    fn from(val: BlockHeader) -> Self {
-        Self::from(&val)
+    fn from(header: BlockHeader) -> Self {
+        Self::from(&header)
     }
 }
 
@@ -137,11 +137,23 @@ impl From<BlockHeader> for BtcHeader {
 #[cw_serde]
 pub struct BtcHeaderResponse {
     /// The Bitcoin header.
-    header: BtcHeader,
-    /// The height of the block in the Babylon blockchain.
-    height: u64,
-    /// The cumulative total work of this block and all its ancestors.
-    cum_work: cosmwasm_std::Uint256,
+    pub header: BtcHeader,
+    /// `hash` is the hash of the BTC header.
+    /// Encoded as a (byte-reversed) hex string.
+    pub hash: String,
+    /// The height of the block in the BTC blockchain.
+    pub height: u64,
+    /// The cumulative total work of this block and all of its ancestors.
+    pub cum_work: cosmwasm_std::Uint256,
+}
+
+/// Bitcoin header responses.
+///
+/// Vector of `BtcHeaderResponse`.
+#[cw_serde]
+pub struct BtcHeadersResponse {
+    /// The Bitcoin headers.
+    pub headers: Vec<BtcHeaderResponse>,
 }
 
 /// Try to convert from `&BtcHeaderInfo` to/into `BtcHeaderResponse`
@@ -152,8 +164,18 @@ impl TryFrom<&BtcHeaderInfo> for BtcHeaderResponse {
         let header = BtcHeader::try_from(btc_header_info)?;
         let total_work = from_utf8(btc_header_info.work.as_ref())?;
         let total_work = cosmwasm_std::Uint256::from_str(total_work)?;
+        // FIXME: Use BlockHash / Hash helper / encapsulation to reverse the hash under the hood
+        let hash_repr = hex::encode(
+            btc_header_info
+                .hash
+                .iter()
+                .rev()
+                .cloned()
+                .collect::<Vec<_>>(),
+        );
         Ok(Self {
             header,
+            hash: hash_repr,
             height: btc_header_info.height,
             cum_work: total_work,
         })
@@ -163,8 +185,20 @@ impl TryFrom<&BtcHeaderInfo> for BtcHeaderResponse {
 /// Try to convert from `BtcHeaderInfo` to/into `BtcHeaderResponse`
 impl TryFrom<BtcHeaderInfo> for BtcHeaderResponse {
     type Error = BTCLightclientError;
-    fn try_from(val: BtcHeaderInfo) -> Result<Self, Self::Error> {
-        Self::try_from(&val)
+    fn try_from(header: BtcHeaderInfo) -> Result<Self, Self::Error> {
+        Self::try_from(&header)
+    }
+}
+
+impl From<&BtcHeaderResponse> for BtcHeader {
+    fn from(btc_header_response: &BtcHeaderResponse) -> Self {
+        btc_header_response.header.clone()
+    }
+}
+
+impl From<BtcHeaderResponse> for BtcHeader {
+    fn from(btc_header_response: BtcHeaderResponse) -> Self {
+        Self::from(&btc_header_response)
     }
 }
 
