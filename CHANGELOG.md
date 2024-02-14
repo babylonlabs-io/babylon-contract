@@ -2,7 +2,16 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.3.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.4.0...HEAD)
+
+## [v0.4.0](https://github.com/babylonchain/babylon-contract/tree/v0.4.0) (2024-02-13)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.3.0...v0.4.0)
+
+**Merged pull requests:**
+
+- Refactor: BTC light client header storage [\#57](https://github.com/babylonchain/babylon-contract/pull/57) ([maurolacy](https://github.com/maurolacy))
+- More queries [\#56](https://github.com/babylonchain/babylon-contract/pull/56) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.3.0](https://github.com/babylonchain/babylon-contract/tree/v0.3.0) (2024-02-09)
 
@@ -14,6 +23,7 @@
 
 **Merged pull requests:**
 
+- Release 0.3 [\#58](https://github.com/babylonchain/babylon-contract/pull/58) ([maurolacy](https://github.com/maurolacy))
 - Add queries [\#55](https://github.com/babylonchain/babylon-contract/pull/55) ([maurolacy](https://github.com/maurolacy))
 - Update CI rust image to a more recent version \(1.75.0\) [\#54](https://github.com/babylonchain/babylon-contract/pull/54) ([maurolacy](https://github.com/maurolacy))
 - Remove Makefile [\#53](https://github.com/babylonchain/babylon-contract/pull/53) ([maurolacy](https://github.com/maurolacy))
