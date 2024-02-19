@@ -1,11 +1,13 @@
-use crate::error::ContractError;
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Empty, Env, IbcBasicResponse, IbcChannelCloseMsg,
-    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Never, Reply,
-    Response, StdResult,
+    Binary, Deps, DepsMut, Empty, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg,
+    IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Never, Reply, Response, StdResult,
 };
-use msg::{bindings::BabylonMsg, contract::ExecuteMsg, contract::InstantiateMsg};
+
+use crate::error::ContractError;
+use crate::msg::{bindings::BabylonMsg, contract::ExecuteMsg, contract::InstantiateMsg};
 
 mod bindings;
 pub mod contract;

@@ -11,6 +11,13 @@ publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+# See https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
+bench = false
+
+[[bin]]
+name = "schema"
+path = "src/bin/schema.rs"
+bench = false
 
 [features]
 # Add feature "cranelift" to default if you need 32 bit or ARM support
@@ -20,6 +27,7 @@ cranelift = ["cosmwasm-vm/cranelift"]
 # for quicker tests, cargo test --lib
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces", "cosmwasm-vm/backtraces"]
+library = []
 
 [dependencies]
 babylon-proto    = { path = "../../packages/proto" }
@@ -38,3 +46,9 @@ ics23            = { workspace = true }
 [dev-dependencies]
 cosmwasm-vm      = { workspace = true }
 pbjson-types     = { workspace = true }
+# bench dependencies
+thousands        = { workspace = true }
+
+[[bench]]
+name = "main"
+harness = false

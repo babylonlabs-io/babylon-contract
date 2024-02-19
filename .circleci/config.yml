@@ -56,6 +56,19 @@ jobs:
           paths:
             - babylon_contract.wasm
 
+  benchmarking:
+    docker:
+      - image: cimg/rust:1.75.0
+    steps:
+      - checkout
+      - run:
+          name: Version information (default; stable)
+          command: rustc --version && cargo --version
+      - run:
+          name: Run babylon contract benchmarks
+          working_directory: ~/project/contracts/babylon
+          command: cargo bench
+
   push-to-s3:
     machine:
       image: ubuntu-2204:2022.10.1
@@ -155,6 +168,17 @@ workflows:
   wasm-tests:
     jobs:
       - wasm-build-check-integration
+      - benchmarking:
+          requires:
+            - wasm-build-check-integration
+          filters:
+            branches:
+              only:
+                # Long living branches
+                - main
+                - /^[0-9]+\.[0-9]+$/
+                # Add your branch here if benchmarking matters to your work
+                - f/benchmarks
       - push-to-s3:
           requires:
             - wasm-build-check-integration
