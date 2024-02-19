@@ -1,2 +1,0 @@
-8aef265c0d33648b642e6b62a6ad056fdb4f8ec29bd53f773d417bf4ed1b63f8  babylon_contract-aarch64.wasm
-8aef265c0d33648b642e6b62a6ad056fdb4f8ec29bd53f773d417bf4ed1b63f8  babylon_contract.wasm

@@ -1,5 +1,5 @@
 //! btc_light_client is the storage for the BTC header chain
-use babylon_bitcoin::{BlockHash, BlockHeader, Uint256};
+use babylon_bitcoin::{BlockHash, BlockHeader};
 use prost::Message;
 use std::str::FromStr;
 
@@ -12,7 +12,7 @@ use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use crate::error::BTCLightclientError;
 use crate::msg::btc_header::BtcHeader;
 use crate::state::config::CONFIG;
-use crate::utils::btc_light_client::{total_work, verify_headers};
+use crate::utils::btc_light_client::{total_work, verify_headers, zero_work};
 
 pub const BTC_HEADERS: Map<u64, Vec<u8>> = Map::new("btc_lc_headers");
 pub const BTC_HEADER_BASE: Item<Vec<u8>> = Item::new("btc_lc_header_base");
@@ -207,7 +207,7 @@ pub fn init_from_user(
     headers: &[BtcHeader],
 ) -> Result<(), BTCLightclientError> {
     let mut prev_height = 0;
-    let mut prev_work = Uint256::from_u64(0).unwrap();
+    let mut prev_work = zero_work();
     let headers = headers
         .iter()
         .map(|header| {
@@ -249,7 +249,7 @@ pub fn handle_btc_headers_from_babylon(
         babylon_bitcoin::deserialize(first_new_header.header.as_ref())
             .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
 
-    if first_new_btc_header.prev_blockhash.as_ref() == cur_tip_hash {
+    if &first_new_btc_header.prev_blockhash.as_ref() == &cur_tip_hash.to_vec() {
         // Most common case: extending the current tip
 
         // Verify each new header after `current_tip` iteratively
@@ -315,17 +315,14 @@ pub fn handle_btc_headers_from_user(
     let prev_blockhash = BlockHash::from_str(&first_new_btc_header.prev_blockhash)?;
 
     // Obtain previous header from storage
-    let previous_header = get_header_by_hash(storage, &prev_blockhash)?;
+    let previous_header = get_header_by_hash(storage, prev_blockhash.as_ref())?;
 
     // Convert new_headers to `BtcHeaderInfo`s
     let mut cur_height = previous_header.height;
     let mut cur_work = total_work(&previous_header)?;
     let mut new_headers_info = vec![];
     for new_btc_header in new_btc_headers.iter() {
-        let new_header_info = new_btc_header.to_btc_header_info(
-            cur_height,
-            babylon_bitcoin::Uint256::from_be_bytes(cur_work.to_be_bytes()),
-        )?;
+        let new_header_info = new_btc_header.to_btc_header_info(cur_height, cur_work)?;
         cur_height += 1;
         cur_work = total_work(&new_header_info)?;
         new_headers_info.push(new_header_info);

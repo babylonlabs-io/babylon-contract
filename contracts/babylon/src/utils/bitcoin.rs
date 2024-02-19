@@ -14,7 +14,7 @@ pub fn parse_tx_info(
     btc_header: &BlockHeader,
 ) -> Result<Transaction, String> {
     // get Merkle root
-    let root = btc_header.merkle_root.as_hash();
+    let root = btc_header.merkle_root.as_raw_hash();
 
     // get proof
     let proof_bytes = &tx_info.proof;
@@ -32,7 +32,7 @@ pub fn parse_tx_info(
     let tx_idx = tx_key.index as usize;
 
     // compare header hash in tx key and the given header's hash
-    if !btc_header.block_hash().to_vec().eq(&header_hash) {
+    if &btc_header.block_hash().as_ref() != &header_hash {
         return Err("BTC header does not match".to_string());
     }
 
@@ -41,7 +41,7 @@ pub fn parse_tx_info(
         .map_err(|err| format!("failed to decode BTC tx: {err:?}"))?;
 
     // verify Merkle proof
-    if !babylon_bitcoin::merkle::verify_merkle_proof(&btc_tx, &proof, tx_idx, &root) {
+    if !babylon_bitcoin::merkle::verify_merkle_proof(&btc_tx, &proof, tx_idx, root) {
         return Err("failed to verify Bitcoin Merkle proof".to_string());
     }
 

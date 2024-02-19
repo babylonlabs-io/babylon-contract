@@ -1,11 +1,13 @@
-pub use bitcoin::consensus::encode::Error as EncodeError;
-pub use bitcoin::consensus::{deserialize, serialize};
-pub use bitcoin::hash_types;
-pub use bitcoin::hashes::hex::Error as HexError;
-pub use bitcoin::util::uint::Uint256;
-pub use bitcoin::BlockHash;
-pub use bitcoin::BlockHeader;
-pub use bitcoin::Transaction;
+pub use bitcoin::{
+    block::{Header as BlockHeader, Version},
+    consensus::encode::Error as EncodeError,
+    consensus::{deserialize, serialize},
+    hash_types,
+    hashes::hex::HexToArrayError as HexError,
+    BlockHash, CompactTarget, Target, Transaction, Work,
+};
+
+pub use cosmwasm_std::Uint256;
 
 pub mod chain_params;
 pub mod merkle;

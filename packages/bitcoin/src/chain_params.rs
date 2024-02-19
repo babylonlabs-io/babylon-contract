@@ -15,9 +15,9 @@ pub enum Network {
 
 pub fn get_chain_params(net: Network) -> Params {
     match net {
-        Network::Mainnet => Params::new(bitcoin::network::constants::Network::Bitcoin),
-        Network::Testnet => Params::new(bitcoin::network::constants::Network::Testnet),
-        Network::Signet => Params::new(bitcoin::network::constants::Network::Signet),
-        Network::Regtest => Params::new(bitcoin::network::constants::Network::Regtest),
+        Network::Mainnet => Params::new(bitcoin::Network::Bitcoin),
+        Network::Testnet => Params::new(bitcoin::Network::Testnet),
+        Network::Signet => Params::new(bitcoin::Network::Signet),
+        Network::Regtest => Params::new(bitcoin::Network::Regtest),
     }
 }

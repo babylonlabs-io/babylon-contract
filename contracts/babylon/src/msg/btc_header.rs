@@ -1,9 +1,12 @@
-use crate::error::BTCLightclientError;
+use std::str::{from_utf8, FromStr};
+
+use cosmwasm_schema::cw_serde;
+
 use babylon_bitcoin::hash_types::TxMerkleNode;
 use babylon_bitcoin::{BlockHash, BlockHeader};
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
-use cosmwasm_schema::cw_serde;
-use std::str::{from_utf8, FromStr};
+
+use crate::error::BTCLightclientError;
 
 /// Bitcoin header.
 ///
@@ -41,7 +44,7 @@ impl BtcHeader {
     pub fn to_btc_header_info(
         &self,
         prev_height: u64,
-        prev_work: babylon_bitcoin::Uint256,
+        prev_work: babylon_bitcoin::Work,
     ) -> Result<BtcHeaderInfo, BTCLightclientError> {
         let block_header: BlockHeader = self.try_into()?;
         let total_work = prev_work + block_header.work();
@@ -50,7 +53,9 @@ impl BtcHeader {
 
         Ok(BtcHeaderInfo {
             header: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(&block_header)),
-            hash: ::prost::bytes::Bytes::from(block_header.block_hash().to_vec()),
+            hash: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(
+                &block_header.block_hash(),
+            )),
             height: prev_height + 1,
             work: prost::bytes::Bytes::from(total_work_cw.to_string()),
         })
@@ -64,11 +69,11 @@ impl TryFrom<&BtcHeaderInfo> for BtcHeader {
         let block_header: BlockHeader = babylon_bitcoin::deserialize(&btc_header_info.header)
             .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
         Ok(Self {
-            version: block_header.version,
+            version: block_header.version.to_consensus(),
             prev_blockhash: block_header.prev_blockhash.to_string(),
             merkle_root: block_header.merkle_root.to_string(),
             time: block_header.time,
-            bits: block_header.bits,
+            bits: block_header.bits.to_consensus(),
             nonce: block_header.nonce,
         })
     }
@@ -88,11 +93,11 @@ impl TryFrom<&BtcHeader> for BlockHeader {
 
     fn try_from(header: &BtcHeader) -> Result<Self, Self::Error> {
         Ok(Self {
-            version: header.version,
+            version: babylon_bitcoin::Version::from_consensus(header.version),
             prev_blockhash: BlockHash::from_str(&header.prev_blockhash)?,
             merkle_root: TxMerkleNode::from_str(&header.merkle_root)?,
             time: header.time,
-            bits: header.bits,
+            bits: babylon_bitcoin::CompactTarget::from_consensus(header.bits),
             nonce: header.nonce,
         })
     }
@@ -111,11 +116,11 @@ impl TryFrom<BtcHeader> for BlockHeader {
 impl From<&BlockHeader> for BtcHeader {
     fn from(header: &BlockHeader) -> Self {
         Self {
-            version: header.version,
+            version: header.version.to_consensus(),
             prev_blockhash: header.prev_blockhash.to_string(),
             merkle_root: header.merkle_root.to_string(),
             time: header.time,
-            bits: header.bits,
+            bits: header.bits.to_consensus(),
             nonce: header.nonce,
         }
     }
@@ -205,6 +210,7 @@ impl From<BtcHeaderResponse> for BtcHeader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use babylon_bitcoin::{CompactTarget, Version, Work};
 
     #[test]
     fn btc_header_to_block_header_works() {
@@ -219,7 +225,7 @@ mod tests {
             nonce: 789,
         };
         let block_header: BlockHeader = btc_header.try_into().unwrap();
-        assert_eq!(block_header.version, 1);
+        assert_eq!(block_header.version.to_consensus(), 1);
         assert_eq!(
             block_header.prev_blockhash.to_string(),
             "deaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead"
@@ -229,7 +235,7 @@ mod tests {
             "beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
         );
         assert_eq!(block_header.time, 123);
-        assert_eq!(block_header.bits, 456);
+        assert_eq!(block_header.bits.to_consensus(), 456);
         assert_eq!(block_header.nonce, 789);
     }
 
@@ -246,7 +252,7 @@ mod tests {
             nonce: 789,
         };
         let block_header: BlockHeader = btc_header.try_into().unwrap();
-        assert_eq!(block_header.version, 1);
+        assert_eq!(block_header.version.to_consensus(), 1);
         assert_eq!(
             block_header.prev_blockhash.to_string(),
             "deaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead"
@@ -256,33 +262,36 @@ mod tests {
             "beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
         );
         assert_eq!(block_header.time, 123);
-        assert_eq!(block_header.bits, 456);
+        assert_eq!(block_header.bits.to_consensus(), 456);
         assert_eq!(block_header.nonce, 789);
     }
 
     #[test]
     fn btc_header_to_btc_header_info_works() {
-        // TODO: Use a valid BTC header
         let btc_header = BtcHeader {
-            version: 1,
-            prev_blockhash: "deaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead"
+            version: 4,
+            prev_blockhash: "683e86bd5c6d110d91b94b97137ba6bfe02dbbdb8e3dff722a669b5d69d77af6"
                 .to_string(),
-            merkle_root: "beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef"
+            merkle_root: "1f39321c9b4b78d6727a3e5a193eb7632ffc981bb2bcd52319ae23d7ea6457aa"
                 .to_string(),
-            time: 123,
-            bits: 456,
-            nonce: 789,
+            time: 1401292937,
+            bits: 545259519,
+            nonce: 3865470564,
         };
         let block_header = BlockHeader::try_from(&btc_header).unwrap();
-        let btc_header_info = btc_header
-            .to_btc_header_info(10, babylon_bitcoin::Uint256::from_u64(23456u64).unwrap());
+        let btc_header_info = btc_header.to_btc_header_info(
+            10,
+            Work::from_be_bytes(cosmwasm_std::Uint256::from(23456u64).to_be_bytes()),
+        );
         assert_eq!(
             btc_header_info,
             Ok(BtcHeaderInfo {
                 header: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(&block_header)),
-                hash: ::prost::bytes::Bytes::from(block_header.block_hash().to_vec()),
+                hash: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(
+                    &block_header.block_hash()
+                )),
                 height: 10 + 1,
-                work: ::prost::bytes::Bytes::from("23456".as_bytes()), // header work is zero (invalid block header?)
+                work: ::prost::bytes::Bytes::from("23458".as_bytes()), // header work is two
             })
         );
     }
@@ -290,7 +299,7 @@ mod tests {
     #[test]
     fn btc_header_from_block_header_works() {
         let block_header = BlockHeader {
-            version: 1,
+            version: Version::from_consensus(1),
             prev_blockhash: BlockHash::from_str(
                 "beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef",
             )
@@ -300,7 +309,7 @@ mod tests {
             )
             .unwrap(),
             time: 123,
-            bits: 456,
+            bits: CompactTarget::from_consensus(456),
             nonce: 789,
         };
         let btc_header = BtcHeader::from(block_header);
@@ -321,7 +330,7 @@ mod tests {
     #[test]
     fn btc_header_from_btc_header_info_works() {
         let block_header = BlockHeader {
-            version: 1,
+            version: Version::from_consensus(1),
             prev_blockhash: BlockHash::from_str(
                 "beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef",
             )
@@ -331,12 +340,14 @@ mod tests {
             )
             .unwrap(),
             time: 123,
-            bits: 456,
+            bits: CompactTarget::from_consensus(456),
             nonce: 789,
         };
         let btc_header_info = BtcHeaderInfo {
             header: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(&block_header)),
-            hash: ::prost::bytes::Bytes::from(block_header.block_hash().to_vec()),
+            hash: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(
+                &block_header.block_hash(),
+            )),
             height: 1234,
             work: ::prost::bytes::Bytes::from("5678".as_bytes().to_vec()),
         };
@@ -355,7 +366,7 @@ mod tests {
     #[test]
     fn btc_header_reponse_from_btc_header_info_works() {
         let block_header = BlockHeader {
-            version: 1,
+            version: Version::from_consensus(1),
             prev_blockhash: BlockHash::from_str(
                 "beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef",
             )
@@ -365,12 +376,12 @@ mod tests {
             )
             .unwrap(),
             time: 123,
-            bits: 456,
+            bits: CompactTarget::from_consensus(456),
             nonce: 789,
         };
         let btc_header_info = BtcHeaderInfo {
             header: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(&block_header)),
-            hash: ::prost::bytes::Bytes::from(block_header.block_hash().to_vec()),
+            hash: ::prost::bytes::Bytes::from(block_header.block_hash().to_string()),
             height: 1234,
             work: ::prost::bytes::Bytes::from("5678".as_bytes().to_vec()),
         };

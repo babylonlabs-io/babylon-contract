@@ -23,8 +23,7 @@ integration     = "./scripts/integration_test.sh"
 babylon-proto     = { path = "./packages/proto" }
 babylon-bitcoin   = { path = "./packages/bitcoin" }
 babylon-contract  = { path = "./contracts/babylon" }
-bitcoin           = "0.29.2"
-#bitcoin           = { git = "https://github.com/babylonchain/rust-bitcoin" }
+bitcoin           = "0.31.1"
 bitvec            = "1"
 blst              = "0.3.11"
 cosmos-sdk-proto  = { version = "0.19.0", default-features = false, features = ["cosmwasm"] }

@@ -1,4 +1,4 @@
-use babylon_bitcoin::Uint256;
+use babylon_bitcoin::Work;
 use cosmwasm_std::StdError;
 use prost::DecodeError;
 use std::str::Utf8Error;
@@ -71,11 +71,11 @@ pub enum BTCLightclientError {
     #[error("The BTC header info cumulative work encoding is wrong")]
     BTCWrongCumulativeWorkEncoding {},
     #[error("The BTC header info {0} cumulative work is wrong. Expected {1}, got {2}")]
-    BTCWrongCumulativeWork(usize, Uint256, Uint256),
+    BTCWrongCumulativeWork(usize, Work, Work),
     #[error("The BTC header info {0} height is wrong. Expected {1}, got {2}")]
     BTCWrongHeight(usize, u64, u64),
     #[error("The new chain's work ({0}), is not better than the current chain's work ({1})")]
-    BTCChainWithNotEnoughWork(Uint256, Uint256),
+    BTCChainWithNotEnoughWork(Work, Work),
 }
 
 #[derive(Error, Debug, PartialEq)]
