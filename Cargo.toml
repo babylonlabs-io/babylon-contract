@@ -32,17 +32,18 @@ cosmwasm-std      = { version = "1.5.2", features = ["iterator", "ibc3"] }
 cw-storage-plus   = "1.2.0"
 hex               = "0.4.3"
 ics23             = { version = "0.9.0", default-features = false, features = ["host-functions"] }
-pbjson-types      = "0.5.1"
 prost             = "0.11.9"
 schemars          = "0.8.3"
 serde             = { version = "1.0.103", default-features = false, features = ["derive"] }
 sha2              = "0.10.6"
 tendermint-proto  = "0.32.2"
 thiserror         = "1.0.40"
-thousands         = "0.2.0"
 
 # dev deps
 cosmwasm-vm       = { version = "1.5.2", default-features = false, features = ["iterator", "stargate"] }
+criterion         = { version = "0.4.0" }
+pbjson-types      = "0.5.1"
+thousands         = "0.2.0"
 
 [profile.release]
 codegen-units     = 1

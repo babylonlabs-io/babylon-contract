@@ -61,13 +61,18 @@ jobs:
       - image: cimg/rust:1.75.0
     steps:
       - checkout
+      - setup_remote_docker
+      - run:
+          name: Build optimised Wasm binary
+          command: |
+            ./scripts/build-optimizer-ci.sh
       - run:
           name: Version information (default; stable)
           command: rustc --version && cargo --version
       - run:
           name: Run babylon contract benchmarks
           working_directory: ~/project/contracts/babylon
-          command: cargo bench
+          command: cargo bench --package babylon-contract -- --color never --save-baseline btc_light_client
 
   push-to-s3:
     machine:
@@ -178,7 +183,6 @@ workflows:
                 - main
                 - /^[0-9]+\.[0-9]+$/
                 # Add your branch here if benchmarking matters to your work
-                - f/benchmarks
       - push-to-s3:
           requires:
             - wasm-build-check-integration

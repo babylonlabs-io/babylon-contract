@@ -47,6 +47,7 @@ ics23            = { workspace = true }
 cosmwasm-vm      = { workspace = true }
 pbjson-types     = { workspace = true }
 # bench dependencies
+criterion        = { workspace = true }
 thousands        = { workspace = true }
 
 [[bench]]

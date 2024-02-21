@@ -3,16 +3,19 @@
 //! the workspace root.
 //! Then running `cargo bench` will validate we can properly call into that generated Wasm.
 //!
+use criterion::{criterion_group, criterion_main, Criterion, PlottingBackend};
+
 use prost::Message;
 use std::fs;
+use std::time::Duration;
 use thousands::Separable;
 
-use cosmwasm_std::Response;
+use cosmwasm_std::{Env, MessageInfo, Response};
 use cosmwasm_vm::testing::{
-    execute, instantiate, mock_env, mock_info, mock_instance_with_gas_limit,
-    mock_instance_with_options, MockApi, MockInstanceOptions, MockQuerier, MockStorage,
+    execute, instantiate, mock_env, mock_info, mock_instance_with_gas_limit, MockApi, MockQuerier,
+    MockStorage,
 };
-use cosmwasm_vm::{capabilities_from_csv, Instance};
+use cosmwasm_vm::Instance;
 
 use babylon_proto::babylon::btclightclient::v1::QueryMainChainResponse;
 
@@ -30,22 +33,6 @@ const CREATOR: &str = "creator";
 const TESTDATA_MAIN: &str = "../../testdata/btc_light_client.dat";
 
 #[track_caller]
-pub fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
-    let mut deps = mock_instance_with_gas_limit(WASM, 2_250_000_000_000);
-    let msg = InstantiateMsg {
-        network: babylon_bitcoin::chain_params::Network::Regtest,
-        babylon_tag: "01020304".to_string(),
-        btc_confirmation_depth: 10,
-        checkpoint_finalization_timeout: 99,
-        notify_cosmos_zone: false,
-    };
-    let info = mock_info(CREATOR, &[]);
-    let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
-    assert_eq!(0, res.messages.len());
-    deps
-}
-
-#[track_caller]
 pub fn get_main_msg_test_headers() -> Vec<BtcHeader> {
     let testdata: &[u8] = &fs::read(TESTDATA_MAIN).unwrap();
     let res = QueryMainChainResponse::decode(testdata).unwrap();
@@ -56,50 +43,135 @@ pub fn get_main_msg_test_headers() -> Vec<BtcHeader> {
         .unwrap()
 }
 
-fn main() {
-    // TODO: Use the `criterion` crate to run benchmarks / track baseline values
-    let mut deps = setup();
+#[track_caller]
+pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
+    let mut deps = mock_instance_with_gas_limit(WASM, 10_000_000_000_000);
+    let msg = InstantiateMsg {
+        network: babylon_bitcoin::chain_params::Network::Regtest,
+        babylon_tag: "01020304".to_string(),
+        btc_confirmation_depth: 10,
+        checkpoint_finalization_timeout: 1,
+        notify_cosmos_zone: false,
+    };
+    let info = mock_info(CREATOR, &[]);
+    let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
+    assert_eq!(0, res.messages.len());
+    deps
+}
+
+#[track_caller]
+fn setup_benchmark() -> (
+    Instance<MockApi, MockStorage, MockQuerier>,
+    MessageInfo,
+    Env,
+    Vec<BtcHeader>,
+) {
+    let mut deps = setup_instance();
     let info = mock_info(CREATOR, &[]);
     let env = mock_env();
-
-    let gas_expected = 1_844_838_050_679;
-
-    let gas_before = deps.get_gas_left();
 
     let test_headers = get_main_msg_test_headers();
 
     let benchmark_msg = ExecuteMsg::BtcHeaders {
-        headers: test_headers.clone(),
+        headers: test_headers[0..=1].to_owned(),
     };
 
-    execute::<_, _, _, _, BabylonMsg>(&mut deps, env, info, benchmark_msg).unwrap();
-
-    let gas_used = gas_before - deps.get_gas_left();
-    let sdk_gas = gas_used / GAS_MULTIPLIER;
-
-    let headers_len = test_headers.len();
-    println!(
-        "{} BTC headers call gas    : {}",
-        headers_len,
-        gas_used.separate_with_underscores()
-    );
-    println!(
-        "{} BTC headers call SDK gas: {}",
-        headers_len,
-        sdk_gas.separate_with_underscores()
-    );
-    println!(
-        "BTC header avg call gas     : {}",
-        (gas_used / headers_len as u64).separate_with_underscores()
-    );
-    println!(
-        "BTC header avg call SDK gas : {}",
-        (sdk_gas / headers_len as u64).separate_with_underscores()
-    );
-
-    assert!(
-        (gas_expected - gas_used as i64).abs() < gas_expected / 10,
-        "{} BTC Headers call gas",
-        headers_len
-    );
+    // init call
+    execute::<_, _, _, _, BabylonMsg>(&mut deps, env.clone(), info.clone(), benchmark_msg.clone())
+        .unwrap();
+    (deps, info, env, test_headers)
 }
+
+fn bench_btc_light_client(c: &mut Criterion) {
+    let mut group = c.benchmark_group("BTC Light Client");
+
+    group.bench_function("btc_headers_verify cpu", |b| {
+        let (mut deps, info, env, test_headers) = setup_benchmark();
+
+        let headers_len = test_headers.len();
+        let mut i = 1;
+        b.iter(|| {
+            let benchmark_msg = ExecuteMsg::BtcHeaders {
+                headers: test_headers[i..=i + 1].to_owned(),
+            };
+            execute::<_, _, _, _, BabylonMsg>(&mut deps, env.clone(), info.clone(), benchmark_msg)
+                .unwrap();
+            i = (i + 1) % (headers_len - 1);
+        });
+    });
+
+    group.bench_function("btc_headers_verify gas", |b| {
+        let (mut deps, info, env, test_headers) = setup_benchmark();
+
+        let headers_len = test_headers.len();
+        let mut i = 1;
+        b.iter_custom(|iter| {
+            let mut gas_used = 0;
+            for _ in 0..iter {
+                let benchmark_msg = ExecuteMsg::BtcHeaders {
+                    headers: test_headers[i..=i + 1].to_owned(),
+                };
+                let gas_before = deps.get_gas_left();
+                execute::<_, _, _, _, BabylonMsg>(
+                    &mut deps,
+                    env.clone(),
+                    info.clone(),
+                    benchmark_msg,
+                )
+                .unwrap();
+                gas_used += gas_before - deps.get_gas_left();
+                i = (i + 1) % (headers_len - 1);
+            }
+            println!(
+                "BTC header avg call gas: {}",
+                (gas_used / (2 * iter)).separate_with_underscores()
+            );
+            Duration::new(0, gas_used as u32 / 2)
+        });
+    });
+
+    group.bench_function("btc_headers_verify SDK gas", |b| {
+        let (mut deps, info, env, test_headers) = setup_benchmark();
+
+        let headers_len = test_headers.len();
+        let mut i = 1;
+        b.iter_custom(|iter| {
+            let mut gas_used = 0;
+            for _ in 0..iter {
+                let benchmark_msg = ExecuteMsg::BtcHeaders {
+                    headers: test_headers[i..=i + 1].to_owned(),
+                };
+                let gas_before = deps.get_gas_left();
+                execute::<_, _, _, _, BabylonMsg>(
+                    &mut deps,
+                    env.clone(),
+                    info.clone(),
+                    benchmark_msg,
+                )
+                .unwrap();
+                gas_used += (gas_before - deps.get_gas_left()) / GAS_MULTIPLIER;
+                i = (i + 1) % (headers_len - 1);
+            }
+            println!("BTC header avg call SDK gas: {}", gas_used / (2 * iter));
+            Duration::new(0, gas_used as u32 / 2)
+        });
+    });
+
+    group.finish();
+}
+
+fn make_config() -> Criterion {
+    Criterion::default()
+        .plotting_backend(PlottingBackend::Plotters)
+        .without_plots()
+        .warm_up_time(Duration::new(0, 1_000_000))
+        .measurement_time(Duration::new(0, 10_000_000))
+        .sample_size(10)
+}
+
+criterion_group!(
+    name = btc_light_client;
+    config = make_config();
+    targets = bench_btc_light_client
+);
+criterion_main!(btc_light_client);

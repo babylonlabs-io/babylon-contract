@@ -22,7 +22,7 @@ use cosmwasm_vm::testing::{
     execute, ibc_channel_open, instantiate, mock_env, mock_info, mock_instance,
     mock_instance_with_gas_limit, query, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_vm::Instance;
+use cosmwasm_vm::{Instance, Size};
 use prost::Message;
 use std::fs;
 
@@ -33,6 +33,7 @@ use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 use babylon_proto::babylon::btclightclient::v1::QueryMainChainResponse;
 
 static WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
+const MAX_WASM_LEN: Size = Size::kibi(800);
 
 const CREATOR: &str = "creator";
 
@@ -74,6 +75,12 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
         ExecuteMsg::BtcHeaders { headers } => headers,
     }
 }
+
+#[test]
+fn wasm_size_limit_check() {
+    assert!(WASM.len() < MAX_WASM_LEN.0, "Wasm file too large: {}", WASM.len());
+}
+
 #[test]
 fn instantiate_works() {
     let mut deps = mock_instance(WASM, &[]);

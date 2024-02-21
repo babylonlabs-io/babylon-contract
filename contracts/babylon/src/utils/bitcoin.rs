@@ -32,7 +32,7 @@ pub fn parse_tx_info(
     let tx_idx = tx_key.index as usize;
 
     // compare header hash in tx key and the given header's hash
-    if &btc_header.block_hash().as_ref() != &header_hash {
+    if btc_header.block_hash().as_ref() != header_hash {
         return Err("BTC header does not match".to_string());
     }
 

@@ -161,10 +161,12 @@ pub fn init(
     let cfg = CONFIG.load(storage)?;
     let btc_network = babylon_bitcoin::chain_params::get_chain_params(cfg.network);
 
-    // ensure there are >=w+1 headers, i.e., a base header and at least w subsequent
+    // ensure there are >=w+1 headers, i.e. a base header and at least w subsequent
     // ones as a w-deep proof
     if (headers.len() as u64) < cfg.checkpoint_finalization_timeout + 1 {
-        return Err(BTCLightclientError::InitError {});
+        return Err(BTCLightclientError::InitErrorLength(
+            cfg.checkpoint_finalization_timeout + 1,
+        ));
     }
 
     // base header is the first header in the list
@@ -249,7 +251,7 @@ pub fn handle_btc_headers_from_babylon(
         babylon_bitcoin::deserialize(first_new_header.header.as_ref())
             .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
 
-    if &first_new_btc_header.prev_blockhash.as_ref() == &cur_tip_hash.to_vec() {
+    if first_new_btc_header.prev_blockhash.as_ref() == cur_tip_hash.to_vec() {
         // Most common case: extending the current tip
 
         // Verify each new header after `current_tip` iteratively

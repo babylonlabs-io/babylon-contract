@@ -50,6 +50,8 @@ pub enum BTCLightclientError {
     StdError(#[from] StdError),
     #[error("The given headers during initialization cannot be verified")]
     InitError {},
+    #[error("The given headers during initialization cannot be verified. Less than {0} headers")]
+    InitErrorLength(u64),
     #[error("The bytes cannot be decoded")]
     DecodeError(#[from] DecodeError),
     #[error("{0}")]
