@@ -1,8 +1,9 @@
 use crate::error::ContractError;
 use cosmwasm_std::{
-    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
-    StdResult,
+    to_json_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
+    StdResult, SubMsg, SubMsgResponse, WasmMsg,
 };
+use cw_utils::parse_instantiate_response_data;
 
 use crate::msg::bindings::BabylonMsg;
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -10,6 +11,12 @@ use crate::queries;
 use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
 
+const REPLY_ID_INSTANTIATE: u64 = 1;
+
+/// When we instantiate the Babylon contract, it will optionally instantiate a BTC staking
+/// contract – if its code id is provided – to work with it for BTC re-staking support,
+/// as they both need references to each other.
+/// The admin of the BTC staking contract is taken as an explicit argument.
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -25,14 +32,44 @@ pub fn instantiate(
         btc_confirmation_depth: msg.btc_confirmation_depth,
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
         notify_cosmos_zone: msg.notify_cosmos_zone,
+        btc_staking: None, // Will be set in `reply` if `btc_staking_code_id` is provided
     };
     CONFIG.save(deps.storage, &cfg)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    let mut res = Response::new().add_attribute("action", "instantiate");
+
+    if let Some(btc_staking_code_id) = msg.btc_staking_code_id {
+        // Instantiate BTC staking contract
+        let init_msg = WasmMsg::Instantiate {
+            admin: msg.admin,
+            code_id: btc_staking_code_id,
+            msg: b"{}".into(),
+            funds: vec![],
+            label: "BTC Staking".into(),
+        };
+        let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE);
+
+        res = res.add_submessage(init_msg);
+    }
+    Ok(res)
 }
 
-pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> StdResult<Response> {
-    Ok(Response::default())
+pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+    match reply.id {
+        REPLY_ID_INSTANTIATE => reply_init_callback(deps, reply.result.unwrap()),
+        _ => Err(ContractError::InvalidReplyId(reply.id)),
+    }
+}
+
+/// Store virtual BTC staking address
+fn reply_init_callback(deps: DepsMut, reply: SubMsgResponse) -> Result<Response, ContractError> {
+    let init_data = parse_instantiate_response_data(&reply.data.unwrap())?;
+    let btc_staking = Addr::unchecked(init_data.contract_address);
+    CONFIG.update(deps.storage, |mut cfg| {
+        cfg.btc_staking = Some(btc_staking.clone());
+        Ok::<_, ContractError>(cfg)
+    })?;
+    Ok(Response::new())
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
@@ -119,6 +156,8 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
+            btc_staking_code_id: None,
+            admin: None,
         };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();

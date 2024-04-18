@@ -1,23 +1,20 @@
 [package]
-name = "babylon-contract"
+name = "btc-staking"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true
-authors.workspace = true
+authors = ["BabylonChain Inc. <admin@babylonchain.io>", "Mauro Lacy <mauro@babylonchain.io"]
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-# See https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
-bench = false
 
 [[bin]]
 name = "schema"
 path = "src/bin/schema.rs"
-bench = false
 
 [features]
 # Add feature "cranelift" to default if you need 32 bit or ARM support
@@ -30,27 +27,12 @@ backtraces = ["cosmwasm-std/backtraces", "cosmwasm-vm/backtraces"]
 library = []
 
 [dependencies]
-babylon-proto    = { path = "../../packages/proto" }
-babylon-bitcoin  = { path = "../../packages/bitcoin" }
-blst             = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }
+cw2              = { workspace = true }
 cw-storage-plus  = { workspace = true }
 cw-utils         = { workspace = true }
-hex              = { workspace = true }
-tendermint-proto = { workspace = true }
-cosmos-sdk-proto = { workspace = true }
 thiserror        = { workspace = true }
-prost            = { workspace = true }
-ics23            = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-vm      = { workspace = true }
-pbjson-types     = { workspace = true }
-# bench dependencies
-criterion        = { workspace = true }
-thousands        = { workspace = true }
-
-[[bench]]
-name = "main"
-harness = false

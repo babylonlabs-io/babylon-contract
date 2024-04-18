@@ -1,5 +1,6 @@
 use babylon_bitcoin::Work;
 use cosmwasm_std::StdError;
+use cw_utils::ParseReplyError;
 use prost::DecodeError;
 use std::str::Utf8Error;
 use thiserror::Error;
@@ -22,6 +23,10 @@ pub enum ContractError {
     IbcInvalidCounterPartyVersion { version: String },
     #[error("IBC method is not supported")]
     IbcUnsupportedMethod {},
+    #[error("Invalid reply id: {0}")]
+    InvalidReplyId(u64),
+    #[error("{0}")]
+    ParseReply(#[from] ParseReplyError),
 }
 
 #[derive(Error, Debug, PartialEq)]

@@ -357,6 +357,7 @@ pub(crate) mod tests {
             btc_confirmation_depth: 1,
             checkpoint_finalization_timeout: w as u64,
             notify_cosmos_zone: false,
+            btc_staking: None,
         };
         CONFIG.save(storage, &cfg).unwrap();
         w

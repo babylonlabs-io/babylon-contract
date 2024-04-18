@@ -1,4 +1,5 @@
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
 
 pub(crate) const CONFIG: Item<Config> = Item::new("config");
@@ -13,4 +14,6 @@ pub struct Config {
     // notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised headers
     // NOTE: if set true, then the Cosmos zone needs to integrate the corresponding message handler as well
     pub notify_cosmos_zone: bool,
+    /// If set, this stores a BTC staking contract used for BTC re-staking
+    pub btc_staking: Option<Addr>,
 }

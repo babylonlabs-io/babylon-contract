@@ -25,6 +25,10 @@ pub struct InstantiateMsg {
     // notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised headers
     // NOTE: if set true, then the Cosmos zone needs to integrate the corresponding message handler as well
     pub notify_cosmos_zone: bool,
+    /// If set, this will instantiate a BTC staking contract for BTC re-staking
+    pub btc_staking_code_id: Option<u64>,
+    /// If set, this will be the Wasm migration / upgrade admin of the BTC staking contract
+    pub admin: Option<String>,
 }
 
 impl ContractMsg for InstantiateMsg {

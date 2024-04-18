@@ -49,6 +49,8 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 99,
         notify_cosmos_zone: false,
+        btc_staking_code_id: None,
+        admin: None,
     };
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
@@ -78,7 +80,11 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
 
 #[test]
 fn wasm_size_limit_check() {
-    assert!(WASM.len() < MAX_WASM_LEN.0, "Wasm file too large: {}", WASM.len());
+    assert!(
+        WASM.len() < MAX_WASM_LEN.0,
+        "Wasm file too large: {}",
+        WASM.len()
+    );
 }
 
 #[test]
@@ -91,6 +97,8 @@ fn instantiate_works() {
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 100,
         notify_cosmos_zone: false,
+        btc_staking_code_id: None,
+        admin: None,
     };
     let info = mock_info(CREATOR, &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);
