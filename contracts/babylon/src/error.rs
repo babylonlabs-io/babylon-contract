@@ -1,6 +1,7 @@
 use babylon_bitcoin::Work;
 use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
+use hex::FromHexError;
 use prost::DecodeError;
 use std::str::Utf8Error;
 use thiserror::Error;
@@ -61,6 +62,8 @@ pub enum BTCLightclientError {
     DecodeError(#[from] DecodeError),
     #[error("{0}")]
     HashError(#[from] babylon_bitcoin::HexError),
+    #[error("The hex cannot be decoded")]
+    DecodeHexError(#[from] FromHexError),
     #[error("The bytes cannot be decoded as string")]
     DecodeUtf8Error(#[from] Utf8Error),
     #[error("The BTC header cannot be decoded")]

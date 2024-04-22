@@ -3,10 +3,13 @@
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Epoch {
+    /// epoch_number is the number of this epoch
     #[prost(uint64, tag="1")]
     pub epoch_number: u64,
+    /// current_epoch_interval is the epoch interval at the time of this epoch
     #[prost(uint64, tag="2")]
     pub current_epoch_interval: u64,
+    /// first_block_height is the height of the first block in this epoch
     #[prost(uint64, tag="3")]
     pub first_block_height: u64,
     /// last_block_time is the time of the last block in this epoch.

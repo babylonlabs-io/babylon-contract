@@ -342,6 +342,7 @@ pub(crate) mod tests {
     use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
     use cosmwasm_std::from_json;
     use cosmwasm_std::testing::mock_dependencies;
+    use prost::bytes::Bytes;
     use std::fs;
 
     const TESTDATA_MAIN: &str = "../../testdata/btc_light_client.dat";
@@ -367,12 +368,30 @@ pub(crate) mod tests {
         let testdata: &[u8] = &fs::read(TESTDATA_MAIN).unwrap();
         let resp = QueryMainChainResponse::decode(testdata).unwrap();
         resp.headers
+            .iter()
+            .map(|h| BtcHeaderInfo {
+                header: Bytes::from(hex::decode(&h.header_hex).unwrap()),
+                // FIXME: Use BlockHash / Hash helper / encapsulation to reverse the hash under the hood
+                hash: Bytes::from(hex::decode(&h.hash_hex).unwrap().into_iter().rev().collect::<Vec<_>>()),
+                height: h.height,
+                work: { Bytes::from(h.work.clone()) },
+            })
+            .collect()
     }
 
     fn get_fork_test_headers() -> Vec<BtcHeaderInfo> {
         let testdata: &[u8] = &fs::read(TESTDATA_FORK).unwrap();
         let resp = QueryMainChainResponse::decode(testdata).unwrap();
         resp.headers
+            .iter()
+            .map(|h| BtcHeaderInfo {
+                header: Bytes::from(hex::decode(&h.header_hex).unwrap()),
+                // FIXME: Use BlockHash / Hash helper / encapsulation to reverse the hash under the hood
+                hash: Bytes::from(hex::decode(&h.hash_hex).unwrap().into_iter().rev().collect::<Vec<_>>()),
+                height: h.height,
+                work: { Bytes::from(h.work.clone()) },
+            })
+            .collect()
     }
 
     fn get_fork_msg_test_headers() -> Vec<BtcHeader> {

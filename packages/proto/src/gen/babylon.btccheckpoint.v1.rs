@@ -1,5 +1,5 @@
 // @generated
-/// Each provided OP_RETURN transaction can be idendtified by hash of block in
+/// Each provided OP_RETURN transaction can be identified by hash of block in
 /// which transaction was included and transaction index in the block
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -43,7 +43,7 @@ pub struct TransactionInfo {
     pub transaction: ::prost::bytes::Bytes,
     /// proof is the Merkle proof that this tx is included in the position in `key`
     /// TODO: maybe it could use here better format as we already processed and
-    /// valideated the proof?
+    /// validated the proof?
     #[prost(bytes="bytes", tag="3")]
     pub proof: ::prost::bytes::Bytes,
 }

@@ -4,7 +4,7 @@ use cosmwasm_schema::cw_serde;
 
 use babylon_bitcoin::hash_types::TxMerkleNode;
 use babylon_bitcoin::{BlockHash, BlockHeader};
-use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
+use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, BtcHeaderInfoResponse};
 
 use crate::error::BTCLightclientError;
 
@@ -84,6 +84,32 @@ impl TryFrom<BtcHeaderInfo> for BtcHeader {
     type Error = BTCLightclientError;
     fn try_from(btc_header_info: BtcHeaderInfo) -> Result<Self, Self::Error> {
         Self::try_from(&btc_header_info)
+    }
+}
+
+/// Try to convert &BtcHeaderInfoResponse to/into BtcHeader
+impl TryFrom<&BtcHeaderInfoResponse> for BtcHeader {
+    type Error = BTCLightclientError;
+    fn try_from(btc_header_info_response: &BtcHeaderInfoResponse) -> Result<Self, Self::Error> {
+        let block_header: BlockHeader =
+            babylon_bitcoin::deserialize(&hex::decode(&btc_header_info_response.header_hex)?)
+                .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
+        Ok(Self {
+            version: block_header.version.to_consensus(),
+            prev_blockhash: block_header.prev_blockhash.to_string(),
+            merkle_root: block_header.merkle_root.to_string(),
+            time: block_header.time,
+            bits: block_header.bits.to_consensus(),
+            nonce: block_header.nonce,
+        })
+    }
+}
+
+/// Try to convert BtcHeaderInfoResponse to/into BtcHeader
+impl TryFrom<BtcHeaderInfoResponse> for BtcHeader {
+    type Error = BTCLightclientError;
+    fn try_from(btc_header_info_response: BtcHeaderInfoResponse) -> Result<Self, Self::Error> {
+        Self::try_from(&btc_header_info_response)
     }
 }
 

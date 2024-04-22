@@ -107,7 +107,7 @@ pub struct FinalizedChainInfo {
 /// - The raw checkpoint's `app_hash` is same as in the sealer header
 /// - More than 2/3 (in voting power) validators in the validator set of this
 /// epoch have signed `app_hash` of the sealer header
-/// - The epoch medatata is committed to the `app_hash` of the sealer header
+/// - The epoch metadata is committed to the `app_hash` of the sealer header
 /// - The validator set is committed to the `app_hash` of the sealer header
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

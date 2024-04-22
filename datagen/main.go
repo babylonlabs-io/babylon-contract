@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/babylonchain/babylon/types"
 	"math/rand"
 	"os"
 	"testing"
@@ -187,8 +188,12 @@ const mainHeadersLength = 100
 const initialHeaderHeight = 1
 const forkHeaderHeight = 90
 
-func GenBTCLightClient(r *rand.Rand) []*btclctypes.BTCHeaderInfo {
-	headers := datagen.NewBTCHeaderChainWithLength(r, initialHeaderHeight, chaincfg.RegressionNetParams.PowLimit.Uint64(), mainHeadersLength).GetChainInfo()
+func GenBTCLightClient(r *rand.Rand) []*btclctypes.BTCHeaderInfoResponse {
+	headers := datagen.NewBTCHeaderChainWithLength(
+		r,
+		initialHeaderHeight,
+		chaincfg.RegressionNetParams.PowLimit.Uint64(),
+		mainHeadersLength).GetChainInfoResponse()
 	resp := &btclctypes.QueryMainChainResponse{Headers: headers}
 	respBytes := cdc.MustMarshal(resp)
 	if err := os.WriteFile("./testdata/btc_light_client.dat", respBytes, 0644); err != nil {
@@ -197,11 +202,11 @@ func GenBTCLightClient(r *rand.Rand) []*btclctypes.BTCHeaderInfo {
 	return headers
 }
 
-func GenBTCLightClientFork(r *rand.Rand, forkHeader *btclctypes.BTCHeaderInfo) {
+func GenBTCLightClientFork(r *rand.Rand, forkHeader *btclctypes.BTCHeaderInfoResponse) {
 	height := forkHeader.Height
 	length := mainHeadersLength - height + 1 // For an accepted fork
 
-	headers := datagen.NewBTCHeaderChainFromParentInfo(r, forkHeader, uint32(length)).GetChainInfo()
+	headers := datagen.NewBTCHeaderChainFromParentInfoResponse(r, forkHeader, uint32(length)).GetChainInfoResponse()
 	resp := &btclctypes.QueryMainChainResponse{Headers: headers}
 	respBytes := cdc.MustMarshal(resp)
 	if err := os.WriteFile("./testdata/btc_light_client_fork.dat", respBytes, 0644); err != nil {
@@ -236,15 +241,19 @@ type BtcHeaders struct {
 	Headers []*BtcHeader `json:"headers"`
 }
 
-func GenBTCLightClientForkMessages(r *rand.Rand, forkHeader *btclctypes.BTCHeaderInfo) {
+func GenBTCLightClientForkMessages(r *rand.Rand, forkHeader *btclctypes.BTCHeaderInfoResponse) {
 	height := forkHeader.Height
 	length := mainHeadersLength - height + 1 // For an accepted fork
 
-	headers := datagen.NewBTCHeaderChainFromParentInfo(r, forkHeader, uint32(length)).GetChainInfo()
+	headers := datagen.NewBTCHeaderChainFromParentInfoResponse(r, forkHeader, uint32(length)).GetChainInfoResponse()
 	btc_headers := make([]*BtcHeader, len(headers))
 	for i := 0; i < len(headers); i++ {
 		// Decode the header's header to a BlockHeader struct
-		blockHeader := headers[i].Header.ToBlockHeader()
+		headerBytes, err := types.NewBTCHeaderBytesFromHex(headers[i].HeaderHex)
+		if err != nil {
+			panic(err)
+		}
+		blockHeader := headerBytes.ToBlockHeader()
 
 		btc_headers[i] = &BtcHeader{
 			Version:       blockHeader.Version,
