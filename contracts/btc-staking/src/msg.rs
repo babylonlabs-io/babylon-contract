@@ -5,8 +5,7 @@ use crate::state::Config;
 #[cw_serde]
 pub struct InstantiateMsg {}
 
-#[cw_serde]
-pub enum ExecuteMsg {}
+pub type ExecuteMsg = babylon_apis::btc_staking_api::ExecuteMsg;
 
 #[cw_serde]
 #[derive(QueryResponses)]

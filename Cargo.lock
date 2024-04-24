@@ -73,6 +73,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1fdabc7756949593fe60f30ec81974b613357de856987752631dea1e3394c80"
 
 [[package]]
+name = "babylon-apis"
+version = "0.4.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+]
+
+[[package]]
 name = "babylon-bitcoin"
 version = "0.4.0"
 dependencies = [
@@ -87,6 +95,7 @@ dependencies = [
 name = "babylon-contract"
 version = "0.4.0"
 dependencies = [
+ "babylon-apis",
  "babylon-bitcoin",
  "babylon-proto",
  "blst",
@@ -263,6 +272,7 @@ checksum = "56953345e39537a3e18bdaeba4cb0c58a78c1f61f361dc0fa7c5c7340ae87c5f"
 name = "btc-staking"
 version = "0.4.0"
 dependencies = [
+ "babylon-apis",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-vm",

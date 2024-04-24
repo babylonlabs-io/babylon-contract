@@ -1,0 +1,8 @@
+[package]
+name = "babylon-apis"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+cosmwasm-std    = { workspace = true }
+cosmwasm-schema = { workspace = true }

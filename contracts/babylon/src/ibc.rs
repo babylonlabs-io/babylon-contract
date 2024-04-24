@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::msg::bindings::BabylonMsg;
 use crate::msg::ibc::{new_ack_err, new_ack_res};
 use babylon_proto::babylon::zoneconcierge::v1::{
-    zoneconcierge_packet_data, BtcTimestamp, ZoneconciergePacketData,
+    zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
 use cosmwasm_std::{
     DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannelCloseMsg,
@@ -106,8 +106,9 @@ pub fn ibc_packet_receive(
             .packet
             .ok_or(StdError::generic_err("empty IBC packet"))?;
         match zc_packet {
-            zoneconcierge_packet_data::Packet::BtcTimestamp(btc_ts) => {
-                ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts)
+            Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
+            Packet::BtcStaking(btc_staking) => {
+                ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
             }
         }
     })()
@@ -125,8 +126,15 @@ pub fn ibc_packet_receive(
 mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
+    use babylon_apis::btc_staking_api::{
+        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures, FinalityProvider,
+        FinalityProviderDescription, ProofOfPossession, PubKey, SignatureInfo,
+        SlashedFinalityProvider, UnbondedBtcDelegation,
+    };
+    use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
+    use cosmwasm_std::{to_json_binary, Decimal, WasmMsg};
+    use std::str::FromStr;
 
-    // processes PacketMsg::WhoAmI variant
     pub fn handle_btc_timestamp(
         deps: DepsMut,
         _caller: String,
@@ -154,6 +162,138 @@ mod ibc_packet {
                 resp = resp.add_message(msg);
             }
         }
+
+        Ok(resp)
+    }
+
+    pub fn handle_btc_staking(
+        deps: DepsMut,
+        _caller: String,
+        btc_staking: &BtcStakingIbcPacket,
+    ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
+        let storage = deps.storage;
+        let cfg = CONFIG.load(storage)?;
+
+        // Route the packet to the btc-staking contract
+        let btc_staking_addr = cfg
+            .btc_staking
+            .ok_or(StdError::generic_err("btc_staking contract not set"))?;
+
+        // Build the message to send to the BTC staking contract
+        let msg = babylon_apis::btc_staking_api::ExecuteMsg::BtcStaking {
+            new_fp: btc_staking
+                .new_fp
+                .iter()
+                .map(|fp| {
+                    Ok(FinalityProvider {
+                        description: fp
+                            .description
+                            .as_ref()
+                            .map(|d| FinalityProviderDescription {
+                                moniker: d.moniker.clone(),
+                                identity: d.identity.clone(),
+                                website: d.website.clone(),
+                                security_contact: d.security_contact.clone(),
+                                details: d.details.clone(),
+                            }),
+                        commission: Decimal::from_str(&fp.commission)?,
+                        babylon_pk: fp.babylon_pk.as_ref().map(|pk| PubKey {
+                            key: pk.key.clone(),
+                        }),
+                        btc_pk_hex: fp.btc_pk_hex.clone(),
+                        pop: fp.pop.as_ref().map(|pop| ProofOfPossession {
+                            btc_sig_type: pop.btc_sig_type,
+                            babylon_sig: pop.babylon_sig.to_vec(),
+                            btc_sig: pop.btc_sig.to_vec(),
+                        }),
+                        master_pub_rand: fp.master_pub_rand.clone(),
+                        registered_epoch: fp.registered_epoch,
+                        slashed_babylon_height: fp.slashed_babylon_height,
+                        slashed_btc_height: fp.slashed_btc_height,
+                        chain_id: fp.chain_id.clone(),
+                    })
+                })
+                .collect::<StdResult<_>>()?,
+            slashed_fp: btc_staking
+                .slashed_fp
+                .iter()
+                .map(|fp| SlashedFinalityProvider {
+                    btc_pk_hex: fp.btc_pk_hex.clone(),
+                })
+                .collect(),
+            active_del: btc_staking
+                .active_del
+                .iter()
+                .map(|d| ActiveBtcDelegation {
+                    btc_pk_hex: d.btc_pk_hex.clone(),
+                    fp_btc_pk_list: d.fp_btc_pk_list.clone(),
+                    start_height: d.start_height,
+                    end_height: d.end_height,
+                    total_sat: d.total_sat,
+                    staking_tx: d.staking_tx.to_vec(),
+                    slashing_tx: d.slashing_tx.to_vec(),
+                    delegator_slashing_sig: d.delegator_slashing_sig.to_vec(),
+                    covenant_sigs: d
+                        .covenant_sigs
+                        .iter()
+                        .map(|s| CovenantAdaptorSignatures {
+                            cov_pk: s.cov_pk.to_vec(),
+                            adaptor_sigs: s.adaptor_sigs.iter().map(|a| a.to_vec()).collect(),
+                        })
+                        .collect(),
+                    staking_output_idx: d.staking_output_idx,
+                    unbonding_time: d.unbonding_time,
+                    undelegation_info: d.undelegation_info.as_ref().map(|ui| BtcUndelegationInfo {
+                        unbonding_tx: ui.unbonding_tx.to_vec(),
+                        delegator_unbonding_sig: ui.delegator_unbonding_sig.to_vec(),
+                        covenant_unbonding_sig_list: ui
+                            .covenant_unbonding_sig_list
+                            .iter()
+                            .map(|s| SignatureInfo {
+                                pk: s.pk.to_vec(),
+                                sig: s.sig.to_vec(),
+                            })
+                            .collect(),
+                        slashing_tx: ui.slashing_tx.to_vec(),
+                        delegator_slashing_sig: ui.delegator_slashing_sig.to_vec(),
+                        covenant_slashing_sigs: ui
+                            .covenant_slashing_sigs
+                            .iter()
+                            .map(|s| CovenantAdaptorSignatures {
+                                cov_pk: s.cov_pk.to_vec(),
+                                adaptor_sigs: s.adaptor_sigs.iter().map(|a| a.to_vec()).collect(),
+                            })
+                            .collect(),
+                    }),
+                    params_version: d.params_version,
+                })
+                .collect(),
+            slashed_del: vec![], // FIXME: Needed?
+            unbonded_del: btc_staking
+                .unbonded_del
+                .iter()
+                .map(|u| UnbondedBtcDelegation {
+                    staking_tx_hash: u.staking_tx_hash.clone(),
+                    unbonding_tx_sig: u.unbonding_tx_sig.to_vec(),
+                })
+                .collect(),
+        };
+
+        let wasm_msg = WasmMsg::Execute {
+            contract_addr: btc_staking_addr.to_string(),
+            msg: to_json_binary(&msg)?,
+            funds: vec![],
+        };
+
+        // construct response
+        let mut resp: IbcReceiveResponse<BabylonMsg> = IbcReceiveResponse::new();
+        // add wasm message to response
+        resp = resp.add_message(wasm_msg);
+        // add attribute to response
+        resp = resp.add_attribute("action", "receive_btc_staking");
+        // add ack message to response
+        let acknowledgement = new_ack_res(); // TODO: design response format
+        resp = resp.set_ack(acknowledgement.encode_to_vec());
 
         Ok(resp)
     }

@@ -36,6 +36,13 @@ pub mod babylon {
             // @@protoc_insertion_point(babylon.zoneconcierge.v1)
         }
     }
+    pub mod btcstaking {
+        // @@protoc_insertion_point(attribute:babylon.btcstaking.v1)
+        pub mod v1 {
+            include!("gen/babylon.btcstaking.v1.rs");
+            // @@protoc_insertion_point(babylon.btcstaking.v1)
+        }
+    }
 }
 
 #[cfg(test)]

@@ -372,7 +372,13 @@ pub(crate) mod tests {
             .map(|h| BtcHeaderInfo {
                 header: Bytes::from(hex::decode(&h.header_hex).unwrap()),
                 // FIXME: Use BlockHash / Hash helper / encapsulation to reverse the hash under the hood
-                hash: Bytes::from(hex::decode(&h.hash_hex).unwrap().into_iter().rev().collect::<Vec<_>>()),
+                hash: Bytes::from(
+                    hex::decode(&h.hash_hex)
+                        .unwrap()
+                        .into_iter()
+                        .rev()
+                        .collect::<Vec<_>>(),
+                ),
                 height: h.height,
                 work: { Bytes::from(h.work.clone()) },
             })
@@ -387,7 +393,13 @@ pub(crate) mod tests {
             .map(|h| BtcHeaderInfo {
                 header: Bytes::from(hex::decode(&h.header_hex).unwrap()),
                 // FIXME: Use BlockHash / Hash helper / encapsulation to reverse the hash under the hood
-                hash: Bytes::from(hex::decode(&h.hash_hex).unwrap().into_iter().rev().collect::<Vec<_>>()),
+                hash: Bytes::from(
+                    hex::decode(&h.hash_hex)
+                        .unwrap()
+                        .into_iter()
+                        .rev()
+                        .collect::<Vec<_>>(),
+                ),
                 height: h.height,
                 work: { Bytes::from(h.work.clone()) },
             })
