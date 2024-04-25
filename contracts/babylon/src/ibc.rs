@@ -219,6 +219,7 @@ mod ibc_packet {
                 .iter()
                 .map(|fp| SlashedFinalityProvider {
                     btc_pk_hex: fp.btc_pk_hex.clone(),
+                    recovered_fp_btc_sk: fp.recovered_fp_btc_sk.clone(),
                 })
                 .collect(),
             active_del: btc_staking

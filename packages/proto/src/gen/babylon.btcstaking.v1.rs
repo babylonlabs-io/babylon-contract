@@ -142,6 +142,10 @@ pub struct SlashedFinalityProvider {
     /// the PK follows encoding in BIP-340 spec in hex format
     #[prost(string, tag="1")]
     pub btc_pk_hex: ::prost::alloc::string::String,
+    /// recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing
+    /// this allows the consumer chain to verify the BTC delegation is indeed slashed
+    #[prost(string, tag="2")]
+    pub recovered_fp_btc_sk: ::prost::alloc::string::String,
 }
 /// ActiveBTCDelegation is an IBC packet sent from Babylon to consumer chain
 /// upon a BTC delegation newly receives covenant signatures and thus becomes active
@@ -232,16 +236,17 @@ pub struct BtcUndelegationInfo {
     #[prost(message, repeated, tag="6")]
     pub covenant_slashing_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
 }
-/// SlashedBTCDelegation is an IBC packet sent upon a slashed BTC delegation
-/// Slashing can happen on both Babylon and consumer chain, so both of them could
-/// send this packet to each other
+/// SlashedBTCDelegation is an IBC packet sent from Babylon to consumer chain
+/// about a slashed BTC delegation restaked to >=1 of this consumer chain's 
+/// finality provider
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SlashedBtcDelegation {
     /// staking tx hash of the BTC delegation. It uniquely identifies a BTC delegation
     #[prost(string, tag="1")]
     pub staking_tx_hash: ::prost::alloc::string::String,
-    /// recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing
+    /// recovered_fp_btc_sk is the extracted BTC SK of the finality provider on
+    /// this consumer chain
     /// this allows the consumer chain to verify the BTC delegation is indeed slashed
     #[prost(string, tag="2")]
     pub recovered_fp_btc_sk: ::prost::alloc::string::String,

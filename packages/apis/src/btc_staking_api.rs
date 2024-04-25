@@ -24,7 +24,6 @@ pub struct FinalityProvider {
     /// description defines the description terms for the finality provider
     pub description: Option<FinalityProviderDescription>,
     /// commission defines the commission rate of the finality provider.
-    /// It forms as a string converted from "cosmossdk.io/math.LegacyDec"
     pub commission: Decimal,
     /// babylon_pk is the Babylon secp256k1 PK of this finality provider
     pub babylon_pk: Option<PubKey>,
@@ -90,20 +89,23 @@ pub struct ProofOfPossession {
     pub btc_sig: Bytes,
 }
 
-/// SlashedFinalityProvider is an IBC packet sent from consumer chain to Babylon
-/// upon a finality provider is slashed on the consumer chain
+/// SlashedFinalityProvider is a packet sent from Consumer chain to Babylon
+/// upon a finality provider is slashed on the Consumer chain
 #[cw_serde]
 pub struct SlashedFinalityProvider {
     /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
     /// the PK follows encoding in BIP-340 spec in hex format
     pub btc_pk_hex: String,
+    /// recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing.
+    /// This allows the consumer chain to verify the BTC delegation is indeed slashed
+    pub recovered_fp_btc_sk: String,
 }
 
 /// ActiveBTCDelegation is a message sent when a BTC delegation newly receives covenant signatures
 /// and thus becomes active
 #[cw_serde]
 pub struct ActiveBtcDelegation {
-    /// btc_pk_hex is the Bitcoin secp256k1 PK of this BTC delegation.
+    /// btc_pk_hex is the Bitcoin secp256k1 PK of the BTC delegator.
     /// The PK follows encoding in BIP-340 spec in hex format
     pub btc_pk_hex: String,
     /// fp_btc_pk_list is the list of BIP-340 PKs of the finality providers that
@@ -185,15 +187,13 @@ pub struct SignatureInfo {
     pub sig: Bytes,
 }
 
-/// SlashedBTCDelegation is a message sent upon a slashed BTC delegation.
-/// Slashing can happen on both Babylon and the Consumer chain, so both of them could
-/// send this packet to each other.
+/// SlashedBTCDelegation is a packet sent from Babylon to the Consumer chain about a slashed BTC
+/// delegation re-staked to >=1 of the Consumer chain's finality providers
 #[cw_serde]
 pub struct SlashedBtcDelegation {
     /// staking tx hash of the BTC delegation. It uniquely identifies a BTC delegation
     pub staking_tx_hash: String,
-    /// recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing.
-    /// This allows the Consumer chain to verify the BTC delegation is indeed slashed
+    /// recovered_fp_btc_sk is the extracted BTC SK of the finality provider on this Consumer chain
     pub recovered_fp_btc_sk: String,
 }
 
