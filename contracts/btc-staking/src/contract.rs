@@ -1,4 +1,5 @@
 use crate::error::ContractError;
+use babylon_bindings::BabylonMsg;
 use cosmwasm_std::{
     entry_point, to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
     Response, StdResult,
@@ -20,7 +21,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     _msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(&info)?;
     let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
@@ -57,7 +58,7 @@ pub fn execute(
     _env: Env,
     _info: MessageInfo,
     _msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     // TODO: Add events
     Ok(Response::new())
 }

@@ -3,7 +3,8 @@ use cosmwasm_std::{StdError, Storage};
 
 use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 
-use crate::{bindings::msg_btc_finalized_header, msg::bindings::BabylonMsg};
+use crate::bindings::msg_btc_finalized_header;
+use babylon_bindings::BabylonMsg;
 
 pub mod babylon_epoch_chain;
 pub mod btc_light_client;

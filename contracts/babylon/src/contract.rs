@@ -1,15 +1,15 @@
 use crate::error::ContractError;
 use cosmwasm_std::{
     to_json_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
-    StdResult, SubMsg, SubMsgResponse, WasmMsg,
+    SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw_utils::parse_instantiate_response_data;
 
-use crate::msg::bindings::BabylonMsg;
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
+use babylon_bindings::BabylonMsg;
 
 const REPLY_ID_INSTANTIATE: u64 = 1;
 
@@ -22,7 +22,7 @@ pub fn instantiate(
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     msg.validate()?;
 
     // initialise config
@@ -54,7 +54,11 @@ pub fn instantiate(
     Ok(res)
 }
 
-pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(
+    deps: DepsMut,
+    _env: Env,
+    reply: Reply,
+) -> Result<Response<BabylonMsg>, ContractError> {
     match reply.id {
         REPLY_ID_INSTANTIATE => reply_init_callback(deps, reply.result.unwrap()),
         _ => Err(ContractError::InvalidReplyId(reply.id)),
@@ -62,7 +66,10 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
 }
 
 /// Store virtual BTC staking address
-fn reply_init_callback(deps: DepsMut, reply: SubMsgResponse) -> Result<Response, ContractError> {
+fn reply_init_callback(
+    deps: DepsMut,
+    reply: SubMsgResponse,
+) -> Result<Response<BabylonMsg>, ContractError> {
     let init_data = parse_instantiate_response_data(&reply.data.unwrap())?;
     let btc_staking = Addr::unchecked(init_data.contract_address);
     CONFIG.update(deps.storage, |mut cfg| {
@@ -106,7 +113,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
 }
 
 /// this is a no-op just to test how this integrates with wasmd
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
+pub fn migrate(
+    _deps: DepsMut,
+    _env: Env,
+    _msg: Empty,
+) -> Result<Response<BabylonMsg>, ContractError> {
     Ok(Response::default())
 }
 

@@ -19,7 +19,7 @@ use cosmwasm_vm::Instance;
 
 use babylon_proto::babylon::btclightclient::v1::QueryMainChainResponse;
 
-use babylon_contract::msg::bindings::BabylonMsg;
+use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeader;
 use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 

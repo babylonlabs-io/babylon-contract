@@ -1,6 +1,6 @@
 use crate::error::ContractError;
-use crate::msg::bindings::BabylonMsg;
 use crate::msg::ibc::{new_ack_err, new_ack_res};
+use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };

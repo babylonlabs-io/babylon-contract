@@ -26,8 +26,8 @@ use cosmwasm_vm::{Instance, Size};
 use prost::Message;
 use std::fs;
 
+use babylon_bindings::BabylonMsg;
 use babylon_contract::ibc::IBC_VERSION;
-use babylon_contract::msg::bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::{BtcHeader, BtcHeadersResponse};
 use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 use babylon_proto::babylon::btclightclient::v1::QueryMainChainResponse;

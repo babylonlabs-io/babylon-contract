@@ -4,7 +4,7 @@
 //! - FinalizedHeader: reporting a BTC-finalised header.
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::CosmosMsg;
+use cosmwasm_std::{CosmosMsg, Empty};
 
 /// BabylonMsg is the message that the Babylon contract can send to the Cosmos zone.
 /// The Cosmos zone has to integrate https://github.com/babylonchain/wasmbinding for
@@ -18,6 +18,9 @@ pub enum BabylonMsg {
         time: i64, // NOTE: UNIX timestamp is in i64
     },
 }
+
+pub type BabylonSudoMsg = Empty;
+pub type BabylonQuery = Empty;
 
 // make BabylonMsg to implement CosmosMsg::CustomMsg
 impl cosmwasm_std::CustomMsg for BabylonMsg {}

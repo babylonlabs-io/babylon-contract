@@ -1,6 +1,6 @@
 //! bindings includes functions that invokes custom messages to Cosmos zone.
 
-use crate::msg::bindings::BabylonMsg;
+use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::IndexedHeader;
 use cosmwasm_std::StdError;
 

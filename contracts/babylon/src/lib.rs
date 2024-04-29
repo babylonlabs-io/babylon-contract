@@ -7,13 +7,16 @@ use cosmwasm_std::{
 };
 
 use crate::error::ContractError;
-use crate::msg::{bindings::BabylonMsg, contract::ExecuteMsg, contract::InstantiateMsg};
+use crate::msg::{contract::ExecuteMsg, contract::InstantiateMsg};
+use babylon_bindings::BabylonMsg;
 
 mod bindings;
 pub mod contract;
 pub mod error;
 pub mod ibc;
 pub mod msg;
+#[cfg(test)]
+mod multitest;
 mod queries;
 pub mod state;
 mod utils;
@@ -24,12 +27,12 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     contract::instantiate(deps, env, info, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response<BabylonMsg>, ContractError> {
     contract::reply(deps, env, reply)
 }
 
@@ -39,7 +42,7 @@ pub fn query(deps: Deps, env: Env, msg: msg::contract::QueryMsg) -> Result<Binar
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, env: Env, msg: Empty) -> StdResult<Response> {
+pub fn migrate(deps: DepsMut, env: Env, msg: Empty) -> Result<Response<BabylonMsg>, ContractError> {
     contract::migrate(deps, env, msg)
 }
 
