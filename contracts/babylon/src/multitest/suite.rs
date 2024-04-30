@@ -1,9 +1,10 @@
-use crate::msg::contract::InstantiateMsg;
+use crate::msg::contract::{InstantiateMsg, QueryMsg};
+use crate::state::config::Config;
 use anyhow::Result as AnyResult;
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
-use cosmwasm_std::{Addr, Empty, StdResult};
+use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 use derivative::Derivative;
 
@@ -27,8 +28,6 @@ fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
 #[derivative(Default = "new")]
 pub struct SuiteBuilder {
     funds: Vec<(Addr, u128)>,
-    #[derivative(Default(value = "\"osmo\".to_owned()"))]
-    denom: String,
 }
 
 impl SuiteBuilder {
@@ -45,8 +44,6 @@ impl SuiteBuilder {
 
         let owner = Addr::unchecked("owner");
 
-        let denom = self.denom;
-
         let mut app = BabylonApp::new(owner.as_str());
 
         let _block_info = app.block_info();
@@ -61,10 +58,10 @@ impl SuiteBuilder {
                 contract_code_id,
                 owner.clone(),
                 &InstantiateMsg {
-                    network: Network::Mainnet,
+                    network: Network::Testnet,
                     babylon_tag: "01020304".to_string(),
                     btc_confirmation_depth: 1,
-                    checkpoint_finalization_timeout: 1,
+                    checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
                     btc_staking_code_id: Some(btc_staking_code_id),
                     admin: Some(owner.to_string()),
@@ -80,7 +77,6 @@ impl SuiteBuilder {
             code_id: contract_code_id,
             contract,
             owner,
-            denom,
         }
     }
 }
@@ -96,8 +92,6 @@ pub struct Suite {
     pub contract: Addr,
     /// Admin of babylon and btc-staking contracts
     pub owner: Addr,
-    /// Denom of tokens in this Consumer
-    pub denom: String,
 }
 
 impl Suite {
@@ -105,15 +99,23 @@ impl Suite {
         self.owner.as_str()
     }
 
-    /// Shortcut for querying token balance of address
-    #[allow(dead_code)]
-    pub fn token_balance(&self, owner: &str) -> StdResult<u128> {
-        let amount = self
-            .app
+    #[track_caller]
+    pub fn get_config(&self) -> Config {
+        self.app
             .wrap()
-            .query_balance(Addr::unchecked(owner), &self.denom)?
-            .amount;
-        Ok(amount.into())
+            .query_wasm_smart(self.contract.clone(), &QueryMsg::Config {})
+            .unwrap()
+    }
+
+    #[track_caller]
+    pub fn get_btc_staking_config(&self) -> btc_staking::state::Config {
+        self.app
+            .wrap()
+            .query_wasm_smart(
+                Addr::unchecked("contract1"),
+                &btc_staking::msg::QueryMsg::Config {},
+            )
+            .unwrap()
     }
 
     pub fn migrate(&mut self, addr: &str, msg: Empty) -> AnyResult<AppResponse> {
