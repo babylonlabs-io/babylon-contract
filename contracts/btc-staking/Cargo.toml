@@ -13,7 +13,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "schema"
+name = "btcstaking-schema"
 path = "src/bin/schema.rs"
 
 [features]

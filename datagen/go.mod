@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.21.4
 
 require (
+	cosmossdk.io/math v1.2.0
 	github.com/babylonchain/babylon v0.8.0
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
 	github.com/btcsuite/btcd v0.24.0
@@ -24,7 +25,6 @@ require (
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
 	cosmossdk.io/errors v1.0.1 // indirect
 	cosmossdk.io/log v1.3.1 // indirect
-	cosmossdk.io/math v1.2.0 // indirect
 	cosmossdk.io/store v1.0.2 // indirect
 	cosmossdk.io/x/circuit v0.1.0 // indirect
 	cosmossdk.io/x/evidence v0.1.0 // indirect
@@ -213,7 +213,7 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon v0.8.0 => github.com/babylonchain/babylon v0.8.6-0.20240422082847-367b704f14ab
+	github.com/babylonchain/babylon v0.8.0 => github.com/babylonchain/babylon v0.8.6-0.20240429095251-8811e794926a
 
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 )

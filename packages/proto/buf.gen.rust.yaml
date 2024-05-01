@@ -17,6 +17,8 @@ types:
     - babylon.zoneconcierge.v1.QueryFinalizedChainsInfoResponse
     - babylon.zoneconcierge.v1.ZoneconciergePacketData
     - babylon.zoneconcierge.v1.BTCTimestamp
+    - babylon.btcstaking.v1.BTCDelegation
+    - babylon.btcstaking.v1.Params
 plugins:
   - plugin: buf.build/community/neoeinstein-prost:v0.2.3
     out: src/gen

@@ -1,0 +1,17 @@
+[package]
+name = "babylon-btcstaking"
+description = "BTC staking library in Rust"
+version.workspace = true
+edition.workspace = true
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitcoin      = { workspace = true }
+rust_decimal = { workspace = true }
+hex          = { workspace = true }
+
+[dev-dependencies]
+babylon-proto = { workspace = true }
+prost         = { workspace = true }

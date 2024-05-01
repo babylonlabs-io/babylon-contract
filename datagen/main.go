@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/babylonchain/babylon/types"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/babylonchain/babylon/types"
 
 	bbnapp "github.com/babylonchain/babylon/app"
 	txformat "github.com/babylonchain/babylon/btctxformatter"
@@ -288,4 +289,5 @@ func main() {
 	GenBTCLightClientFork(r, mainHeaders[forkHeaderHeight-initialHeaderHeight])
 	GenBTCLightClientForkMessages(r, mainHeaders[forkHeaderHeight-initialHeaderHeight])
 	GenBTCTimestamp(r)
+	GenBTCDelegation(r)
 }

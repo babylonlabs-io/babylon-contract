@@ -1,0 +1,1 @@
+// TODO: verify {Schnorr, adaptor} signatures over Taproot paths
