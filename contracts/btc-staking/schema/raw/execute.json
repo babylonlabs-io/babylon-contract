@@ -1,6 +1,538 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ExecuteMsg",
-  "type": "string",
-  "enum": []
+  "description": "btc_staking execution handlers",
+  "oneOf": [
+    {
+      "description": "BTC Staking operations.",
+      "type": "object",
+      "required": [
+        "btc_staking"
+      ],
+      "properties": {
+        "btc_staking": {
+          "type": "object",
+          "required": [
+            "active_del",
+            "new_fp",
+            "slashed_del",
+            "slashed_fp",
+            "unbonded_del"
+          ],
+          "properties": {
+            "active_del": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ActiveBtcDelegation"
+              }
+            },
+            "new_fp": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/FinalityProvider"
+              }
+            },
+            "slashed_del": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/SlashedBtcDelegation"
+              }
+            },
+            "slashed_fp": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/SlashedFinalityProvider"
+              }
+            },
+            "unbonded_del": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/UnbondedBtcDelegation"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "ActiveBtcDelegation": {
+      "description": "ActiveBTCDelegation is a message sent when a BTC delegation newly receives covenant signatures and thus becomes active",
+      "type": "object",
+      "required": [
+        "btc_pk_hex",
+        "covenant_sigs",
+        "delegator_slashing_sig",
+        "end_height",
+        "fp_btc_pk_list",
+        "params_version",
+        "slashing_tx",
+        "staking_output_idx",
+        "staking_tx",
+        "start_height",
+        "total_sat",
+        "unbonding_time"
+      ],
+      "properties": {
+        "btc_pk_hex": {
+          "description": "btc_pk_hex is the Bitcoin secp256k1 PK of the BTC delegator. The PK follows encoding in BIP-340 spec in hex format",
+          "type": "string"
+        },
+        "covenant_sigs": {
+          "description": "covenant_sigs is a list of adaptor signatures on the slashing tx by each covenant member. It will be a part of the witness for the staking tx output.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CovenantAdaptorSignatures"
+          }
+        },
+        "delegator_slashing_sig": {
+          "description": "delegator_slashing_sig is the signature on the slashing tx by the delegator (i.e. SK corresponding to btc_pk) as string hex. It will be a part of the witness for the staking tx output.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "end_height": {
+          "description": "end_height is the end height of the BTC delegation it is the end BTC height of the time-lock - w",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "fp_btc_pk_list": {
+          "description": "fp_btc_pk_list is the list of BIP-340 PKs of the finality providers that this BTC delegation delegates to",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "params_version": {
+          "description": "params version used to validate the delegation",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "slashing_tx": {
+          "description": "slashing_tx is the slashing tx",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "staking_output_idx": {
+          "description": "staking_output_idx is the index of the staking output in the staking tx",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "staking_tx": {
+          "description": "staking_tx is the staking tx",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "start_height": {
+          "description": "start_height is the start BTC height of the BTC delegation. It is the start BTC height of the time-lock",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "total_sat": {
+          "description": "total_sat is the total BTC stakes in this delegation, quantified in satoshi",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "unbonding_time": {
+          "description": "unbonding_time is used in unbonding output time-lock path and in slashing transactions change outputs",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "undelegation_info": {
+          "description": "undelegation_info is the undelegation info of this delegation.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BtcUndelegationInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "BtcUndelegationInfo": {
+      "description": "BTCUndelegationInfo provides all necessary info about the undeleagation",
+      "type": "object",
+      "required": [
+        "covenant_slashing_sigs",
+        "covenant_unbonding_sig_list",
+        "delegator_slashing_sig",
+        "delegator_unbonding_sig",
+        "slashing_tx",
+        "unbonding_tx"
+      ],
+      "properties": {
+        "covenant_slashing_sigs": {
+          "description": "covenant_slashing_sigs is a list of adaptor signatures on the unbonding slashing tx by each covenant member It will be a part of the witness for the staking tx output.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CovenantAdaptorSignatures"
+          }
+        },
+        "covenant_unbonding_sig_list": {
+          "description": "covenant_unbonding_sig_list is the list of signatures on the unbonding tx by covenant members",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SignatureInfo"
+          }
+        },
+        "delegator_slashing_sig": {
+          "description": "delegator_slashing_sig is the signature on the slashing tx by the delegator (i.e. SK corresponding to btc_pk). It will be a part of the witness for the unbonding tx output.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "delegator_unbonding_sig": {
+          "description": "delegator_unbonding_sig is the signature on the unbonding tx by the delegator (i.e. SK corresponding to btc_pk). It effectively proves that the delegator wants to unbond and thus Babylon will consider this BTC delegation unbonded. Delegator's BTC on Bitcoin will be unbonded after time-lock.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "slashing_tx": {
+          "description": "slashing_tx is the unbonding slashing tx",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "unbonding_tx": {
+          "description": "unbonding_tx is the transaction which will transfer the funds from staking output to unbonding output. Unbonding output will usually have lower timelock than staking output.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CovenantAdaptorSignatures": {
+      "description": "CovenantAdaptorSignatures is a list adaptor signatures signed by the covenant with different finality provider's public keys as encryption keys",
+      "type": "object",
+      "required": [
+        "adaptor_sigs",
+        "cov_pk"
+      ],
+      "properties": {
+        "adaptor_sigs": {
+          "description": "adaptor_sigs is a list of adaptor signatures, each encrypted by a restaked BTC finality provider's public key",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          }
+        },
+        "cov_pk": {
+          "description": "cov_pk is the public key of the covenant emulator, used as the public key of the adaptor signature",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "FinalityProvider": {
+      "type": "object",
+      "required": [
+        "btc_pk_hex",
+        "chain_id",
+        "commission",
+        "master_pub_rand",
+        "registered_epoch",
+        "slashed_babylon_height",
+        "slashed_btc_height"
+      ],
+      "properties": {
+        "babylon_pk": {
+          "description": "babylon_pk is the Babylon secp256k1 PK of this finality provider",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PubKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "btc_pk_hex": {
+          "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+          "type": "string"
+        },
+        "chain_id": {
+          "description": "chain_id is the chain id of the chain the finality provider is operating on. If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.",
+          "type": "string"
+        },
+        "commission": {
+          "description": "commission defines the commission rate of the finality provider.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            }
+          ]
+        },
+        "description": {
+          "description": "description defines the description terms for the finality provider",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FinalityProviderDescription"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "master_pub_rand": {
+          "description": "master_pub_rand is the master public randomness of the finality provider encoded as a base58 string",
+          "type": "string"
+        },
+        "pop": {
+          "description": "pop is the proof of possession of the babylon_pk and btc_pk",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ProofOfPossession"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "registered_epoch": {
+          "description": "registered_epoch is the epoch when this finality provider is registered",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "slashed_babylon_height": {
+          "description": "slashed_babylon_height indicates the Babylon height when the finality provider is slashed. if it's 0, then the finality provider is not slashed",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "slashed_btc_height": {
+          "description": "slashed_btc_height indicates the BTC height when the finality provider is slashed. if it's 0, then the finality provider is not slashed",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "FinalityProviderDescription": {
+      "type": "object",
+      "required": [
+        "details",
+        "identity",
+        "moniker",
+        "security_contact",
+        "website"
+      ],
+      "properties": {
+        "details": {
+          "description": "details is the details of the finality provider",
+          "type": "string"
+        },
+        "identity": {
+          "description": "identity is the identity of the finality provider",
+          "type": "string"
+        },
+        "moniker": {
+          "description": "moniker is the name of the finality provider",
+          "type": "string"
+        },
+        "security_contact": {
+          "description": "security_contact is the security contact of the finality provider",
+          "type": "string"
+        },
+        "website": {
+          "description": "website is the website of the finality provider",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProofOfPossession": {
+      "description": "ProofOfPossession is the proof of possession that a Babylon secp256k1 secret key and a Bitcoin secp256k1 secret key are held by the same person",
+      "type": "object",
+      "required": [
+        "babylon_sig",
+        "btc_sig",
+        "btc_sig_type"
+      ],
+      "properties": {
+        "babylon_sig": {
+          "description": "babylon_sig is the signature generated via sign(sk_babylon, pk_btc)",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "btc_sig": {
+          "description": "btc_sig is the signature generated via sign(sk_btc, babylon_sig) the signature follows encoding in either BIP-340 spec or BIP-322 spec",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "btc_sig_type": {
+          "description": "btc_sig_type indicates the type of btc_sig in the pop",
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PubKey": {
+      "description": "PubKey defines a secp256k1 public key. Key is the compressed form of the pubkey. The first byte is a 0x02 byte if the y-coordinate is the lexicographically largest of the two associated with the x-coordinate. Otherwise, the first byte is a 0x03. This prefix is followed with the x-coordinate.",
+      "type": "object",
+      "required": [
+        "key"
+      ],
+      "properties": {
+        "key": {
+          "description": "key is the compressed public key of the finality provider",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SignatureInfo": {
+      "description": "SignatureInfo is a BIP-340 signature together with its signer's BIP-340 PK",
+      "type": "object",
+      "required": [
+        "pk",
+        "sig"
+      ],
+      "properties": {
+        "pk": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "sig": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "SlashedBtcDelegation": {
+      "description": "SlashedBTCDelegation is a packet sent from Babylon to the Consumer chain about a slashed BTC delegation re-staked to >=1 of the Consumer chain's finality providers",
+      "type": "object",
+      "required": [
+        "recovered_fp_btc_sk",
+        "staking_tx_hash"
+      ],
+      "properties": {
+        "recovered_fp_btc_sk": {
+          "description": "recovered_fp_btc_sk is the extracted BTC SK of the finality provider on this Consumer chain",
+          "type": "string"
+        },
+        "staking_tx_hash": {
+          "description": "staking tx hash of the BTC delegation. It uniquely identifies a BTC delegation",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SlashedFinalityProvider": {
+      "description": "SlashedFinalityProvider is a packet sent from Consumer chain to Babylon upon a finality provider is slashed on the Consumer chain",
+      "type": "object",
+      "required": [
+        "btc_pk_hex",
+        "recovered_fp_btc_sk"
+      ],
+      "properties": {
+        "btc_pk_hex": {
+          "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+          "type": "string"
+        },
+        "recovered_fp_btc_sk": {
+          "description": "recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing. This allows the consumer chain to verify the BTC delegation is indeed slashed",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnbondedBtcDelegation": {
+      "description": "UnbondedBTCDelegation is sent from Babylon to the Consumer chain upon an early unbonded BTC delegation",
+      "type": "object",
+      "required": [
+        "staking_tx_hash",
+        "unbonding_tx_sig"
+      ],
+      "properties": {
+        "staking_tx_hash": {
+          "description": "staking tx hash of the BTC delegation. It uniquely identifies a BTC delegation",
+          "type": "string"
+        },
+        "unbonding_tx_sig": {
+          "description": "unbonding_tx_sig is the signature on the unbonding tx signed by the BTC delegator It proves that the BTC delegator wants to unbond",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

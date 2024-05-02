@@ -17,13 +17,14 @@ jobs:
           command: |
             rustup component add rustfmt clippy
       - run:
-          name: Build Babylon contract
+          name: Build Babylon contracts
           command: |
             cargo build
       - run:
           name: Test generating schema
           command: |
             (cd ./contracts/babylon && cargo run --bin schema)
+            (cd ./contracts/btc-staking && cargo run --bin btcstaking-schema)
       - run:
           name: Check formats and run unit tests
           command: |
@@ -36,17 +37,17 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Build optimised Wasm binary
+          name: Build optimised Wasm binaries
           command: |
             ./scripts/build-optimizer-ci.sh
       - run:
           name: Install cosmwasm-check
           # Uses --debug for compilation speed
-          command: cargo install --locked --debug cosmwasm-check
+          command: cargo install --locked --debug --version ^1.5 cosmwasm-check
       - run:
-          name: Check the Wasm binary's validity against Wasm VM
+          name: Check the Wasm binaries' validity
           command: |
-            cosmwasm-check /home/circleci/project/artifacts/babylon_contract.wasm
+            cosmwasm-check /home/circleci/project/artifacts/*.wasm
       - run:
           name: Integration tests based on CosmWasm
           command: |
@@ -55,6 +56,7 @@ jobs:
           root: /home/circleci/project/artifacts
           paths:
             - babylon_contract.wasm
+            - btc_staking.wasm
 
   benchmarking:
     docker:
@@ -63,7 +65,7 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Build optimised Wasm binary
+          name: Build optimised Wasm binaries
           command: |
             ./scripts/build-optimizer-ci.sh
       - run:
@@ -105,13 +107,14 @@ jobs:
           name: Install ghr
           command: wget https://github.com/tcnksm/ghr/releases/download/v0.14.0/ghr_v0.14.0_linux_amd64.tar.gz -O - | tar -zxvf - -C /tmp/bin --wildcards --strip-components 1 */ghr
       - run:
-          name: Build optimised Wasm binary
+          name: Build optimised Wasm binaries
           command: |
             ./scripts/build-optimizer-ci.sh
       - persist_to_workspace:
           root: /home/circleci/project/artifacts
           paths:
             - babylon_contract.wasm
+            - btc_staking.wasm
             - checksums.txt
       - run:
           name: Show data
@@ -183,9 +186,6 @@ workflows:
                 - main
                 - /^[0-9]+\.[0-9]+$/
                 # Add your branch here if benchmarking matters to your work
-      - push-to-s3:
-          requires:
-            - wasm-build-check-integration
   deploy:
     jobs:
       - build_and_upload_contracts:
