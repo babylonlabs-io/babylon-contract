@@ -2,7 +2,35 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.4.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.0...HEAD)
+
+## [v0.5.0](https://github.com/babylonchain/babylon-contract/tree/v0.5.0) (2024-05-03)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.4.0...v0.5.0)
+
+**Closed issues:**
+
+- btcstaking: verification of {Schnorr, adaptor} signatures in BTC staking library [\#77](https://github.com/babylonchain/babylon-contract/issues/77)
+- compiling IBC packets from protobuf to Rust [\#69](https://github.com/babylonchain/babylon-contract/issues/69)
+- btcstaking: BTC staking library [\#64](https://github.com/babylonchain/babylon-contract/issues/64)
+
+**Merged pull requests:**
+
+- F/staking validation [\#82](https://github.com/babylonchain/babylon-contract/pull/82) ([maurolacy](https://github.com/maurolacy))
+- F/staking queries [\#81](https://github.com/babylonchain/babylon-contract/pull/81) ([maurolacy](https://github.com/maurolacy))
+- Support Mac's ugly non-standard sed [\#80](https://github.com/babylonchain/babylon-contract/pull/80) ([maurolacy](https://github.com/maurolacy))
+- multi-tests follow-up [\#79](https://github.com/babylonchain/babylon-contract/pull/79) ([maurolacy](https://github.com/maurolacy))
+- btcstaking: verify Schnorr/adaptor sig over txs [\#78](https://github.com/babylonchain/babylon-contract/pull/78) ([SebastianElvis](https://github.com/SebastianElvis))
+- Add multi-test support [\#75](https://github.com/babylonchain/babylon-contract/pull/75) ([maurolacy](https://github.com/maurolacy))
+- Update proto / apis defs [\#74](https://github.com/babylonchain/babylon-contract/pull/74) ([maurolacy](https://github.com/maurolacy))
+- F/staking handling [\#73](https://github.com/babylonchain/babylon-contract/pull/73) ([maurolacy](https://github.com/maurolacy))
+- BTC staking msgs [\#68](https://github.com/babylonchain/babylon-contract/pull/68) ([maurolacy](https://github.com/maurolacy))
+- Fix/btc lc datagen [\#67](https://github.com/babylonchain/babylon-contract/pull/67) ([maurolacy](https://github.com/maurolacy))
+- btcstaking: btcstaking library in Rust [\#65](https://github.com/babylonchain/babylon-contract/pull/65) ([SebastianElvis](https://github.com/SebastianElvis))
+- BTC staking contract [\#63](https://github.com/babylonchain/babylon-contract/pull/63) ([maurolacy](https://github.com/maurolacy))
+- Benchmark fixes / follow-up [\#62](https://github.com/babylonchain/babylon-contract/pull/62) ([maurolacy](https://github.com/maurolacy))
+- Babylon contract benchmarks [\#61](https://github.com/babylonchain/babylon-contract/pull/61) ([maurolacy](https://github.com/maurolacy))
+- Upgrade to latest rust-bitcoin 0.31.x [\#60](https://github.com/babylonchain/babylon-contract/pull/60) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.4.0](https://github.com/babylonchain/babylon-contract/tree/v0.4.0) (2024-02-13)
 
