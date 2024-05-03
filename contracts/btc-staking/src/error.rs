@@ -6,7 +6,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
-    StdError(#[from] StdError),
+    Std(#[from] StdError),
     #[error("{0}")]
     Payment(#[from] PaymentError),
     #[error("{0}")]
@@ -23,4 +23,28 @@ pub enum ContractError {
     DelegationAlreadyExists(String),
     #[error("Invalid Btc tx: {0}")]
     InvalidBtcTx(String),
+    #[error("Empty Btc public key")]
+    EmptyBtcPk,
+    #[error("Invalid Btc PK: {0}")]
+    InvalidBtcPk(String),
+    #[error("Empty proof of possession")]
+    MissingPop,
+    #[error("Empty master public randomness key")]
+    EmptyMasterPubRand,
+    #[error("No Finality Providers Btc public keys")]
+    EmptyBtcPkList,
+    #[error("Duplicate Finality Provider Btc public key: {0}")]
+    DuplicatedBtcPk(String),
+    #[error("Empty Staking tx")]
+    EmptyStakingTx,
+    #[error("Empty Slashing tx")]
+    EmptySlashingTx,
+    #[error("Invalid lock type: seconds")]
+    ErrInvalidLockType,
+    #[error("Invalid lock time blocks: {0}, max: {1}")]
+    ErrInvalidLockTime(u32, u32),
+    #[error("Invalid unbonding time blocks: {0}, max: {1}")]
+    ErrInvalidUnbondingTime(u32, u32),
+    #[error("Empty moniker")]
+    EmptyMoniker,
 }

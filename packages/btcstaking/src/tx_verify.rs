@@ -358,7 +358,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_verify_unbonding_slashing_tx_adaptor_sig() {
         let params = get_params();
@@ -393,13 +392,20 @@ mod tests {
 
         // test verifying adaptor signature, i.e., covenant signatures over slashing tx
         for cov_unbonding_slashing_tx_info in btc_undel.covenant_slashing_sigs {
-            let cov_pk = XOnlyPublicKey::from_slice(&cov_unbonding_slashing_tx_info.cov_pk).unwrap();
-            for (idx, cov_asig_bytes) in cov_unbonding_slashing_tx_info.adaptor_sigs.iter().enumerate() {
+            let cov_pk =
+                XOnlyPublicKey::from_slice(&cov_unbonding_slashing_tx_info.cov_pk).unwrap();
+            for (idx, cov_asig_bytes) in cov_unbonding_slashing_tx_info
+                .adaptor_sigs
+                .iter()
+                .enumerate()
+            {
                 let cov_asig = new_adaptor_sig(cov_asig_bytes).unwrap();
                 enc_verify_transaction_sig_with_output(
                     &unbonding_slashing_tx,
                     unbonding_out,
-                    babylon_unbonding_script_paths.slashing_path_script.as_script(),
+                    babylon_unbonding_script_paths
+                        .slashing_path_script
+                        .as_script(),
                     &cov_pk,
                     &fp_pks[idx],
                     &cov_asig,

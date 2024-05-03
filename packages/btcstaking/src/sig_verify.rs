@@ -77,14 +77,19 @@ fn verify_adaptor_sig(
     let enc_key = Point::from(*enc_key);
     let parsed_msg = ASigMessage::<Public>::raw(&msg);
     let verifier = Schnorr::<Sha256>::verify_only();
-    verifier.verify_encrypted_signature(&verification_key, &enc_key, parsed_msg, asig)
-            .then_some(())
-            .ok_or("failed to verify the adaptor signature".to_string())
+    verifier
+        .verify_encrypted_signature(&verification_key, &enc_key, parsed_msg, asig)
+        .then_some(())
+        .ok_or("failed to verify the adaptor signature".to_string())
 }
 
 pub fn new_adaptor_sig(asig_bytes: &[u8]) -> Result<AdaptorSignature, String> {
     if asig_bytes.len() != ADAPTOR_SIGNATURE_SIZE {
-        return Err(format!("malformed bytes for an adaptor signature: expected: {}, actual: {}", ADAPTOR_SIGNATURE_SIZE, asig_bytes.len()));
+        return Err(format!(
+            "malformed bytes for an adaptor signature: expected: {}, actual: {}",
+            ADAPTOR_SIGNATURE_SIZE,
+            asig_bytes.len()
+        ));
     }
     let (r, _) = Point::from_slice(&asig_bytes[0..JACOBIAN_POINT_SIZE])
         .ok_or("failed to get R in an adaptor signature")?

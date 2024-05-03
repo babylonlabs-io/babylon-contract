@@ -1,9 +1,11 @@
 use crate::error::ContractError;
+use crate::error::ContractError::{EmptyBtcPk, ErrInvalidLockTime, ErrInvalidLockType};
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SlashedFinalityProvider,
-    UnbondedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
+    SlashedBtcDelegation, SlashedFinalityProvider, UnbondedBtcDelegation,
 };
 use babylon_bindings::BabylonMsg;
+use bitcoin::absolute::LockTime;
 use bitcoin::hashes::Hash;
 use bitcoin::{consensus::deserialize, Transaction};
 use cosmwasm_std::{
@@ -151,8 +153,44 @@ pub fn handle_new_fp(
             fp.btc_pk_hex.clone(),
         ));
     }
-    // TODO: Add validation for the finality provider
+    // validate the finality provider data
+    validate_fp(fp)?;
+
     FPS.save(storage, &fp.btc_pk_hex, fp)?;
+    Ok(())
+}
+
+fn validate_fp(fp: &FinalityProvider) -> Result<(), ContractError> {
+    fp.description
+        .as_ref()
+        .map(FinalityProviderDescription::validate)
+        .transpose()?;
+
+    if fp.btc_pk_hex.is_empty() {
+        return Err(EmptyBtcPk);
+    }
+
+    let _btc_pk = hex::decode(&fp.btc_pk_hex)?;
+
+    // TODO: Validate BTC public key (requires valid BTC PK data)
+    // PublicKey::from_slice(&btc_pk)
+    //     .map_err(|_| ContractError::InvalidBtcPk(fp.btc_pk_hex.clone()))?;
+
+    match fp.pop {
+        Some(ref pop) => validate_pop(pop)?,
+        None => return Err(ContractError::MissingPop),
+    }
+
+    // Validate master public randomness
+    if fp.master_pub_rand.is_empty() {
+        return Err(ContractError::EmptyMasterPubRand);
+    }
+
+    Ok(())
+}
+
+// TODO: Validate proof of possession
+fn validate_pop(_pop: &ProofOfPossession) -> Result<(), ContractError> {
     Ok(())
 }
 
@@ -162,8 +200,8 @@ pub fn handle_active_delegation(
     storage: &mut dyn Storage,
     delegation: &ActiveBtcDelegation,
 ) -> Result<(), ContractError> {
-    // TODO: Basic stateless checks
-    // validate_basic
+    // Basic stateless checks
+    validate_delegation(delegation)?;
 
     // Get params
     // btc_confirmation_depth
@@ -184,6 +222,16 @@ pub fn handle_active_delegation(
     // Parse staking tx
     let staking_tx: Transaction = deserialize(&delegation.staking_tx)
         .map_err(|_| ContractError::InvalidBtcTx(delegation.staking_tx.encode_hex()))?;
+    // Check staking time is at most uint16
+    match staking_tx.lock_time {
+        LockTime::Blocks(b) if b.to_consensus_u32() > u16::MAX as u32 => {
+            return Err(ErrInvalidLockTime(b.to_consensus_u32(), u16::MAX as u32));
+        }
+        LockTime::Blocks(_) => {}
+        LockTime::Seconds(_) => {
+            return Err(ErrInvalidLockType);
+        }
+    }
 
     // Get staking tx hash
     let staking_tx_hash = staking_tx.txid();
@@ -273,6 +321,50 @@ pub fn handle_active_delegation(
     Ok(())
 }
 
+fn validate_delegation(del: &ActiveBtcDelegation) -> Result<(), ContractError> {
+    if del.btc_pk_hex.is_empty() {
+        return Err(ContractError::EmptyBtcPk);
+    }
+    if del.staking_tx.is_empty() {
+        return Err(ContractError::EmptyStakingTx);
+    }
+    if del.slashing_tx.is_empty() {
+        return Err(ContractError::EmptySlashingTx);
+    }
+    let _: Transaction = deserialize(&del.slashing_tx)
+        .map_err(|_| ContractError::InvalidBtcTx(hex::encode(&del.slashing_tx)))?;
+
+    // TODO: Verify delegator slashing Schnorr signature
+
+    // Ensure the list of finality provider BTC PKs is not empty
+    if del.fp_btc_pk_list.is_empty() {
+        return Err(ContractError::EmptyBtcPkList);
+    }
+    // Ensure the list of finality provider BTC PKs is not duplicated
+    check_duplicated_fps(del)?;
+
+    // TODO: Verifications about undelegation info / on-demand unbonding
+    // Check unbonding time is lower than max uint16
+    if del.unbonding_time > u16::MAX as u32 {
+        return Err(ContractError::ErrInvalidUnbondingTime(
+            del.unbonding_time,
+            u16::MAX as u32,
+        ));
+    }
+
+    Ok(())
+}
+
+fn check_duplicated_fps(del: &ActiveBtcDelegation) -> Result<(), ContractError> {
+    let mut fp_btc_pk_set = std::collections::HashSet::new();
+    for fp_btc_pk in &del.fp_btc_pk_list {
+        if !fp_btc_pk_set.insert(fp_btc_pk) {
+            return Err(ContractError::DuplicatedBtcPk(fp_btc_pk.clone()));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
@@ -285,7 +377,9 @@ pub(crate) mod tests {
     use hex::ToHex;
     use prost::Message;
 
-    use babylon_apis::btc_staking_api::{CovenantAdaptorSignatures, FinalityProviderDescription};
+    use babylon_apis::btc_staking_api::{
+        CovenantAdaptorSignatures, FinalityProviderDescription, ProofOfPossession,
+    };
 
     use crate::contract::ExecuteMsg;
 
@@ -357,8 +451,12 @@ pub(crate) mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: "f1".to_string(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 1,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
@@ -424,8 +522,12 @@ pub(crate) mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: active_delegation.fp_btc_pk_list[0].clone(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 1,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,

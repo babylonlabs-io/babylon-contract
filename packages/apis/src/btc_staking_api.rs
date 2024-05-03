@@ -2,7 +2,7 @@
 /// The definitions here follow the same structure as the equivalent IBC protobuf message types,
 /// defined in `packages/proto/src/gen/babylon.btcstaking.v1.rs`
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Decimal;
+use cosmwasm_std::{Decimal, StdError, StdResult};
 
 type Bytes = Vec<u8>;
 
@@ -62,6 +62,66 @@ pub struct FinalityProviderDescription {
     pub security_contact: String,
     /// details is the details of the finality provider
     pub details: String,
+}
+
+impl FinalityProviderDescription {
+    /// Description field lengths
+    const MAX_MONIKER_LENGTH: usize = 70;
+    const MAX_IDENTITY_LENGTH: usize = 3000;
+    const MAX_WEBSITE_LENGTH: usize = 140;
+    const MAX_SECURITY_CONTACT_LENGTH: usize = 140;
+    const MAX_DETAILS_LENGTH: usize = 280;
+
+    pub fn validate(&self) -> StdResult<()> {
+        self.ensure_field_lengths()
+    }
+
+    fn ensure_field_lengths(&self) -> StdResult<()> {
+        if self.moniker.is_empty() {
+            return Err(StdError::generic_err("Moniker cannot be empty"));
+        }
+        if self.moniker.len() > FinalityProviderDescription::MAX_MONIKER_LENGTH {
+            return Err(StdError::generic_err(format!(
+                "Invalid moniker length; got: {}, max: {}",
+                self.moniker.len(),
+                FinalityProviderDescription::MAX_MONIKER_LENGTH
+            )));
+        }
+
+        if self.identity.len() > FinalityProviderDescription::MAX_IDENTITY_LENGTH {
+            return Err(StdError::generic_err(format!(
+                "Invalid identity length; got: {}, max: {}",
+                self.identity.len(),
+                FinalityProviderDescription::MAX_IDENTITY_LENGTH
+            )));
+        }
+
+        if self.website.len() > FinalityProviderDescription::MAX_WEBSITE_LENGTH {
+            return Err(StdError::generic_err(format!(
+                "Invalid website length; got: {}, max: {}",
+                self.website.len(),
+                FinalityProviderDescription::MAX_WEBSITE_LENGTH
+            )));
+        }
+
+        if self.security_contact.len() > FinalityProviderDescription::MAX_SECURITY_CONTACT_LENGTH {
+            return Err(StdError::generic_err(format!(
+                "Invalid security contact length; got: {}, max: {}",
+                self.security_contact.len(),
+                FinalityProviderDescription::MAX_SECURITY_CONTACT_LENGTH
+            )));
+        }
+
+        if self.details.len() > FinalityProviderDescription::MAX_DETAILS_LENGTH {
+            return Err(StdError::generic_err(format!(
+                "Invalid details length; got: {}, max: {}",
+                self.details.len(),
+                FinalityProviderDescription::MAX_DETAILS_LENGTH
+            )));
+        }
+
+        Ok(())
+    }
 }
 
 /// PubKey defines a secp256k1 public key.

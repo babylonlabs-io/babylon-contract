@@ -76,7 +76,7 @@ mod tests {
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription,
+        ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
     };
     use bitcoin::Transaction;
     use cosmwasm_std::testing::mock_info;
@@ -108,8 +108,12 @@ mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: "f1".to_string(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 1,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
@@ -127,8 +131,12 @@ mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: "f2".to_string(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 2,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
@@ -182,8 +190,12 @@ mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: "f1".to_string(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 1,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
@@ -201,8 +213,12 @@ mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: "f2".to_string(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 2,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
@@ -229,7 +245,7 @@ mod tests {
             end_height: 2,
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: vec![],
+            slashing_tx: base_del.slashing_tx.clone(),
             delegator_slashing_sig: vec![],
             covenant_sigs: vec![],
             staking_output_idx: 0,
@@ -245,7 +261,7 @@ mod tests {
             end_height: 3,
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: vec![],
+            slashing_tx: base_del.slashing_tx.clone(),
             delegator_slashing_sig: vec![],
             covenant_sigs: vec![],
             staking_output_idx: 0,
@@ -255,6 +271,8 @@ mod tests {
         };
         // Avoid repeated staking tx hash
         del2.staking_tx[0] += 1;
+        // Avoid repeated slashing tx hash
+        del2.slashing_tx[0] += 1;
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -307,8 +325,12 @@ mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: "f1".to_string(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 1,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
@@ -326,8 +348,12 @@ mod tests {
             commission: Decimal::percent(5),
             babylon_pk: None,
             btc_pk_hex: "f2".to_string(),
-            pop: None,
-            master_pub_rand: "".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
             registered_epoch: 2,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
@@ -354,7 +380,7 @@ mod tests {
             end_height: 2,
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: vec![],
+            slashing_tx: base_del.slashing_tx.clone(),
             delegator_slashing_sig: vec![],
             covenant_sigs: vec![],
             staking_output_idx: 0,
@@ -370,7 +396,7 @@ mod tests {
             end_height: 3,
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: vec![],
+            slashing_tx: base_del.slashing_tx.clone(),
             delegator_slashing_sig: vec![],
             covenant_sigs: vec![],
             staking_output_idx: 0,
@@ -380,6 +406,8 @@ mod tests {
         };
         // Avoid repeated staking tx hash
         del2.staking_tx[0] += 1;
+        // Avoid repeated slashing tx hash
+        del2.slashing_tx[0] += 1;
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -398,6 +426,6 @@ mod tests {
         assert_eq!(dels2.len(), 1);
         assert_ne!(dels1[0], dels2[0]);
         let err = crate::queries::delegations_by_fp(deps.as_ref(), "f3".to_string()).unwrap_err();
-        assert!(matches!(err, ContractError::StdError(NotFound { .. })));
+        assert!(matches!(err, ContractError::Std(NotFound { .. })));
     }
 }
