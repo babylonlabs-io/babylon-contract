@@ -200,12 +200,18 @@ pub fn check_transactions(
 
 #[cfg(test)]
 mod tests {
+    use self::scripts_utils::BabylonScriptPaths;
     use super::*;
+    use crate::sig_verify::{
+        enc_verify_transaction_sig_with_output, new_adaptor_sig, verify_transaction_sig_with_output,
+    };
     use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, Params};
     use bitcoin::address::Address;
     use bitcoin::consensus::deserialize;
+    use bitcoin::secp256k1::schnorr::Signature;
     use bitcoin::{Transaction, XOnlyPublicKey};
     use prost::Message;
+
     use std::fs;
 
     const PARAMS_DATA: &str = "./testdata/btcstaking_params.dat";
@@ -240,6 +246,7 @@ mod tests {
         let slashing_change_lock_time: u16 = 101;
         let network: Network = Network::Regtest;
 
+        // test check_transactions
         check_transactions(
             &slashing_tx,
             &staking_tx,
@@ -252,5 +259,153 @@ mod tests {
             network,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_verify_unbonding_tx_schnorr_sig() {
+        let params = get_params();
+        let btc_del = get_btc_delegation();
+
+        let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
+        let funding_out_idx: u32 = 0;
+        let staker_pk: XOnlyPublicKey = XOnlyPublicKey::from_slice(&btc_del.btc_pk).unwrap();
+
+        let fp_pks: Vec<XOnlyPublicKey> = btc_del
+            .fp_btc_pk_list
+            .iter()
+            .map(|bytes| XOnlyPublicKey::from_slice(bytes).expect("Invalid public key bytes"))
+            .collect();
+        let cov_pks: Vec<XOnlyPublicKey> = params
+            .covenant_pks
+            .iter()
+            .map(|bytes| XOnlyPublicKey::from_slice(bytes).expect("Invalid public key bytes"))
+            .collect();
+
+        let babylon_script_paths = BabylonScriptPaths::new(
+            &staker_pk,
+            &fp_pks,
+            &cov_pks,
+            params.covenant_quorum as usize,
+            5, // TODO: parameterise
+        )
+        .unwrap();
+
+        // test verifying Schnorr signature, i.e., covenant signatures over unbonding tx
+        let btc_undel_info = &btc_del.btc_undelegation.unwrap();
+        let unbonding_tx: Transaction = deserialize(&btc_undel_info.unbonding_tx).unwrap();
+        let staking_out = &staking_tx.output[funding_out_idx as usize];
+        let unbonding_pk_script = babylon_script_paths.unbonding_path_script;
+        for cov_unbonding_tx_sig_info in &btc_undel_info.covenant_unbonding_sig_list {
+            let cov_pk = XOnlyPublicKey::from_slice(&cov_unbonding_tx_sig_info.pk).unwrap();
+            let cov_sig = Signature::from_slice(&cov_unbonding_tx_sig_info.sig).unwrap();
+            verify_transaction_sig_with_output(
+                &unbonding_tx,
+                staking_out,
+                unbonding_pk_script.as_script(),
+                &cov_pk,
+                &cov_sig,
+            )
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn test_verify_slashing_tx_adaptor_sig() {
+        let params = get_params();
+        let btc_del = get_btc_delegation();
+
+        let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
+        let slashing_tx: Transaction = deserialize(&btc_del.slashing_tx).unwrap();
+        let funding_out_idx: u32 = 0;
+        let staker_pk: XOnlyPublicKey = XOnlyPublicKey::from_slice(&btc_del.btc_pk).unwrap();
+        let staking_out = &staking_tx.output[funding_out_idx as usize];
+
+        let fp_pks: Vec<XOnlyPublicKey> = btc_del
+            .fp_btc_pk_list
+            .iter()
+            .map(|bytes| XOnlyPublicKey::from_slice(bytes).expect("Invalid public key bytes"))
+            .collect();
+        let cov_pks: Vec<XOnlyPublicKey> = params
+            .covenant_pks
+            .iter()
+            .map(|bytes| XOnlyPublicKey::from_slice(bytes).expect("Invalid public key bytes"))
+            .collect();
+
+        let babylon_script_paths = BabylonScriptPaths::new(
+            &staker_pk,
+            &fp_pks,
+            &cov_pks,
+            params.covenant_quorum as usize,
+            5, // TODO: parameterise
+        )
+        .unwrap();
+
+        // test verifying adaptor signature, i.e., covenant signatures over slashing tx
+        for cov_slashing_tx_info in btc_del.covenant_sigs {
+            let cov_pk = XOnlyPublicKey::from_slice(&cov_slashing_tx_info.cov_pk).unwrap();
+            for (idx, cov_asig_bytes) in cov_slashing_tx_info.adaptor_sigs.iter().enumerate() {
+                let cov_asig = new_adaptor_sig(cov_asig_bytes).unwrap();
+                enc_verify_transaction_sig_with_output(
+                    &slashing_tx,
+                    staking_out,
+                    babylon_script_paths.slashing_path_script.as_script(),
+                    &cov_pk,
+                    &fp_pks[idx],
+                    &cov_asig,
+                )
+                .unwrap();
+            }
+        }
+    }
+
+
+    #[test]
+    fn test_verify_unbonding_slashing_tx_adaptor_sig() {
+        let params = get_params();
+        let btc_del = get_btc_delegation();
+        let btc_undel = btc_del.btc_undelegation.unwrap();
+        let unbonding_tx: Transaction = deserialize(&btc_undel.unbonding_tx).unwrap();
+        let unbonding_slashing_tx: Transaction = deserialize(&btc_undel.slashing_tx).unwrap();
+
+        let funding_out_idx: u32 = 0;
+        let staker_pk: XOnlyPublicKey = XOnlyPublicKey::from_slice(&btc_del.btc_pk).unwrap();
+        let unbonding_out = &unbonding_tx.output[funding_out_idx as usize];
+
+        let fp_pks: Vec<XOnlyPublicKey> = btc_del
+            .fp_btc_pk_list
+            .iter()
+            .map(|bytes| XOnlyPublicKey::from_slice(bytes).expect("Invalid public key bytes"))
+            .collect();
+        let cov_pks: Vec<XOnlyPublicKey> = params
+            .covenant_pks
+            .iter()
+            .map(|bytes| XOnlyPublicKey::from_slice(bytes).expect("Invalid public key bytes"))
+            .collect();
+
+        let babylon_unbonding_script_paths = BabylonScriptPaths::new(
+            &staker_pk,
+            &fp_pks,
+            &cov_pks,
+            params.covenant_quorum as usize,
+            101, // TODO: parameterise
+        )
+        .unwrap();
+
+        // test verifying adaptor signature, i.e., covenant signatures over slashing tx
+        for cov_unbonding_slashing_tx_info in btc_undel.covenant_slashing_sigs {
+            let cov_pk = XOnlyPublicKey::from_slice(&cov_unbonding_slashing_tx_info.cov_pk).unwrap();
+            for (idx, cov_asig_bytes) in cov_unbonding_slashing_tx_info.adaptor_sigs.iter().enumerate() {
+                let cov_asig = new_adaptor_sig(cov_asig_bytes).unwrap();
+                enc_verify_transaction_sig_with_output(
+                    &unbonding_slashing_tx,
+                    unbonding_out,
+                    babylon_unbonding_script_paths.slashing_path_script.as_script(),
+                    &cov_pk,
+                    &fp_pks[idx],
+                    &cov_asig,
+                )
+                .unwrap();
+            }
+        }
     }
 }

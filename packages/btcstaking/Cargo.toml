@@ -11,6 +11,9 @@ edition.workspace = true
 bitcoin      = { workspace = true }
 rust_decimal = { workspace = true }
 hex          = { workspace = true }
+schnorr_fun  = { workspace = true }
+secp256kfun  = { workspace = true }
+sha2         = { workspace = true }
 
 [dev-dependencies]
 babylon-proto = { workspace = true }

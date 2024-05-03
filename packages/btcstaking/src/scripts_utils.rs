@@ -149,6 +149,63 @@ pub fn build_relative_time_lock_pk_script(
     Ok(taproot_pk_script)
 }
 
+fn aggregate_scripts(scripts: &[ScriptBuf]) -> ScriptBuf {
+    let mut final_script = Vec::new();
+
+    for script in scripts {
+        final_script.extend_from_slice(script.as_bytes());
+    }
+
+    ScriptBuf::from_bytes(final_script)
+}
+
+/// BabylonScriptPaths is a structure that holds all paths of a Babylon staking
+/// script, including timelock path, on-demand unbonding path, and slashing path
+/// It is used in the output of the staking tx and unbonding tx
+pub struct BabylonScriptPaths {
+    // time_lock_path_script is the script path for normal unbonding
+    // <Staker_PK> OP_CHECKSIGVERIFY  <Staking_Time_Blocks> OP_CHECKSEQUENCEVERIFY
+    pub time_lock_path_script: ScriptBuf,
+    // unbonding_path_script is the script path for on-demand early unbonding
+    // <Staker_PK> OP_CHECKSIGVERIFY
+    // <Covenant_PK1> OP_CHECKSIG ... <Covenant_PKN> OP_CHECKSIGADD M OP_NUMEQUAL
+    pub unbonding_path_script: ScriptBuf,
+    // slashing_path_script is the script path for slashing
+    // <Staker_PK> OP_CHECKSIGVERIFY
+    // <FP_PK1> OP_CHECKSIG ... <FP_PKN> OP_CHECKSIGADD 1 OP_NUMEQUALVERIFY
+    // <Covenant_PK1> OP_CHECKSIG ... <Covenant_PKN> OP_CHECKSIGADD M OP_NUMEQUAL
+    pub slashing_path_script: ScriptBuf,
+}
+
+impl BabylonScriptPaths {
+    pub fn new(
+        staker_key: &XOnlyPublicKey,
+        fp_keys: &[XOnlyPublicKey],
+        covenant_keys: &[XOnlyPublicKey],
+        covenant_quorum: usize,
+        lock_time: u16,
+    ) -> Result<Self, String> {
+        let time_lock_path_script = build_time_lock_script(staker_key, lock_time)?;
+        let covenant_multisig_script =
+            build_multisig_script(covenant_keys, covenant_quorum, false)?;
+        let staker_sig_script = build_single_key_sig_script(staker_key, true)?;
+        let fp_multisig_script = build_multisig_script(fp_keys, 1, true)?;
+        let unbonding_path_script =
+            aggregate_scripts(&[staker_sig_script.clone(), covenant_multisig_script.clone()]);
+        let slashing_path_script = aggregate_scripts(&[
+            staker_sig_script,
+            fp_multisig_script,
+            covenant_multisig_script,
+        ]);
+
+        Ok(BabylonScriptPaths {
+            time_lock_path_script,
+            unbonding_path_script,
+            slashing_path_script,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
