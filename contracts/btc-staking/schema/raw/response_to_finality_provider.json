@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FinalityProvider",
+  "type": "object",
+  "required": [
+    "btc_pk_hex",
+    "chain_id",
+    "commission",
+    "master_pub_rand",
+    "registered_epoch",
+    "slashed_babylon_height",
+    "slashed_btc_height"
+  ],
+  "properties": {
+    "babylon_pk": {
+      "description": "babylon_pk is the Babylon secp256k1 PK of this finality provider",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PubKey"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "btc_pk_hex": {
+      "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+      "type": "string"
+    },
+    "chain_id": {
+      "description": "chain_id is the chain id of the chain the finality provider is operating on. If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.",
+      "type": "string"
+    },
+    "commission": {
+      "description": "commission defines the commission rate of the finality provider.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal"
+        }
+      ]
+    },
+    "description": {
+      "description": "description defines the description terms for the finality provider",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/FinalityProviderDescription"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "master_pub_rand": {
+      "description": "master_pub_rand is the master public randomness of the finality provider encoded as a base58 string",
+      "type": "string"
+    },
+    "pop": {
+      "description": "pop is the proof of possession of the babylon_pk and btc_pk",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ProofOfPossession"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "registered_epoch": {
+      "description": "registered_epoch is the epoch when this finality provider is registered",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "slashed_babylon_height": {
+      "description": "slashed_babylon_height indicates the Babylon height when the finality provider is slashed. if it's 0, then the finality provider is not slashed",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "slashed_btc_height": {
+      "description": "slashed_btc_height indicates the BTC height when the finality provider is slashed. if it's 0, then the finality provider is not slashed",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "FinalityProviderDescription": {
+      "type": "object",
+      "required": [
+        "details",
+        "identity",
+        "moniker",
+        "security_contact",
+        "website"
+      ],
+      "properties": {
+        "details": {
+          "description": "details is the details of the finality provider",
+          "type": "string"
+        },
+        "identity": {
+          "description": "identity is the identity of the finality provider",
+          "type": "string"
+        },
+        "moniker": {
+          "description": "moniker is the name of the finality provider",
+          "type": "string"
+        },
+        "security_contact": {
+          "description": "security_contact is the security contact of the finality provider",
+          "type": "string"
+        },
+        "website": {
+          "description": "website is the website of the finality provider",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProofOfPossession": {
+      "description": "ProofOfPossession is the proof of possession that a Babylon secp256k1 secret key and a Bitcoin secp256k1 secret key are held by the same person",
+      "type": "object",
+      "required": [
+        "babylon_sig",
+        "btc_sig",
+        "btc_sig_type"
+      ],
+      "properties": {
+        "babylon_sig": {
+          "description": "babylon_sig is the signature generated via sign(sk_babylon, pk_btc)",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "btc_sig": {
+          "description": "btc_sig is the signature generated via sign(sk_btc, babylon_sig) the signature follows encoding in either BIP-340 spec or BIP-322 spec",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "btc_sig_type": {
+          "description": "btc_sig_type indicates the type of btc_sig in the pop",
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PubKey": {
+      "description": "PubKey defines a secp256k1 public key. Key is the compressed form of the pubkey. The first byte is a 0x02 byte if the y-coordinate is the lexicographically largest of the two associated with the x-coordinate. Otherwise, the first byte is a 0x03. This prefix is followed with the x-coordinate.",
+      "type": "object",
+      "required": [
+        "key"
+      ],
+      "properties": {
+        "key": {
+          "description": "key is the compressed public key of the finality provider",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

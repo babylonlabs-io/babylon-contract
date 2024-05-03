@@ -6,6 +6,7 @@ use std::str::FromStr;
 use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::{Bound, Item, Map};
+use hex::ToHex;
 
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
@@ -115,7 +116,7 @@ pub fn get_header_by_hash(
 pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u64, BTCLightclientError> {
     let height = BTC_HEIGHTS.load(storage, hash).map_err(|_| {
         BTCLightclientError::BTCHeightNotFoundError {
-            hash: hex::encode(hash),
+            hash: hash.encode_hex(),
         }
     })?;
     Ok(height)

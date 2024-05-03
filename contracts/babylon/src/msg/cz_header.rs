@@ -1,6 +1,7 @@
 use babylon_proto::babylon::zoneconcierge::v1::IndexedHeader;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Timestamp;
+use hex::ToHex;
 
 /// CzHeaderResponse is the metadata of a CZ header.
 ///
@@ -43,16 +44,16 @@ impl From<&IndexedHeader> for CzHeaderResponse {
     fn from(header: &IndexedHeader) -> Self {
         CzHeaderResponse {
             chain_id: header.chain_id.clone(),
-            hash: hex::encode(&header.hash),
+            hash: header.hash.encode_hex(),
             height: header.height,
             time: header
                 .time
                 .as_ref()
                 .map(|t| Timestamp::from_seconds(t.seconds as u64).plus_nanos(t.nanos as u64)),
-            babylon_header_hash: hex::encode(&header.babylon_header_hash),
+            babylon_header_hash: header.babylon_header_hash.encode_hex(),
             babylon_header_height: header.babylon_header_height,
             babylon_epoch: header.babylon_epoch,
-            babylon_tx_hash: hex::encode(&header.babylon_tx_hash),
+            babylon_tx_hash: header.babylon_tx_hash.encode_hex(),
         }
     }
 }

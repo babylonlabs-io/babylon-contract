@@ -12,6 +12,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
+use hex::ToHex;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
@@ -50,6 +51,26 @@ pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> StdResult<Response> {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
+        QueryMsg::FinalityProvider { btc_pk_hex } => Ok(to_json_binary(
+            &queries::finality_provider(deps, btc_pk_hex)?,
+        )?),
+        QueryMsg::FinalityProviders { start_after, limit } => Ok(to_json_binary(
+            &queries::finality_providers(deps, start_after, limit)?,
+        )?),
+        QueryMsg::Delegation {
+            staking_tx_hash_hex,
+        } => Ok(to_json_binary(&queries::delegation(
+            deps,
+            staking_tx_hash_hex,
+        )?)?),
+        QueryMsg::Delegations { start_after, limit } => Ok(to_json_binary(&queries::delegations(
+            deps,
+            start_after,
+            limit,
+        )?)?),
+        QueryMsg::DelegationsByFP { btc_pk_hex } => Ok(to_json_binary(
+            &queries::delegations_by_fp(deps, btc_pk_hex)?,
+        )?),
     }
 }
 
@@ -162,7 +183,7 @@ pub fn handle_active_delegation(
 
     // Parse staking tx
     let staking_tx: Transaction = deserialize(&delegation.staking_tx)
-        .map_err(|_| ContractError::InvalidBtcTx(hex::encode(&delegation.staking_tx)))?;
+        .map_err(|_| ContractError::InvalidBtcTx(delegation.staking_tx.encode_hex()))?;
 
     // Get staking tx hash
     let staking_tx_hash = staking_tx.txid();
@@ -218,9 +239,9 @@ pub fn handle_active_delegation(
 
     // Check staking tx is not duplicated
     if DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
-        return Err(ContractError::DelegationAlreadyExists(hex::encode(
-            staking_tx_hash,
-        )));
+        return Err(ContractError::DelegationAlreadyExists(
+            staking_tx_hash.encode_hex(),
+        ));
     }
 
     // Update delegations by registered finality provider
@@ -253,7 +274,7 @@ pub fn handle_active_delegation(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::fs;
 
@@ -261,6 +282,7 @@ mod tests {
         testing::{mock_dependencies, mock_env, mock_info},
         Decimal,
     };
+    use hex::ToHex;
     use prost::Message;
 
     use babylon_apis::btc_staking_api::{CovenantAdaptorSignatures, FinalityProviderDescription};
@@ -272,16 +294,16 @@ mod tests {
     const TESTDATA_DELEGATION: &str = "../../packages/btcstaking/testdata/btc_delegation.dat";
 
     /// Build an active BTC delegation from a BTC delegation
-    fn get_active_btc_delegation() -> ActiveBtcDelegation {
+    pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
         let testdata: &[u8] = &fs::read(TESTDATA_DELEGATION).unwrap();
         let del = babylon_proto::babylon::btcstaking::v1::BtcDelegation::decode(testdata).unwrap();
 
         ActiveBtcDelegation {
-            btc_pk_hex: hex::encode(del.btc_pk),
+            btc_pk_hex: del.btc_pk.encode_hex(),
             fp_btc_pk_list: del
                 .fp_btc_pk_list
                 .iter()
-                .map(|fp_btc_pk| hex::encode(fp_btc_pk.clone()))
+                .map(|fp_btc_pk| fp_btc_pk.encode_hex())
                 .collect(),
             start_height: del.start_height,
             end_height: del.end_height,
@@ -360,13 +382,12 @@ mod tests {
 
         assert_eq!(0, res.messages.len());
 
-        // Check the finality provider is being saved
-        let fp = FPS
-            .load(deps.as_ref().storage, &new_fp.btc_pk_hex.clone())
-            .unwrap();
-        assert_eq!(fp, new_fp);
+        // Check the finality provider has been stored
+        let query_res =
+            queries::finality_provider(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap();
+        assert_eq!(query_res, new_fp);
 
-        // Trying to add the same fp again should fail
+        // Trying to add the same fp again fails
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
             slashed_fp: vec![],
@@ -377,7 +398,7 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(
             err,
-            ContractError::FinalityProviderAlreadyExists(new_fp.btc_pk_hex)
+            ContractError::FinalityProviderAlreadyExists(new_fp.btc_pk_hex.clone())
         );
     }
 
@@ -433,12 +454,10 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        // Check the active delegation is being saved
+        // Check the active delegation is being stored
         let staking_tx: Transaction = deserialize(&active_delegation.staking_tx).unwrap();
         let staking_tx_hash = staking_tx.txid();
-        let del = DELEGATIONS
-            .load(deps.as_ref().storage, staking_tx_hash.as_ref())
-            .unwrap();
-        assert_eq!(del, active_delegation);
+        let query_res = queries::delegation(deps.as_ref(), staking_tx_hash.encode_hex()).unwrap();
+        assert_eq!(query_res, active_delegation);
     }
 }

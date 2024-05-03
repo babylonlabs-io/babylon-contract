@@ -10,12 +10,28 @@
     "notify_cosmos_zone"
   ],
   "properties": {
+    "admin": {
+      "description": "If set, this will be the Wasm migration / upgrade admin of the BTC staking contract",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "babylon_tag": {
       "description": "babylon_tag is a string encoding four bytes used for identification / tagging of the Babylon zone. NOTE: this is a hex string, not raw bytes",
       "type": "string"
     },
     "btc_confirmation_depth": {
       "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "btc_staking_code_id": {
+      "description": "If set, this will instantiate a BTC staking contract for BTC re-staking",
+      "type": [
+        "integer",
+        "null"
+      ],
       "format": "uint64",
       "minimum": 0.0
     },

@@ -2,6 +2,7 @@ use babylon_proto::babylon::checkpointing::v1::RawCheckpoint;
 use babylon_proto::babylon::epoching::v1::Epoch;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Timestamp;
+use hex::ToHex;
 
 /// Babylon epoch.
 ///
@@ -44,9 +45,9 @@ impl From<&Epoch> for EpochResponse {
                 .last_block_time
                 .as_ref()
                 .map(|t| Timestamp::from_seconds(t.seconds as u64).plus_nanos(t.nanos as u64)),
-            app_hash_root: hex::encode(&epoch.app_hash_root),
-            sealer_app_hash: hex::encode(&epoch.sealer_app_hash),
-            sealer_block_hash: hex::encode(&epoch.sealer_block_hash),
+            app_hash_root: epoch.app_hash_root.encode_hex(),
+            sealer_app_hash: epoch.sealer_app_hash.encode_hex(),
+            sealer_block_hash: epoch.sealer_block_hash.encode_hex(),
         }
     }
 }
@@ -81,9 +82,9 @@ impl From<&RawCheckpoint> for CheckpointResponse {
     fn from(checkpoint: &RawCheckpoint) -> Self {
         Self {
             epoch_num: checkpoint.epoch_num,
-            block_hash: hex::encode(&checkpoint.block_hash),
-            bitmap: hex::encode(&checkpoint.bitmap),
-            bls_multi_sig: hex::encode(&checkpoint.bls_multi_sig),
+            block_hash: checkpoint.block_hash.encode_hex(),
+            bitmap: checkpoint.bitmap.encode_hex(),
+            bls_multi_sig: checkpoint.bls_multi_sig.encode_hex(),
         }
     }
 }
