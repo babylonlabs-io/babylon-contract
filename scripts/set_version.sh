@@ -42,6 +42,12 @@ FILES_MODIFIED+=("$CARGO_TOML")
 cargo build
 FILES_MODIFIED+=("Cargo.lock")
 
+for CONTRACT in ./contracts/*/
+do
+  (cd $CONTRACT && cargo schema)
+  FILES_MODIFIED+=("$CONTRACT"/schema/)
+done
+
 echo "Staging ${FILES_MODIFIED[*]} ..."
 git add "${FILES_MODIFIED[@]}"
 git commit -m "Set version: $NEW"

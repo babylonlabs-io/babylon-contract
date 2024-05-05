@@ -151,9 +151,10 @@ jobs:
           name: Build and run schema generator
           command: |
             (cd ./contracts/babylon && cargo run --bin schema)
+            (cd ./contracts/btc-staking && cargo run --bin btcstaking-schema)
       - run:
           name: Show data
-          command: ls -l ./contracts/babylon/schema
+          command: ls -l ./contracts/*/schema
       - run:
           name: Publish schemas on GitHub
           command: |
@@ -165,7 +166,7 @@ jobs:
               -c "$CIRCLE_SHA1" \
               -n "$TITLE" -b "$BODY" \
               -replace \
-              "$TAG" ./contracts/babylon/schema/
+              "$TAG" ./contracts/*/schema
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows
