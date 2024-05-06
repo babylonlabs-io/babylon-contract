@@ -44,7 +44,7 @@ FILES_MODIFIED+=("Cargo.lock")
 
 for CONTRACT in ./contracts/*/
 do
-  (cd $CONTRACT && cargo schema)
+  (cd "$CONTRACT" && cargo schema)
   FILES_MODIFIED+=("$CONTRACT"/schema/)
 done
 

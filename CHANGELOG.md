@@ -2,7 +2,21 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.1...HEAD)
+
+## [v0.5.1](https://github.com/babylonchain/babylon-contract/tree/v0.5.1) (2024-05-06)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.0...v0.5.1)
+
+**Closed issues:**
+
+- test: formalise datagen library [\#76](https://github.com/babylonchain/babylon-contract/issues/76)
+
+**Merged pull requests:**
+
+- Fix/query responses [\#88](https://github.com/babylonchain/babylon-contract/pull/88) ([maurolacy](https://github.com/maurolacy))
+- Release 0.5 follow up [\#87](https://github.com/babylonchain/babylon-contract/pull/87) ([maurolacy](https://github.com/maurolacy))
+- datagen: refactor datagen and test utilities [\#86](https://github.com/babylonchain/babylon-contract/pull/86) ([SebastianElvis](https://github.com/SebastianElvis))
 
 ## [v0.5.0](https://github.com/babylonchain/babylon-contract/tree/v0.5.0) (2024-05-03)
 
