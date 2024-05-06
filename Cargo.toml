@@ -55,6 +55,7 @@ assert_matches    = "1"
 criterion         = { version = "0.5.0" }
 pbjson-types      = "0.5.1"
 thousands         = "0.2.0"
+cargo_metadata    = "0.18.1"
 
 [profile.release]
 codegen-units     = 1

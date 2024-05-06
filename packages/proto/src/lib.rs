@@ -53,7 +53,7 @@ mod test {
 
     #[test]
     fn test_deserialize_protobuf_bytes_from_go() {
-        let testdata_file = "./testdata/raw_ckpt.dat";
+        let testdata_file = "../test-utils/testdata/raw_ckpt.dat";
         let testdata: &[u8] = &fs::read(testdata_file).unwrap();
         let raw_ckpt = RawCheckpoint::decode(testdata).unwrap();
         assert!(raw_ckpt.epoch_num == 12345);

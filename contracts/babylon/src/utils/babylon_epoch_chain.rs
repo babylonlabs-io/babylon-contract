@@ -139,33 +139,11 @@ pub fn verify_checkpoint_submitted(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use babylon_bitcoin::deserialize;
-    use babylon_bitcoin::BlockHash;
-    use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
-    use std::collections::HashMap;
-    use std::fs;
-
-    const TESTDATA: &str = "../../testdata/btc_timestamp.dat";
-    const TESTDATA_HEADER0: &str = "../../testdata/btc_timestamp_header0.dat";
-    const TESTDATA_HEADER1: &str = "../../testdata/btc_timestamp_header1.dat";
-
-    fn get_test_headers() -> HashMap<BlockHash, BlockHeader> {
-        let mut header_map: HashMap<BlockHash, BlockHeader> = HashMap::new();
-        let header0_bytes: &[u8] = &fs::read(TESTDATA_HEADER0).unwrap();
-        let header0: BlockHeader = deserialize(header0_bytes).unwrap();
-        header_map.insert(header0.block_hash(), header0);
-
-        let header1_bytes: &[u8] = &fs::read(TESTDATA_HEADER1).unwrap();
-        let header1: BlockHeader = deserialize(header1_bytes).unwrap();
-        header_map.insert(header1.block_hash(), header1);
-
-        header_map
-    }
+    use test_utils::get_btc_timestamp_and_headers;
 
     #[test]
     fn verify_epoch_sealed_works() {
-        let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
-        let btc_ts = BtcTimestamp::decode(testdata).unwrap();
+        let (btc_ts, _) = get_btc_timestamp_and_headers();
         let epoch = btc_ts.epoch_info.unwrap();
         let raw_ckpt = btc_ts.raw_checkpoint.unwrap();
         let proof = btc_ts.proof.unwrap().proof_epoch_sealed.unwrap();
@@ -174,15 +152,12 @@ mod tests {
 
     #[test]
     fn verify_checkpoint_submitted_works() {
-        let testdata: &[u8] = &fs::read(TESTDATA).unwrap();
-        let btc_ts = BtcTimestamp::decode(testdata).unwrap();
+        let (btc_ts, header_map) = get_btc_timestamp_and_headers();
         let raw_ckpt = btc_ts.raw_checkpoint.unwrap();
         let txs_info = btc_ts.proof.unwrap().proof_epoch_submitted;
         let txs_info_arr: &[TransactionInfo; NUM_BTC_TXS] =
             &[txs_info[0].clone(), txs_info[1].clone()];
 
-        // BTC header map
-        let header_map = get_test_headers();
         // get 2 btc headers
         let k1: &[u8] = &txs_info[0].clone().key.unwrap().hash;
         let k2: &[u8] = &txs_info[1].clone().key.unwrap().hash;

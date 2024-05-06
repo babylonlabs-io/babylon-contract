@@ -99,13 +99,14 @@ mod tests {
     use super::*;
     use crate::state::btc_light_client::{init, tests::setup};
     use cosmwasm_std::testing::mock_dependencies;
+    use test_utils::get_btc_lc_headers;
 
     #[test]
     fn btc_headers_work() {
         let mut deps = mock_dependencies();
         setup(deps.as_mut().storage);
 
-        let test_headers = crate::state::btc_light_client::tests::get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         init(deps.as_mut().storage, &test_headers).unwrap();
 
@@ -165,7 +166,7 @@ mod tests {
         let mut deps = mock_dependencies();
         crate::state::btc_light_client::tests::setup(deps.as_mut().storage);
 
-        let test_headers = crate::state::btc_light_client::tests::get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         init(deps.as_mut().storage, &test_headers).unwrap();
 

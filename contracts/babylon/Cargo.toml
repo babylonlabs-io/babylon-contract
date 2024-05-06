@@ -49,15 +49,16 @@ prost            = { workspace = true }
 ics23            = { workspace = true }
 
 [dev-dependencies]
-babylon-bindings-test = { version = "0.4.0", path = "../../packages/bindings-test" }
-btc-staking      = { path = "../btc-staking" }
-cosmwasm-vm      = { workspace = true }
-cw-multi-test    = { workspace = true }
-assert_matches   = { workspace = true }
-pbjson-types     = { workspace = true }
+test-utils             = { path = "../../packages/test-utils" }
+babylon-bindings-test  = { version = "0.4.0", path = "../../packages/bindings-test" }
+btc-staking            = { path = "../btc-staking" }
+cosmwasm-vm            = { workspace = true }
+cw-multi-test          = { workspace = true }
+assert_matches         = { workspace = true }
+pbjson-types           = { workspace = true }
 # bench dependencies
-criterion        = { workspace = true }
-thousands        = { workspace = true }
+criterion              = { workspace = true }
+thousands              = { workspace = true }
 
 [[bench]]
 name = "main"

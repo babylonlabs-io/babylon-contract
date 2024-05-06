@@ -16,5 +16,6 @@ secp256kfun  = { workspace = true }
 sha2         = { workspace = true }
 
 [dev-dependencies]
+test-utils    = { path = "../test-utils"}
 babylon-proto = { workspace = true }
 prost         = { workspace = true }

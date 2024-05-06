@@ -205,34 +205,15 @@ mod tests {
     use crate::sig_verify::{
         enc_verify_transaction_sig_with_output, new_adaptor_sig, verify_transaction_sig_with_output,
     };
-    use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, Params};
     use bitcoin::address::Address;
     use bitcoin::consensus::deserialize;
     use bitcoin::secp256k1::schnorr::Signature;
     use bitcoin::{Transaction, XOnlyPublicKey};
-    use prost::Message;
-
-    use std::fs;
-
-    const PARAMS_DATA: &str = "./testdata/btcstaking_params.dat";
-    const BTC_DELEGATION_DATA: &str = "./testdata/btc_delegation.dat";
-
-    pub(crate) fn get_params() -> Params {
-        let testdata: &[u8] = &fs::read(PARAMS_DATA).unwrap();
-
-        Params::decode(testdata).unwrap()
-    }
-
-    pub(crate) fn get_btc_delegation() -> BtcDelegation {
-        let testdata: &[u8] = &fs::read(BTC_DELEGATION_DATA).unwrap();
-
-        BtcDelegation::decode(testdata).unwrap()
-    }
+    use test_utils::get_btc_delegation_and_params;
 
     #[test]
     fn test_check_transactions() {
-        let params = get_params();
-        let btc_del = get_btc_delegation();
+        let (btc_del, params) = get_btc_delegation_and_params();
 
         let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
         let slashing_tx: Transaction = deserialize(&btc_del.slashing_tx).unwrap();
@@ -263,8 +244,7 @@ mod tests {
 
     #[test]
     fn test_verify_unbonding_tx_schnorr_sig() {
-        let params = get_params();
-        let btc_del = get_btc_delegation();
+        let (btc_del, params) = get_btc_delegation_and_params();
 
         let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
         let funding_out_idx: u32 = 0;
@@ -311,8 +291,7 @@ mod tests {
 
     #[test]
     fn test_verify_slashing_tx_adaptor_sig() {
-        let params = get_params();
-        let btc_del = get_btc_delegation();
+        let (btc_del, params) = get_btc_delegation_and_params();
 
         let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
         let slashing_tx: Transaction = deserialize(&btc_del.slashing_tx).unwrap();
@@ -360,8 +339,8 @@ mod tests {
 
     #[test]
     fn test_verify_unbonding_slashing_tx_adaptor_sig() {
-        let params = get_params();
-        let btc_del = get_btc_delegation();
+        let (btc_del, params) = get_btc_delegation_and_params();
+
         let btc_undel = btc_del.btc_undelegation.unwrap();
         let unbonding_tx: Transaction = deserialize(&btc_undel.unbonding_tx).unwrap();
         let unbonding_slashing_tx: Transaction = deserialize(&btc_undel.slashing_tx).unwrap();

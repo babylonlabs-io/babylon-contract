@@ -340,15 +340,10 @@ pub(crate) mod tests {
     use super::*;
     use crate::msg::contract::ExecuteMsg;
     use crate::state::config::Config;
-    use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
+    use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
     use cosmwasm_std::from_json;
     use cosmwasm_std::testing::mock_dependencies;
-    use prost::bytes::Bytes;
-    use std::fs;
-
-    const TESTDATA_MAIN: &str = "../../testdata/btc_light_client.dat";
-    const TESTDATA_FORK: &str = "../../testdata/btc_light_client_fork.dat";
-    const TESTDATA_FORK_MSG: &str = "../../testdata/btc_light_client_fork_msg.json";
+    use test_utils::{get_btc_lc_fork_headers, get_btc_lc_fork_msg, get_btc_lc_headers};
 
     pub(crate) fn setup(storage: &mut dyn Storage) -> usize {
         // set config first
@@ -365,50 +360,8 @@ pub(crate) mod tests {
         w
     }
 
-    pub(crate) fn get_main_test_headers() -> Vec<BtcHeaderInfo> {
-        let testdata: &[u8] = &fs::read(TESTDATA_MAIN).unwrap();
-        let resp = QueryMainChainResponse::decode(testdata).unwrap();
-        resp.headers
-            .iter()
-            .map(|h| BtcHeaderInfo {
-                header: Bytes::from(hex::decode(&h.header_hex).unwrap()),
-                // FIXME: Use BlockHash / Hash helper / encapsulation to reverse the hash under the hood
-                hash: Bytes::from(
-                    hex::decode(&h.hash_hex)
-                        .unwrap()
-                        .into_iter()
-                        .rev()
-                        .collect::<Vec<_>>(),
-                ),
-                height: h.height,
-                work: { Bytes::from(h.work.clone()) },
-            })
-            .collect()
-    }
-
-    fn get_fork_test_headers() -> Vec<BtcHeaderInfo> {
-        let testdata: &[u8] = &fs::read(TESTDATA_FORK).unwrap();
-        let resp = QueryMainChainResponse::decode(testdata).unwrap();
-        resp.headers
-            .iter()
-            .map(|h| BtcHeaderInfo {
-                header: Bytes::from(hex::decode(&h.header_hex).unwrap()),
-                // FIXME: Use BlockHash / Hash helper / encapsulation to reverse the hash under the hood
-                hash: Bytes::from(
-                    hex::decode(&h.hash_hex)
-                        .unwrap()
-                        .into_iter()
-                        .rev()
-                        .collect::<Vec<_>>(),
-                ),
-                height: h.height,
-                work: { Bytes::from(h.work.clone()) },
-            })
-            .collect()
-    }
-
     fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
-        let testdata: &[u8] = &fs::read(TESTDATA_FORK_MSG).unwrap();
+        let testdata = get_btc_lc_fork_msg();
         let resp: ExecuteMsg = from_json(testdata).unwrap();
         match resp {
             ExecuteMsg::BtcHeaders { headers } => headers,
@@ -455,7 +408,7 @@ pub(crate) mod tests {
         let mut storage = deps.storage;
         let w = setup(&mut storage);
 
-        let test_headers = get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         // testing initialisation with w+1 headers
         let test_init_headers: &[BtcHeaderInfo] = &test_headers[0..w + 1];
@@ -488,7 +441,7 @@ pub(crate) mod tests {
         let mut storage = deps.storage;
         setup(&mut storage);
 
-        let test_headers = get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         // initialize with all headers
         init(&mut storage, &test_headers).unwrap();
@@ -499,7 +452,7 @@ pub(crate) mod tests {
         ensure_headers(&storage, &test_headers);
 
         // get fork headers
-        let test_fork_headers = get_fork_test_headers();
+        let test_fork_headers = get_btc_lc_fork_headers();
 
         // handling fork headers
         handle_btc_headers_from_babylon(&mut storage, &test_fork_headers).unwrap();
@@ -534,7 +487,7 @@ pub(crate) mod tests {
         let mut storage = deps.storage;
         setup(&mut storage);
 
-        let test_headers = get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         // initialize with all headers
         init(&mut storage, &test_headers).unwrap();
@@ -545,7 +498,7 @@ pub(crate) mod tests {
         ensure_headers(&storage, &test_headers);
 
         // get fork headers
-        let test_fork_headers = get_fork_test_headers();
+        let test_fork_headers = get_btc_lc_fork_headers();
 
         // handling fork headers minus the last
         let res = handle_btc_headers_from_babylon(
@@ -572,7 +525,7 @@ pub(crate) mod tests {
         let mut storage = deps.storage;
         setup(&mut storage);
 
-        let test_headers = get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         // initialize with all headers
         init(&mut storage, &test_headers).unwrap();
@@ -583,7 +536,7 @@ pub(crate) mod tests {
         ensure_headers(&storage, &test_headers);
 
         // get fork headers
-        let test_fork_headers = get_fork_test_headers();
+        let test_fork_headers = get_btc_lc_fork_headers();
 
         // Make the fork headers invalid
         let mut invalid_fork_headers = test_fork_headers.clone();
@@ -612,7 +565,7 @@ pub(crate) mod tests {
         let mut storage = deps.storage;
         setup(&mut storage);
 
-        let test_headers = get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         // initialize with all headers
         init(&mut storage, &test_headers).unwrap();
@@ -623,7 +576,7 @@ pub(crate) mod tests {
         ensure_headers(&storage, &test_headers);
 
         // get fork headers
-        let test_fork_headers = get_fork_test_headers();
+        let test_fork_headers = get_btc_lc_fork_headers();
 
         // Make the fork headers invalid due to one of the headers having the wrong height
         let mut invalid_fork_headers = test_fork_headers.clone();
@@ -656,7 +609,7 @@ pub(crate) mod tests {
         let mut storage = deps.storage;
         setup(&mut storage);
 
-        let test_headers = get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         // initialize with all headers
         init(&mut storage, &test_headers).unwrap();
@@ -667,7 +620,7 @@ pub(crate) mod tests {
         ensure_headers(&storage, &test_headers);
 
         // get fork headers
-        let test_fork_headers = get_fork_test_headers();
+        let test_fork_headers = get_btc_lc_fork_headers();
 
         // Make the fork headers invalid due to one of the headers having the wrong work
         let wrong_header_index = test_fork_headers.len() / 2;
@@ -713,7 +666,7 @@ pub(crate) mod tests {
         let mut storage = deps.storage;
         setup(&mut storage);
 
-        let test_headers = get_main_test_headers();
+        let test_headers = get_btc_lc_headers();
 
         // initialize with all headers
         init(&mut storage, &test_headers).unwrap();

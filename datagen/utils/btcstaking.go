@@ -1,9 +1,11 @@
-package main
+package utils
 
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -13,9 +15,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	BTC_DEL_FILENAME           = "btc_delegation.dat"
+	BTCSTAKING_PARAMS_FILENAME = "btcstaking_params.dat"
+)
+
 var net = &chaincfg.RegressionNetParams
 
-func GenBTCDelegation(r *rand.Rand) {
+func GenBTCDelegation(dir string) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	t := &testing.T{}
 
 	delSK, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -71,11 +79,13 @@ func GenBTCDelegation(r *rand.Rand) {
 
 	btcDelBytes, err := btcDel.Marshal()
 	require.NoError(t, err)
-	err = os.WriteFile("./packages/btcstaking/testdata/btc_delegation.dat", btcDelBytes, 0644)
+	btcDelPath := filepath.Join(dir, BTC_DEL_FILENAME)
+	err = os.WriteFile(btcDelPath, btcDelBytes, 0644)
 	require.NoError(t, err)
 
 	paramsBytes, err := bsParams.Marshal()
 	require.NoError(t, err)
-	err = os.WriteFile("./packages/btcstaking/testdata/btcstaking_params.dat", paramsBytes, 0644)
+	paramsPath := filepath.Join(dir, BTCSTAKING_PARAMS_FILENAME)
+	err = os.WriteFile(paramsPath, paramsBytes, 0644)
 	require.NoError(t, err)
 }

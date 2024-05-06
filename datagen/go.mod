@@ -1,4 +1,4 @@
-module github.com/babylonchain/datagen
+module github.com/babylonchain/babylon-contract/datagen
 
 go 1.21
 

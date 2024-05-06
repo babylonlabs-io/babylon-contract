@@ -5,9 +5,8 @@
 //!
 use criterion::{criterion_group, criterion_main, Criterion, PlottingBackend};
 
-use prost::Message;
-use std::fs;
 use std::time::Duration;
+use test_utils::get_btc_lc_mainchain_resp;
 use thousands::Separable;
 
 use cosmwasm_std::{Env, MessageInfo, Response};
@@ -16,8 +15,6 @@ use cosmwasm_vm::testing::{
     MockStorage,
 };
 use cosmwasm_vm::Instance;
-
-use babylon_proto::babylon::btclightclient::v1::QueryMainChainResponse;
 
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeader;
@@ -30,12 +27,10 @@ static WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
 const GAS_MULTIPLIER: u64 = 140_000_000;
 
 const CREATOR: &str = "creator";
-const TESTDATA_MAIN: &str = "../../testdata/btc_light_client.dat";
 
 #[track_caller]
 pub fn get_main_msg_test_headers() -> Vec<BtcHeader> {
-    let testdata: &[u8] = &fs::read(TESTDATA_MAIN).unwrap();
-    let res = QueryMainChainResponse::decode(testdata).unwrap();
+    let res = get_btc_lc_mainchain_resp();
     res.headers
         .iter()
         .map(TryInto::try_into)

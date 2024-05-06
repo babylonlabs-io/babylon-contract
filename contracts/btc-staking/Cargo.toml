@@ -39,6 +39,7 @@ hex              = { workspace = true }
 thiserror        = { workspace = true }
 
 [dev-dependencies]
-babylon-proto    = { path = "../../packages/proto" }
-cosmwasm-vm      = { workspace = true }
-prost            = { workspace = true }
+test-utils        = { path = "../../packages/test-utils" }
+babylon-proto     = { path = "../../packages/proto" }
+cosmwasm-vm       = { workspace = true }
+prost             = { workspace = true }

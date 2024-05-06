@@ -23,22 +23,17 @@ use cosmwasm_vm::testing::{
     mock_instance_with_gas_limit, query, MockApi, MockQuerier, MockStorage,
 };
 use cosmwasm_vm::{Instance, Size};
-use prost::Message;
-use std::fs;
+use test_utils::{get_btc_lc_fork_msg, get_btc_lc_mainchain_resp};
 
 use babylon_bindings::BabylonMsg;
 use babylon_contract::ibc::IBC_VERSION;
 use babylon_contract::msg::btc_header::{BtcHeader, BtcHeadersResponse};
 use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
-use babylon_proto::babylon::btclightclient::v1::QueryMainChainResponse;
 
 static WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
 const MAX_WASM_LEN: Size = Size::kibi(800);
 
 const CREATOR: &str = "creator";
-
-const TESTDATA_MAIN: &str = "../../testdata/btc_light_client.dat";
-const TESTDATA_FORK_MSG: &str = "../../testdata/btc_light_client_fork_msg.json";
 
 #[track_caller]
 fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
@@ -60,8 +55,7 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
 
 #[track_caller]
 pub fn get_main_msg_test_headers() -> Vec<BtcHeader> {
-    let testdata: &[u8] = &fs::read(TESTDATA_MAIN).unwrap();
-    let res = QueryMainChainResponse::decode(testdata).unwrap();
+    let res = get_btc_lc_mainchain_resp();
     res.headers
         .iter()
         .map(TryInto::try_into)
@@ -71,7 +65,7 @@ pub fn get_main_msg_test_headers() -> Vec<BtcHeader> {
 
 #[track_caller]
 fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
-    let testdata: &[u8] = &fs::read(TESTDATA_FORK_MSG).unwrap();
+    let testdata = get_btc_lc_fork_msg();
     let resp: ExecuteMsg = from_json(testdata).unwrap();
     match resp {
         ExecuteMsg::BtcHeaders { headers } => headers,

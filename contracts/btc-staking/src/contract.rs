@@ -368,29 +368,22 @@ fn check_duplicated_fps(del: &ActiveBtcDelegation) -> Result<(), ContractError> 
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use std::fs;
-
+    use crate::contract::ExecuteMsg;
+    use babylon_apis::btc_staking_api::{
+        CovenantAdaptorSignatures, FinalityProviderDescription, ProofOfPossession,
+    };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
         Decimal,
     };
     use hex::ToHex;
-    use prost::Message;
-
-    use babylon_apis::btc_staking_api::{
-        CovenantAdaptorSignatures, FinalityProviderDescription, ProofOfPossession,
-    };
-
-    use crate::contract::ExecuteMsg;
+    use test_utils::get_btc_delegation_and_params;
 
     const CREATOR: &str = "creator";
 
-    const TESTDATA_DELEGATION: &str = "../../packages/btcstaking/testdata/btc_delegation.dat";
-
     /// Build an active BTC delegation from a BTC delegation
     pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
-        let testdata: &[u8] = &fs::read(TESTDATA_DELEGATION).unwrap();
-        let del = babylon_proto::babylon::btcstaking::v1::BtcDelegation::decode(testdata).unwrap();
+        let (del, _) = get_btc_delegation_and_params();
 
         ActiveBtcDelegation {
             btc_pk_hex: del.btc_pk.encode_hex(),
