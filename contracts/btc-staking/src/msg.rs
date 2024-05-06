@@ -21,7 +21,7 @@ pub enum QueryMsg {
     /// `FinalityProviders` returns the list of registered finality providers
     ///
     /// `start_after` is the BTC public key of the FP to start after, or `None` to start from the beginning
-    #[returns(FinalityProviders)]
+    #[returns(FinalityProvidersResponse)]
     FinalityProviders {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -33,7 +33,7 @@ pub enum QueryMsg {
     ///
     /// `start_after` is the staking tx hash (in hex format) of the delegation to start after,
     /// or `None` to start from the beginning
-    #[returns(BtcDelegations)]
+    #[returns(BtcDelegationsResponse)]
     Delegations {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -44,10 +44,21 @@ pub enum QueryMsg {
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
     /// The hashes are returned in hex format
     //TODO?: Support pagination
-    #[returns(StakingTxHashes)]
+    #[returns(DelegationsByFPResponse)]
     DelegationsByFP { btc_pk_hex: String },
 }
 
-pub type FinalityProviders = Vec<FinalityProvider>;
-pub type BtcDelegations = Vec<ActiveBtcDelegation>;
-pub type StakingTxHashes = Vec<String>;
+#[cw_serde]
+pub struct FinalityProvidersResponse {
+    pub fps: Vec<FinalityProvider>,
+}
+
+#[cw_serde]
+pub struct BtcDelegationsResponse {
+    pub delegations: Vec<ActiveBtcDelegation>,
+}
+
+#[cw_serde]
+pub struct DelegationsByFPResponse {
+    pub hashes: Vec<String>,
+}

@@ -1,10 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Array_of_ActiveBtcDelegation",
-  "type": "array",
-  "items": {
-    "$ref": "#/definitions/ActiveBtcDelegation"
+  "title": "BtcDelegationsResponse",
+  "type": "object",
+  "required": [
+    "delegations"
+  ],
+  "properties": {
+    "delegations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ActiveBtcDelegation"
+      }
+    }
   },
+  "additionalProperties": false,
   "definitions": {
     "ActiveBtcDelegation": {
       "description": "ActiveBTCDelegation is a message sent when a BTC delegation newly receives covenant signatures and thus becomes active",

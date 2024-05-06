@@ -1,5 +1,6 @@
 use crate::error::ContractError;
 use crate::error::ContractError::WrongHashLength;
+use crate::msg::{BtcDelegationsResponse, DelegationsByFPResponse, FinalityProvidersResponse};
 use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, HASH_SIZE};
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 use cosmwasm_std::{Deps, Order, StdResult};
@@ -21,7 +22,7 @@ pub fn finality_providers(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<Vec<FinalityProvider>> {
+) -> StdResult<FinalityProvidersResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start_after = start_after.as_ref().map(|s| Bound::exclusive(&**s));
     let fps = FPS
@@ -29,7 +30,7 @@ pub fn finality_providers(
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
         .collect::<StdResult<Vec<FinalityProvider>>>()?;
-    Ok(fps)
+    Ok(FinalityProvidersResponse { fps })
 }
 
 pub fn delegation(
@@ -48,7 +49,7 @@ pub fn delegations(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> Result<Vec<ActiveBtcDelegation>, ContractError> {
+) -> Result<BtcDelegationsResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start_after = start_after.as_ref().map(hex::decode).transpose()?;
     let start_after: Option<[u8; HASH_SIZE]> = start_after
@@ -62,13 +63,16 @@ pub fn delegations(
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
         .collect::<Result<Vec<ActiveBtcDelegation>, _>>()?;
-    Ok(delegations)
+    Ok(BtcDelegationsResponse { delegations })
 }
 
-pub fn delegations_by_fp(deps: Deps, btc_pk_hex: String) -> Result<Vec<String>, ContractError> {
+pub fn delegations_by_fp(
+    deps: Deps,
+    btc_pk_hex: String,
+) -> Result<DelegationsByFPResponse, ContractError> {
     let tx_hashes = FP_DELEGATIONS.load(deps.storage, &btc_pk_hex)?;
     let tx_hashes = tx_hashes.iter().map(hex::encode).collect::<Vec<String>>();
-    Ok(tx_hashes)
+    Ok(DelegationsByFPResponse { hashes: tx_hashes })
 }
 
 #[cfg(test)]
@@ -154,19 +158,24 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query finality providers
-        let fps = crate::queries::finality_providers(deps.as_ref(), None, None).unwrap();
+        let fps = crate::queries::finality_providers(deps.as_ref(), None, None)
+            .unwrap()
+            .fps;
         assert_eq!(fps.len(), 2);
         assert_eq!(fps[0], fp1);
         assert_eq!(fps[1], fp2);
 
         // Query finality providers with limit
-        let fps = crate::queries::finality_providers(deps.as_ref(), None, Some(1)).unwrap();
+        let fps = crate::queries::finality_providers(deps.as_ref(), None, Some(1))
+            .unwrap()
+            .fps;
         assert_eq!(fps.len(), 1);
         assert_eq!(fps[0], fp1);
 
         // Query finality providers with start_after
         let fps = crate::queries::finality_providers(deps.as_ref(), Some("f1".to_string()), None)
-            .unwrap();
+            .unwrap()
+            .fps;
         assert_eq!(fps.len(), 1);
         assert_eq!(fps[0], fp2);
     }
@@ -285,13 +294,17 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query delegations
-        let dels = crate::queries::delegations(deps.as_ref(), None, None).unwrap();
+        let dels = crate::queries::delegations(deps.as_ref(), None, None)
+            .unwrap()
+            .delegations;
         assert_eq!(dels.len(), 2);
         assert_eq!(dels[0], del1);
         assert_eq!(dels[1], del2);
 
         // Query delegations with limit
-        let dels = crate::queries::delegations(deps.as_ref(), None, Some(1)).unwrap();
+        let dels = crate::queries::delegations(deps.as_ref(), None, Some(1))
+            .unwrap()
+            .delegations;
         assert_eq!(dels.len(), 1);
         assert_eq!(dels[0], del1);
 
@@ -299,8 +312,9 @@ mod tests {
         let staking_tx: Transaction = bitcoin::consensus::deserialize(&del1.staking_tx).unwrap();
         let staking_tx_hash = staking_tx.txid();
         let staking_tx_hash_hex = staking_tx_hash.encode_hex();
-        let dels =
-            crate::queries::delegations(deps.as_ref(), Some(staking_tx_hash_hex), None).unwrap();
+        let dels = crate::queries::delegations(deps.as_ref(), Some(staking_tx_hash_hex), None)
+            .unwrap()
+            .delegations;
 
         assert_eq!(dels.len(), 1);
         assert_eq!(dels[0], del2);
@@ -420,9 +434,13 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query delegations by finality provider
-        let dels1 = crate::queries::delegations_by_fp(deps.as_ref(), "f1".to_string()).unwrap();
+        let dels1 = crate::queries::delegations_by_fp(deps.as_ref(), "f1".to_string())
+            .unwrap()
+            .hashes;
         assert_eq!(dels1.len(), 1);
-        let dels2 = crate::queries::delegations_by_fp(deps.as_ref(), "f2".to_string()).unwrap();
+        let dels2 = crate::queries::delegations_by_fp(deps.as_ref(), "f2".to_string())
+            .unwrap()
+            .hashes;
         assert_eq!(dels2.len(), 1);
         assert_ne!(dels1[0], dels2[0]);
         let err = crate::queries::delegations_by_fp(deps.as_ref(), "f3".to_string()).unwrap_err();
