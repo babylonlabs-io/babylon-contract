@@ -153,8 +153,13 @@ jobs:
             (cd ./contracts/babylon && cargo run --bin schema)
             (cd ./contracts/btc-staking && cargo run --bin btcstaking-schema)
       - run:
+          name: Consolidate schemas
+          command: |
+            mkdir -p ./schemas
+            cp -a ./contracts/*/schema/* ./schemas
+      - run:
           name: Show data
-          command: ls -l ./contracts/*/schema
+          command: ls -l ./schemas
       - run:
           name: Publish schemas on GitHub
           command: |
@@ -166,7 +171,7 @@ jobs:
               -c "$CIRCLE_SHA1" \
               -n "$TITLE" -b "$BODY" \
               -replace \
-              "$TAG" ./contracts/*/schema
+              "$TAG" ./schemas/
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows
