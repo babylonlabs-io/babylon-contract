@@ -2,7 +2,16 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.1...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.2...HEAD)
+
+## [v0.5.2](https://github.com/babylonchain/babylon-contract/tree/v0.5.2) (2024-05-07)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.1...v0.5.2)
+
+**Merged pull requests:**
+
+- Fix/protos [\#91](https://github.com/babylonchain/babylon-contract/pull/91) ([maurolacy](https://github.com/maurolacy))
+- Fix: publish schemas on release [\#90](https://github.com/babylonchain/babylon-contract/pull/90) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.5.1](https://github.com/babylonchain/babylon-contract/tree/v0.5.1) (2024-05-06)
 
