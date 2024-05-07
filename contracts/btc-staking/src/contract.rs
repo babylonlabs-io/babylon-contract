@@ -1,8 +1,7 @@
 use crate::error::ContractError;
-use crate::error::ContractError::{EmptyBtcPk, ErrInvalidLockTime, ErrInvalidLockType};
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
-    SlashedBtcDelegation, SlashedFinalityProvider, UnbondedBtcDelegation,
+    SlashedBtcDelegation, UnbondedBtcDelegation,
 };
 use babylon_bindings::BabylonMsg;
 use bitcoin::absolute::LockTime;
@@ -92,7 +91,6 @@ pub fn execute(
     match msg {
         ExecuteMsg::BtcStaking {
             new_fp,
-            slashed_fp,
             active_del,
             slashed_del,
             unbonded_del,
@@ -100,7 +98,6 @@ pub fn execute(
             deps.storage,
             &info,
             &new_fp,
-            &slashed_fp,
             &active_del,
             &slashed_del,
             &unbonded_del,
@@ -114,7 +111,6 @@ pub fn handle_btc_staking(
     storage: &mut dyn Storage,
     info: &MessageInfo,
     new_fps: &[FinalityProvider],
-    _slashed_fps: &[SlashedFinalityProvider],
     active_delegations: &[ActiveBtcDelegation],
     _slashed_delegations: &[SlashedBtcDelegation],
     _unbonded_delegations: &[UnbondedBtcDelegation],
@@ -167,7 +163,7 @@ fn validate_fp(fp: &FinalityProvider) -> Result<(), ContractError> {
         .transpose()?;
 
     if fp.btc_pk_hex.is_empty() {
-        return Err(EmptyBtcPk);
+        return Err(ContractError::EmptyBtcPk);
     }
 
     let _btc_pk = hex::decode(&fp.btc_pk_hex)?;
@@ -225,11 +221,14 @@ pub fn handle_active_delegation(
     // Check staking time is at most uint16
     match staking_tx.lock_time {
         LockTime::Blocks(b) if b.to_consensus_u32() > u16::MAX as u32 => {
-            return Err(ErrInvalidLockTime(b.to_consensus_u32(), u16::MAX as u32));
+            return Err(ContractError::ErrInvalidLockTime(
+                b.to_consensus_u32(),
+                u16::MAX as u32,
+            ));
         }
         LockTime::Blocks(_) => {}
         LockTime::Seconds(_) => {
-            return Err(ErrInvalidLockType);
+            return Err(ContractError::ErrInvalidLockType);
         }
     }
 
@@ -458,7 +457,6 @@ pub(crate) mod tests {
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
-            slashed_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -481,7 +479,6 @@ pub(crate) mod tests {
         // Trying to add the same fp again fails
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
-            slashed_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -529,7 +526,6 @@ pub(crate) mod tests {
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
-            slashed_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -540,7 +536,6 @@ pub(crate) mod tests {
         // Now add the active delegation
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
-            slashed_fp: vec![],
             active_del: vec![active_delegation.clone()],
             slashed_del: vec![],
             unbonded_del: vec![],

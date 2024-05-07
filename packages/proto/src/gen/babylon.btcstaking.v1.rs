@@ -214,26 +214,24 @@ pub struct Params {
     #[prost(string, tag="9")]
     pub min_unbonding_rate: ::prost::alloc::string::String,
 }
-/// BTCStakingIBCPacket is an IBC packet carrying a set of events related
-/// to BTC staking for a particular consumer chain
+/// BTCStakingIBCPacket is an IBC packet sent from Babylon to a consumer
+/// It carries a set of events related to BTC staking for a given consumer
 /// It will be constructed and sent upon `EndBlock` of ZoneConcierge
-/// (if there are any BTC staking events for a consumer chain)
+/// (if there are any BTC staking events for a consumer)
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BtcStakingIbcPacket {
     #[prost(message, repeated, tag="1")]
     pub new_fp: ::prost::alloc::vec::Vec<NewFinalityProvider>,
     #[prost(message, repeated, tag="2")]
-    pub slashed_fp: ::prost::alloc::vec::Vec<SlashedFinalityProvider>,
-    #[prost(message, repeated, tag="3")]
     pub active_del: ::prost::alloc::vec::Vec<ActiveBtcDelegation>,
-    #[prost(message, repeated, tag="4")]
+    #[prost(message, repeated, tag="3")]
     pub slashed_del: ::prost::alloc::vec::Vec<SlashedBtcDelegation>,
-    #[prost(message, repeated, tag="5")]
+    #[prost(message, repeated, tag="4")]
     pub unbonded_del: ::prost::alloc::vec::Vec<UnbondedBtcDelegation>,
 }
-/// NewFinalityProvider is an IBC packet sent from Babylon to consumer chain
-/// upon a newly registered finality provider on this consumer chain
+/// NewFinalityProvider is an IBC packet sent from Babylon to consumer
+/// upon a newly registered finality provider on this consumer
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NewFinalityProvider {
@@ -271,26 +269,12 @@ pub struct NewFinalityProvider {
     /// if it's 0 then the finality provider is not slashed
     #[prost(uint64, tag="9")]
     pub slashed_btc_height: u64,
-    /// chain_id is the chain id of the chain the finality provider is operating on.
-    /// If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.
+    /// consumer_id is the ID of the consumer the finality provider is operating on.
+    /// If it's missing / empty, it's assumed the finality provider is operating in Babylon.
     #[prost(string, tag="10")]
-    pub chain_id: ::prost::alloc::string::String,
+    pub consumer_id: ::prost::alloc::string::String,
 }
-/// SlashedFinalityProvider is an IBC packet sent from consumer chain to Babylon
-/// upon a finality provider is slashed on the consumer chain
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SlashedFinalityProvider {
-    /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
-    /// the PK follows encoding in BIP-340 spec in hex format
-    #[prost(string, tag="1")]
-    pub btc_pk_hex: ::prost::alloc::string::String,
-    /// recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing
-    /// this allows the consumer chain to verify the BTC delegation is indeed slashed
-    #[prost(string, tag="2")]
-    pub recovered_fp_btc_sk: ::prost::alloc::string::String,
-}
-/// ActiveBTCDelegation is an IBC packet sent from Babylon to consumer chain
+/// ActiveBTCDelegation is an IBC packet sent from Babylon to consumer
 /// upon a BTC delegation newly receives covenant signatures and thus becomes active
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -379,8 +363,8 @@ pub struct BtcUndelegationInfo {
     #[prost(message, repeated, tag="6")]
     pub covenant_slashing_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
 }
-/// SlashedBTCDelegation is an IBC packet sent from Babylon to consumer chain
-/// about a slashed BTC delegation restaked to >=1 of this consumer chain's 
+/// SlashedBTCDelegation is an IBC packet sent from Babylon to consumer
+/// about a slashed BTC delegation restaked to >=1 of this consumer's 
 /// finality provider
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -389,12 +373,12 @@ pub struct SlashedBtcDelegation {
     #[prost(string, tag="1")]
     pub staking_tx_hash: ::prost::alloc::string::String,
     /// recovered_fp_btc_sk is the extracted BTC SK of the finality provider on
-    /// this consumer chain
-    /// this allows the consumer chain to verify the BTC delegation is indeed slashed
+    /// this consumer
+    /// this allows the consumer to verify the BTC delegation is indeed slashed
     #[prost(string, tag="2")]
     pub recovered_fp_btc_sk: ::prost::alloc::string::String,
 }
-/// UnbondedBTCDelegation is an IBC packet sent from Babylon to consumer chain
+/// UnbondedBTCDelegation is an IBC packet sent from Babylon to consumer
 /// upon an early unbonded BTC delegation
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

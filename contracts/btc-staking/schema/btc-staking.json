@@ -26,7 +26,6 @@
               "active_del",
               "new_fp",
               "slashed_del",
-              "slashed_fp",
               "unbonded_del"
             ],
             "properties": {
@@ -46,12 +45,6 @@
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/SlashedBtcDelegation"
-                }
-              },
-              "slashed_fp": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/definitions/SlashedFinalityProvider"
                 }
               },
               "unbonded_del": {
@@ -496,25 +489,6 @@
           },
           "staking_tx_hash": {
             "description": "staking tx hash of the BTC delegation. It uniquely identifies a BTC delegation",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "SlashedFinalityProvider": {
-        "description": "SlashedFinalityProvider is a packet sent from Consumer chain to Babylon upon a finality provider is slashed on the Consumer chain",
-        "type": "object",
-        "required": [
-          "btc_pk_hex",
-          "recovered_fp_btc_sk"
-        ],
-        "properties": {
-          "btc_pk_hex": {
-            "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
-            "type": "string"
-          },
-          "recovered_fp_btc_sk": {
-            "description": "recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing. This allows the consumer chain to verify the BTC delegation is indeed slashed",
             "type": "string"
           }
         },

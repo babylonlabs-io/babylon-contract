@@ -129,7 +129,7 @@ mod ibc_packet {
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures, FinalityProvider,
         FinalityProviderDescription, ProofOfPossession, PubKey, SignatureInfo,
-        SlashedFinalityProvider, UnbondedBtcDelegation,
+        UnbondedBtcDelegation,
     };
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use cosmwasm_std::{to_json_binary, Decimal, WasmMsg};
@@ -210,18 +210,10 @@ mod ibc_packet {
                         registered_epoch: fp.registered_epoch,
                         slashed_babylon_height: fp.slashed_babylon_height,
                         slashed_btc_height: fp.slashed_btc_height,
-                        chain_id: fp.chain_id.clone(),
+                        chain_id: fp.consumer_id.clone(),
                     })
                 })
                 .collect::<StdResult<_>>()?,
-            slashed_fp: btc_staking
-                .slashed_fp
-                .iter()
-                .map(|fp| SlashedFinalityProvider {
-                    btc_pk_hex: fp.btc_pk_hex.clone(),
-                    recovered_fp_btc_sk: fp.recovered_fp_btc_sk.clone(),
-                })
-                .collect(),
             active_del: btc_staking
                 .active_del
                 .iter()
@@ -269,7 +261,7 @@ mod ibc_packet {
                     params_version: d.params_version,
                 })
                 .collect(),
-            slashed_del: vec![], // FIXME: Needed?
+            slashed_del: vec![], // FIXME: Route this
             unbonded_del: btc_staking
                 .unbonded_del
                 .iter()

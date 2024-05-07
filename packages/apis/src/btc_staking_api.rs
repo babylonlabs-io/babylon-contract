@@ -12,7 +12,6 @@ pub enum ExecuteMsg {
     /// BTC Staking operations.
     BtcStaking {
         new_fp: Vec<FinalityProvider>,
-        slashed_fp: Vec<SlashedFinalityProvider>,
         active_del: Vec<ActiveBtcDelegation>,
         slashed_del: Vec<SlashedBtcDelegation>,
         unbonded_del: Vec<UnbondedBtcDelegation>,
@@ -147,18 +146,6 @@ pub struct ProofOfPossession {
     /// btc_sig is the signature generated via sign(sk_btc, babylon_sig)
     /// the signature follows encoding in either BIP-340 spec or BIP-322 spec
     pub btc_sig: Bytes,
-}
-
-/// SlashedFinalityProvider is a packet sent from Consumer chain to Babylon
-/// upon a finality provider is slashed on the Consumer chain
-#[cw_serde]
-pub struct SlashedFinalityProvider {
-    /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
-    /// the PK follows encoding in BIP-340 spec in hex format
-    pub btc_pk_hex: String,
-    /// recovered_fp_btc_sk is the finality provider's BTC SK extracted due to slashing.
-    /// This allows the consumer chain to verify the BTC delegation is indeed slashed
-    pub recovered_fp_btc_sk: String,
 }
 
 /// ActiveBTCDelegation is a message sent when a BTC delegation newly receives covenant signatures

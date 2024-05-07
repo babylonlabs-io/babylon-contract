@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use crate::error::ContractError::WrongHashLength;
 use crate::msg::{BtcDelegationsResponse, DelegationsByFPResponse, FinalityProvidersResponse};
 use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, HASH_SIZE};
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
@@ -41,7 +40,7 @@ pub fn delegation(
     let staking_tx_hash: [u8; HASH_SIZE] = staking_tx_hash
         .clone()
         .try_into()
-        .map_err(|_| WrongHashLength(staking_tx_hash.len()))?;
+        .map_err(|_| ContractError::WrongHashLength(staking_tx_hash.len()))?;
     Ok(DELEGATIONS.load(deps.storage, &staking_tx_hash)?)
 }
 
@@ -56,7 +55,7 @@ pub fn delegations(
         .clone()
         .map(|s| s.try_into())
         .transpose()
-        .map_err(|_| WrongHashLength(start_after.unwrap().len()))?;
+        .map_err(|_| ContractError::WrongHashLength(start_after.unwrap().len()))?;
     let start_after = start_after.as_ref().map(Bound::exclusive);
     let delegations = DELEGATIONS
         .range_raw(deps.storage, start_after, None, Order::Ascending)
@@ -149,7 +148,6 @@ mod tests {
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![fp1.clone(), fp2.clone()],
-            slashed_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -236,7 +234,6 @@ mod tests {
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![fp1.clone(), fp2.clone()],
-            slashed_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -285,7 +282,6 @@ mod tests {
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
-            slashed_fp: vec![],
             active_del: vec![del1.clone(), del2.clone()],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -376,7 +372,6 @@ mod tests {
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![fp1.clone(), fp2.clone()],
-            slashed_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -425,7 +420,6 @@ mod tests {
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
-            slashed_fp: vec![],
             active_del: vec![del1.clone(), del2.clone()],
             slashed_del: vec![],
             unbonded_del: vec![],
