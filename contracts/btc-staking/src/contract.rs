@@ -287,7 +287,7 @@ pub fn handle_active_delegation(
     // Check staking tx is not duplicated
     if DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
         return Err(ContractError::DelegationAlreadyExists(
-            staking_tx_hash.encode_hex(),
+            staking_tx_hash.to_string(),
         ));
     }
 
@@ -547,7 +547,7 @@ pub(crate) mod tests {
         // Check the active delegation is being stored
         let staking_tx: Transaction = deserialize(&active_delegation.staking_tx).unwrap();
         let staking_tx_hash = staking_tx.txid();
-        let query_res = queries::delegation(deps.as_ref(), staking_tx_hash.encode_hex()).unwrap();
+        let query_res = queries::delegation(deps.as_ref(), staking_tx_hash.to_string()).unwrap();
         assert_eq!(query_res, active_delegation);
     }
 }

@@ -1,9 +1,12 @@
 use crate::error::ContractError;
 use crate::msg::{BtcDelegationsResponse, DelegationsByFPResponse, FinalityProvidersResponse};
-use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, HASH_SIZE};
+use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS};
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
+use bitcoin::hashes::Hash;
+use bitcoin::Txid;
 use cosmwasm_std::{Deps, Order, StdResult};
 use cw_storage_plus::Bound;
+use std::str::FromStr;
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -32,31 +35,30 @@ pub fn finality_providers(
     Ok(FinalityProvidersResponse { fps })
 }
 
+/// Get the delegation info by staking tx hash.
+/// `staking_tx_hash_hex`: The (reversed) staking tx hash, in hex
 pub fn delegation(
     deps: Deps,
     staking_tx_hash_hex: String,
 ) -> Result<ActiveBtcDelegation, ContractError> {
-    let staking_tx_hash = hex::decode(staking_tx_hash_hex)?;
-    let staking_tx_hash: [u8; HASH_SIZE] = staking_tx_hash
-        .clone()
-        .try_into()
-        .map_err(|_| ContractError::WrongHashLength(staking_tx_hash.len()))?;
-    Ok(DELEGATIONS.load(deps.storage, &staking_tx_hash)?)
+    let staking_tx_hash = Txid::from_str(&staking_tx_hash_hex)?;
+    Ok(DELEGATIONS.load(deps.storage, staking_tx_hash.as_ref())?)
 }
 
+/// Get list of delegations.
+/// `start_after`: The (reversed) associated staking tx hash of the delegation in hex, if provided.
 pub fn delegations(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<BtcDelegationsResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start_after = start_after.as_ref().map(hex::decode).transpose()?;
-    let start_after: Option<[u8; HASH_SIZE]> = start_after
-        .clone()
-        .map(|s| s.try_into())
-        .transpose()
-        .map_err(|_| ContractError::WrongHashLength(start_after.unwrap().len()))?;
-    let start_after = start_after.as_ref().map(Bound::exclusive);
+    let start_after = start_after
+        .as_ref()
+        .map(|s| Txid::from_str(s))
+        .transpose()?;
+    let start_after = start_after.as_ref().map(|s| s.as_ref());
+    let start_after = start_after.map(Bound::exclusive);
     let delegations = DELEGATIONS
         .range_raw(deps.storage, start_after, None, Order::Ascending)
         .take(limit)
@@ -70,7 +72,10 @@ pub fn delegations_by_fp(
     btc_pk_hex: String,
 ) -> Result<DelegationsByFPResponse, ContractError> {
     let tx_hashes = FP_DELEGATIONS.load(deps.storage, &btc_pk_hex)?;
-    let tx_hashes = tx_hashes.iter().map(hex::encode).collect::<Vec<String>>();
+    let tx_hashes = tx_hashes
+        .iter()
+        .map(|h| Ok(Txid::from_slice(h)?.to_string()))
+        .collect::<Result<_, ContractError>>()?;
     Ok(DelegationsByFPResponse { hashes: tx_hashes })
 }
 
@@ -86,7 +91,6 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::Decimal;
     use cosmwasm_std::StdError::NotFound;
-    use hex::ToHex;
 
     use crate::msg::{ExecuteMsg, InstantiateMsg};
 
@@ -307,7 +311,7 @@ mod tests {
         // Query delegations with start_after
         let staking_tx: Transaction = bitcoin::consensus::deserialize(&del1.staking_tx).unwrap();
         let staking_tx_hash = staking_tx.txid();
-        let staking_tx_hash_hex = staking_tx_hash.encode_hex();
+        let staking_tx_hash_hex = staking_tx_hash.to_string();
         let dels = crate::queries::delegations(deps.as_ref(), Some(staking_tx_hash_hex), None)
             .unwrap()
             .delegations;

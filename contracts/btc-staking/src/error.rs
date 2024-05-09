@@ -1,7 +1,10 @@
-use cosmwasm_std::StdError;
-use cw_utils::PaymentError;
+use bitcoin::hashes::FromSliceError;
+use bitcoin::hex::HexToArrayError;
 use hex::FromHexError;
 use thiserror::Error;
+
+use cosmwasm_std::StdError;
+use cw_utils::PaymentError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -11,14 +14,16 @@ pub enum ContractError {
     Payment(#[from] PaymentError),
     #[error("{0}")]
     HexError(#[from] FromHexError),
+    #[error("error converting from hex to array: {0}")]
+    HexArrayError(#[from] HexToArrayError),
+    #[error("{0}")]
+    SliceError(#[from] FromSliceError),
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Finality provider already exists: {0}")]
     FinalityProviderAlreadyExists(String),
     #[error("No finality providers are registered in this Consumer")]
     FinalityProviderNotRegistered,
-    #[error("The hash length is invalid: {0}")]
-    WrongHashLength(usize),
     #[error("Staking tx hash already exists: {0}")]
     DelegationAlreadyExists(String),
     #[error("Invalid Btc tx: {0}")]
