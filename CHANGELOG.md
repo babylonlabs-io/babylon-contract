@@ -2,7 +2,19 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.2...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...HEAD)
+
+## [v0.5.3](https://github.com/babylonchain/babylon-contract/tree/v0.5.3) (2024-05-13)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.2...v0.5.3)
+
+**Closed issues:**
+
+- Staking Tx Hash mismatch causing issues in `finality_provider` and `delegations_by_f_p` queries [\#94](https://github.com/babylonchain/babylon-contract/issues/94)
+
+**Merged pull requests:**
+
+- Fix/reverse hash [\#96](https://github.com/babylonchain/babylon-contract/pull/96) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.5.2](https://github.com/babylonchain/babylon-contract/tree/v0.5.2) (2024-05-07)
 
