@@ -5,6 +5,8 @@ use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 use cargo_metadata::MetadataCommand;
 use prost::bytes::Bytes;
 use prost::Message;
+use serde::{Deserialize, Serialize};
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
@@ -19,6 +21,8 @@ const BTC_TIMESTAMP_HEADER1: &str = "btc_timestamp_header1.dat";
 
 const PARAMS_DATA: &str = "btcstaking_params.dat";
 const BTC_DELEGATION_DATA: &str = "btc_delegation.dat";
+
+const EOTS_DATA: &str = "eots_testdata.json";
 
 fn find_workspace_root() -> PathBuf {
     // Get the current working directory
@@ -35,6 +39,26 @@ fn find_testdata_path() -> PathBuf {
         .join("packages")
         .join("test-utils")
         .join("testdata")
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EotsTestData {
+    pub sk: String,
+    pub pk: String,
+    pub sr: String,
+    pub pr: String,
+    pub msg1: String,
+    pub msg2: String,
+    pub sig1: String,
+    pub sig2: String,
+}
+
+pub fn get_eots_testdata() -> EotsTestData {
+    let file_path = find_testdata_path().join(EOTS_DATA);
+    let testdata_bytes: &[u8] = &fs::read(file_path).unwrap();
+    let testdata: EotsTestData = serde_json::from_slice(testdata_bytes).unwrap();
+
+    testdata
 }
 
 pub fn get_btc_lc_mainchain_resp() -> QueryMainChainResponse {

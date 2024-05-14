@@ -1172,6 +1172,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "eots"
+version = "0.5.3"
+dependencies = [
+ "hex",
+ "rand",
+ "secp256kfun",
+ "sha2 0.10.8",
+ "test-utils",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2608,6 +2619,8 @@ dependencies = [
  "cargo_metadata",
  "hex",
  "prost 0.11.9",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -25,6 +25,7 @@ babylon-proto        = { path = "./packages/proto" }
 babylon-bitcoin      = { path = "./packages/bitcoin" }
 babylon-btcstaking   = { path = "./packages/btcstaking" }
 babylon-contract     = { path = "./contracts/babylon" }
+eots                 = { path = "./packages/eots" }
 anyhow               = "1.0.82"
 bitcoin              = "0.31.1"
 bitvec               = "1"
@@ -42,6 +43,7 @@ ics23                = { version = "0.9.0", default-features = false, features =
 prost                = "0.11.9"
 schemars             = "0.8.3"
 serde                = { version = "1.0.103", default-features = false, features = ["derive"] }
+serde_json           = "1.0"
 sha2                 = "0.10.6"
 tendermint-proto     = "0.32.2"
 thiserror            = "1.0.40"
@@ -53,6 +55,7 @@ secp256kfun          = { version = "0.10", default-features = false, features = 
 cosmwasm-vm       = { version = "1.5.2", default-features = false, features = ["iterator", "stargate"] }
 assert_matches    = "1"
 criterion         = { version = "0.5.0" }
+rand              = "0.8.5"
 pbjson-types      = "0.5.1"
 thousands         = "0.2.0"
 cargo_metadata    = "0.18.1"

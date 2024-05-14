@@ -90,8 +90,9 @@ impl RawCheckpoint {
 
         // start decoding
         let mut idx: usize = 0;
-        let mut epoch_num_bytes: [u8; 8] = [0u8; 8];
-        epoch_num_bytes.copy_from_slice(&raw_ckpt_bytes[idx..idx + EPOCH_LEN]);
+        let epoch_num_bytes: [u8; 8] = raw_ckpt_bytes[idx..idx + EPOCH_LEN]
+                                            .try_into()
+                                            .map_err(|_| "wrong epoch number bytes length")?;
         let epoch_num = u64::from_be_bytes(epoch_num_bytes);
         idx += EPOCH_LEN;
         let block_hash: Vec<u8> = raw_ckpt_bytes[idx..idx + BLOCK_HASH_LEN]

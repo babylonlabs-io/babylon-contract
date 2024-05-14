@@ -1,0 +1,19 @@
+[package]
+name = "eots"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hex         = { workspace = true }
+secp256kfun = { workspace = true }
+sha2        = { workspace = true }
+
+[dev-dependencies]
+rand        = { workspace = true }
+test-utils  = { path = "../../packages/test-utils" }

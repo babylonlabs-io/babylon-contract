@@ -19,4 +19,5 @@ func main() {
 	utils.GenBTCLightClientForkMessages(mainHeadersLength, mainHeaders[forkHeaderHeight-initialHeaderHeight], testDataPath)
 	utils.GenBTCTimestamp(testDataPath)
 	utils.GenBTCDelegation(testDataPath)
+	utils.GenEOTSTestData(testDataPath)
 }
