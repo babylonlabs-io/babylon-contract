@@ -260,7 +260,7 @@ mod tests {
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
-            undelegation_info: None,
+            undelegation_info: base_del.undelegation_info.clone(),
             params_version: 1,
         };
 
@@ -276,7 +276,7 @@ mod tests {
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
-            undelegation_info: None,
+            undelegation_info: base_del.undelegation_info.clone(),
             params_version: 1,
         };
         // Avoid repeated staking tx hash
@@ -398,7 +398,7 @@ mod tests {
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
-            undelegation_info: None,
+            undelegation_info: base_del.undelegation_info.clone(),
             params_version: 1,
         };
 
@@ -414,7 +414,7 @@ mod tests {
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
-            undelegation_info: None,
+            undelegation_info: base_del.undelegation_info.clone(),
             params_version: 1,
         };
         // Avoid repeated staking tx hash

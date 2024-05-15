@@ -26,6 +26,8 @@ pub enum ContractError {
     FinalityProviderNotRegistered,
     #[error("Staking tx hash already exists: {0}")]
     DelegationAlreadyExists(String),
+    #[error("Staking tx hash hex string is not {0} chars long")]
+    InvalidStakingTxHash(usize),
     #[error("Invalid Btc tx: {0}")]
     InvalidBtcTx(String),
     #[error("Empty Btc public key")]
@@ -34,6 +36,10 @@ pub enum ContractError {
     InvalidBtcPk(String),
     #[error("Empty proof of possession")]
     MissingPop,
+    #[error("Missing unbonding info")]
+    MissingUnbondingInfo,
+    #[error("Empty unbonding tx")]
+    EmptyUnbondingTx,
     #[error("Empty master public randomness key")]
     EmptyMasterPubRand,
     #[error("No Finality Providers Btc public keys")]
@@ -52,4 +58,6 @@ pub enum ContractError {
     ErrInvalidUnbondingTime(u32, u32),
     #[error("Empty moniker")]
     EmptyMoniker,
+    #[error("Empty signature from the delegator")]
+    EmptySignature,
 }
