@@ -1,10 +1,11 @@
 use bitcoin::hashes::FromSliceError;
 use bitcoin::hex::HexToArrayError;
-use hex::FromHexError;
 use thiserror::Error;
 
 use cosmwasm_std::StdError;
 use cw_utils::PaymentError;
+
+use babylon_apis::error::StakingApiError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -12,12 +13,12 @@ pub enum ContractError {
     Std(#[from] StdError),
     #[error("{0}")]
     Payment(#[from] PaymentError),
-    #[error("{0}")]
-    HexError(#[from] FromHexError),
     #[error("error converting from hex to array: {0}")]
     HexArrayError(#[from] HexToArrayError),
     #[error("{0}")]
     SliceError(#[from] FromSliceError),
+    #[error("{0}")]
+    StakingError(#[from] StakingApiError),
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Finality provider already exists: {0}")]
@@ -26,38 +27,18 @@ pub enum ContractError {
     FinalityProviderNotRegistered,
     #[error("Staking tx hash already exists: {0}")]
     DelegationAlreadyExists(String),
-    #[error("Staking tx hash hex string is not {0} chars long")]
-    InvalidStakingTxHash(usize),
     #[error("Invalid Btc tx: {0}")]
     InvalidBtcTx(String),
-    #[error("Empty Btc public key")]
-    EmptyBtcPk,
-    #[error("Invalid Btc PK: {0}")]
-    InvalidBtcPk(String),
-    #[error("Empty proof of possession")]
-    MissingPop,
     #[error("Missing unbonding info")]
     MissingUnbondingInfo,
     #[error("Empty unbonding tx")]
     EmptyUnbondingTx,
-    #[error("Empty master public randomness key")]
-    EmptyMasterPubRand,
-    #[error("No Finality Providers Btc public keys")]
-    EmptyBtcPkList,
-    #[error("Duplicate Finality Provider Btc public key: {0}")]
-    DuplicatedBtcPk(String),
-    #[error("Empty Staking tx")]
-    EmptyStakingTx,
     #[error("Empty Slashing tx")]
     EmptySlashingTx,
     #[error("Invalid lock type: seconds")]
     ErrInvalidLockType,
     #[error("Invalid lock time blocks: {0}, max: {1}")]
     ErrInvalidLockTime(u32, u32),
-    #[error("Invalid unbonding time blocks: {0}, max: {1}")]
-    ErrInvalidUnbondingTime(u32, u32),
-    #[error("Empty moniker")]
-    EmptyMoniker,
     #[error("Empty signature from the delegator")]
     EmptySignature,
 }

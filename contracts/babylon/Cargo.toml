@@ -34,13 +34,11 @@ babylon-apis     = { path = "../../packages/apis" }
 babylon-bindings = { path = "../../packages/bindings" }
 babylon-proto    = { path = "../../packages/proto" }
 babylon-bitcoin  = { path = "../../packages/bitcoin" }
-anyhow           = { workspace = true }
 blst             = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }
 cw-storage-plus  = { workspace = true }
 cw-utils         = { workspace = true }
-derivative       = { workspace = true }
 hex              = { workspace = true }
 tendermint-proto = { workspace = true }
 cosmos-sdk-proto = { workspace = true }
@@ -49,12 +47,16 @@ prost            = { workspace = true }
 ics23            = { workspace = true }
 
 [dev-dependencies]
-test-utils             = { path = "../../packages/test-utils" }
-babylon-bindings-test  = { version = "0.4.0", path = "../../packages/bindings-test" }
+babylon-bindings-test  = { path = "../../packages/bindings-test" }
 btc-staking            = { path = "../btc-staking" }
+test-utils             = { path = "../../packages/test-utils" }
+
 cosmwasm-vm            = { workspace = true }
 cw-multi-test          = { workspace = true }
+
+anyhow                 = { workspace = true }
 assert_matches         = { workspace = true }
+derivative             = { workspace = true }
 pbjson-types           = { workspace = true }
 # bench dependencies
 criterion              = { workspace = true }

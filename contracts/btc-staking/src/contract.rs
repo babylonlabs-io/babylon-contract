@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
-    SlashedBtcDelegation, UnbondedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, UnbondedBtcDelegation,
 };
+use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 use bitcoin::absolute::LockTime;
 use bitcoin::hashes::Hash;
@@ -18,7 +18,7 @@ use std::str::FromStr;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, HASH_SIZE};
+use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -154,43 +154,9 @@ pub fn handle_new_fp(
         ));
     }
     // validate the finality provider data
-    validate_fp(fp)?;
+    fp.validate()?;
 
     FPS.save(storage, &fp.btc_pk_hex, fp)?;
-    Ok(())
-}
-
-fn validate_fp(fp: &FinalityProvider) -> Result<(), ContractError> {
-    fp.description
-        .as_ref()
-        .map(FinalityProviderDescription::validate)
-        .transpose()?;
-
-    if fp.btc_pk_hex.is_empty() {
-        return Err(ContractError::EmptyBtcPk);
-    }
-
-    let _btc_pk = hex::decode(&fp.btc_pk_hex)?;
-
-    // TODO: Validate BTC public key (requires valid BTC PK data)
-    // PublicKey::from_slice(&btc_pk)
-    //     .map_err(|_| ContractError::InvalidBtcPk(fp.btc_pk_hex.clone()))?;
-
-    match fp.pop {
-        Some(ref pop) => validate_pop(pop)?,
-        None => return Err(ContractError::MissingPop),
-    }
-
-    // Validate master public randomness
-    if fp.master_pub_rand.is_empty() {
-        return Err(ContractError::EmptyMasterPubRand);
-    }
-
-    Ok(())
-}
-
-// TODO: Validate proof of possession
-fn validate_pop(_pop: &ProofOfPossession) -> Result<(), ContractError> {
     Ok(())
 }
 
@@ -201,7 +167,7 @@ pub fn handle_active_delegation(
     delegation: &ActiveBtcDelegation,
 ) -> Result<(), ContractError> {
     // Basic stateless checks
-    validate_delegation(delegation)?;
+    delegation.validate()?;
 
     // Get params
     // btc_confirmation_depth
@@ -353,7 +319,7 @@ fn handle_undelegation(
     undelegation: &UnbondedBtcDelegation,
 ) -> Result<(), ContractError> {
     // Basic stateless checks
-    validate_undelegation(undelegation)?;
+    undelegation.validate()?;
 
     let staking_tx_hash = Txid::from_str(&undelegation.staking_tx_hash)?;
     let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
@@ -401,64 +367,6 @@ fn btc_undelegate(
     //  - How to notify them? Emit event?
 
     // TODO? Record event that the BTC delegation becomes unbonded at this height
-
-    Ok(())
-}
-
-fn validate_delegation(del: &ActiveBtcDelegation) -> Result<(), ContractError> {
-    if del.btc_pk_hex.is_empty() {
-        return Err(ContractError::EmptyBtcPk);
-    }
-    if del.staking_tx.is_empty() {
-        return Err(ContractError::EmptyStakingTx);
-    }
-    if del.slashing_tx.is_empty() {
-        return Err(ContractError::EmptySlashingTx);
-    }
-    let _: Transaction = deserialize(&del.slashing_tx)
-        .map_err(|_| ContractError::InvalidBtcTx(hex::encode(&del.slashing_tx)))?;
-
-    // TODO: Verify delegator slashing Schnorr signature
-
-    // Ensure the list of finality provider BTC PKs is not empty
-    if del.fp_btc_pk_list.is_empty() {
-        return Err(ContractError::EmptyBtcPkList);
-    }
-    // Ensure the list of finality provider BTC PKs is not duplicated
-    check_duplicated_fps(del)?;
-
-    // TODO: Verifications about undelegation info / on-demand unbonding
-    // Check unbonding time is lower than max uint16
-    if del.unbonding_time > u16::MAX as u32 {
-        return Err(ContractError::ErrInvalidUnbondingTime(
-            del.unbonding_time,
-            u16::MAX as u32,
-        ));
-    }
-
-    Ok(())
-}
-
-fn check_duplicated_fps(del: &ActiveBtcDelegation) -> Result<(), ContractError> {
-    let mut fp_btc_pk_set = std::collections::HashSet::new();
-    for fp_btc_pk in &del.fp_btc_pk_list {
-        if !fp_btc_pk_set.insert(fp_btc_pk) {
-            return Err(ContractError::DuplicatedBtcPk(fp_btc_pk.clone()));
-        }
-    }
-    Ok(())
-}
-
-fn validate_undelegation(undel: &UnbondedBtcDelegation) -> Result<(), ContractError> {
-    if undel.staking_tx_hash.len() != HASH_SIZE * 2 {
-        return Err(ContractError::InvalidStakingTxHash(HASH_SIZE * 2));
-    }
-
-    if undel.unbonding_tx_sig.is_empty() {
-        return Err(ContractError::EmptySignature);
-    }
-
-    // TODO: Verify delegator unbonding Schnorr signature
 
     Ok(())
 }

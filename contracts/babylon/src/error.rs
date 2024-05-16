@@ -11,23 +11,21 @@ pub enum ContractError {
     #[error("{0}")]
     StdError(#[from] StdError),
     #[error("{0}")]
+    ParseReply(#[from] ParseReplyError),
+    #[error("Invalid reply id: {0}")]
+    InvalidReplyId(u64),
+    #[error("{0}")]
     BtcError(#[from] BTCLightclientError),
     #[error("{0}")]
     BabylonEpochError(#[from] BabylonEpochChainError),
     #[error("{0}")]
     CzHeaderError(#[from] CZHeaderChainError),
-    #[error("{0}")]
-    HashError(#[from] babylon_bitcoin::HexError),
     #[error("The contract only supports ordered channels")]
     IbcUnorderedChannel {},
     #[error("Counterparty version must be `{version}`")]
     IbcInvalidCounterPartyVersion { version: String },
     #[error("IBC method is not supported")]
     IbcUnsupportedMethod {},
-    #[error("Invalid reply id: {0}")]
-    InvalidReplyId(u64),
-    #[error("{0}")]
-    ParseReply(#[from] ParseReplyError),
 }
 
 #[derive(Error, Debug, PartialEq)]
