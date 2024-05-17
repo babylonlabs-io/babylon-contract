@@ -32,11 +32,14 @@ pub enum QueryMsg {
     /// `Delegations` returns the list of delegations
     ///
     /// `start_after` is the staking tx hash (in hex format) of the delegation to start after,
-    /// or `None` to start from the beginning
+    /// or `None` to start from the beginning.
+    /// `limit` is the maximum number of delegations to return.
+    /// `active` is an optional filter to return only active delegations
     #[returns(BtcDelegationsResponse)]
     Delegations {
         start_after: Option<String>,
         limit: Option<u32>,
+        active: Option<bool>,
     },
     /// `DelegationsByFP` returns the list of staking tx hashes (in hex format) corresponding to
     /// delegations, for a given finality provider.

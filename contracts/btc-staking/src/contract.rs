@@ -65,10 +65,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
             deps,
             staking_tx_hash_hex,
         )?)?),
-        QueryMsg::Delegations { start_after, limit } => Ok(to_json_binary(&queries::delegations(
+        QueryMsg::Delegations {
+            start_after,
+            limit,
+            active,
+        } => Ok(to_json_binary(&queries::delegations(
             deps,
             start_after,
             limit,
+            active,
         )?)?),
         QueryMsg::DelegationsByFP { btc_pk_hex } => Ok(to_json_binary(
             &queries::delegations_by_fp(deps, btc_pk_hex)?,

@@ -47,11 +47,14 @@ pub fn delegation(
 
 /// Get list of delegations.
 /// `start_after`: The (reversed) associated staking tx hash of the delegation in hex, if provided.
+/// `active`: List only active delegations if true, otherwise list all delegations.
 pub fn delegations(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
+    active: Option<bool>,
 ) -> Result<BtcDelegationsResponse, ContractError> {
+    let active = active.unwrap_or_default();
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start_after = start_after
         .as_ref()
@@ -61,12 +64,22 @@ pub fn delegations(
     let start_after = start_after.map(Bound::exclusive);
     let delegations = DELEGATIONS
         .range_raw(deps.storage, start_after, None, Order::Ascending)
+        .filter(|item| {
+            if let Ok((_, del)) = item {
+                !active || del.is_active()
+            } else {
+                true // don't filter errors
+            }
+        })
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
         .collect::<Result<Vec<ActiveBtcDelegation>, _>>()?;
     Ok(BtcDelegationsResponse { delegations })
 }
 
+/// Delegation hashes by FP query.
+///
+/// `btc_pk_hex`: The BTC public key of the finality provider, in hex
 pub fn delegations_by_fp(
     deps: Deps,
     btc_pk_hex: String,
@@ -79,12 +92,40 @@ pub fn delegations_by_fp(
     Ok(DelegationsByFPResponse { hashes: tx_hashes })
 }
 
+/// Active / all delegations by FP convenience query.
+///
+/// This is an alternative to `delegations_by_fp` that returns the actual delegations instead of
+/// just the hashes.
+///
+/// `btc_pk_hex`: The BTC public key of the finality provider, in hex.
+/// `active` is a filter to return only active delegations
+pub fn active_delegations_by_fp(
+    deps: Deps,
+    btc_pk_hex: String,
+    active: bool,
+) -> Result<BtcDelegationsResponse, ContractError> {
+    let tx_hashes = FP_DELEGATIONS.load(deps.storage, &btc_pk_hex)?;
+    let delegations = tx_hashes
+        .iter()
+        .map(|h| Ok(DELEGATIONS.load(deps.storage, Txid::from_slice(h)?.as_ref())?))
+        .filter(|item| {
+            if let Ok(del) = item {
+                !active || del.is_active()
+            } else {
+                true // don't filter errors
+            }
+        })
+        .collect::<Result<Vec<_>, ContractError>>()?;
+    Ok(BtcDelegationsResponse { delegations })
+}
+
 #[cfg(test)]
 mod tests {
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
+        UnbondedBtcDelegation,
     };
     use bitcoin::Transaction;
     use cosmwasm_std::testing::mock_info;
@@ -294,7 +335,7 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query delegations
-        let dels = crate::queries::delegations(deps.as_ref(), None, None)
+        let dels = crate::queries::delegations(deps.as_ref(), None, None, None)
             .unwrap()
             .delegations;
         assert_eq!(dels.len(), 2);
@@ -302,7 +343,7 @@ mod tests {
         assert_eq!(dels[1], del2);
 
         // Query delegations with limit
-        let dels = crate::queries::delegations(deps.as_ref(), None, Some(1))
+        let dels = crate::queries::delegations(deps.as_ref(), None, Some(1), None)
             .unwrap()
             .delegations;
         assert_eq!(dels.len(), 1);
@@ -312,12 +353,145 @@ mod tests {
         let staking_tx: Transaction = bitcoin::consensus::deserialize(&del1.staking_tx).unwrap();
         let staking_tx_hash = staking_tx.txid();
         let staking_tx_hash_hex = staking_tx_hash.to_string();
-        let dels = crate::queries::delegations(deps.as_ref(), Some(staking_tx_hash_hex), None)
-            .unwrap()
-            .delegations;
+        let dels =
+            crate::queries::delegations(deps.as_ref(), Some(staking_tx_hash_hex), None, None)
+                .unwrap()
+                .delegations;
 
         assert_eq!(dels.len(), 1);
         assert_eq!(dels[0], del2);
+    }
+
+    #[test]
+    fn test_active_delegations() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+
+        // Add a finality provider
+        let fp1 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp1".to_string(),
+                identity: "Finality Provider 1".to_string(),
+                website: "https:://fp1.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp1".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f1".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
+            registered_epoch: 1,
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![fp1.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Add a couple delegations
+        let base_del = crate::contract::tests::get_active_btc_delegation();
+
+        let del1 = ActiveBtcDelegation {
+            btc_pk_hex: "d1".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 1,
+            end_height: 2,
+            total_sat: 100,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+
+        let mut del2 = ActiveBtcDelegation {
+            btc_pk_hex: "d2".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 2,
+            end_height: 3,
+            total_sat: 200,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+        // Avoid repeated staking tx hash
+        del2.staking_tx[0] += 1;
+        // Avoid repeated slashing tx hash
+        del2.slashing_tx[0] += 1;
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone(), del2.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Query only active delegations
+        let dels = crate::queries::delegations(deps.as_ref(), None, None, Some(true))
+            .unwrap()
+            .delegations;
+        assert_eq!(dels.len(), 2);
+        assert_eq!(dels[0], del1);
+        assert_eq!(dels[1], del2);
+
+        // Unbond the second delegation
+        // Compute staking tx hash
+        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del2.staking_tx).unwrap();
+        let staking_tx_hash = staking_tx.txid();
+        let staking_tx_hash_hex = staking_tx_hash.to_string();
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![UnbondedBtcDelegation {
+                staking_tx_hash: staking_tx_hash_hex,
+                unbonding_tx_sig: vec![0x01, 0x02, 0x03],
+            }],
+        };
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Query only active delegations
+        let dels = crate::queries::delegations(deps.as_ref(), None, None, Some(true))
+            .unwrap()
+            .delegations;
+        assert_eq!(dels.len(), 1);
+        assert_eq!(dels[0], del1);
+
+        // Query all delegations (with active set to false)
+        let dels = crate::queries::delegations(deps.as_ref(), None, None, Some(false))
+            .unwrap()
+            .delegations;
+        assert_eq!(dels.len(), 2);
+
+        // Query all delegations (without active set)
+        let dels = crate::queries::delegations(deps.as_ref(), None, None, None)
+            .unwrap()
+            .delegations;
+        assert_eq!(dels.len(), 2);
     }
 
     #[test]
@@ -442,6 +616,140 @@ mod tests {
         assert_eq!(dels2.len(), 1);
         assert_ne!(dels1[0], dels2[0]);
         let err = crate::queries::delegations_by_fp(deps.as_ref(), "f3".to_string()).unwrap_err();
+        assert!(matches!(err, ContractError::Std(NotFound { .. })));
+    }
+
+    #[test]
+    fn test_active_delegations_by_fp() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+
+        // Add a finality provider
+        let fp1 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp1".to_string(),
+                identity: "Finality Provider 1".to_string(),
+                website: "https:://fp1.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp1".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f1".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
+            registered_epoch: 1,
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![fp1.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Add a couple delegations
+        let base_del = crate::contract::tests::get_active_btc_delegation();
+
+        let del1 = ActiveBtcDelegation {
+            btc_pk_hex: "d1".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 1,
+            end_height: 2,
+            total_sat: 100,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+
+        let mut del2 = ActiveBtcDelegation {
+            btc_pk_hex: "d2".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 2,
+            end_height: 3,
+            total_sat: 200,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+        // Avoid repeated staking tx hash
+        del2.staking_tx[0] += 1;
+        // Avoid repeated slashing tx hash
+        del2.slashing_tx[0] += 1;
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone(), del2.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Query all delegations by finality provider
+        let dels1 =
+            crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), false)
+                .unwrap()
+                .delegations;
+        assert_eq!(dels1.len(), 2);
+
+        // Query active delegations by finality provider
+        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), true)
+            .unwrap()
+            .delegations;
+        assert_eq!(dels1.len(), 2);
+
+        // Unbond the first delegation
+        // Compute staking tx hash
+        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del1.staking_tx).unwrap();
+        let staking_tx_hash = staking_tx.txid();
+        let staking_tx_hash_hex = staking_tx_hash.to_string();
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![UnbondedBtcDelegation {
+                staking_tx_hash: staking_tx_hash_hex,
+                unbonding_tx_sig: vec![0x01, 0x02, 0x03],
+            }],
+        };
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Query all delegations by finality provider
+        let dels1 =
+            crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), false)
+                .unwrap()
+                .delegations;
+        assert_eq!(dels1.len(), 2);
+
+        // Query active delegations by finality provider
+        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), true)
+            .unwrap()
+            .delegations;
+        assert_eq!(dels1.len(), 1);
+        let err = crate::queries::active_delegations_by_fp(deps.as_ref(), "f2".to_string(), false)
+            .unwrap_err();
         assert!(matches!(err, ContractError::Std(NotFound { .. })));
     }
 }

@@ -91,7 +91,7 @@
       "additionalProperties": false
     },
     {
-      "description": "`Delegations` returns the list of delegations\n\n`start_after` is the staking tx hash (in hex format) of the delegation to start after, or `None` to start from the beginning",
+      "description": "`Delegations` returns the list of delegations\n\n`start_after` is the staking tx hash (in hex format) of the delegation to start after, or `None` to start from the beginning. `limit` is the maximum number of delegations to return. `active` is an optional filter to return only active delegations",
       "type": "object",
       "required": [
         "delegations"
@@ -100,6 +100,12 @@
         "delegations": {
           "type": "object",
           "properties": {
+            "active": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
             "limit": {
               "type": [
                 "integer",

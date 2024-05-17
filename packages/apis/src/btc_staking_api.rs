@@ -100,6 +100,25 @@ pub struct ProofOfPossession {
     pub btc_sig: Bytes,
 }
 
+/// BTCDelegationStatus is the status of a delegation.
+/// The state transition path is PENDING -> ACTIVE -> UNBONDED with two possibilities:
+///     1. The typical path when time-lock of staking transaction expires.
+///     2. The path when staker requests an early undelegation through a BtcStaking
+///     UnbondedBtcDelegation message.
+#[cw_serde]
+pub enum BTCDelegationStatus {
+    /// PENDING defines a delegation waiting for covenant signatures to become active
+    PENDING = 0,
+    /// ACTIVE defines a delegation that has voting power
+    ACTIVE = 1,
+    /// UNBONDED defines a delegation that no longer has voting power:
+    /// - Either reaching the end of staking transaction time-lock.
+    /// - Or by receiving an unbonding tx with signatures from staker and covenant committee
+    UNBONDED = 2,
+    /// ANY is any of the status above
+    ANY = 3,
+}
+
 /// ActiveBTCDelegation is a message sent when a BTC delegation newly receives covenant signatures
 /// and thus becomes active
 #[cw_serde]
@@ -139,6 +158,39 @@ pub struct ActiveBtcDelegation {
     pub undelegation_info: Option<BtcUndelegationInfo>,
     /// params version used to validate the delegation
     pub params_version: u32,
+}
+
+impl ActiveBtcDelegation {
+    pub fn is_active(&self) -> bool {
+        // TODO: Implement full delegation status checks (needs BTC height)
+        // self.get_status(btc_height, w) == BTCDelegationStatus::ACTIVE
+        !self.is_unbonded_early()
+    }
+
+    fn is_unbonded_early(&self) -> bool {
+        if let Some(undelegation_info) = &self.undelegation_info {
+            !undelegation_info.delegator_unbonding_sig.is_empty()
+        } else {
+            // Can only happen if the state is corrupted.
+            // Every BTC delegation has to have undelegation info
+            true // Consider broken delegations as unbonded
+        }
+    }
+
+    pub fn get_status(&self, btc_height: u64, w: u64) -> BTCDelegationStatus {
+        // Manually unbonded, staking tx time-lock has not begun, is less than w BTC blocks left, or
+        // has expired
+        if self.is_unbonded_early()
+            || btc_height < self.start_height
+            || btc_height + w > self.end_height
+        {
+            BTCDelegationStatus::UNBONDED
+        } else {
+            // At this point, the BTC delegation has an active time-lock, and Babylon is not aware of
+            // an unbonding tx with the delegator's signature
+            BTCDelegationStatus::ACTIVE
+        }
+    }
 }
 
 /// CovenantAdaptorSignatures is a list adaptor signatures signed by the
