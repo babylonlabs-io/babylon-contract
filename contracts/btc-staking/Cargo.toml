@@ -29,6 +29,8 @@ library = []
 [dependencies]
 babylon-apis     = { path = "../../packages/apis" }
 babylon-bindings = { path = "../../packages/bindings" }
+babylon-contract = { path = "../babylon", features = [ "library" ] }
+babylon-proto    = { path = "../../packages/proto" }
 bitcoin          = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }
@@ -36,6 +38,7 @@ cw2              = { workspace = true }
 cw-storage-plus  = { workspace = true }
 cw-utils         = { workspace = true }
 hex              = { workspace = true }
+prost            = { workspace = true }
 thiserror        = { workspace = true }
 
 [dev-dependencies]

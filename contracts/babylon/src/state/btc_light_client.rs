@@ -15,10 +15,12 @@ use crate::msg::btc_header::BtcHeader;
 use crate::state::config::CONFIG;
 use crate::utils::btc_light_client::{total_work, verify_headers, zero_work};
 
+pub const BTC_TIP_KEY: &str = "btc_lc_tip";
+
 pub const BTC_HEADERS: Map<u64, Vec<u8>> = Map::new("btc_lc_headers");
 pub const BTC_HEADER_BASE: Item<Vec<u8>> = Item::new("btc_lc_header_base");
 pub const BTC_HEIGHTS: Map<&[u8], u64> = Map::new("btc_lc_heights");
-pub const BTC_TIP: Item<Vec<u8>> = Item::new("btc_lc_tip");
+pub const BTC_TIP: Item<Vec<u8>> = Item::new(BTC_TIP_KEY);
 
 // getters for storages
 

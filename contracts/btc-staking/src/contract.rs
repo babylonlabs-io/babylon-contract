@@ -1,24 +1,29 @@
 use crate::error::ContractError;
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, UnbondedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SudoMsg, UnbondedBtcDelegation,
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
+use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use bitcoin::absolute::LockTime;
 use bitcoin::hashes::Hash;
 use bitcoin::{consensus::deserialize, Transaction, Txid};
 use cosmwasm_std::{
-    ensure_eq, entry_point, to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse,
-    Reply, Response, StdResult, Storage,
+    ensure_eq, entry_point, to_json_binary, Addr, Binary, CustomQuery, Deps, DepsMut, Empty, Env,
+    MessageInfo, QueryRequest, QueryResponse, Reply, Response, StdResult, Storage, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
 use hex::ToHex;
+use prost::bytes::Bytes;
+use prost::Message;
 use std::str::FromStr;
+
+use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS};
+use crate::state::{Config, BTC_HEIGHT, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -374,6 +379,53 @@ fn btc_undelegate(
     // TODO? Record event that the BTC delegation becomes unbonded at this height
 
     Ok(())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn sudo(
+    mut deps: DepsMut,
+    env: Env,
+    msg: SudoMsg,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    match msg {
+        SudoMsg::BeginBlock {} => handle_begin_block(&mut deps, env),
+    }
+}
+
+fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
+    // Index BTC height at the current height
+    index_btc_height(deps, env.block.height)?;
+
+    // Update voting power distribution
+    // update_power_distribution();
+
+    Ok(Response::new())
+}
+
+// index_btc_height indexes the current BTC height, and saves it to the state
+fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
+    let btc_tip = get_btc_tip(deps)?;
+
+    Ok(BTC_HEIGHT.save(deps.storage, height, &btc_tip.height)?)
+}
+
+/// TODO: Move this helper to apis package
+fn encode_raw_query<T: Into<Binary>, Q: CustomQuery>(addr: &Addr, key: T) -> QueryRequest<Q> {
+    WasmQuery::Raw {
+        contract_addr: addr.into(),
+        key: key.into(),
+    }
+    .into()
+}
+
+/// get_btc_tip queries the Babylon contract for the latest BTC tip
+fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
+    // Get the BTC tip from the babylon contract through a raw query
+    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
+    let query = encode_raw_query(&babylon_addr, BTC_TIP_KEY.as_bytes());
+
+    let tip_bytes: Bytes = deps.querier.query(&query)?;
+    Ok(BtcHeaderInfo::decode(tip_bytes)?)
 }
 
 #[cfg(test)]

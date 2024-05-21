@@ -18,6 +18,9 @@ pub(crate) const FP_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("fp_delegati
 // TODO: Map of staking hashes by delegator
 // pub(crate) const STAKER_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("staker_delegations");
 
+/// Map of BTC height by block height
+pub(crate) const BTC_HEIGHT: Map<u64, u64> = Map::new("btc_height");
+
 // TODO: Add necessary config entries to Config struct
 #[cw_serde]
 pub struct Config {

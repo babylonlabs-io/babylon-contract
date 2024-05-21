@@ -4,6 +4,7 @@ use thiserror::Error;
 
 use cosmwasm_std::StdError;
 use cw_utils::PaymentError;
+use prost::DecodeError;
 
 use babylon_apis::error::StakingApiError;
 
@@ -19,6 +20,8 @@ pub enum ContractError {
     SliceError(#[from] FromSliceError),
     #[error("{0}")]
     StakingError(#[from] StakingApiError),
+    #[error("{0}")]
+    ProtoError(#[from] DecodeError),
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Finality provider already exists: {0}")]

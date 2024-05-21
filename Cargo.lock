@@ -372,6 +372,7 @@ version = "0.5.3"
 dependencies = [
  "babylon-apis",
  "babylon-bindings",
+ "babylon-contract",
  "babylon-proto",
  "bitcoin",
  "cosmwasm-schema",
