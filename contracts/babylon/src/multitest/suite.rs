@@ -64,6 +64,7 @@ impl SuiteBuilder {
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
                     btc_staking_code_id: Some(btc_staking_code_id),
+                    btc_staking_msg: None,
                     admin: Some(owner.to_string()),
                 },
                 &[],

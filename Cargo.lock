@@ -381,6 +381,7 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "cw2",
+ "derivative",
  "hex",
  "prost 0.11.9",
  "test-utils",

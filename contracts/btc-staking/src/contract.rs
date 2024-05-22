@@ -8,9 +8,11 @@ use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use bitcoin::absolute::LockTime;
 use bitcoin::hashes::Hash;
 use bitcoin::{consensus::deserialize, Transaction, Txid};
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure_eq, entry_point, to_json_binary, Addr, Binary, CustomQuery, Deps, DepsMut, Empty, Env,
-    MessageInfo, QueryRequest, QueryResponse, Reply, Response, StdResult, Storage, WasmQuery,
+    ensure_eq, to_json_binary, Addr, Binary, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
+    QueryRequest, QueryResponse, Reply, Response, StdResult, Storage, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
@@ -23,7 +25,7 @@ use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::state::{Config, BTC_HEIGHT, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS};
+use crate::state::{Config, BTC_HEIGHT, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, PARAMS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -34,7 +36,7 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(&info)?;
     let denom = deps.querier.query_bonded_denom()?;
@@ -43,6 +45,8 @@ pub fn instantiate(
         babylon: info.sender,
     };
     CONFIG.save(deps.storage, &config)?;
+    let params = msg.params.unwrap_or_default();
+    PARAMS.save(deps.storage, &params)?;
     // initialize storage, so no issue when reading for the first time
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -58,6 +62,7 @@ pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> StdResult<Response> {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
+        QueryMsg::Params {} => Ok(to_json_binary(&queries::params(deps)?)?),
         QueryMsg::FinalityProvider { btc_pk_hex } => Ok(to_json_binary(
             &queries::finality_provider(deps, btc_pk_hex)?,
         )?),
@@ -492,7 +497,7 @@ pub(crate) mod tests {
     #[test]
     fn instantiate_works() {
         let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg { params: None };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -503,7 +508,13 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         let new_fp = FinalityProvider {
             description: Some(FinalityProviderDescription {
@@ -568,7 +579,13 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();
@@ -629,7 +646,13 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();

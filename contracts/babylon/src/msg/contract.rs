@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{StdError, StdResult};
+use cosmwasm_std::{Binary, StdError, StdResult};
 
 use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
 use crate::msg::cz_header::CzHeaderResponse;
@@ -27,6 +27,10 @@ pub struct InstantiateMsg {
     pub notify_cosmos_zone: bool,
     /// If set, this will instantiate a BTC staking contract for BTC re-staking
     pub btc_staking_code_id: Option<u64>,
+    /// If set, this will define the instantiate message for the BTC staking contract.
+    /// This message is opaque to the Babylon contract, and depends on the specific staking contract
+    /// being instantiated
+    pub btc_staking_msg: Option<Binary>,
     /// If set, this will be the Wasm migration / upgrade admin of the BTC staking contract
     pub admin: Option<String>,
 }

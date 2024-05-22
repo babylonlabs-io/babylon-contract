@@ -6,7 +6,37 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "additionalProperties": false
+    "properties": {
+      "params": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Params"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Params": {
+        "description": "Params define Consumer-selectable BTC staking parameters",
+        "type": "object",
+        "required": [
+          "max_active_finality_providers"
+        ],
+        "properties": {
+          "max_active_finality_providers": {
+            "description": "max_active_finality_providers is the maximum number of active finality providers in the BTC staking protocol",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "execute": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -539,6 +569,20 @@
         "additionalProperties": false
       },
       {
+        "description": "`Params` returns the current Consumer-specific parameters of the btc-staking contract",
+        "type": "object",
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "`FinalityProvider` returns the finality provider by its BTC public key, in hex format",
         "type": "object",
         "required": [
@@ -683,6 +727,7 @@
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
+      "description": "Config are Babylon-selectable BTC staking configuration",
       "type": "object",
       "required": [
         "babylon",
@@ -1594,6 +1639,24 @@
           "additionalProperties": false
         }
       }
+    },
+    "params": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Params",
+      "description": "Params define Consumer-selectable BTC staking parameters",
+      "type": "object",
+      "required": [
+        "max_active_finality_providers"
+      ],
+      "properties": {
+        "max_active_finality_providers": {
+          "description": "max_active_finality_providers is the maximum number of active finality providers in the BTC staking protocol",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

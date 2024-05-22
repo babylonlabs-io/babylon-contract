@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use cosmwasm_std::{
-    to_json_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
-    SubMsg, SubMsgResponse, WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
+    Response, SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw_utils::parse_instantiate_response_data;
 
@@ -43,7 +43,7 @@ pub fn instantiate(
         let init_msg = WasmMsg::Instantiate {
             admin: msg.admin,
             code_id: btc_staking_code_id,
-            msg: b"{}".into(),
+            msg: msg.btc_staking_msg.unwrap_or(Binary::from(b"{}")),
             funds: vec![],
             label: "BTC Staking".into(),
         };
@@ -168,6 +168,7 @@ mod tests {
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
             btc_staking_code_id: None,
+            btc_staking_msg: None,
             admin: None,
         };
         let info = mock_info(CREATOR, &[]);

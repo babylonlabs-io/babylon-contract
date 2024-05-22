@@ -39,6 +39,17 @@
         "format": "uint64",
         "minimum": 0.0
       },
+      "btc_staking_msg": {
+        "description": "If set, this will define the instantiate message for the BTC staking contract. This message is opaque to the Babylon contract, and depends on the specific staking contract being instantiated",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Binary"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "checkpoint_finalization_timeout": {
         "type": "integer",
         "format": "uint64",
@@ -53,6 +64,10 @@
     },
     "additionalProperties": false,
     "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
       "Network": {
         "type": "string",
         "enum": [

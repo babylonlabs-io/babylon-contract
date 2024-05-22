@@ -2,10 +2,13 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 
-use crate::state::Config;
+use crate::state::{Config, Params};
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+#[derive(Default)]
+pub struct InstantiateMsg {
+    pub params: Option<Params>,
+}
 
 pub type ExecuteMsg = babylon_apis::btc_staking_api::ExecuteMsg;
 
@@ -15,6 +18,9 @@ pub enum QueryMsg {
     /// `Config` returns the current configuration of the btc-staking contract
     #[returns(Config)]
     Config {},
+    /// `Params` returns the current Consumer-specific parameters of the btc-staking contract
+    #[returns(Params)]
+    Params {},
     /// `FinalityProvider` returns the finality provider by its BTC public key, in hex format
     #[returns(FinalityProvider)]
     FinalityProvider { btc_pk_hex: String },

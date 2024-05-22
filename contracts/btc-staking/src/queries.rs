@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::{BtcDelegationsResponse, DelegationsByFPResponse, FinalityProvidersResponse};
-use crate::state::{Config, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS};
+use crate::state::{Config, Params, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, PARAMS};
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 use bitcoin::hashes::Hash;
 use bitcoin::Txid;
@@ -10,6 +10,10 @@ use std::str::FromStr;
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
+}
+
+pub fn params(deps: Deps) -> StdResult<Params> {
+    PARAMS.load(deps.storage)
 }
 
 pub fn finality_provider(deps: Deps, btc_pk_hex: String) -> StdResult<FinalityProvider> {
@@ -142,7 +146,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         // Add a couple finality providers
         let fp1 = FinalityProvider {
@@ -228,7 +238,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         // Add a couple finality providers
         let fp1 = FinalityProvider {
@@ -367,7 +383,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         // Add a finality provider
         let fp1 = FinalityProvider {
@@ -499,7 +521,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         // Add a couple finality providers
         let fp1 = FinalityProvider {
@@ -624,7 +652,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        instantiate(deps.as_mut(), mock_env(), info.clone(), InstantiateMsg {}).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
 
         // Add a finality provider
         let fp1 = FinalityProvider {

@@ -2,5 +2,35 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "InstantiateMsg",
   "type": "object",
-  "additionalProperties": false
+  "properties": {
+    "params": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Params"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Params": {
+      "description": "Params define Consumer-selectable BTC staking parameters",
+      "type": "object",
+      "required": [
+        "max_active_finality_providers"
+      ],
+      "properties": {
+        "max_active_finality_providers": {
+          "description": "max_active_finality_providers is the maximum number of active finality providers in the BTC staking protocol",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

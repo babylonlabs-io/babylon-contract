@@ -332,6 +332,7 @@ mod tests {
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
             btc_staking_code_id: None,
+            btc_staking_msg: None,
             admin: None,
         };
         let info = mock_info(CREATOR, &[]);

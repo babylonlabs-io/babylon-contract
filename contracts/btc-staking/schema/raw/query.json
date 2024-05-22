@@ -17,6 +17,20 @@
       "additionalProperties": false
     },
     {
+      "description": "`Params` returns the current Consumer-specific parameters of the btc-staking contract",
+      "type": "object",
+      "required": [
+        "params"
+      ],
+      "properties": {
+        "params": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "`FinalityProvider` returns the finality provider by its BTC public key, in hex format",
       "type": "object",
       "required": [
