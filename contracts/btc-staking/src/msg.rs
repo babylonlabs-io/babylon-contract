@@ -35,7 +35,7 @@ pub enum QueryMsg {
     /// `Delegation` returns delegation information by its staking tx hash, in hex format
     #[returns(ActiveBtcDelegation)]
     Delegation { staking_tx_hash_hex: String },
-    /// `Delegations` returns the list of delegations
+    /// `Delegations` return the list of delegations
     ///
     /// `start_after` is the staking tx hash (in hex format) of the delegation to start after,
     /// or `None` to start from the beginning.
@@ -55,6 +55,19 @@ pub enum QueryMsg {
     //TODO?: Support pagination
     #[returns(DelegationsByFPResponse)]
     DelegationsByFP { btc_pk_hex: String },
+    /// `FinalityProviderPower` returns the finality provider aggregated power by its BTC public key,
+    /// in hex format
+    #[returns(FinalityProviderInfo)]
+    FinalityProviderInfo { btc_pk_hex: String },
+    /// `FinalityProvidersByPower` returns the list of finality providers sorted by their aggregated
+    /// power, in descending order
+    ///
+    /// `start_after` is the BTC public key of the FP to start after, or `None` to start from the top
+    #[returns(FinalityProvidersByPowerResponse)]
+    FinalityProvidersByPower {
+        start_after: Option<FinalityProviderInfo>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]
@@ -70,4 +83,19 @@ pub struct BtcDelegationsResponse {
 #[cw_serde]
 pub struct DelegationsByFPResponse {
     pub hashes: Vec<String>,
+}
+
+#[cw_serde]
+pub struct FinalityProvidersByPowerResponse {
+    pub fps: Vec<FinalityProviderInfo>,
+}
+
+#[cw_serde]
+pub struct FinalityProviderInfo {
+    /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
+    /// the PK follows encoding in BIP-340 spec in hex format
+    pub btc_pk_hex: String,
+    /// `power` is the aggregated power of this finality provider.
+    /// The power is calculated based on the amount of BTC delegated to this finality provider
+    pub power: u64,
 }

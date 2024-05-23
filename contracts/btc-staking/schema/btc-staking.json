@@ -657,7 +657,7 @@
         "additionalProperties": false
       },
       {
-        "description": "`Delegations` returns the list of delegations\n\n`start_after` is the staking tx hash (in hex format) of the delegation to start after, or `None` to start from the beginning. `limit` is the maximum number of delegations to return. `active` is an optional filter to return only active delegations",
+        "description": "`Delegations` return the list of delegations\n\n`start_after` is the staking tx hash (in hex format) of the delegation to start after, or `None` to start from the beginning. `limit` is the maximum number of delegations to return. `active` is an optional filter to return only active delegations",
         "type": "object",
         "required": [
           "delegations"
@@ -713,8 +713,86 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "`FinalityProviderPower` returns the finality provider aggregated power by its BTC public key, in hex format",
+        "type": "object",
+        "required": [
+          "finality_provider_power"
+        ],
+        "properties": {
+          "finality_provider_power": {
+            "type": "object",
+            "required": [
+              "btc_pk_hex"
+            ],
+            "properties": {
+              "btc_pk_hex": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "`FinalityProvidersByPower` returns the list of finality providers sorted by their aggregated power, in descending order\n\n`start_after` is the BTC public key of the FP to start after, or `None` to start from the top",
+        "type": "object",
+        "required": [
+          "finality_providers_by_power"
+        ],
+        "properties": {
+          "finality_providers_by_power": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/FinalityProviderPower"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
-    ]
+    ],
+    "definitions": {
+      "FinalityProviderPower": {
+        "type": "object",
+        "required": [
+          "btc_pk_hex",
+          "power"
+        ],
+        "properties": {
+          "btc_pk_hex": {
+            "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+            "type": "string"
+          },
+          "power": {
+            "description": "`power` is the aggregated power of this finality provider. The power is calculated based on the amount of BTC delegated to this finality provider",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "migrate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1444,6 +1522,23 @@
         }
       }
     },
+    "finality_provider_power": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FinalityProviderInfo",
+      "type": "object",
+      "required": [
+        "power"
+      ],
+      "properties": {
+        "power": {
+          "description": "Finality provider power, in satoshis",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "finality_providers": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "FinalityProvidersResponse",
@@ -1634,6 +1729,45 @@
                 "format": "uint8",
                 "minimum": 0.0
               }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "finality_providers_by_power": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FinalityProvidersByPowerResponse",
+      "type": "object",
+      "required": [
+        "fps"
+      ],
+      "properties": {
+        "fps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FinalityProviderPower"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "FinalityProviderPower": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex",
+            "power"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+              "type": "string"
+            },
+            "power": {
+              "description": "`power` is the aggregated power of this finality provider. The power is calculated based on the amount of BTC delegated to this finality provider",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false

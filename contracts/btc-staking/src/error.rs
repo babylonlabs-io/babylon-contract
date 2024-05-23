@@ -28,6 +28,8 @@ pub enum ContractError {
     FinalityProviderAlreadyExists(String),
     #[error("No finality providers are registered in this Consumer")]
     FinalityProviderNotRegistered,
+    #[error("Finality provider not found: {0}")]
+    FinalityProviderNotFound(String),
     #[error("Staking tx hash already exists: {0}")]
     DelegationAlreadyExists(String),
     #[error("Invalid Btc tx: {0}")]

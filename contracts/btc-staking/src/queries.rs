@@ -1,6 +1,11 @@
 use crate::error::ContractError;
-use crate::msg::{BtcDelegationsResponse, DelegationsByFPResponse, FinalityProvidersResponse};
-use crate::state::{Config, Params, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, PARAMS};
+use crate::msg::{
+    BtcDelegationsResponse, DelegationsByFPResponse, FinalityProviderInfo,
+    FinalityProvidersByPowerResponse, FinalityProvidersResponse,
+};
+use crate::state::{
+    fps, Config, FinalityProviderState, Params, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, PARAMS,
+};
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 use bitcoin::hashes::Hash;
 use bitcoin::Txid;
@@ -123,6 +128,36 @@ pub fn active_delegations_by_fp(
     Ok(BtcDelegationsResponse { delegations })
 }
 
+pub fn finality_provider_info(deps: Deps, btc_pk_hex: String) -> StdResult<FinalityProviderInfo> {
+    let fp_state = fps().load(deps.storage, &btc_pk_hex)?;
+
+    Ok(FinalityProviderInfo {
+        btc_pk_hex,
+        power: fp_state.power,
+    })
+}
+
+pub fn finality_providers_by_power(
+    deps: Deps,
+    start_after: Option<FinalityProviderInfo>,
+    limit: Option<u32>,
+) -> StdResult<FinalityProvidersByPowerResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(|fpp| Bound::exclusive((fpp.power, fpp.btc_pk_hex.clone())));
+    let fps = fps()
+        .idx
+        .power
+        .range(deps.storage, None, start, Order::Descending)
+        .take(limit)
+        .map(|item| {
+            let (btc_pk_hex, FinalityProviderState { power }) = item?;
+            Ok(FinalityProviderInfo { btc_pk_hex, power })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(FinalityProvidersByPowerResponse { fps })
+}
+
 #[cfg(test)]
 mod tests {
     use crate::contract::{execute, instantiate};
@@ -132,12 +167,14 @@ mod tests {
         UnbondedBtcDelegation,
     };
     use bitcoin::Transaction;
+    use cosmwasm_std::storage_keys::namespace_with_key;
     use cosmwasm_std::testing::mock_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::Decimal;
     use cosmwasm_std::StdError::NotFound;
+    use cosmwasm_std::{from_json, Decimal, Storage};
 
-    use crate::msg::{ExecuteMsg, InstantiateMsg};
+    use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
+    use crate::state::{FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
 
@@ -785,5 +822,410 @@ mod tests {
         let err = crate::queries::active_delegations_by_fp(deps.as_ref(), "f2".to_string(), false)
             .unwrap_err();
         assert!(matches!(err, ContractError::Std(NotFound { .. })));
+    }
+
+    #[test]
+    fn test_fp_info() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
+
+        // Add a finality provider
+        let fp1 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp1".to_string(),
+                identity: "Finality Provider 1".to_string(),
+                website: "https:://fp1.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp1".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f1".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
+            registered_epoch: 1,
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![fp1.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Add a couple delegations
+        let base_del = crate::contract::tests::get_active_btc_delegation();
+
+        let del1 = ActiveBtcDelegation {
+            btc_pk_hex: "d1".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 1,
+            end_height: 2,
+            total_sat: 100,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+
+        let mut del2 = ActiveBtcDelegation {
+            btc_pk_hex: "d2".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 2,
+            end_height: 3,
+            total_sat: 150,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+        // Avoid repeated staking tx hash
+        del2.staking_tx[0] += 1;
+        // Avoid repeated slashing tx hash
+        del2.slashing_tx[0] += 1;
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone(), del2.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Query finality provider info
+        let fp = crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string()).unwrap();
+        assert_eq!(
+            fp,
+            FinalityProviderInfo {
+                btc_pk_hex: "f1".to_string(),
+                power: 250,
+            }
+        );
+    }
+
+    #[test]
+    fn test_fp_info_raw_query() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
+
+        // Add a finality provider
+        let fp1 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp1".to_string(),
+                identity: "Finality Provider 1".to_string(),
+                website: "https:://fp1.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp1".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f1".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
+            registered_epoch: 1,
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![fp1.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Add a delegation
+        let base_del = crate::contract::tests::get_active_btc_delegation();
+
+        let del1 = ActiveBtcDelegation {
+            btc_pk_hex: "d1".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 1,
+            end_height: 2,
+            total_sat: 100,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Build raw key
+        let prefixed_key = namespace_with_key(&[FP_STATE_KEY.as_bytes()], b"f1");
+        // Read directly from storage
+        let fp_state_raw = deps.storage.get(&prefixed_key).unwrap();
+        // Deserialize result
+        let fp_state: FinalityProviderState = from_json(fp_state_raw).unwrap();
+
+        assert_eq!(fp_state, FinalityProviderState { power: 100 });
+    }
+
+    #[test]
+    fn test_fps_by_power() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { params: None },
+        )
+        .unwrap();
+
+        // Add a couple finality providers
+        let fp1 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp1".to_string(),
+                identity: "Finality Provider 1".to_string(),
+                website: "https:://fp1.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp1".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f1".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
+            registered_epoch: 1,
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let fp2 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp2".to_string(),
+                identity: "Finality Provider 2".to_string(),
+                website: "https:://fp2.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp2".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f2".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
+            registered_epoch: 2,
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let fp3 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp3".to_string(),
+                identity: "Finality Provider 3".to_string(),
+                website: "https:://fp3.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp3".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f3".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            master_pub_rand: "master-pub-rand".to_string(),
+            registered_epoch: 3,
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![fp1.clone(), fp2.clone(), fp3.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Add some delegations
+        let base_del = crate::contract::tests::get_active_btc_delegation();
+
+        let del1 = ActiveBtcDelegation {
+            btc_pk_hex: "d1".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string(), "f3".to_string()],
+            start_height: 1,
+            end_height: 2,
+            total_sat: 100,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+
+        let mut del2 = ActiveBtcDelegation {
+            btc_pk_hex: "d2".to_string(),
+            fp_btc_pk_list: vec!["f2".to_string()],
+            start_height: 2,
+            end_height: 3,
+            total_sat: 150,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+        // Avoid repeated staking tx hash
+        del2.staking_tx[0] += 1;
+        // Avoid repeated slashing tx hash
+        del2.slashing_tx[0] += 1;
+
+        let mut del3 = ActiveBtcDelegation {
+            btc_pk_hex: "d3".to_string(),
+            fp_btc_pk_list: vec!["f2".to_string()],
+            start_height: 2,
+            end_height: 3,
+            total_sat: 75,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+        // Avoid repeated staking tx hash
+        del3.staking_tx[0] += 2;
+        // Avoid repeated slashing tx hash
+        del3.slashing_tx[0] += 2;
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone(), del2.clone(), del3],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Query finality providers by power
+        let fps = crate::queries::finality_providers_by_power(deps.as_ref(), None, None)
+            .unwrap()
+            .fps;
+        assert_eq!(fps.len(), 3);
+        assert_eq!(fps[0], {
+            FinalityProviderInfo {
+                btc_pk_hex: "f2".to_string(),
+                power: 225,
+            }
+        });
+        assert_eq!(fps[1], {
+            FinalityProviderInfo {
+                btc_pk_hex: "f3".to_string(),
+                power: 100,
+            }
+        });
+        assert_eq!(fps[2], {
+            FinalityProviderInfo {
+                btc_pk_hex: "f1".to_string(),
+                power: 100,
+            }
+        });
+
+        // Query finality providers power with limit
+        let fps = crate::queries::finality_providers_by_power(deps.as_ref(), None, Some(2))
+            .unwrap()
+            .fps;
+        assert_eq!(fps.len(), 2);
+        assert_eq!(fps[0], {
+            FinalityProviderInfo {
+                btc_pk_hex: "f2".to_string(),
+                power: 225,
+            }
+        });
+        assert_eq!(fps[1], {
+            FinalityProviderInfo {
+                btc_pk_hex: "f3".to_string(),
+                power: 100,
+            }
+        });
+
+        // Query finality providers power with start_after
+        let fps =
+            crate::queries::finality_providers_by_power(deps.as_ref(), Some(fps[1].clone()), None)
+                .unwrap()
+                .fps;
+        assert_eq!(fps.len(), 1);
+        assert_eq!(fps[0], {
+            FinalityProviderInfo {
+                btc_pk_hex: "f1".to_string(),
+                power: 100,
+            }
+        });
     }
 }

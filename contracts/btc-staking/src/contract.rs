@@ -25,7 +25,9 @@ use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::state::{Config, BTC_HEIGHT, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, PARAMS};
+use crate::state::{
+    fps, Config, BTC_HEIGHT, CONFIG, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS, PARAMS,
+};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -87,6 +89,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         )?)?),
         QueryMsg::DelegationsByFP { btc_pk_hex } => Ok(to_json_binary(
             &queries::delegations_by_fp(deps, btc_pk_hex)?,
+        )?),
+        QueryMsg::FinalityProviderInfo { btc_pk_hex } => Ok(to_json_binary(
+            &queries::finality_provider_info(deps, btc_pk_hex)?,
+        )?),
+        QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
+            &queries::finality_providers_by_power(deps, start_after, limit)?,
         )?),
     }
 }
@@ -299,6 +307,7 @@ pub fn handle_active_delegation(
     }
 
     // Update delegations by registered finality provider
+    let fps = fps();
     let mut registered_fp = false;
     for fp_btc_pk in &delegation.fp_btc_pk_list {
         // Skip if finality provider is not registered, as it can belong to another Consumer, or Babylon
@@ -308,12 +317,27 @@ pub fn handle_active_delegation(
         // - TODO: Skip slashed FPs
         // - TODO?: Skip FPs whose registered epochs are not finalised
 
-        // Save staking hash by finality provider
+        // Update staking tx hash by finality provider map
         let mut fp_delegations = FP_DELEGATIONS
             .may_load(storage, fp_btc_pk)?
             .unwrap_or(vec![]);
         fp_delegations.push(staking_tx_hash.as_byte_array().to_vec());
         FP_DELEGATIONS.save(storage, fp_btc_pk, &fp_delegations)?;
+
+        // Update finality provider by staking tx hash reverse map
+        let mut delegation_fps = DELEGATION_FPS
+            .may_load(storage, staking_tx_hash.as_ref())?
+            .unwrap_or(vec![]);
+        delegation_fps.push(fp_btc_pk.clone());
+        DELEGATION_FPS.save(storage, staking_tx_hash.as_ref(), &delegation_fps)?;
+
+        // Update aggregated voting power by FP
+        fps.update(storage, fp_btc_pk, |fpi| {
+            let mut fpi = fpi.unwrap_or_default();
+            fpi.power += delegation.total_sat;
+            Ok::<_, ContractError>(fpi)
+        })?;
+
         registered_fp = true;
     }
 
@@ -353,6 +377,17 @@ fn handle_undelegation(
         &mut btc_del,
         &undelegation.unbonding_tx_sig,
     )?;
+
+    // Discount the voting power from the affected finality providers
+    let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
+    let fps = fps();
+    for fp in affected_fps {
+        fps.update(storage, &fp, |fpi| {
+            let mut fpi = fpi.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
+            fpi.power -= btc_del.total_sat;
+            Ok::<_, ContractError>(fpi)
+        })?;
+    }
 
     Ok(())
 }
@@ -443,7 +478,7 @@ pub(crate) mod tests {
     };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
-        Decimal,
+        Decimal, StdError,
     };
     use hex::ToHex;
     use test_utils::get_btc_delegation_and_params;
@@ -614,6 +649,11 @@ pub(crate) mod tests {
             chain_id: "babylon-euphrates-0.2".to_string(),
         };
 
+        // Check that the finality provider power is not there yet
+        let err =
+            queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap_err();
+        assert!(matches!(err, StdError::NotFound { .. }));
+
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
             active_del: vec![],
@@ -639,6 +679,10 @@ pub(crate) mod tests {
         let staking_tx_hash = staking_tx.txid();
         let query_res = queries::delegation(deps.as_ref(), staking_tx_hash.to_string()).unwrap();
         assert_eq!(query_res, active_delegation);
+
+        // Check that the finality provider power has been updated
+        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap();
+        assert_eq!(fp.power, active_delegation.total_sat);
     }
 
     #[test]
@@ -742,5 +786,9 @@ pub(crate) mod tests {
                 covenant_slashing_sigs: vec![],
             }
         );
+
+        // Check the finality provider power has been updated
+        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap();
+        assert_eq!(fp.power, 0);
     }
 }
