@@ -166,10 +166,10 @@
       "description": "`FinalityProviderPower` returns the finality provider aggregated power by its BTC public key, in hex format",
       "type": "object",
       "required": [
-        "finality_provider_power"
+        "finality_provider_info"
       ],
       "properties": {
-        "finality_provider_power": {
+        "finality_provider_info": {
           "type": "object",
           "required": [
             "btc_pk_hex"
@@ -205,7 +205,7 @@
             "start_after": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/FinalityProviderPower"
+                  "$ref": "#/definitions/FinalityProviderInfo"
                 },
                 {
                   "type": "null"
@@ -220,7 +220,7 @@
     }
   ],
   "definitions": {
-    "FinalityProviderPower": {
+    "FinalityProviderInfo": {
       "type": "object",
       "required": [
         "btc_pk_hex",

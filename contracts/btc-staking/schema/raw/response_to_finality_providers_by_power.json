@@ -9,13 +9,13 @@
     "fps": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/FinalityProviderPower"
+        "$ref": "#/definitions/FinalityProviderInfo"
       }
     }
   },
   "additionalProperties": false,
   "definitions": {
-    "FinalityProviderPower": {
+    "FinalityProviderInfo": {
       "type": "object",
       "required": [
         "btc_pk_hex",

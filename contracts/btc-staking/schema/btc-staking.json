@@ -718,10 +718,10 @@
         "description": "`FinalityProviderPower` returns the finality provider aggregated power by its BTC public key, in hex format",
         "type": "object",
         "required": [
-          "finality_provider_power"
+          "finality_provider_info"
         ],
         "properties": {
-          "finality_provider_power": {
+          "finality_provider_info": {
             "type": "object",
             "required": [
               "btc_pk_hex"
@@ -757,7 +757,7 @@
               "start_after": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/FinalityProviderPower"
+                    "$ref": "#/definitions/FinalityProviderInfo"
                   },
                   {
                     "type": "null"
@@ -772,7 +772,7 @@
       }
     ],
     "definitions": {
-      "FinalityProviderPower": {
+      "FinalityProviderInfo": {
         "type": "object",
         "required": [
           "btc_pk_hex",
@@ -1522,16 +1522,21 @@
         }
       }
     },
-    "finality_provider_power": {
+    "finality_provider_info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "FinalityProviderInfo",
       "type": "object",
       "required": [
+        "btc_pk_hex",
         "power"
       ],
       "properties": {
+        "btc_pk_hex": {
+          "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+          "type": "string"
+        },
         "power": {
-          "description": "Finality provider power, in satoshis",
+          "description": "`power` is the aggregated power of this finality provider. The power is calculated based on the amount of BTC delegated to this finality provider",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
@@ -1746,13 +1751,13 @@
         "fps": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/FinalityProviderPower"
+            "$ref": "#/definitions/FinalityProviderInfo"
           }
         }
       },
       "additionalProperties": false,
       "definitions": {
-        "FinalityProviderPower": {
+        "FinalityProviderInfo": {
           "type": "object",
           "required": [
             "btc_pk_hex",
