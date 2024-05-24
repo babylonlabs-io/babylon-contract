@@ -19,6 +19,8 @@ pub enum ExecuteMsg {
         slashed_del: Vec<SlashedBtcDelegation>,
         unbonded_del: Vec<UnbondedBtcDelegation>,
     },
+    /// Change the admin
+    UpdateAdmin { admin: Option<String> },
 }
 
 #[cw_serde]

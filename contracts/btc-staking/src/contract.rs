@@ -11,7 +11,7 @@ use bitcoin::{consensus::deserialize, Transaction, Txid};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure_eq, to_json_binary, Addr, Binary, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
+    to_json_binary, Addr, Binary, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
     QueryRequest, QueryResponse, Reply, Response, StdResult, Storage, WasmQuery,
 };
 use cw2::set_contract_version;
@@ -26,8 +26,10 @@ use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::{
-    fps, Config, BTC_HEIGHT, CONFIG, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS, PARAMS,
+    fps, Config, ADMIN, BTC_HEIGHT, CONFIG, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
+    PARAMS,
 };
+use cw_utils::maybe_addr;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -35,7 +37,7 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// The caller of the instantiation will be the Babylon contract
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -47,6 +49,10 @@ pub fn instantiate(
         babylon: info.sender,
     };
     CONFIG.save(deps.storage, &config)?;
+
+    let api = deps.api;
+    ADMIN.set(deps.branch(), maybe_addr(api, msg.admin.clone())?)?;
+
     let params = msg.params.unwrap_or_default();
     PARAMS.save(deps.storage, &params)?;
     // initialize storage, so no issue when reading for the first time
@@ -65,6 +71,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
         QueryMsg::Params {} => Ok(to_json_binary(&queries::params(deps)?)?),
+        QueryMsg::Admin {} => to_json_binary(&ADMIN.query_admin(deps)?).map_err(Into::into),
         QueryMsg::FinalityProvider { btc_pk_hex } => Ok(to_json_binary(
             &queries::finality_provider(deps, btc_pk_hex)?,
         )?),
@@ -112,14 +119,18 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
+    let api = deps.api;
     match msg {
+        ExecuteMsg::UpdateAdmin { admin } => ADMIN
+            .execute_update_admin(deps, info, maybe_addr(api, admin)?)
+            .map_err(Into::into),
         ExecuteMsg::BtcStaking {
             new_fp,
             active_del,
             slashed_del,
             unbonded_del,
         } => handle_btc_staking(
-            deps.storage,
+            deps,
             &info,
             &new_fp,
             &active_del,
@@ -132,23 +143,25 @@ pub fn execute(
 /// handle_btc_staking handles the BTC staking operations.
 ///
 pub fn handle_btc_staking(
-    storage: &mut dyn Storage,
+    deps: DepsMut,
     info: &MessageInfo,
     new_fps: &[FinalityProvider],
     active_delegations: &[ActiveBtcDelegation],
     _slashed_delegations: &[SlashedBtcDelegation],
     unbonded_delegations: &[UnbondedBtcDelegation],
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    let config = CONFIG.load(storage)?;
-    ensure_eq!(info.sender, config.babylon, ContractError::Unauthorized);
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+        return Err(ContractError::Unauthorized);
+    }
 
     for fp in new_fps {
-        handle_new_fp(storage, fp)?;
+        handle_new_fp(deps.storage, fp)?;
     }
 
     // Process active delegations
     for del in active_delegations {
-        handle_active_delegation(storage, del)?;
+        handle_active_delegation(deps.storage, del)?;
     }
 
     // TODO: Process FPs slashing
@@ -157,7 +170,7 @@ pub fn handle_btc_staking(
 
     // Process undelegations
     for undel in unbonded_delegations {
-        handle_undelegation(storage, undel)?;
+        handle_undelegation(deps.storage, undel)?;
     }
 
     // TODO: Add events
@@ -484,6 +497,8 @@ pub(crate) mod tests {
     use test_utils::get_btc_delegation_and_params;
 
     const CREATOR: &str = "creator";
+    const INIT_ADMIN: &str = "initial_admin";
+    const NEW_ADMIN: &str = "new_admin";
 
     /// Build an active BTC delegation from a BTC delegation
     pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
@@ -529,29 +544,8 @@ pub(crate) mod tests {
         }
     }
 
-    #[test]
-    fn instantiate_works() {
-        let mut deps = mock_dependencies();
-        let msg = InstantiateMsg { params: None };
-        let info = mock_info(CREATOR, &[]);
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-    }
-
-    #[test]
-    fn test_btc_staking_add_fp() {
-        let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
-
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            info.clone(),
-            InstantiateMsg { params: None },
-        )
-        .unwrap();
-
-        let new_fp = FinalityProvider {
+    pub(crate) fn create_finality_provider() -> FinalityProvider {
+        FinalityProvider {
             description: Some(FinalityProviderDescription {
                 moniker: "fp1".to_string(),
                 identity: "Finality Provider 1".to_string(),
@@ -572,7 +566,129 @@ pub(crate) mod tests {
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
             chain_id: "osmosis-1".to_string(),
+        }
+    }
+
+    #[test]
+    fn instantiate_without_admin() {
+        let mut deps = mock_dependencies();
+
+        // Create an InstantiateMsg with admin set to None
+        let msg = InstantiateMsg {
+            params: None,
+            admin: None, // No admin provided
         };
+
+        let info = mock_info(CREATOR, &[]);
+
+        // Call the instantiate function
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // Assert that no messages were sent
+        assert_eq!(0, res.messages.len());
+
+        // Query the admin to verify it was not set
+        let res = ADMIN.query_admin(deps.as_ref()).unwrap();
+        assert_eq!(None, res.admin);
+    }
+
+    #[test]
+    fn instantiate_with_admin() {
+        let mut deps = mock_dependencies();
+
+        // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
+        let msg = InstantiateMsg {
+            params: None,
+            admin: Some(INIT_ADMIN.into()), // Admin provided
+        };
+
+        let info = mock_info(CREATOR, &[]);
+
+        // Call the instantiate function
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // Assert that no messages were sent
+        assert_eq!(0, res.messages.len());
+
+        // Use assert_admin to verify that the admin was set correctly
+        // This uses the assert_admin helper function provided by the Admin crate
+        ADMIN
+            .assert_admin(deps.as_ref(), &Addr::unchecked(INIT_ADMIN))
+            .unwrap();
+    }
+
+    #[test]
+    fn test_update_admin() {
+        let mut deps = mock_dependencies();
+
+        // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
+        let instantiate_msg = InstantiateMsg {
+            params: None,
+            admin: Some(INIT_ADMIN.into()), // Admin provided
+        };
+
+        let info = mock_info(CREATOR, &[]);
+
+        // Call the instantiate function
+        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
+
+        // Assert that no messages were sent
+        assert_eq!(0, res.messages.len());
+
+        // Use assert_admin to verify that the admin was set correctly
+        ADMIN
+            .assert_admin(deps.as_ref(), &Addr::unchecked(INIT_ADMIN))
+            .unwrap();
+
+        // Update the admin to NEW_ADMIN
+        let update_admin_msg = ExecuteMsg::UpdateAdmin {
+            admin: Some(NEW_ADMIN.to_string()),
+        };
+
+        // Execute the UpdateAdmin message with a non-admin info
+        let non_admin_info = mock_info("non_admin", &[]);
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            non_admin_info,
+            update_admin_msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::Admin(cw_controllers::AdminError::NotAdmin {})
+        );
+
+        // Execute the UpdateAdmin message with the initial admin info
+        let admin_info = mock_info(INIT_ADMIN, &[]);
+        let res = execute(deps.as_mut(), mock_env(), admin_info, update_admin_msg).unwrap();
+
+        // Assert that no messages were sent
+        assert_eq!(0, res.messages.len());
+
+        // Use assert_admin to verify that the admin was updated correctly
+        ADMIN
+            .assert_admin(deps.as_ref(), &Addr::unchecked(NEW_ADMIN))
+            .unwrap();
+    }
+
+    #[test]
+    fn test_btc_staking_add_fp_unauthorized() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: Some(INIT_ADMIN.into()), // Admin provided
+            },
+        )
+        .unwrap();
+
+        let new_fp = create_finality_provider();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -581,13 +697,40 @@ pub(crate) mod tests {
             unbonded_del: vec![],
         };
 
-        // Only the creator (Babylon contract) can call this
+        // Only the Creator or Admin can call this
         let other_info = mock_info("other", &[]);
         let err = execute(deps.as_mut(), mock_env(), other_info, msg.clone()).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized);
+    }
 
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+    #[test]
+    fn test_btc_staking_add_fp_admin() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
 
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: Some(INIT_ADMIN.into()), // Admin provided
+            },
+        )
+        .unwrap();
+
+        let admin_info = mock_info(INIT_ADMIN, &[]); // Mock info for the admin
+        let new_fp = create_finality_provider();
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![new_fp.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        // Use admin_info to execute the message
+        let res = execute(deps.as_mut(), mock_env(), admin_info.clone(), msg.clone()).unwrap();
         assert_eq!(0, res.messages.len());
 
         // Check the finality provider has been stored
@@ -596,13 +739,7 @@ pub(crate) mod tests {
         assert_eq!(query_res, new_fp);
 
         // Trying to add the same fp again fails
-        let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![new_fp.clone()],
-            active_del: vec![],
-            slashed_del: vec![],
-            unbonded_del: vec![],
-        };
-        let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+        let err = execute(deps.as_mut(), mock_env(), admin_info, msg).unwrap_err();
         assert_eq!(
             err,
             ContractError::FinalityProviderAlreadyExists(new_fp.btc_pk_hex.clone())
@@ -618,7 +755,10 @@ pub(crate) mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -626,28 +766,8 @@ pub(crate) mod tests {
         let active_delegation = get_active_btc_delegation();
 
         // Register one FP first
-        let new_fp = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: active_delegation.fp_btc_pk_list[0].clone(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            master_pub_rand: "master-pub-rand".to_string(),
-            registered_epoch: 1,
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "babylon-euphrates-0.2".to_string(),
-        };
+        let mut new_fp = create_finality_provider();
+        new_fp.btc_pk_hex = active_delegation.fp_btc_pk_list[0].clone();
 
         // Check that the finality provider power is not there yet
         let err =
@@ -694,7 +814,10 @@ pub(crate) mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -702,28 +825,8 @@ pub(crate) mod tests {
         let active_delegation = get_active_btc_delegation();
 
         // Register one FP first
-        let new_fp = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: active_delegation.fp_btc_pk_list[0].clone(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            master_pub_rand: "master-pub-rand".to_string(),
-            registered_epoch: 1,
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "babylon-euphrates-0.2".to_string(),
-        };
+        let mut new_fp = create_finality_provider();
+        new_fp.btc_pk_hex = active_delegation.fp_btc_pk_list[0].clone();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],

@@ -2,6 +2,7 @@ use derivative::Derivative;
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
+use cw_controllers::Admin;
 
 use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
 
@@ -26,6 +27,7 @@ pub(crate) const DELEGATION_FPS: Map<&[u8; HASH_SIZE], Vec<String>> = Map::new("
 
 pub const FP_STATE_KEY: &str = "fp_state";
 pub const FP_POWER_KEY: &str = "fp_state__power";
+pub const ADMIN: Admin = Admin::new("admin");
 
 /// Indexed map for finality providers.
 /// This allows querying the map finality providers, sorted by their (aggregated) power.

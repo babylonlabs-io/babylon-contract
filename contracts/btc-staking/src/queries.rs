@@ -187,7 +187,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -279,7 +282,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -424,7 +430,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -562,7 +571,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -693,7 +705,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -833,7 +848,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -938,7 +956,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 
@@ -1022,7 +1043,10 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            InstantiateMsg { params: None },
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
         )
         .unwrap();
 

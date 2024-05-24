@@ -1,6 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
+use cw_controllers::AdminResponse;
 
 use crate::state::{Config, Params};
 
@@ -8,6 +9,7 @@ use crate::state::{Config, Params};
 #[derive(Default)]
 pub struct InstantiateMsg {
     pub params: Option<Params>,
+    pub admin: Option<String>,
 }
 
 pub type ExecuteMsg = babylon_apis::btc_staking_api::ExecuteMsg;
@@ -21,6 +23,9 @@ pub enum QueryMsg {
     /// `Params` returns the current Consumer-specific parameters of the btc-staking contract
     #[returns(Params)]
     Params {},
+    /// `Admin` returns the current admin of the contract
+    #[returns(AdminResponse)]
+    Admin {},
     /// `FinalityProvider` returns the finality provider by its BTC public key, in hex format
     #[returns(FinalityProvider)]
     FinalityProvider { btc_pk_hex: String },
