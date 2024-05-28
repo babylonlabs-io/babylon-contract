@@ -80,7 +80,7 @@ jobs:
 
   push-to-s3:
     machine:
-      image: ubuntu-2204:2022.10.1
+      image: default
       resource_class: large
     steps:
       - attach_workspace:

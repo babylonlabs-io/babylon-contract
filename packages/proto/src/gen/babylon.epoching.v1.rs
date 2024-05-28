@@ -19,19 +19,15 @@ pub struct Epoch {
     /// is set upon the end of this epoch.
     #[prost(message, optional, tag="4")]
     pub last_block_time: ::core::option::Option<::pbjson_types::Timestamp>,
-    /// app_hash_root is the Merkle root of all AppHashs in this epoch
-    /// It will be used for proving a block is in an epoch
-    #[prost(bytes="bytes", tag="5")]
-    pub app_hash_root: ::prost::bytes::Bytes,
     /// sealer is the last block of the sealed epoch
     /// sealer_app_hash points to the sealer but stored in the 1st header
     /// of the next epoch
-    #[prost(bytes="bytes", tag="6")]
+    #[prost(bytes="bytes", tag="5")]
     pub sealer_app_hash: ::prost::bytes::Bytes,
     /// sealer_block_hash is the hash of the sealer
     /// the validator set has generated a BLS multisig on the hash,
     /// i.e., hash of the last block in the epoch
-    #[prost(bytes="bytes", tag="7")]
+    #[prost(bytes="bytes", tag="6")]
     pub sealer_block_hash: ::prost::bytes::Bytes,
 }
 // @@protoc_insertion_point(module)

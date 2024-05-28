@@ -35,11 +35,6 @@ impl Validate for FinalityProvider {
             None => return Err(StakingApiError::MissingPop),
         }
 
-        // Validate master public randomness
-        if self.master_pub_rand.is_empty() {
-            return Err(StakingApiError::EmptyMasterPubRand);
-        }
-
         Ok(())
     }
 }

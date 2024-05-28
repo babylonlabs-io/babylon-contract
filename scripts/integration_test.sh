@@ -3,6 +3,13 @@
 ./scripts/optimizer.sh
 M=$(uname -m)
 
-[ "$M" = "arm64" ] && mv ./artifacts/babylon_contract-aarch64.wasm ./artifacts/babylon_contract.wasm
+if [ "$M" = "arm64" ]
+then
+  for A in ./artifacts/*-aarch64.wasm
+  do
+    B=$(basename $A -aarch64.wasm)
+    cp "$A" ./artifacts/"$B".wasm
+  done
+fi
 
 cargo test --test integration

@@ -561,8 +561,6 @@ pub(crate) mod tests {
                 babylon_sig: vec![],
                 btc_sig: vec![],
             }),
-            master_pub_rand: "master-pub-rand".to_string(),
-            registered_epoch: 1,
             slashed_babylon_height: 0,
             slashed_btc_height: 0,
             chain_id: "osmosis-1".to_string(),
@@ -767,7 +765,9 @@ pub(crate) mod tests {
 
         // Register one FP first
         let mut new_fp = create_finality_provider();
-        new_fp.btc_pk_hex = active_delegation.fp_btc_pk_list[0].clone();
+        new_fp
+            .btc_pk_hex
+            .clone_from(&active_delegation.fp_btc_pk_list[0]);
 
         // Check that the finality provider power is not there yet
         let err =
@@ -826,7 +826,9 @@ pub(crate) mod tests {
 
         // Register one FP first
         let mut new_fp = create_finality_provider();
-        new_fp.btc_pk_hex = active_delegation.fp_btc_pk_list[0].clone();
+        new_fp
+            .btc_pk_hex
+            .clone_from(&active_delegation.fp_btc_pk_list[0]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],

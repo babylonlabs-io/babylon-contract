@@ -252,26 +252,19 @@ pub struct NewFinalityProvider {
     /// pop is the proof of possession of babylon_pk and btc_pk
     #[prost(message, optional, tag="5")]
     pub pop: ::core::option::Option<ProofOfPossession>,
-    /// master_pub_rand is the master public randomness of the finality provider
-    /// encoded as a base58 string
-    #[prost(string, tag="6")]
-    pub master_pub_rand: ::prost::alloc::string::String,
-    /// registered_epoch is the epoch when this finality provider is registered
-    #[prost(uint64, tag="7")]
-    pub registered_epoch: u64,
     /// slashed_babylon_height indicates the Babylon height when
     /// the finality provider is slashed.
     /// if it's 0 then the finality provider is not slashed
-    #[prost(uint64, tag="8")]
+    #[prost(uint64, tag="6")]
     pub slashed_babylon_height: u64,
     /// slashed_btc_height indicates the BTC height when
     /// the finality provider is slashed.
     /// if it's 0 then the finality provider is not slashed
-    #[prost(uint64, tag="9")]
+    #[prost(uint64, tag="7")]
     pub slashed_btc_height: u64,
     /// consumer_id is the ID of the consumer the finality provider is operating on.
     /// If it's missing / empty, it's assumed the finality provider is operating in Babylon.
-    #[prost(string, tag="10")]
+    #[prost(string, tag="8")]
     pub consumer_id: ::prost::alloc::string::String,
 }
 /// ActiveBTCDelegation is an IBC packet sent from Babylon to consumer

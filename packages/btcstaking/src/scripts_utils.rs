@@ -189,14 +189,15 @@ impl BabylonScriptPaths {
         let covenant_multisig_script =
             build_multisig_script(covenant_keys, covenant_quorum, false)?;
         let staker_sig_script = build_single_key_sig_script(staker_key, true)?;
-        let fp_multisig_script = build_multisig_script(fp_keys, 1, true)?;
+        let fp_script = if fp_keys.len() == 1 {
+            build_single_key_sig_script(&fp_keys[0], true)?
+        } else {
+            build_multisig_script(fp_keys, 1, true)?
+        };
         let unbonding_path_script =
             aggregate_scripts(&[staker_sig_script.clone(), covenant_multisig_script.clone()]);
-        let slashing_path_script = aggregate_scripts(&[
-            staker_sig_script,
-            fp_multisig_script,
-            covenant_multisig_script,
-        ]);
+        let slashing_path_script =
+            aggregate_scripts(&[staker_sig_script, fp_script, covenant_multisig_script]);
 
         Ok(BabylonScriptPaths {
             time_lock_path_script,

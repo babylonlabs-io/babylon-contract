@@ -417,7 +417,6 @@
       "description": "Babylon epoch.\n\nThis struct is for use in RPC requests and responses. It has convenience helpers to convert to and from the internal representation (`Epoch`). Adapted from `Epoch`.",
       "type": "object",
       "required": [
-        "app_hash_root",
         "current_epoch_interval",
         "epoch_number",
         "first_block_height",
@@ -425,10 +424,6 @@
         "sealer_block_hash"
       ],
       "properties": {
-        "app_hash_root": {
-          "description": "app_hash_root is the Merkle root of all AppHashs in this epoch. It is used for proving a block is in an epoch. Hex-encoded string",
-          "type": "string"
-        },
         "current_epoch_interval": {
           "type": "integer",
           "format": "uint64",
@@ -486,7 +481,6 @@
       "description": "Babylon epoch.\n\nThis struct is for use in RPC requests and responses. It has convenience helpers to convert to and from the internal representation (`Epoch`). Adapted from `Epoch`.",
       "type": "object",
       "required": [
-        "app_hash_root",
         "current_epoch_interval",
         "epoch_number",
         "first_block_height",
@@ -494,10 +488,6 @@
         "sealer_block_hash"
       ],
       "properties": {
-        "app_hash_root": {
-          "description": "app_hash_root is the Merkle root of all AppHashs in this epoch. It is used for proving a block is in an epoch. Hex-encoded string",
-          "type": "string"
-        },
         "current_epoch_interval": {
           "type": "integer",
           "format": "uint64",
@@ -555,7 +545,6 @@
       "description": "Babylon epoch.\n\nThis struct is for use in RPC requests and responses. It has convenience helpers to convert to and from the internal representation (`Epoch`). Adapted from `Epoch`.",
       "type": "object",
       "required": [
-        "app_hash_root",
         "current_epoch_interval",
         "epoch_number",
         "first_block_height",
@@ -563,10 +552,6 @@
         "sealer_block_hash"
       ],
       "properties": {
-        "app_hash_root": {
-          "description": "app_hash_root is the Merkle root of all AppHashs in this epoch. It is used for proving a block is in an epoch. Hex-encoded string",
-          "type": "string"
-        },
         "current_epoch_interval": {
           "type": "integer",
           "format": "uint64",
@@ -624,7 +609,6 @@
       "description": "Babylon epoch.\n\nThis struct is for use in RPC requests and responses. It has convenience helpers to convert to and from the internal representation (`Epoch`). Adapted from `Epoch`.",
       "type": "object",
       "required": [
-        "app_hash_root",
         "current_epoch_interval",
         "epoch_number",
         "first_block_height",
@@ -632,10 +616,6 @@
         "sealer_block_hash"
       ],
       "properties": {
-        "app_hash_root": {
-          "description": "app_hash_root is the Merkle root of all AppHashs in this epoch. It is used for proving a block is in an epoch. Hex-encoded string",
-          "type": "string"
-        },
         "current_epoch_interval": {
           "type": "integer",
           "format": "uint64",

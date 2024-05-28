@@ -20,10 +20,6 @@ pub struct EpochResponse {
     /// finalised. The last_block_time field is nil in the epoch's beginning, and
     /// is set upon the end of this epoch
     pub last_block_time: Option<Timestamp>,
-    /// app_hash_root is the Merkle root of all AppHashs in this epoch.
-    /// It is used for proving a block is in an epoch.
-    /// Hex-encoded string
-    pub app_hash_root: String,
     /// sealer is the last block of the sealed epoch.
     /// sealer_app_hash points to the sealer but stored in the first header of the next epoch.
     /// Hex-encoded string
@@ -45,7 +41,6 @@ impl From<&Epoch> for EpochResponse {
                 .last_block_time
                 .as_ref()
                 .map(|t| Timestamp::from_seconds(t.seconds as u64).plus_nanos(t.nanos as u64)),
-            app_hash_root: epoch.app_hash_root.encode_hex(),
             sealer_app_hash: epoch.sealer_app_hash.encode_hex(),
             sealer_block_hash: epoch.sealer_block_hash.encode_hex(),
         }
@@ -109,7 +104,6 @@ mod tests {
                 seconds: 4,
                 nanos: 5,
             }),
-            app_hash_root: prost::bytes::Bytes::from("app_hash_root".as_bytes()),
             sealer_app_hash: prost::bytes::Bytes::from("sealer_app_hash".as_bytes()),
             sealer_block_hash: prost::bytes::Bytes::from("sealer_block_hash".as_bytes()),
         };
@@ -122,7 +116,6 @@ mod tests {
             epoch_response.last_block_time.unwrap(),
             Timestamp::from_seconds(4).plus_nanos(5)
         );
-        assert_eq!(epoch_response.app_hash_root, hex::encode("app_hash_root"));
         assert_eq!(
             epoch_response.sealer_app_hash,
             hex::encode("sealer_app_hash")

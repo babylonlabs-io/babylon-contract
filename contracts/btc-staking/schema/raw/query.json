@@ -31,6 +31,20 @@
       "additionalProperties": false
     },
     {
+      "description": "`Admin` returns the current admin of the contract",
+      "type": "object",
+      "required": [
+        "admin"
+      ],
+      "properties": {
+        "admin": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "`FinalityProvider` returns the finality provider by its BTC public key, in hex format",
       "type": "object",
       "required": [

@@ -7,6 +7,12 @@
     "title": "InstantiateMsg",
     "type": "object",
     "properties": {
+      "admin": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "params": {
         "anyOf": [
           {
@@ -82,6 +88,28 @@
                 "items": {
                   "$ref": "#/definitions/UnbondedBtcDelegation"
                 }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Change the admin",
+        "type": "object",
+        "required": [
+          "update_admin"
+        ],
+        "properties": {
+          "update_admin": {
+            "type": "object",
+            "properties": {
+              "admin": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
@@ -311,8 +339,6 @@
           "btc_pk_hex",
           "chain_id",
           "commission",
-          "master_pub_rand",
-          "registered_epoch",
           "slashed_babylon_height",
           "slashed_btc_height"
         ],
@@ -333,7 +359,7 @@
             "type": "string"
           },
           "chain_id": {
-            "description": "chain_id is the chain id of the chain the finality provider is operating on. If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.",
+            "description": "chain_id is the chain id of the chain the finality provider is operating on.",
             "type": "string"
           },
           "commission": {
@@ -355,10 +381,6 @@
               }
             ]
           },
-          "master_pub_rand": {
-            "description": "master_pub_rand is the master public randomness of the finality provider encoded as a base58 string",
-            "type": "string"
-          },
           "pop": {
             "description": "pop is the proof of possession of the babylon_pk and btc_pk",
             "anyOf": [
@@ -369,12 +391,6 @@
                 "type": "null"
               }
             ]
-          },
-          "registered_epoch": {
-            "description": "registered_epoch is the epoch when this finality provider is registered",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
           },
           "slashed_babylon_height": {
             "description": "slashed_babylon_height indicates the Babylon height when the finality provider is slashed. if it's 0, then the finality provider is not slashed",
@@ -576,6 +592,20 @@
         ],
         "properties": {
           "params": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "`Admin` returns the current admin of the contract",
+        "type": "object",
+        "required": [
+          "admin"
+        ],
+        "properties": {
+          "admin": {
             "type": "object",
             "additionalProperties": false
           }
@@ -802,6 +832,21 @@
   },
   "sudo": null,
   "responses": {
+    "admin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AdminResponse",
+      "description": "Returned from Admin.query_admin()",
+      "type": "object",
+      "properties": {
+        "admin": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
@@ -1349,8 +1394,6 @@
         "btc_pk_hex",
         "chain_id",
         "commission",
-        "master_pub_rand",
-        "registered_epoch",
         "slashed_babylon_height",
         "slashed_btc_height"
       ],
@@ -1371,7 +1414,7 @@
           "type": "string"
         },
         "chain_id": {
-          "description": "chain_id is the chain id of the chain the finality provider is operating on. If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.",
+          "description": "chain_id is the chain id of the chain the finality provider is operating on.",
           "type": "string"
         },
         "commission": {
@@ -1393,10 +1436,6 @@
             }
           ]
         },
-        "master_pub_rand": {
-          "description": "master_pub_rand is the master public randomness of the finality provider encoded as a base58 string",
-          "type": "string"
-        },
         "pop": {
           "description": "pop is the proof of possession of the babylon_pk and btc_pk",
           "anyOf": [
@@ -1407,12 +1446,6 @@
               "type": "null"
             }
           ]
-        },
-        "registered_epoch": {
-          "description": "registered_epoch is the epoch when this finality provider is registered",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
         },
         "slashed_babylon_height": {
           "description": "slashed_babylon_height indicates the Babylon height when the finality provider is slashed. if it's 0, then the finality provider is not slashed",
@@ -1571,8 +1604,6 @@
             "btc_pk_hex",
             "chain_id",
             "commission",
-            "master_pub_rand",
-            "registered_epoch",
             "slashed_babylon_height",
             "slashed_btc_height"
           ],
@@ -1593,7 +1624,7 @@
               "type": "string"
             },
             "chain_id": {
-              "description": "chain_id is the chain id of the chain the finality provider is operating on. If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.",
+              "description": "chain_id is the chain id of the chain the finality provider is operating on.",
               "type": "string"
             },
             "commission": {
@@ -1615,10 +1646,6 @@
                 }
               ]
             },
-            "master_pub_rand": {
-              "description": "master_pub_rand is the master public randomness of the finality provider encoded as a base58 string",
-              "type": "string"
-            },
             "pop": {
               "description": "pop is the proof of possession of the babylon_pk and btc_pk",
               "anyOf": [
@@ -1629,12 +1656,6 @@
                   "type": "null"
                 }
               ]
-            },
-            "registered_epoch": {
-              "description": "registered_epoch is the epoch when this finality provider is registered",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
             },
             "slashed_babylon_height": {
               "description": "slashed_babylon_height indicates the Babylon height when the finality provider is slashed. if it's 0, then the finality provider is not slashed",

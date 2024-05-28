@@ -3,6 +3,12 @@
   "title": "InstantiateMsg",
   "type": "object",
   "properties": {
+    "admin": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "params": {
       "anyOf": [
         {

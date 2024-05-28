@@ -44,11 +44,6 @@ pub struct FinalityProvider {
     pub btc_pk_hex: String,
     /// pop is the proof of possession of the babylon_pk and btc_pk
     pub pop: Option<ProofOfPossession>,
-    /// master_pub_rand is the master public randomness of the finality provider
-    /// encoded as a base58 string
-    pub master_pub_rand: String,
-    /// registered_epoch is the epoch when this finality provider is registered
-    pub registered_epoch: u64,
     /// slashed_babylon_height indicates the Babylon height when
     /// the finality provider is slashed.
     /// if it's 0, then the finality provider is not slashed
@@ -58,7 +53,6 @@ pub struct FinalityProvider {
     /// if it's 0, then the finality provider is not slashed
     pub slashed_btc_height: u64,
     /// chain_id is the chain id of the chain the finality provider is operating on.
-    /// If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.
     pub chain_id: String,
 }
 
