@@ -4,7 +4,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
 use cw_controllers::Admin;
 
-use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
+use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 
 use crate::fp_index::FinalityProviderIndexes;
 use babylon_apis::btc_staking_api::HASH_SIZE;
@@ -26,17 +26,29 @@ pub(crate) const DELEGATION_FPS: Map<&[u8; HASH_SIZE], Vec<String>> = Map::new("
 // pub(crate) const STAKER_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("staker_delegations");
 
 pub const FP_STATE_KEY: &str = "fp_state";
+const FP_STATE_CHECKPOINTS: &str = "fp_state__checkpoints";
+const FP_STATE_CHANGELOG: &str = "fp_state__changelog";
 pub const FP_POWER_KEY: &str = "fp_state__power";
 pub const ADMIN: Admin = Admin::new("admin");
 
-/// Indexed map for finality providers.
+/// Indexed snapshot map for finality providers.
+///
 /// This allows querying the map finality providers, sorted by their (aggregated) power.
 /// The power index is a `MultiIndex`, as there can be multiple FPs with the same power.
-pub fn fps<'a>() -> IndexedMap<'a, &'a str, FinalityProviderState, FinalityProviderIndexes<'a>> {
+///
+/// The indexes are not snapshotted; only the current power is indexed at any given time.
+pub fn fps<'a>(
+) -> IndexedSnapshotMap<'a, &'a str, FinalityProviderState, FinalityProviderIndexes<'a>> {
     let indexes = FinalityProviderIndexes {
         power: MultiIndex::new(|_, fpi| fpi.power, FP_STATE_KEY, FP_POWER_KEY),
     };
-    IndexedMap::new(FP_STATE_KEY, indexes)
+    IndexedSnapshotMap::new(
+        FP_STATE_KEY,
+        FP_STATE_CHECKPOINTS,
+        FP_STATE_CHANGELOG,
+        Strategy::EveryBlock,
+        indexes,
+    )
 }
 
 /// Map of BTC height by block height

@@ -8,7 +8,7 @@
   ],
   "properties": {
     "btc_pk_hex": {
-      "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+      "description": "`btc_pk_hex` is the Bitcoin secp256k1 PK of this finality provider. The PK follows encoding in BIP-340 spec in hex format",
       "type": "string"
     },
     "power": {

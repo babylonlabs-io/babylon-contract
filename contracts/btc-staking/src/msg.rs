@@ -60,12 +60,19 @@ pub enum QueryMsg {
     //TODO?: Support pagination
     #[returns(DelegationsByFPResponse)]
     DelegationsByFP { btc_pk_hex: String },
-    /// `FinalityProviderPower` returns the finality provider aggregated power by its BTC public key,
+    /// `FinalityProviderInfo` returns the finality provider information by its BTC public key,
     /// in hex format
+    /// The information includes the aggregated power of the finality provider.
+    ///
+    /// `height` is the optional block height at which the power is being aggregated.
+    /// If `height` is not provided, the latest aggregated power is returned
     #[returns(FinalityProviderInfo)]
-    FinalityProviderInfo { btc_pk_hex: String },
-    /// `FinalityProvidersByPower` returns the list of finality providers sorted by their aggregated
-    /// power, in descending order
+    FinalityProviderInfo {
+        btc_pk_hex: String,
+        height: Option<u64>,
+    },
+    /// `FinalityProvidersByPower` returns the list of finality provider infos sorted by their
+    /// aggregated power, in descending order.
     ///
     /// `start_after` is the BTC public key of the FP to start after, or `None` to start from the top
     #[returns(FinalityProvidersByPowerResponse)]
@@ -97,8 +104,8 @@ pub struct FinalityProvidersByPowerResponse {
 
 #[cw_serde]
 pub struct FinalityProviderInfo {
-    /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
-    /// the PK follows encoding in BIP-340 spec in hex format
+    /// `btc_pk_hex` is the Bitcoin secp256k1 PK of this finality provider.
+    /// The PK follows encoding in BIP-340 spec in hex format
     pub btc_pk_hex: String,
     /// `power` is the aggregated power of this finality provider.
     /// The power is calculated based on the amount of BTC delegated to this finality provider

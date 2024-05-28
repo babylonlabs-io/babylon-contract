@@ -177,7 +177,7 @@
       "additionalProperties": false
     },
     {
-      "description": "`FinalityProviderPower` returns the finality provider aggregated power by its BTC public key, in hex format",
+      "description": "`FinalityProviderInfo` returns the finality provider information by its BTC public key, in hex format The information includes the aggregated power of the finality provider.\n\n`height` is the optional block height at which the power is being aggregated. If `height` is not provided, the latest aggregated power is returned",
       "type": "object",
       "required": [
         "finality_provider_info"
@@ -191,6 +191,14 @@
           "properties": {
             "btc_pk_hex": {
               "type": "string"
+            },
+            "height": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -199,7 +207,7 @@
       "additionalProperties": false
     },
     {
-      "description": "`FinalityProvidersByPower` returns the list of finality providers sorted by their aggregated power, in descending order\n\n`start_after` is the BTC public key of the FP to start after, or `None` to start from the top",
+      "description": "`FinalityProvidersByPower` returns the list of finality provider infos sorted by their aggregated power, in descending order.\n\n`start_after` is the BTC public key of the FP to start after, or `None` to start from the top",
       "type": "object",
       "required": [
         "finality_providers_by_power"
@@ -242,7 +250,7 @@
       ],
       "properties": {
         "btc_pk_hex": {
-          "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+          "description": "`btc_pk_hex` is the Bitcoin secp256k1 PK of this finality provider. The PK follows encoding in BIP-340 spec in hex format",
           "type": "string"
         },
         "power": {

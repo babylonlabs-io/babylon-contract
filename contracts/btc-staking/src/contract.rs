@@ -97,8 +97,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::DelegationsByFP { btc_pk_hex } => Ok(to_json_binary(
             &queries::delegations_by_fp(deps, btc_pk_hex)?,
         )?),
-        QueryMsg::FinalityProviderInfo { btc_pk_hex } => Ok(to_json_binary(
-            &queries::finality_provider_info(deps, btc_pk_hex)?,
+        QueryMsg::FinalityProviderInfo { btc_pk_hex, height } => Ok(to_json_binary(
+            &queries::finality_provider_info(deps, btc_pk_hex, height)?,
         )?),
         QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
             &queries::finality_providers_by_power(deps, start_after, limit)?,
@@ -115,7 +115,7 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
@@ -131,6 +131,7 @@ pub fn execute(
             unbonded_del,
         } => handle_btc_staking(
             deps,
+            env,
             &info,
             &new_fp,
             &active_del,
@@ -144,6 +145,7 @@ pub fn execute(
 ///
 pub fn handle_btc_staking(
     deps: DepsMut,
+    env: Env,
     info: &MessageInfo,
     new_fps: &[FinalityProvider],
     active_delegations: &[ActiveBtcDelegation],
@@ -161,7 +163,7 @@ pub fn handle_btc_staking(
 
     // Process active delegations
     for del in active_delegations {
-        handle_active_delegation(deps.storage, del)?;
+        handle_active_delegation(deps.storage, env.block.height, del)?;
     }
 
     // TODO: Process FPs slashing
@@ -170,7 +172,7 @@ pub fn handle_btc_staking(
 
     // Process undelegations
     for undel in unbonded_delegations {
-        handle_undelegation(deps.storage, undel)?;
+        handle_undelegation(deps.storage, env.block.height, undel)?;
     }
 
     // TODO: Add events
@@ -200,6 +202,7 @@ pub fn handle_new_fp(
 ///
 pub fn handle_active_delegation(
     storage: &mut dyn Storage,
+    height: u64,
     delegation: &ActiveBtcDelegation,
 ) -> Result<(), ContractError> {
     // Basic stateless checks
@@ -345,7 +348,7 @@ pub fn handle_active_delegation(
         DELEGATION_FPS.save(storage, staking_tx_hash.as_ref(), &delegation_fps)?;
 
         // Update aggregated voting power by FP
-        fps.update(storage, fp_btc_pk, |fpi| {
+        fps.update(storage, fp_btc_pk, height, |fpi| {
             let mut fpi = fpi.unwrap_or_default();
             fpi.power += delegation.total_sat;
             Ok::<_, ContractError>(fpi)
@@ -368,6 +371,7 @@ pub fn handle_active_delegation(
 ///
 fn handle_undelegation(
     storage: &mut dyn Storage,
+    height: u64,
     undelegation: &UnbondedBtcDelegation,
 ) -> Result<(), ContractError> {
     // Basic stateless checks
@@ -395,7 +399,7 @@ fn handle_undelegation(
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
     for fp in affected_fps {
-        fps.update(storage, &fp, |fpi| {
+        fps.update(storage, &fp, height, |fpi| {
             let mut fpi = fpi.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
             fpi.power -= btc_del.total_sat;
             Ok::<_, ContractError>(fpi)
@@ -491,7 +495,7 @@ pub(crate) mod tests {
     };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env, mock_info},
-        Decimal, StdError,
+        Decimal,
     };
     use hex::ToHex;
     use test_utils::get_btc_delegation_and_params;
@@ -769,10 +773,10 @@ pub(crate) mod tests {
             .btc_pk_hex
             .clone_from(&active_delegation.fp_btc_pk_list[0]);
 
-        // Check that the finality provider power is not there yet
-        let err =
-            queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap_err();
-        assert!(matches!(err, StdError::NotFound { .. }));
+        // Check that the finality provider has no power yet
+        let res = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+            .unwrap();
+        assert_eq!(res.power, 0);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -801,7 +805,8 @@ pub(crate) mod tests {
         assert_eq!(query_res, active_delegation);
 
         // Check that the finality provider power has been updated
-        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap();
+        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+            .unwrap();
         assert_eq!(fp.power, active_delegation.total_sat);
     }
 
@@ -893,7 +898,8 @@ pub(crate) mod tests {
         );
 
         // Check the finality provider power has been updated
-        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap();
+        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+            .unwrap();
         assert_eq!(fp.power, 0);
     }
 }

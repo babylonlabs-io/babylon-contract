@@ -128,8 +128,16 @@ pub fn active_delegations_by_fp(
     Ok(BtcDelegationsResponse { delegations })
 }
 
-pub fn finality_provider_info(deps: Deps, btc_pk_hex: String) -> StdResult<FinalityProviderInfo> {
-    let fp_state = fps().load(deps.storage, &btc_pk_hex)?;
+pub fn finality_provider_info(
+    deps: Deps,
+    btc_pk_hex: String,
+    height: Option<u64>,
+) -> StdResult<FinalityProviderInfo> {
+    let fp_state = match height {
+        Some(h) => fps().may_load_at_height(deps.storage, &btc_pk_hex, h),
+        None => fps().may_load(deps.storage, &btc_pk_hex),
+    }?
+    .unwrap_or_default();
 
     Ok(FinalityProviderInfo {
         btc_pk_hex,
@@ -919,7 +927,8 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query finality provider info
-        let fp = crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string()).unwrap();
+        let fp =
+            crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), None).unwrap();
         assert_eq!(
             fp,
             FinalityProviderInfo {
