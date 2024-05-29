@@ -35,6 +35,11 @@ impl Validate for FinalityProvider {
             None => return Err(StakingApiError::MissingPop),
         }
 
+        // Validate chain_id
+        if self.chain_id.is_empty() {
+            return Err(StakingApiError::EmptyChainId);
+        }
+
         Ok(())
     }
 }

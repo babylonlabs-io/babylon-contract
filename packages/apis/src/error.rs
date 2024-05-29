@@ -17,6 +17,8 @@ pub enum StakingApiError {
     EmptyBtcPk,
     #[error("Empty proof of possession")]
     MissingPop,
+    #[error("Empty chain id")]
+    EmptyChainId,
     #[error("No Finality Providers Btc public keys")]
     EmptyBtcPkList,
     #[error("Duplicate Finality Provider Btc public key: {0}")]

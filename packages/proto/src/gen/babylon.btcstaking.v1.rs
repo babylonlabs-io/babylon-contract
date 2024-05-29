@@ -252,16 +252,6 @@ pub struct NewFinalityProvider {
     /// pop is the proof of possession of babylon_pk and btc_pk
     #[prost(message, optional, tag="5")]
     pub pop: ::core::option::Option<ProofOfPossession>,
-    /// slashed_babylon_height indicates the Babylon height when
-    /// the finality provider is slashed.
-    /// if it's 0 then the finality provider is not slashed
-    #[prost(uint64, tag="6")]
-    pub slashed_babylon_height: u64,
-    /// slashed_btc_height indicates the BTC height when
-    /// the finality provider is slashed.
-    /// if it's 0 then the finality provider is not slashed
-    #[prost(uint64, tag="7")]
-    pub slashed_btc_height: u64,
     /// consumer_id is the ID of the consumer the finality provider is operating on.
     /// If it's missing / empty, it's assumed the finality provider is operating in Babylon.
     #[prost(string, tag="8")]

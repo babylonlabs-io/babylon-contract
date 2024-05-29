@@ -206,8 +206,8 @@ mod ibc_packet {
                             babylon_sig: pop.babylon_sig.to_vec(),
                             btc_sig: pop.btc_sig.to_vec(),
                         }),
-                        slashed_babylon_height: fp.slashed_babylon_height,
-                        slashed_btc_height: fp.slashed_btc_height,
+                        slashed_babylon_height: 0,
+                        slashed_btc_height: 0,
                         chain_id: fp.consumer_id.clone(),
                     })
                 })
