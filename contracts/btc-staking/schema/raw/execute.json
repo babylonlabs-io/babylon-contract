@@ -4,7 +4,29 @@
   "description": "btc_staking execution handlers",
   "oneOf": [
     {
-      "description": "BTC Staking operations.",
+      "description": "Change the admin",
+      "type": "object",
+      "required": [
+        "update_admin"
+      ],
+      "properties": {
+        "update_admin": {
+          "type": "object",
+          "properties": {
+            "admin": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "BTC Staking operations",
       "type": "object",
       "required": [
         "btc_staking"
@@ -50,20 +72,57 @@
       "additionalProperties": false
     },
     {
-      "description": "Change the admin",
+      "description": "Submit Finality Signature.\n\nThis is a message that can be called by a finality provider to submit their finality signature to the Consumer chain. The signature is verified by the Consumer chain using the finality provider's public key\n\nThis message is equivalent to the `MsgAddFinalitySig` message in the Babylon finality protobuf defs.",
       "type": "object",
       "required": [
-        "update_admin"
+        "submit_finality_signature"
       ],
       "properties": {
-        "update_admin": {
+        "submit_finality_signature": {
           "type": "object",
+          "required": [
+            "block_hash",
+            "fp_pubkey_hex",
+            "height",
+            "proof",
+            "pub_rand",
+            "signature"
+          ],
           "properties": {
-            "admin": {
-              "type": [
-                "string",
-                "null"
-              ]
+            "block_hash": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
+            },
+            "fp_pubkey_hex": {
+              "type": "string"
+            },
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "proof": {
+              "$ref": "#/definitions/TendermintProof"
+            },
+            "pub_rand": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
+            },
+            "signature": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
             }
           },
           "additionalProperties": false
@@ -490,6 +549,46 @@
         "staking_tx_hash": {
           "description": "staking tx hash of the BTC delegation. It uniquely identifies a BTC delegation",
           "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TendermintProof": {
+      "description": "A `TendermintProof` is a proof of a leaf's existence in a Merkle tree.\n\nEquivalent to tendermint_protos::crypto::Proof, but with `JsonSchema` support.",
+      "type": "object",
+      "required": [
+        "aunts",
+        "index",
+        "leaf_hash",
+        "total"
+      ],
+      "properties": {
+        "aunts": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          }
+        },
+        "index": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "leaf_hash": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64"
         }
       },
       "additionalProperties": false

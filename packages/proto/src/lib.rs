@@ -1,4 +1,3 @@
-// @generated
 pub mod babylon {
     pub mod btccheckpoint {
         // @@protoc_insertion_point(attribute:babylon.btccheckpoint.v1)
@@ -41,6 +40,13 @@ pub mod babylon {
         pub mod v1 {
             include!("gen/babylon.btcstaking.v1.rs");
             // @@protoc_insertion_point(babylon.btcstaking.v1)
+        }
+    }
+    pub mod finality {
+        // @@protoc_insertion_point(attribute:babylon.finality.v1)
+        pub mod v1 {
+            include!("gen/babylon.finality.v1.rs");
+            // @@protoc_insertion_point(babylon.finality.v1)
         }
     }
 }

@@ -24,8 +24,6 @@ pub(crate) const DELEGATIONS: Map<&[u8; HASH_SIZE], ActiveBtcDelegation> = Map::
 pub(crate) const FP_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("fp_delegations");
 /// Reverse map of finality providers by staking hash
 pub(crate) const DELEGATION_FPS: Map<&[u8; HASH_SIZE], Vec<String>> = Map::new("delegation_fps");
-// TODO: Map of staking hashes by delegator
-// pub(crate) const STAKER_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("staker_delegations");
 
 pub const FP_STATE_KEY: &str = "fp_state";
 const FP_STATE_CHECKPOINTS: &str = "fp_state__checkpoints";
@@ -54,6 +52,12 @@ pub fn fps<'a>(
 
 /// Map of BTC height by block height
 pub(crate) const BTC_HEIGHT: Map<u64, u64> = Map::new("btc_height");
+
+/// Map of signatures by block height and fp
+pub(crate) const SIGNATURES: Map<(u64, &str), Vec<u8>> = Map::new("fp_sigs");
+
+/// Map of public randomness by fp and block height
+pub(crate) const PUBLIC_RANDOMNESS: Map<(&str, u64), Vec<u8>> = Map::new("fp_pub_rand");
 
 /// Config are Babylon-selectable BTC staking configuration
 // TODO: Add / enable config entries as needed

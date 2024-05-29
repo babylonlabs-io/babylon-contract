@@ -49,4 +49,10 @@ pub enum ContractError {
     ErrInvalidLockTime(u32, u32),
     #[error("Empty signature from the delegator")]
     EmptySignature,
+    #[error("The finality provider {0} does not have voting power at height {1}")]
+    NoVotingPower(String, u64),
+    #[error("The chain has not reached the given height yet")]
+    HeightTooHigh,
+    #[error("The finality provider {0} signed two different blocks at height {1}")]
+    DuplicateFinalityVote(String, u64),
 }

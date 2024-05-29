@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SudoMsg, UnbondedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SudoMsg, TendermintProof,
+    UnbondedBtcDelegation,
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
@@ -27,7 +28,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::{
     fps, Config, ADMIN, BTC_HEIGHT, CONFIG, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
-    PARAMS,
+    PARAMS, PUBLIC_RANDOMNESS, SIGNATURES,
 };
 use cw_utils::maybe_addr;
 
@@ -103,6 +104,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
             &queries::finality_providers_by_power(deps, start_after, limit)?,
         )?),
+        QueryMsg::FinalitySignature { btc_pk_hex, height } => Ok(to_json_binary(
+            &queries::finality_signature(deps, btc_pk_hex, height)?,
+        )?),
     }
 }
 
@@ -137,6 +141,23 @@ pub fn execute(
             &active_del,
             &slashed_del,
             &unbonded_del,
+        ),
+        ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex,
+            height,
+            pub_rand,
+            proof,
+            block_hash,
+            signature,
+        } => handle_finality_signature(
+            deps,
+            env,
+            &fp_pubkey_hex,
+            height,
+            pub_rand,
+            &proof,
+            &block_hash,
+            signature,
         ),
     }
 }
@@ -437,6 +458,142 @@ fn btc_undelegate(
     // TODO? Record event that the BTC delegation becomes unbonded at this height
 
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn handle_finality_signature(
+    deps: DepsMut,
+    env: Env,
+    fp_btc_pk_hex: &str,
+    height: u64,
+    pub_rand: Vec<u8>,
+    _proof: &TendermintProof,
+    _block_hash: &[u8],
+    signature: Vec<u8>,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // Ensure the finality provider exists
+    FPS.load(deps.storage, fp_btc_pk_hex)?;
+
+    // TODO: Ensure the finality provider is not slashed at this time point
+    // NOTE: It's possible that the finality provider equivocates for height h, and the signature is
+    // processed at height h' > h. In this case:
+    // - We should reject any new signature from this finality provider, since it's known to be adversarial.
+    // - We should set its voting power since height h'+1 to be zero, for to the same reason.
+    // - We should NOT set its voting power between [h, h'] to be zero, since
+    //   - Babylon BTC staking ensures safety upon 2f+1 votes, *even if* f of them are adversarial.
+    //     This is because as long as a block gets 2f+1 votes, any other block with 2f+1 votes has a
+    //     f+1 quorum intersection with this block, contradicting the assumption and leading to
+    //     the safety proof.
+    //     This ensures slashable safety together with EOTS, thus does not undermine Babylon's security guarantee.
+    //   - Due to this reason, when tallying a block, Babylon finalises this block upon 2f+1 votes. If we
+    //     modify voting power table in the history, some finality decisions might be contradicting to the
+    //     signature set and voting power table.
+    //   - To fix the above issue, Babylon has to allow finalised and not-finalised blocks. However,
+    //     this means Babylon will lose safety under an adaptive adversary corrupting even 1
+    //     finality provider. It can simply corrupt a new finality provider and equivocate a
+    //     historical block over and over again, making a previous block not finalisable forever.
+
+    // Ensure the finality provider has voting power at this height
+    fps()
+        .may_load_at_height(deps.storage, fp_btc_pk_hex, height)?
+        .ok_or_else(|| ContractError::NoVotingPower(fp_btc_pk_hex.to_string(), height))?;
+
+    // Ensure the signature is not empty
+    if signature.is_empty() {
+        return Err(ContractError::EmptySignature);
+    }
+    // Ensure the height is proper
+    if env.block.height < height {
+        return Err(ContractError::HeightTooHigh);
+    }
+    // Ensure the finality provider has not cast the same vote yet
+    let existing_sig = SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+    match existing_sig {
+        Some(existing_sig) if existing_sig == signature => {
+            deps.api.debug(&format!("Received duplicated finality vote. Height: {height}, Finality Provider: {fp_btc_pk_hex}"));
+            // Exactly the same vote already exists, return success to the provider
+            return Ok(Response::new());
+        }
+        _ => {}
+    }
+
+    // TODO: Find the public randomness commitment for this height from this finality provider
+    // let pr_commit = get_pub_rand_commit_for_height(fp_btc_pk_hex, height)?;
+
+    // TODO: Verify the finality signature message w.r.t. the public randomness commitment
+    // including the public randomness inclusion proof and the finality signature
+    // verify_finality_signature(signature, pr_commit)?;
+
+    // The public randomness is good, set the public randomness
+    PUBLIC_RANDOMNESS.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand)?;
+
+    // TODO: Verify whether the voted block is a fork or not
+    /*
+    indexedBlock, err := ms.GetBlock(ctx, req.BlockHeight)
+    if err != nil {
+        return nil, err
+    }
+    if !bytes.Equal(indexedBlock.AppHash, req.BlockAppHash) {
+        // the finality provider votes for a fork!
+
+        // construct evidence
+        evidence := &types.Evidence{
+            FpBtcPk:              req.FpBtcPk,
+            BlockHeight:          req.BlockHeight,
+            PubRand:              req.PubRand,
+            CanonicalAppHash:     indexedBlock.AppHash,
+            CanonicalFinalitySig: nil,
+            ForkAppHash:          req.BlockAppHash,
+            ForkFinalitySig:      signature,
+        }
+
+        // if this finality provider has also signed canonical block, slash it
+        canonicalSig, err := ms.GetSig(ctx, req.BlockHeight, fpPK)
+        if err == nil {
+            //set canonical sig
+            evidence.CanonicalFinalitySig = canonicalSig
+            // slash this finality provider, including setting its voting power to
+            // zero, extracting its BTC SK, and emit an event
+            ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
+        }
+
+        // save evidence
+        ms.SetEvidence(ctx, evidence)
+
+        // NOTE: we should NOT return error here, otherwise the state change triggered in this tx
+        // (including the evidence) will be rolled back
+        return &types.MsgAddFinalitySigResponse{}, nil
+    }
+    */
+
+    // This signature is good, save the vote to the store
+    SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature)?;
+
+    // TODO: If this finality provider has signed the canonical block before, slash it via
+    // extracting its secret key, and emit an event
+    /*
+    if ms.HasEvidence(ctx, req.FpBtcPk, req.BlockHeight) {
+        // the finality provider has voted for a fork before!
+        // If this evidence is at the same height as this signature, slash this finality provider
+
+        // get evidence
+        evidence, err := ms.GetEvidence(ctx, req.FpBtcPk, req.BlockHeight)
+        if err != nil {
+            panic(fmt.Errorf("failed to get evidence despite HasEvidence returns true"))
+        }
+
+        // set canonical sig to this evidence
+        evidence.CanonicalFinalitySig = signature
+        ms.SetEvidence(ctx, evidence)
+
+        // slash this finality provider, including setting its voting power to
+        // zero, extracting its BTC SK, and emit an event
+        ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
+    }
+    */
+
+    // TODO: Add events
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

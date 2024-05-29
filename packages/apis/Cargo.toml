@@ -4,8 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-babylon-bitcoin = { path = "../bitcoin" }
-cosmwasm-std    = { workspace = true }
-cosmwasm-schema = { workspace = true }
-hex             = { workspace = true }
-thiserror       = { workspace = true }
+babylon-bitcoin  = { path = "../bitcoin" }
+cosmwasm-std     = { workspace = true }
+cosmwasm-schema  = { workspace = true }
+hex              = { workspace = true }
+tendermint-proto = { workspace = true }
+thiserror        = { workspace = true }

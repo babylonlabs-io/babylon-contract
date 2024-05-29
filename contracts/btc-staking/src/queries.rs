@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
     BtcDelegationsResponse, DelegationsByFPResponse, FinalityProviderInfo,
-    FinalityProvidersByPowerResponse, FinalityProvidersResponse,
+    FinalityProvidersByPowerResponse, FinalityProvidersResponse, FinalitySignatureResponse,
 };
 use crate::state::{
     fps, Config, FinalityProviderState, Params, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, PARAMS,
@@ -166,6 +166,15 @@ pub fn finality_providers_by_power(
     Ok(FinalityProvidersByPowerResponse { fps })
 }
 
+pub fn finality_signature(
+    deps: Deps,
+    btc_pk_hex: String,
+    height: u64,
+) -> Result<FinalitySignatureResponse, ContractError> {
+    let sig = crate::state::SIGNATURES.load(deps.storage, (height, &btc_pk_hex))?;
+    Ok(FinalitySignatureResponse { signature: sig })
+}
+
 #[cfg(test)]
 mod tests {
     use bitcoin::Transaction;
@@ -178,12 +187,12 @@ mod tests {
 
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
-        UnbondedBtcDelegation,
+        TendermintProof, UnbondedBtcDelegation,
     };
 
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
-    use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
+    use crate::msg::{ExecuteMsg, FinalityProviderInfo, FinalitySignatureResponse, InstantiateMsg};
     use crate::state::{FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
@@ -1279,5 +1288,122 @@ mod tests {
                 power: 100,
             }
         });
+    }
+
+    #[test]
+    fn test_finality_signature() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        let initial_height = 100;
+
+        let initial_env = mock_env_height(initial_height);
+
+        instantiate(
+            deps.as_mut(),
+            initial_env.clone(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
+        )
+        .unwrap();
+
+        // Add a finality provider
+        let fp1 = FinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: "fp1".to_string(),
+                identity: "Finality Provider 1".to_string(),
+                website: "https:://fp1.com".to_string(),
+                security_contact: "security_contact".to_string(),
+                details: "details fp1".to_string(),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: "f1".to_string(),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: vec![],
+                btc_sig: vec![],
+            }),
+            slashed_babylon_height: 0,
+            slashed_btc_height: 0,
+            chain_id: "osmosis-1".to_string(),
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![fp1.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+
+        // Add a delegation, so that the finality provider has some power
+        let base_del = crate::contract::tests::get_active_btc_delegation();
+
+        let del1 = ActiveBtcDelegation {
+            btc_pk_hex: "d1".to_string(),
+            fp_btc_pk_list: vec!["f1".to_string()],
+            start_height: 1,
+            end_height: 2,
+            total_sat: 100,
+            staking_tx: base_del.staking_tx.clone(),
+            slashing_tx: base_del.slashing_tx.clone(),
+            delegator_slashing_sig: vec![0x01, 0x02, 0x03],
+            covenant_sigs: vec![],
+            staking_output_idx: 0,
+            unbonding_time: 1234,
+            undelegation_info: base_del.undelegation_info.clone(),
+            params_version: 1,
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
+
+        // Submit a finality signature from that finality provider at height initial_height + 1
+        let msg = ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex: "f1".to_string(),
+            height: initial_height + 1,
+            pub_rand: vec![],
+            proof: TendermintProof {
+                total: 2,
+                index: 3,
+                leaf_hash: vec![],
+                aunts: vec![],
+            },
+            block_hash: vec![0x01, 0x02, 0x03],
+            signature: vec![0x04, 0x05, 0x06],
+        };
+
+        // Execute the message at a the same height, so that:
+        // 1. It's not rejected because of height being too high.
+        // 2. The FP has consolidated power at such height
+        let _res = execute(
+            deps.as_mut(),
+            mock_env_height(initial_height + 1),
+            info.clone(),
+            msg,
+        )
+        .unwrap();
+
+        // Query finality signature for that exact height
+        let sig =
+            crate::queries::finality_signature(deps.as_ref(), "f1".to_string(), initial_height + 1)
+                .unwrap();
+        assert_eq!(
+            sig,
+            FinalitySignatureResponse {
+                signature: vec![0x04, 0x05, 0x06],
+            }
+        );
     }
 }

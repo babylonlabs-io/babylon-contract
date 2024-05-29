@@ -12,15 +12,32 @@ pub const HASH_SIZE: usize = 32;
 #[cw_serde]
 /// btc_staking execution handlers
 pub enum ExecuteMsg {
-    /// BTC Staking operations.
+    /// Change the admin
+    UpdateAdmin { admin: Option<String> },
+    /// BTC Staking operations
     BtcStaking {
         new_fp: Vec<FinalityProvider>,
         active_del: Vec<ActiveBtcDelegation>,
         slashed_del: Vec<SlashedBtcDelegation>,
         unbonded_del: Vec<UnbondedBtcDelegation>,
     },
-    /// Change the admin
-    UpdateAdmin { admin: Option<String> },
+    /// Submit Finality Signature.
+    ///
+    /// This is a message that can be called by a finality provider to submit their finality
+    /// signature to the Consumer chain.
+    /// The signature is verified by the Consumer chain using the finality provider's public key
+    ///
+    /// This message is equivalent to the `MsgAddFinalitySig` message in the Babylon finality protobuf
+    /// defs.
+    // TODO: Move to its own module / contract
+    SubmitFinalitySignature {
+        fp_pubkey_hex: String,
+        height: u64,
+        pub_rand: Bytes,
+        proof: TendermintProof,
+        block_hash: Bytes,
+        signature: Bytes,
+    },
 }
 
 #[cw_serde]
@@ -261,4 +278,15 @@ pub struct UnbondedBtcDelegation {
     /// unbonding_tx_sig is the signature on the unbonding tx signed by the BTC delegator
     /// It proves that the BTC delegator wants to unbond
     pub unbonding_tx_sig: Bytes,
+}
+
+/// A `TendermintProof` is a proof of a leaf's existence in a Merkle tree.
+///
+/// Equivalent to tendermint_protos::crypto::Proof, but with `JsonSchema` support.
+#[cw_serde]
+pub struct TendermintProof {
+    pub total: i64,
+    pub index: i64,
+    pub leaf_hash: Bytes,
+    pub aunts: Vec<Bytes>,
 }

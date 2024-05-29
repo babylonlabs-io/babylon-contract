@@ -81,6 +81,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "hex",
+ "tendermint-proto",
  "thiserror",
 ]
 

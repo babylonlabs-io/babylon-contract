@@ -239,6 +239,34 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "`FinalitySignature` returns the signature of the finality provider for a given block height",
+      "type": "object",
+      "required": [
+        "finality_signature"
+      ],
+      "properties": {
+        "finality_signature": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex",
+            "height"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "type": "string"
+            },
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

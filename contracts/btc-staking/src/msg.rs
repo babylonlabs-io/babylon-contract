@@ -80,6 +80,10 @@ pub enum QueryMsg {
         start_after: Option<FinalityProviderInfo>,
         limit: Option<u32>,
     },
+    /// `FinalitySignature` returns the signature of the finality provider for a given block height
+    ///
+    #[returns(FinalitySignatureResponse)]
+    FinalitySignature { btc_pk_hex: String, height: u64 },
 }
 
 #[cw_serde]
@@ -110,4 +114,9 @@ pub struct FinalityProviderInfo {
     /// `power` is the aggregated power of this finality provider.
     /// The power is calculated based on the amount of BTC delegated to this finality provider
     pub power: u64,
+}
+
+#[cw_serde]
+pub struct FinalitySignatureResponse {
+    pub signature: Vec<u8>,
 }
