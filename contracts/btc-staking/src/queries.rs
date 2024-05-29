@@ -168,23 +168,32 @@ pub fn finality_providers_by_power(
 
 #[cfg(test)]
 mod tests {
-    use crate::contract::{execute, instantiate};
-    use crate::error::ContractError;
-    use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
-        UnbondedBtcDelegation,
-    };
     use bitcoin::Transaction;
+
     use cosmwasm_std::storage_keys::namespace_with_key;
     use cosmwasm_std::testing::mock_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
-    use cosmwasm_std::{from_json, Decimal, Storage};
+    use cosmwasm_std::{from_json, Decimal, Env, Storage};
 
+    use babylon_apis::btc_staking_api::{
+        ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
+        UnbondedBtcDelegation,
+    };
+
+    use crate::contract::{execute, instantiate};
+    use crate::error::ContractError;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
     use crate::state::{FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
+
+    fn mock_env_height(height: u64) -> Env {
+        let mut env = mock_env();
+        env.block.height = height;
+
+        env
+    }
 
     #[test]
     fn test_finality_providers() {
@@ -836,9 +845,11 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
+        let initial_env = mock_env_height(10);
+
         instantiate(
             deps.as_mut(),
-            mock_env(),
+            initial_env.clone(),
             info.clone(),
             InstantiateMsg {
                 params: None,
@@ -876,7 +887,7 @@ mod tests {
             unbonded_del: vec![],
         };
 
-        let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Add a couple delegations
         let base_del = crate::contract::tests::get_active_btc_delegation();
@@ -924,11 +935,45 @@ mod tests {
             unbonded_del: vec![],
         };
 
-        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        execute(deps.as_mut(), mock_env_height(11), info.clone(), msg).unwrap();
 
         // Query finality provider info
         let fp =
             crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), None).unwrap();
+        assert_eq!(
+            fp,
+            FinalityProviderInfo {
+                btc_pk_hex: "f1".to_string(),
+                power: 250,
+            }
+        );
+
+        // Query finality provider info with same height as execute call
+        let fp = crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), Some(11))
+            .unwrap();
+        assert_eq!(
+            fp,
+            FinalityProviderInfo {
+                btc_pk_hex: "f1".to_string(),
+                power: 0, // Historical data is not checkpoint yet
+            }
+        );
+
+        // Query finality provider info with past height as execute call
+        let fp = crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), Some(12))
+            .unwrap();
+        assert_eq!(
+            fp,
+            FinalityProviderInfo {
+                btc_pk_hex: "f1".to_string(),
+                power: 250,
+            }
+        );
+
+        // Query finality provider info with some larger height
+        let fp =
+            crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), Some(1000))
+                .unwrap();
         assert_eq!(
             fp,
             FinalityProviderInfo {

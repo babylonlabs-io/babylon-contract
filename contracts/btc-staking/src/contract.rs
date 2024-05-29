@@ -348,10 +348,10 @@ pub fn handle_active_delegation(
         DELEGATION_FPS.save(storage, staking_tx_hash.as_ref(), &delegation_fps)?;
 
         // Update aggregated voting power by FP
-        fps.update(storage, fp_btc_pk, height, |fpi| {
-            let mut fpi = fpi.unwrap_or_default();
-            fpi.power += delegation.total_sat;
-            Ok::<_, ContractError>(fpi)
+        fps.update(storage, fp_btc_pk, height, |fp_state| {
+            let mut fp_state = fp_state.unwrap_or_default();
+            fp_state.power = fp_state.power.saturating_add(delegation.total_sat);
+            Ok::<_, ContractError>(fp_state)
         })?;
 
         registered_fp = true;
@@ -399,10 +399,11 @@ fn handle_undelegation(
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
     for fp in affected_fps {
-        fps.update(storage, &fp, height, |fpi| {
-            let mut fpi = fpi.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
-            fpi.power -= btc_del.total_sat;
-            Ok::<_, ContractError>(fpi)
+        fps.update(storage, &fp, height, |fp_state| {
+            let mut fp_state =
+                fp_state.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
+            fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+            Ok::<_, ContractError>(fp_state)
         })?;
     }
 

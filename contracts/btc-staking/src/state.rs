@@ -13,6 +13,8 @@ use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 pub(crate) const CONFIG: Item<Config> = Item::new("config");
 pub(crate) const PARAMS: Item<Params> = Item::new("params");
 
+pub const ADMIN: Admin = Admin::new("admin");
+
 /// Finality providers by their BTC public key
 pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 
@@ -29,7 +31,6 @@ pub const FP_STATE_KEY: &str = "fp_state";
 const FP_STATE_CHECKPOINTS: &str = "fp_state__checkpoints";
 const FP_STATE_CHANGELOG: &str = "fp_state__changelog";
 pub const FP_POWER_KEY: &str = "fp_state__power";
-pub const ADMIN: Admin = Admin::new("admin");
 
 /// Indexed snapshot map for finality providers.
 ///
@@ -40,7 +41,7 @@ pub const ADMIN: Admin = Admin::new("admin");
 pub fn fps<'a>(
 ) -> IndexedSnapshotMap<'a, &'a str, FinalityProviderState, FinalityProviderIndexes<'a>> {
     let indexes = FinalityProviderIndexes {
-        power: MultiIndex::new(|_, fpi| fpi.power, FP_STATE_KEY, FP_POWER_KEY),
+        power: MultiIndex::new(|_, fp_state| fp_state.power, FP_STATE_KEY, FP_POWER_KEY),
     };
     IndexedSnapshotMap::new(
         FP_STATE_KEY,
