@@ -1,14 +1,16 @@
 use crate::error::ContractError;
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SudoMsg, TendermintProof,
-    UnbondedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SudoMsg, UnbondedBtcDelegation,
+    HASH_SIZE,
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use bitcoin::absolute::LockTime;
 use bitcoin::hashes::Hash;
-use bitcoin::{consensus::deserialize, Transaction, Txid};
+use bitcoin::key::Secp256k1;
+use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::{consensus::deserialize, Transaction, Txid, XOnlyPublicKey};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -26,11 +28,14 @@ use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
+use crate::state::public_randomness::{PUB_RAND_COMMITS, PUB_RAND_VALUES};
 use crate::state::{
-    fps, Config, ADMIN, BTC_HEIGHT, CONFIG, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
-    PARAMS, PUBLIC_RANDOMNESS, SIGNATURES,
+    fps, public_randomness, Config, ADMIN, BTC_HEIGHT, CONFIG, DELEGATIONS, DELEGATION_FPS, FPS,
+    FP_DELEGATIONS, PARAMS, SIGNATURES,
 };
+use babylon_apis::finality_api::{PubRandCommit, TendermintProof};
 use cw_utils::maybe_addr;
+use sha2::{Digest, Sha256};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -158,6 +163,20 @@ pub fn execute(
             &proof,
             &block_hash,
             signature,
+        ),
+        ExecuteMsg::CommitPublicRandomness {
+            fp_pubkey_hex,
+            start_height,
+            num_pub_rand,
+            commitment,
+            signature,
+        } => handle_public_randomness_commit(
+            deps,
+            &fp_pubkey_hex,
+            start_height,
+            num_pub_rand,
+            &commitment,
+            &signature,
         ),
     }
 }
@@ -460,6 +479,109 @@ fn btc_undelegate(
     Ok(())
 }
 
+pub fn handle_public_randomness_commit(
+    deps: DepsMut,
+    fp_pubkey_hex: &str,
+    start_height: u64,
+    num_pub_rand: u64,
+    commitment: &[u8],
+    signature: &[u8],
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // Ensure the request contains enough amounts of public randomness
+    let min_pub_rand = PARAMS.load(deps.storage)?.min_pub_rand;
+    if num_pub_rand < min_pub_rand {
+        return Err(ContractError::TooFewPubRand(min_pub_rand, num_pub_rand));
+    }
+    // TODO: ensure log_2(num_pub_rand) is an integer?
+
+    // Ensure the finality provider is registered
+    if !FPS.has(deps.storage, fp_pubkey_hex) {
+        return Err(ContractError::FinalityProviderNotFound(
+            fp_pubkey_hex.to_string(),
+        ));
+    }
+
+    let pr_commit = PubRandCommit {
+        start_height,
+        num_pub_rand,
+        commitment: commitment.to_vec(),
+    };
+
+    // Verify signature over the list
+    verify_commitment_signature(
+        fp_pubkey_hex,
+        start_height,
+        num_pub_rand,
+        commitment,
+        signature,
+    )?;
+
+    // Get last public randomness commitment
+    // TODO: allow committing public randomness earlier than existing ones?
+    let last_pr_commit =
+        public_randomness::get_last_pub_rand_commit(deps.storage, fp_pubkey_hex).ok();
+
+    if let Some(last_pr_commit) = last_pr_commit {
+        // Ensure height and start_height do not overlap, i.e., height < start_height
+        let last_pr_end_height = last_pr_commit.end_height();
+        if start_height <= last_pr_end_height {
+            return Err(ContractError::InvalidPubRandHeight(
+                start_height,
+                last_pr_end_height,
+            ));
+        }
+    }
+
+    // All good, store the given public randomness commitment
+    PUB_RAND_COMMITS.save(
+        deps.storage,
+        (fp_pubkey_hex, pr_commit.start_height),
+        &pr_commit,
+    )?;
+
+    // TODO: Add events
+    Ok(Response::new())
+}
+
+fn verify_commitment_signature(
+    fp_btc_pk_hex: &str,
+    start_height: u64,
+    num_pub_rand: u64,
+    commitment: &[u8],
+    signature: &[u8],
+) -> Result<(), ContractError> {
+    let btc_pk_raw = hex::decode(fp_btc_pk_hex)?;
+    let btc_pk = XOnlyPublicKey::from_slice(&btc_pk_raw)?;
+
+    if signature.is_empty() {
+        return Err(ContractError::EmptySignature);
+    }
+    let schnorr_sig = Signature::from_slice(signature)?;
+
+    let hash = commitment_hash(start_height, num_pub_rand, commitment)?;
+    let hash_msg = bitcoin::secp256k1::Message::from_digest(hash);
+
+    let secp = Secp256k1::verification_only();
+    secp.verify_schnorr(&schnorr_sig, &hash_msg, &btc_pk)
+        .map_err(|e| ContractError::FailedSignatureVerification(e.to_string()))
+}
+
+/// `commitment_hash` returns a 32-byte hash of (start_height || num_pub_rand || commitment).
+/// The signature in `CommitPubRandList` will be on this hash
+fn commitment_hash(
+    start_height: u64,
+    num_pub_rand: u64,
+    commitment: &[u8],
+) -> Result<[u8; HASH_SIZE], ContractError> {
+    let mut hasher = Sha256::new();
+
+    hasher.update(start_height.to_be_bytes());
+    hasher.update(num_pub_rand.to_be_bytes());
+    hasher.update(commitment);
+
+    Ok(hasher.finalize().into())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn handle_finality_signature(
     deps: DepsMut,
@@ -518,14 +640,15 @@ fn handle_finality_signature(
     }
 
     // TODO: Find the public randomness commitment for this height from this finality provider
-    // let pr_commit = get_pub_rand_commit_for_height(fp_btc_pk_hex, height)?;
+    // let _pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
 
     // TODO: Verify the finality signature message w.r.t. the public randomness commitment
     // including the public randomness inclusion proof and the finality signature
     // verify_finality_signature(signature, pr_commit)?;
 
-    // The public randomness is good, set the public randomness
-    PUBLIC_RANDOMNESS.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand)?;
+    // The public randomness value is good, save it.
+    // TODO?: Don't save public randomness values, to save storage space
+    PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand)?;
 
     // TODO: Verify whether the voted block is a fork or not
     /*
@@ -656,7 +779,7 @@ pub(crate) mod tests {
         Decimal,
     };
     use hex::ToHex;
-    use test_utils::get_btc_delegation_and_params;
+    use test_utils::{get_btc_delegation_and_params, get_pub_rand_commit};
 
     const CREATOR: &str = "creator";
     const INIT_ADMIN: &str = "initial_admin";
@@ -704,6 +827,21 @@ pub(crate) mod tests {
             }),
             params_version: del.params_version,
         }
+    }
+
+    /// Build a public randomness commit message
+    pub(crate) fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
+        let pub_rand_commitment_msg = get_pub_rand_commit();
+
+        (
+            pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
+            PubRandCommit {
+                start_height: pub_rand_commitment_msg.start_height,
+                num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
+                commitment: pub_rand_commitment_msg.commitment.to_vec(),
+            },
+            pub_rand_commitment_msg.sig.to_vec(),
+        )
     }
 
     pub(crate) fn create_finality_provider() -> FinalityProvider {
@@ -1059,5 +1197,51 @@ pub(crate) mod tests {
         let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
             .unwrap();
         assert_eq!(fp.power, 0);
+    }
+
+    #[test]
+    fn commit_public_randomness_works() {
+        let mut deps = mock_dependencies();
+        let info = mock_info(CREATOR, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
+        )
+        .unwrap();
+
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, signature) = get_public_randomness_commitment();
+
+        // Register one FP with a valid pubkey first
+        let mut new_fp = create_finality_provider();
+        new_fp.btc_pk_hex.clone_from(&pk_hex);
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![new_fp.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // Now commit the public randomness for it
+        let msg = ExecuteMsg::CommitPublicRandomness {
+            fp_pubkey_hex: pk_hex,
+            start_height: pub_rand.start_height,
+            num_pub_rand: pub_rand.num_pub_rand,
+            commitment: pub_rand.commitment,
+            signature,
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
     }
 }

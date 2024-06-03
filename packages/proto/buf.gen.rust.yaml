@@ -19,7 +19,9 @@ types:
     - babylon.zoneconcierge.v1.BTCTimestamp
     - babylon.btcstaking.v1.BTCDelegation
     - babylon.btcstaking.v1.Params
+    - babylon.finality.v1.PubRandCommit
     - babylon.finality.v1.MsgAddFinalitySig
+    - babylon.finality.v1.MsgCommitPubRandList
 plugins:
   - plugin: buf.build/community/neoeinstein-prost:v0.2.3
     out: src/gen

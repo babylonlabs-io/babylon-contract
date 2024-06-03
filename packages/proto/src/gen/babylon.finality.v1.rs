@@ -1,4 +1,48 @@
 // @generated
+/// PubRandCommit is a commitment to a series of public randomness
+/// currently, the commitment is a root of a Merkle tree that includes
+/// a series of public randomness
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PubRandCommit {
+    /// start_height is the height of the first commitment
+    #[prost(uint64, tag="1")]
+    pub start_height: u64,
+    /// num_pub_rand is the number of committed public randomness
+    #[prost(uint64, tag="2")]
+    pub num_pub_rand: u64,
+    /// commitment is the value of the commitment
+    /// currently, it is the root of the merkle tree constructed by the public randomness
+    #[prost(bytes="bytes", tag="3")]
+    pub commitment: ::prost::bytes::Bytes,
+}
+/// MsgCommitPubRandList defines a message for committing a list of public randomness for EOTS
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MsgCommitPubRandList {
+    #[prost(string, tag="1")]
+    pub signer: ::prost::alloc::string::String,
+    /// fp_btc_pk is the BTC PK of the finality provider that commits the public randomness
+    #[prost(bytes="bytes", tag="2")]
+    pub fp_btc_pk: ::prost::bytes::Bytes,
+    /// start_height is the start block height of the list of public randomness
+    #[prost(uint64, tag="3")]
+    pub start_height: u64,
+    /// num_pub_rand is the number of public randomness committed
+    #[prost(uint64, tag="4")]
+    pub num_pub_rand: u64,
+    /// commitment is the commitment of these public randomness
+    /// currently it's the root of the Merkle tree that includes these public randomness
+    #[prost(bytes="bytes", tag="5")]
+    pub commitment: ::prost::bytes::Bytes,
+    /// sig is the signature on (start_height || num_pub_rand || commitment) signed by 
+    /// SK corresponding to fp_btc_pk. This prevents others to commit public
+    /// randomness on behalf of fp_btc_pk
+    /// TODO: another option is to restrict signer to correspond to fp_btc_pk. This restricts
+    /// the tx submitter to be the holder of fp_btc_pk. Decide this later
+    #[prost(bytes="bytes", tag="6")]
+    pub sig: ::prost::bytes::Bytes,
+}
 /// MsgAddFinalitySig defines a message for adding a finality vote
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

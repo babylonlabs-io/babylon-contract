@@ -187,8 +187,9 @@ mod tests {
 
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
-        TendermintProof, UnbondedBtcDelegation,
+        UnbondedBtcDelegation,
     };
+    use babylon_apis::finality_api::TendermintProof;
 
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
@@ -1384,7 +1385,7 @@ mod tests {
             signature: vec![0x04, 0x05, 0x06],
         };
 
-        // Execute the message at a the same height, so that:
+        // Execute the message at the same height, so that:
         // 1. It's not rejected because of height being too high.
         // 2. The FP has consolidated power at such height
         let _res = execute(

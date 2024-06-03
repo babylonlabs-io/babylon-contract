@@ -8,6 +8,8 @@ const (
 	mainHeadersLength   = 100
 	initialHeaderHeight = 1
 	forkHeaderHeight    = 90
+	commitPubRandHeight = 100
+	commitPubRandAmount = 10
 	testDataPath        = "./packages/test-utils/testdata/"
 )
 
@@ -20,4 +22,5 @@ func main() {
 	utils.GenBTCTimestamp(testDataPath)
 	utils.GenBTCDelegation(testDataPath)
 	utils.GenEOTSTestData(testDataPath)
+	utils.GenCommitPubRandListMsg(commitPubRandHeight, commitPubRandAmount, testDataPath)
 }

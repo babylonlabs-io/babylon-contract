@@ -5,6 +5,7 @@ use thiserror::Error;
 use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
+use hex::FromHexError;
 use prost::DecodeError;
 
 use babylon_apis::error::StakingApiError;
@@ -25,6 +26,10 @@ pub enum ContractError {
     StakingError(#[from] StakingApiError),
     #[error("{0}")]
     ProtoError(#[from] DecodeError),
+    #[error("{0}")]
+    HexError(#[from] FromHexError),
+    #[error("{0}")]
+    SecP256K1Error(#[from] bitcoin::secp256k1::Error),
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Finality provider already exists: {0}")]
@@ -55,4 +60,14 @@ pub enum ContractError {
     HeightTooHigh,
     #[error("The finality provider {0} signed two different blocks at height {1}")]
     DuplicateFinalityVote(String, u64),
+    #[error("The request contains too few public randomness. Required minimum: {0}, actual: {1}")]
+    TooFewPubRand(u64, u64),
+    #[error("The start height ({0}) has overlap with the height of the highest public randomness committed ({1})")]
+    InvalidPubRandHeight(u64, u64),
+    #[error("Invalid signature over the public randomness list")]
+    InvalidPubRandSignature,
+    #[error("Public randomness not found for finality provider {0} at height {1}")]
+    MissingPubRandCommit(String, u64),
+    #[error("Failed to verify signature: {0}")]
+    FailedSignatureVerification(String),
 }

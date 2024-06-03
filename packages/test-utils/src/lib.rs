@@ -7,6 +7,7 @@ use prost::bytes::Bytes;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
+use babylon_proto::babylon::finality::v1::MsgCommitPubRandList;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
@@ -21,6 +22,7 @@ const BTC_TIMESTAMP_HEADER1: &str = "btc_timestamp_header1.dat";
 
 const PARAMS_DATA: &str = "btcstaking_params.dat";
 const BTC_DELEGATION_DATA: &str = "btc_delegation.dat";
+const COMMIT_PUB_RAND_DATA: &str = "commit_pub_rand_msg.dat";
 
 const EOTS_DATA: &str = "eots_testdata.json";
 
@@ -146,4 +148,11 @@ pub fn get_btc_delegation_and_params() -> (BtcDelegation, BtcStakingParams) {
     let params = BtcStakingParams::decode(params_data).unwrap();
 
     (btc_del, params)
+}
+
+pub fn get_pub_rand_commit() -> MsgCommitPubRandList {
+    let pub_rand_commit_path = find_testdata_path().join(COMMIT_PUB_RAND_DATA);
+    let pub_rand_commit_data: &[u8] = &fs::read(pub_rand_commit_path).unwrap();
+
+    MsgCommitPubRandList::decode(pub_rand_commit_data).unwrap()
 }

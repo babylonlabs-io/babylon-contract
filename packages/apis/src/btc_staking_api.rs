@@ -4,7 +4,8 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Decimal;
 
-type Bytes = Vec<u8>;
+use crate::finality_api::TendermintProof;
+use crate::Bytes;
 
 /// Hash size in bytes
 pub const HASH_SIZE: usize = 32;
@@ -20,6 +21,23 @@ pub enum ExecuteMsg {
         active_del: Vec<ActiveBtcDelegation>,
         slashed_del: Vec<SlashedBtcDelegation>,
         unbonded_del: Vec<UnbondedBtcDelegation>,
+    },
+    /// Committing a sequence of public randomness for EOTS
+    // TODO: Move to its own module / contract
+    CommitPublicRandomness {
+        /// `fp_pubkey_hex` is the BTC PK of the finality provider that commits the public randomness
+        fp_pubkey_hex: String,
+        /// `start_height` is the start block height of the list of public randomness
+        start_height: u64,
+        /// `num_pub_rand` is the amount of public randomness committed
+        num_pub_rand: u64,
+        /// `commitment` is the commitment of these public randomness values.
+        /// Currently, it's the root of the Merkle tree that includes the public randomness
+        commitment: Bytes,
+        /// `signature` is the signature on (start_height || num_pub_rand || commitment) signed by
+        /// the SK corresponding to `fp_pubkey_hex`.
+        /// This prevents others committing public randomness on behalf of `fp_pubkey_hex`
+        signature: Bytes,
     },
     /// Submit Finality Signature.
     ///
@@ -278,15 +296,4 @@ pub struct UnbondedBtcDelegation {
     /// unbonding_tx_sig is the signature on the unbonding tx signed by the BTC delegator
     /// It proves that the BTC delegator wants to unbond
     pub unbonding_tx_sig: Bytes,
-}
-
-/// A `TendermintProof` is a proof of a leaf's existence in a Merkle tree.
-///
-/// Equivalent to tendermint_protos::crypto::Proof, but with `JsonSchema` support.
-#[cw_serde]
-pub struct TendermintProof {
-    pub total: i64,
-    pub index: i64,
-    pub leaf_hash: Bytes,
-    pub aunts: Vec<Bytes>,
 }

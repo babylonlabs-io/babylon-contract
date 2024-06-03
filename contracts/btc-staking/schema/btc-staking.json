@@ -30,13 +30,20 @@
         "description": "Params define Consumer-selectable BTC staking parameters",
         "type": "object",
         "required": [
-          "max_active_finality_providers"
+          "max_active_finality_providers",
+          "min_pub_rand"
         ],
         "properties": {
           "max_active_finality_providers": {
-            "description": "max_active_finality_providers is the maximum number of active finality providers in the BTC staking protocol",
+            "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
             "type": "integer",
             "format": "uint32",
+            "minimum": 0.0
+          },
+          "min_pub_rand": {
+            "description": "`min_pub_rand` is the minimum amount of public randomness each public randomness commitment should commit",
+            "type": "integer",
+            "format": "uint64",
             "minimum": 0.0
           }
         },
@@ -110,6 +117,63 @@
                 "items": {
                   "$ref": "#/definitions/UnbondedBtcDelegation"
                 }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Committing a sequence of public randomness for EOTS",
+        "type": "object",
+        "required": [
+          "commit_public_randomness"
+        ],
+        "properties": {
+          "commit_public_randomness": {
+            "type": "object",
+            "required": [
+              "commitment",
+              "fp_pubkey_hex",
+              "num_pub_rand",
+              "signature",
+              "start_height"
+            ],
+            "properties": {
+              "commitment": {
+                "description": "`commitment` is the commitment of these public randomness values. Currently, it's the root of the Merkle tree that includes the public randomness",
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "uint8",
+                  "minimum": 0.0
+                }
+              },
+              "fp_pubkey_hex": {
+                "description": "`fp_pubkey_hex` is the BTC PK of the finality provider that commits the public randomness",
+                "type": "string"
+              },
+              "num_pub_rand": {
+                "description": "`num_pub_rand` is the amount of public randomness committed",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "signature": {
+                "description": "`signature` is the signature on (start_height || num_pub_rand || commitment) signed by the SK corresponding to `fp_pubkey_hex`. This prevents others committing public randomness on behalf of `fp_pubkey_hex`",
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "uint8",
+                  "minimum": 0.0
+                }
+              },
+              "start_height": {
+                "description": "`start_height` is the start block height of the list of public randomness",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -1960,13 +2024,20 @@
       "description": "Params define Consumer-selectable BTC staking parameters",
       "type": "object",
       "required": [
-        "max_active_finality_providers"
+        "max_active_finality_providers",
+        "min_pub_rand"
       ],
       "properties": {
         "max_active_finality_providers": {
-          "description": "max_active_finality_providers is the maximum number of active finality providers in the BTC staking protocol",
+          "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
           "type": "integer",
           "format": "uint32",
+          "minimum": 0.0
+        },
+        "min_pub_rand": {
+          "description": "`min_pub_rand` is the minimum amount of public randomness each public randomness commitment should commit",
+          "type": "integer",
+          "format": "uint64",
           "minimum": 0.0
         }
       },

@@ -42,6 +42,7 @@ hex              = { workspace = true }
 prost            = { workspace = true }
 thiserror        = { workspace = true }
 cw-controllers   = { workspace = true }
+sha2             = { workspace = true }
 
 [dev-dependencies]
 test-utils        = { path = "../../packages/test-utils" }

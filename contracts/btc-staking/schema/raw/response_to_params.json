@@ -4,13 +4,20 @@
   "description": "Params define Consumer-selectable BTC staking parameters",
   "type": "object",
   "required": [
-    "max_active_finality_providers"
+    "max_active_finality_providers",
+    "min_pub_rand"
   ],
   "properties": {
     "max_active_finality_providers": {
-      "description": "max_active_finality_providers is the maximum number of active finality providers in the BTC staking protocol",
+      "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
       "type": "integer",
       "format": "uint32",
+      "minimum": 0.0
+    },
+    "min_pub_rand": {
+      "description": "`min_pub_rand` is the minimum amount of public randomness each public randomness commitment should commit",
+      "type": "integer",
+      "format": "uint64",
       "minimum": 0.0
     }
   },
