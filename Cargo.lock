@@ -385,8 +385,8 @@ dependencies = [
  "cw2",
  "derivative",
  "hex",
+ "k256",
  "prost 0.11.9",
- "sha2 0.10.8",
  "test-utils",
  "thiserror",
 ]

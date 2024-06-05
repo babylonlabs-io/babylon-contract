@@ -29,7 +29,7 @@ pub enum ContractError {
     #[error("{0}")]
     HexError(#[from] FromHexError),
     #[error("{0}")]
-    SecP256K1Error(#[from] bitcoin::secp256k1::Error),
+    SecP256K1Error(String), // TODO: inherit errors from k256
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Finality provider already exists: {0}")]

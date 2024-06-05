@@ -51,6 +51,7 @@ thiserror            = "1.0.40"
 rust_decimal         = "1.35"
 schnorr_fun          = "0.10"
 secp256kfun          = { version = "0.10", default-features = false, features = ["libsecp_compat"] }
+k256                 = { version = "0.13.1", default-features = false, features = ["schnorr"]}
 
 # dev deps
 cosmwasm-vm       = { version = "1.5.2", default-features = false, features = ["iterator", "stargate"] }

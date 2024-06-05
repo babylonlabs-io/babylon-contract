@@ -1,16 +1,13 @@
 use crate::error::ContractError;
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SudoMsg, UnbondedBtcDelegation,
-    HASH_SIZE,
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use bitcoin::absolute::LockTime;
 use bitcoin::hashes::Hash;
-use bitcoin::key::Secp256k1;
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::{consensus::deserialize, Transaction, Txid, XOnlyPublicKey};
+use bitcoin::{consensus::deserialize, Transaction, Txid};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -20,6 +17,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::nonpayable;
 use hex::ToHex;
+use k256::schnorr::signature::Verifier;
+use k256::schnorr::{Signature, VerifyingKey};
 use prost::bytes::Bytes;
 use prost::Message;
 use std::str::FromStr;
@@ -35,7 +34,6 @@ use crate::state::{
 };
 use babylon_apis::finality_api::{PubRandCommit, TendermintProof};
 use cw_utils::maybe_addr;
-use sha2::{Digest, Sha256};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -550,36 +548,28 @@ fn verify_commitment_signature(
     commitment: &[u8],
     signature: &[u8],
 ) -> Result<(), ContractError> {
+    // get BTC public key for verification
     let btc_pk_raw = hex::decode(fp_btc_pk_hex)?;
-    let btc_pk = XOnlyPublicKey::from_slice(&btc_pk_raw)?;
+    let btc_pk = VerifyingKey::from_bytes(&btc_pk_raw)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
+    // get signature
     if signature.is_empty() {
         return Err(ContractError::EmptySignature);
     }
-    let schnorr_sig = Signature::from_slice(signature)?;
+    let schnorr_sig =
+        Signature::try_from(signature).map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
-    let hash = commitment_hash(start_height, num_pub_rand, commitment)?;
-    let hash_msg = bitcoin::secp256k1::Message::from_digest(hash);
+    // get signed message
+    let mut msg: Vec<u8> = vec![];
+    msg.extend_from_slice(&start_height.to_be_bytes());
+    msg.extend_from_slice(&num_pub_rand.to_be_bytes());
+    msg.extend_from_slice(commitment);
 
-    let secp = Secp256k1::verification_only();
-    secp.verify_schnorr(&schnorr_sig, &hash_msg, &btc_pk)
-        .map_err(|e| ContractError::FailedSignatureVerification(e.to_string()))
-}
-
-/// `commitment_hash` returns a 32-byte hash of (start_height || num_pub_rand || commitment).
-/// The signature in `CommitPubRandList` will be on this hash
-fn commitment_hash(
-    start_height: u64,
-    num_pub_rand: u64,
-    commitment: &[u8],
-) -> Result<[u8; HASH_SIZE], ContractError> {
-    let mut hasher = Sha256::new();
-
-    hasher.update(start_height.to_be_bytes());
-    hasher.update(num_pub_rand.to_be_bytes());
-    hasher.update(commitment);
-
-    Ok(hasher.finalize().into())
+    // Verify the signature
+    btc_pk
+        .verify(&msg, &schnorr_sig)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
 }
 
 #[allow(clippy::too_many_arguments)]

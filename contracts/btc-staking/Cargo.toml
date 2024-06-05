@@ -39,10 +39,10 @@ cw-storage-plus  = { workspace = true }
 cw-utils         = { workspace = true }
 derivative       = { workspace = true }
 hex              = { workspace = true }
+k256             = { workspace = true } 
 prost            = { workspace = true }
 thiserror        = { workspace = true }
 cw-controllers   = { workspace = true }
-sha2             = { workspace = true }
 
 [dev-dependencies]
 test-utils        = { path = "../../packages/test-utils" }
