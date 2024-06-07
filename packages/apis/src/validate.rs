@@ -3,7 +3,7 @@ use babylon_bitcoin::{deserialize, Transaction};
 use cosmwasm_std::StdError;
 
 use crate::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
+    ActiveBtcDelegation, FinalityProviderDescription, NewFinalityProvider, ProofOfPossession,
     UnbondedBtcDelegation, HASH_SIZE,
 };
 use crate::error::StakingApiError;
@@ -13,7 +13,7 @@ pub trait Validate {
     fn validate(&self) -> Result<(), StakingApiError>;
 }
 
-impl Validate for FinalityProvider {
+impl Validate for NewFinalityProvider {
     fn validate(&self) -> Result<(), StakingApiError> {
         self.description
             .as_ref()
@@ -30,13 +30,14 @@ impl Validate for FinalityProvider {
         // PublicKey::from_slice(&btc_pk)
         //     .map_err(|_| StakingApiError::InvalidBtcPk(self.btc_pk_hex.clone()))?;
 
-        match self.pop {
-            Some(ref pop) => pop.validate()?,
-            None => return Err(StakingApiError::MissingPop),
-        }
+        // TODO: Validate PoP
+        // match self.pop {
+        //     Some(ref pop) => pop.validate()?,
+        //     None => return Err(StakingApiError::MissingPop),
+        // }
 
-        // Validate chain_id
-        if self.chain_id.is_empty() {
+        // Validate consumer_id
+        if self.consumer_id.is_empty() {
             return Err(StakingApiError::EmptyChainId);
         }
 

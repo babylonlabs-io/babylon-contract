@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, SlashedBtcDelegation, SudoMsg, UnbondedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation, SudoMsg,
+    UnbondedBtcDelegation,
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
@@ -38,7 +39,6 @@ use cw_utils::maybe_addr;
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// The caller of the instantiation will be the Babylon contract
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
@@ -157,10 +157,10 @@ pub fn execute(
             env,
             &fp_pubkey_hex,
             height,
-            pub_rand,
+            &pub_rand,
             &proof,
             &block_hash,
-            signature,
+            &signature,
         ),
         ExecuteMsg::CommitPublicRandomness {
             fp_pubkey_hex,
@@ -185,7 +185,7 @@ pub fn handle_btc_staking(
     deps: DepsMut,
     env: Env,
     info: &MessageInfo,
-    new_fps: &[FinalityProvider],
+    new_fps: &[NewFinalityProvider],
     active_delegations: &[ActiveBtcDelegation],
     _slashed_delegations: &[SlashedBtcDelegation],
     unbonded_delegations: &[UnbondedBtcDelegation],
@@ -221,18 +221,20 @@ pub fn handle_btc_staking(
 /// handle_bew_fp handles registering a new finality provider
 pub fn handle_new_fp(
     storage: &mut dyn Storage,
-    fp: &FinalityProvider,
+    new_fp: &NewFinalityProvider,
 ) -> Result<(), ContractError> {
     // Avoid overwriting existing finality providers
-    if FPS.has(storage, &fp.btc_pk_hex) {
+    if FPS.has(storage, &new_fp.btc_pk_hex) {
         return Err(ContractError::FinalityProviderAlreadyExists(
-            fp.btc_pk_hex.clone(),
+            new_fp.btc_pk_hex.clone(),
         ));
     }
     // validate the finality provider data
-    fp.validate()?;
-
-    FPS.save(storage, &fp.btc_pk_hex, fp)?;
+    new_fp.validate()?;
+    // get DB object
+    let fp = FinalityProvider::from(new_fp);
+    // save to DB
+    FPS.save(storage, &fp.btc_pk_hex, &fp)?;
     Ok(())
 }
 
@@ -458,7 +460,7 @@ fn btc_undelegate(
 ) -> Result<(), ContractError> {
     match &mut btc_del.undelegation_info {
         Some(undelegation_info) => {
-            undelegation_info.delegator_unbonding_sig = unbondind_tx_sig.to_vec();
+            undelegation_info.delegator_unbonding_sig = Binary(unbondind_tx_sig.to_vec());
         }
         None => {
             return Err(ContractError::MissingUnbondingInfo);
@@ -578,10 +580,10 @@ fn handle_finality_signature(
     env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
-    pub_rand: Vec<u8>,
+    pub_rand: &[u8],
     _proof: &TendermintProof,
     _block_hash: &[u8],
-    signature: Vec<u8>,
+    signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
     FPS.load(deps.storage, fp_btc_pk_hex)?;
@@ -638,7 +640,7 @@ fn handle_finality_signature(
 
     // The public randomness value is good, save it.
     // TODO?: Don't save public randomness values, to save storage space
-    PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand)?;
+    PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand.to_vec())?;
 
     // TODO: Verify whether the voted block is a fork or not
     /*
@@ -680,7 +682,7 @@ fn handle_finality_signature(
     */
 
     // This signature is good, save the vote to the store
-    SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature)?;
+    SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
 
     // TODO: If this finality provider has signed the canonical block before, slash it via
     // extracting its secret key, and emit an event
@@ -765,9 +767,11 @@ pub(crate) mod tests {
         ProofOfPossession,
     };
     use cosmwasm_std::{
+        from_json,
         testing::{mock_dependencies, mock_env, mock_info},
         Decimal,
     };
+    use cw_controllers::AdminResponse;
     use hex::ToHex;
     use test_utils::{get_btc_delegation_and_params, get_pub_rand_commit};
 
@@ -790,28 +794,28 @@ pub(crate) mod tests {
             start_height: del.start_height,
             end_height: del.end_height,
             total_sat: del.total_sat,
-            staking_tx: del.staking_tx.to_vec(),
-            slashing_tx: del.slashing_tx.to_vec(),
-            delegator_slashing_sig: vec![],
+            staking_tx: Binary(del.staking_tx.to_vec()),
+            slashing_tx: Binary(del.slashing_tx.to_vec()),
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: del
                 .covenant_sigs
                 .iter()
                 .map(|cov_sig| CovenantAdaptorSignatures {
-                    cov_pk: cov_sig.cov_pk.to_vec(),
+                    cov_pk: Binary(cov_sig.cov_pk.to_vec()),
                     adaptor_sigs: cov_sig
                         .adaptor_sigs
                         .iter()
-                        .map(|adaptor_sig| adaptor_sig.to_vec())
+                        .map(|adaptor_sig| Binary(adaptor_sig.to_vec()))
                         .collect(),
                 })
                 .collect(),
             staking_output_idx: del.staking_output_idx,
             unbonding_time: del.unbonding_time,
             undelegation_info: Some(BtcUndelegationInfo {
-                unbonding_tx: btc_undelegation.unbonding_tx.to_vec(),
-                slashing_tx: btc_undelegation.slashing_tx.to_vec(),
-                delegator_unbonding_sig: vec![],
-                delegator_slashing_sig: btc_undelegation.delegator_slashing_sig.to_vec(),
+                unbonding_tx: Binary(btc_undelegation.unbonding_tx.to_vec()),
+                slashing_tx: Binary(btc_undelegation.slashing_tx.to_vec()),
+                delegator_unbonding_sig: Binary(vec![]),
+                delegator_slashing_sig: Binary(btc_undelegation.delegator_slashing_sig.to_vec()),
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
             }),
@@ -834,8 +838,8 @@ pub(crate) mod tests {
         )
     }
 
-    pub(crate) fn create_finality_provider() -> FinalityProvider {
-        FinalityProvider {
+    pub(crate) fn create_new_finality_provider() -> NewFinalityProvider {
+        NewFinalityProvider {
             description: Some(FinalityProviderDescription {
                 moniker: "fp1".to_string(),
                 identity: "Finality Provider 1".to_string(),
@@ -848,12 +852,10 @@ pub(crate) mod tests {
             btc_pk_hex: "f1".to_string(),
             pop: Some(ProofOfPossession {
                 btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
+                babylon_sig: Binary(vec![]),
+                btc_sig: Binary(vec![]),
             }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
+            consumer_id: "osmosis-1".to_string(),
         }
     }
 
@@ -903,6 +905,11 @@ pub(crate) mod tests {
         ADMIN
             .assert_admin(deps.as_ref(), &Addr::unchecked(INIT_ADMIN))
             .unwrap();
+
+        // ensure the admin is queryable as well
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::Admin {}).unwrap();
+        let admin: AdminResponse = from_json(res).unwrap();
+        assert_eq!(admin.admin.unwrap(), INIT_ADMIN)
     }
 
     #[test]
@@ -976,7 +983,7 @@ pub(crate) mod tests {
         )
         .unwrap();
 
-        let new_fp = create_finality_provider();
+        let new_fp = create_new_finality_provider();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -1008,7 +1015,7 @@ pub(crate) mod tests {
         .unwrap();
 
         let admin_info = mock_info(INIT_ADMIN, &[]); // Mock info for the admin
-        let new_fp = create_finality_provider();
+        let new_fp = create_new_finality_provider();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -1024,7 +1031,9 @@ pub(crate) mod tests {
         // Check the finality provider has been stored
         let query_res =
             queries::finality_provider(deps.as_ref(), new_fp.btc_pk_hex.clone()).unwrap();
-        assert_eq!(query_res, new_fp);
+        // get DB object
+        let fp = FinalityProvider::from(&new_fp);
+        assert_eq!(query_res, fp);
 
         // Trying to add the same fp again fails
         let err = execute(deps.as_mut(), mock_env(), admin_info, msg).unwrap_err();
@@ -1054,7 +1063,7 @@ pub(crate) mod tests {
         let active_delegation = get_active_btc_delegation();
 
         // Register one FP first
-        let mut new_fp = create_finality_provider();
+        let mut new_fp = create_new_finality_provider();
         new_fp
             .btc_pk_hex
             .clone_from(&active_delegation.fp_btc_pk_list[0]);
@@ -1116,7 +1125,7 @@ pub(crate) mod tests {
         let active_delegation = get_active_btc_delegation();
 
         // Register one FP first
-        let mut new_fp = create_finality_provider();
+        let mut new_fp = create_new_finality_provider();
         new_fp
             .btc_pk_hex
             .clone_from(&active_delegation.fp_btc_pk_list[0]);
@@ -1144,7 +1153,7 @@ pub(crate) mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx,
                 slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: vec![],
+                delegator_unbonding_sig: Binary(vec![]),
                 delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
@@ -1154,7 +1163,7 @@ pub(crate) mod tests {
         // Now send the undelegation message
         let undelegation = UnbondedBtcDelegation {
             staking_tx_hash: staking_tx_hash_hex.clone(),
-            unbonding_tx_sig: vec![0x01, 0x02, 0x03], // TODO: Use a proper signature
+            unbonding_tx_sig: Binary(vec![0x01, 0x02, 0x03]), // TODO: Use a proper signature
         };
 
         let msg = ExecuteMsg::BtcStaking {
@@ -1176,7 +1185,7 @@ pub(crate) mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx,
                 slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: vec![0x01, 0x02, 0x03],
+                delegator_unbonding_sig: Binary(vec![0x01, 0x02, 0x03]),
                 delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
@@ -1209,7 +1218,7 @@ pub(crate) mod tests {
         let (pk_hex, pub_rand, signature) = get_public_randomness_commitment();
 
         // Register one FP with a valid pubkey first
-        let mut new_fp = create_finality_provider();
+        let mut new_fp = create_new_finality_provider();
         new_fp.btc_pk_hex.clone_from(&pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
@@ -1227,8 +1236,8 @@ pub(crate) mod tests {
             fp_pubkey_hex: pk_hex,
             start_height: pub_rand.start_height,
             num_pub_rand: pub_rand.num_pub_rand,
-            commitment: pub_rand.commitment,
-            signature,
+            commitment: Binary(pub_rand.commitment),
+            signature: Binary(signature),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

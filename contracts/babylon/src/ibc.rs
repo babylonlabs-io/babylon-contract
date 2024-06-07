@@ -127,12 +127,12 @@ mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
     use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures, FinalityProvider,
-        FinalityProviderDescription, ProofOfPossession, PubKey, SignatureInfo,
+        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
+        FinalityProviderDescription, NewFinalityProvider, ProofOfPossession, PubKey, SignatureInfo,
         UnbondedBtcDelegation,
     };
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
-    use cosmwasm_std::{to_json_binary, Decimal, WasmMsg};
+    use cosmwasm_std::{to_json_binary, Binary, Decimal, WasmMsg};
     use std::str::FromStr;
 
     pub fn handle_btc_timestamp(
@@ -185,7 +185,7 @@ mod ibc_packet {
                 .new_fp
                 .iter()
                 .map(|fp| {
-                    Ok(FinalityProvider {
+                    Ok(NewFinalityProvider {
                         description: fp
                             .description
                             .as_ref()
@@ -198,17 +198,15 @@ mod ibc_packet {
                             }),
                         commission: Decimal::from_str(&fp.commission)?,
                         babylon_pk: fp.babylon_pk.as_ref().map(|pk| PubKey {
-                            key: pk.key.clone(),
+                            key: Binary(pk.key.to_vec()),
                         }),
                         btc_pk_hex: fp.btc_pk_hex.clone(),
                         pop: fp.pop.as_ref().map(|pop| ProofOfPossession {
                             btc_sig_type: pop.btc_sig_type,
-                            babylon_sig: pop.babylon_sig.to_vec(),
-                            btc_sig: pop.btc_sig.to_vec(),
+                            babylon_sig: Binary(pop.babylon_sig.to_vec()),
+                            btc_sig: Binary(pop.btc_sig.to_vec()),
                         }),
-                        slashed_babylon_height: 0,
-                        slashed_btc_height: 0,
-                        chain_id: fp.consumer_id.clone(),
+                        consumer_id: fp.consumer_id.clone(),
                     })
                 })
                 .collect::<StdResult<_>>()?,
@@ -221,38 +219,46 @@ mod ibc_packet {
                     start_height: d.start_height,
                     end_height: d.end_height,
                     total_sat: d.total_sat,
-                    staking_tx: d.staking_tx.to_vec(),
-                    slashing_tx: d.slashing_tx.to_vec(),
-                    delegator_slashing_sig: d.delegator_slashing_sig.to_vec(),
+                    staking_tx: Binary(d.staking_tx.to_vec()),
+                    slashing_tx: Binary(d.slashing_tx.to_vec()),
+                    delegator_slashing_sig: Binary(d.delegator_slashing_sig.to_vec()),
                     covenant_sigs: d
                         .covenant_sigs
                         .iter()
                         .map(|s| CovenantAdaptorSignatures {
-                            cov_pk: s.cov_pk.to_vec(),
-                            adaptor_sigs: s.adaptor_sigs.iter().map(|a| a.to_vec()).collect(),
+                            cov_pk: Binary(s.cov_pk.to_vec()),
+                            adaptor_sigs: s
+                                .adaptor_sigs
+                                .iter()
+                                .map(|a| Binary(a.to_vec()))
+                                .collect(),
                         })
                         .collect(),
                     staking_output_idx: d.staking_output_idx,
                     unbonding_time: d.unbonding_time,
                     undelegation_info: d.undelegation_info.as_ref().map(|ui| BtcUndelegationInfo {
-                        unbonding_tx: ui.unbonding_tx.to_vec(),
-                        delegator_unbonding_sig: ui.delegator_unbonding_sig.to_vec(),
+                        unbonding_tx: Binary(ui.unbonding_tx.to_vec()),
+                        delegator_unbonding_sig: Binary(ui.delegator_unbonding_sig.to_vec()),
                         covenant_unbonding_sig_list: ui
                             .covenant_unbonding_sig_list
                             .iter()
                             .map(|s| SignatureInfo {
-                                pk: s.pk.to_vec(),
-                                sig: s.sig.to_vec(),
+                                pk: Binary(s.pk.to_vec()),
+                                sig: Binary(s.sig.to_vec()),
                             })
                             .collect(),
-                        slashing_tx: ui.slashing_tx.to_vec(),
-                        delegator_slashing_sig: ui.delegator_slashing_sig.to_vec(),
+                        slashing_tx: Binary(ui.slashing_tx.to_vec()),
+                        delegator_slashing_sig: Binary(ui.delegator_slashing_sig.to_vec()),
                         covenant_slashing_sigs: ui
                             .covenant_slashing_sigs
                             .iter()
                             .map(|s| CovenantAdaptorSignatures {
-                                cov_pk: s.cov_pk.to_vec(),
-                                adaptor_sigs: s.adaptor_sigs.iter().map(|a| a.to_vec()).collect(),
+                                cov_pk: Binary(s.cov_pk.to_vec()),
+                                adaptor_sigs: s
+                                    .adaptor_sigs
+                                    .iter()
+                                    .map(|a| Binary(a.to_vec()))
+                                    .collect(),
                             })
                             .collect(),
                     }),
@@ -265,7 +271,7 @@ mod ibc_packet {
                 .iter()
                 .map(|u| UnbondedBtcDelegation {
                     staking_tx_hash: u.staking_tx_hash.clone(),
-                    unbonding_tx_sig: u.unbonding_tx_sig.to_vec(),
+                    unbonding_tx_sig: Binary(u.unbonding_tx_sig.to_vec()),
                 })
                 .collect(),
         };

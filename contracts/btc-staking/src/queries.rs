@@ -183,11 +183,11 @@ mod tests {
     use cosmwasm_std::testing::mock_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
-    use cosmwasm_std::{from_json, Decimal, Env, Storage};
+    use cosmwasm_std::{from_json, Binary, Decimal, Env, Storage};
 
     use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, ProofOfPossession,
-        UnbondedBtcDelegation,
+        ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, NewFinalityProvider,
+        ProofOfPossession, UnbondedBtcDelegation,
     };
     use babylon_apis::finality_api::TendermintProof;
 
@@ -203,6 +203,27 @@ mod tests {
         env.block.height = height;
 
         env
+    }
+
+    fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
+        NewFinalityProvider {
+            description: Some(FinalityProviderDescription {
+                moniker: format!("fp{}", id),
+                identity: format!("Finality Provider {}", id),
+                website: format!("https:://fp{}.com", id),
+                security_contact: "security_contact".to_string(),
+                details: format!("details fp{}", id),
+            }),
+            commission: Decimal::percent(5),
+            babylon_pk: None,
+            btc_pk_hex: format!("f{}", id),
+            pop: Some(ProofOfPossession {
+                btc_sig_type: 0,
+                babylon_sig: Binary(vec![]),
+                btc_sig: Binary(vec![]),
+            }),
+            consumer_id: format!("osmosis-{}", id),
+        }
     }
 
     #[test]
@@ -222,50 +243,11 @@ mod tests {
         .unwrap();
 
         // Add a couple finality providers
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
-
-        let fp2 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp2".to_string(),
-                identity: "Finality Provider 2".to_string(),
-                website: "https:://fp2.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp2".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f2".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
+        let new_fp2 = create_new_finality_provider(2);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone(), fp2.clone()],
+            new_fp: vec![new_fp1.clone(), new_fp2.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -277,6 +259,8 @@ mod tests {
         let fps = crate::queries::finality_providers(deps.as_ref(), None, None)
             .unwrap()
             .fps;
+        let fp1 = FinalityProvider::from(&new_fp1);
+        let fp2 = FinalityProvider::from(&new_fp2);
         assert_eq!(fps.len(), 2);
         assert_eq!(fps[0], fp1);
         assert_eq!(fps[1], fp2);
@@ -313,50 +297,11 @@ mod tests {
         .unwrap();
 
         // Add a couple finality providers
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
-
-        let fp2 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp2".to_string(),
-                identity: "Finality Provider 2".to_string(),
-                website: "https:://fp2.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp2".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f2".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
+        let new_fp2 = create_new_finality_provider(2);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone(), fp2.clone()],
+            new_fp: vec![new_fp1.clone(), new_fp2.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -375,7 +320,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -391,7 +336,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -399,9 +344,13 @@ mod tests {
             params_version: 1,
         };
         // Avoid repeated staking tx hash
-        del2.staking_tx[0] += 1;
+        let mut staking_tx = del2.staking_tx.to_vec();
+        staking_tx[0] += 1;
+        del2.staking_tx = Binary(staking_tx);
         // Avoid repeated slashing tx hash
-        del2.slashing_tx[0] += 1;
+        let mut slashing_tx = del2.slashing_tx.to_vec();
+        slashing_tx[0] += 1;
+        del2.slashing_tx = Binary(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -457,29 +406,10 @@ mod tests {
         .unwrap();
 
         // Add a finality provider
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone()],
+            new_fp: vec![new_fp1.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -498,7 +428,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -514,7 +444,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -522,9 +452,13 @@ mod tests {
             params_version: 1,
         };
         // Avoid repeated staking tx hash
-        del2.staking_tx[0] += 1;
+        let mut staking_tx = del2.staking_tx.to_vec();
+        staking_tx[0] += 1;
+        del2.staking_tx = Binary(staking_tx);
         // Avoid repeated slashing tx hash
-        del2.slashing_tx[0] += 1;
+        let mut slashing_tx = del2.slashing_tx.to_vec();
+        slashing_tx[0] += 1;
+        del2.slashing_tx = Binary(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -554,7 +488,7 @@ mod tests {
             slashed_del: vec![],
             unbonded_del: vec![UnbondedBtcDelegation {
                 staking_tx_hash: staking_tx_hash_hex,
-                unbonding_tx_sig: vec![0x01, 0x02, 0x03],
+                unbonding_tx_sig: Binary(vec![0x01, 0x02, 0x03]),
             }],
         };
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -596,50 +530,11 @@ mod tests {
         .unwrap();
 
         // Add a couple finality providers
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
-
-        let fp2 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp2".to_string(),
-                identity: "Finality Provider 2".to_string(),
-                website: "https:://fp2.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp2".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f2".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
+        let new_fp2 = create_new_finality_provider(2);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone(), fp2.clone()],
+            new_fp: vec![new_fp1.clone(), new_fp2.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -658,7 +553,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -674,7 +569,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -682,9 +577,13 @@ mod tests {
             params_version: 1,
         };
         // Avoid repeated staking tx hash
-        del2.staking_tx[0] += 1;
+        let mut staking_tx = del2.staking_tx.to_vec();
+        staking_tx[0] += 1;
+        del2.staking_tx = Binary(staking_tx);
         // Avoid repeated slashing tx hash
-        del2.slashing_tx[0] += 1;
+        let mut slashing_tx = del2.slashing_tx.to_vec();
+        slashing_tx[0] += 1;
+        del2.slashing_tx = Binary(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -726,29 +625,10 @@ mod tests {
         .unwrap();
 
         // Add a finality provider
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone()],
+            new_fp: vec![new_fp1.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -767,7 +647,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -783,7 +663,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -791,9 +671,13 @@ mod tests {
             params_version: 1,
         };
         // Avoid repeated staking tx hash
-        del2.staking_tx[0] += 1;
+        let mut staking_tx = del2.staking_tx.to_vec();
+        staking_tx[0] += 1;
+        del2.staking_tx = Binary(staking_tx);
         // Avoid repeated slashing tx hash
-        del2.slashing_tx[0] += 1;
+        let mut slashing_tx = del2.slashing_tx.to_vec();
+        slashing_tx[0] += 1;
+        del2.slashing_tx = Binary(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -828,7 +712,7 @@ mod tests {
             slashed_del: vec![],
             unbonded_del: vec![UnbondedBtcDelegation {
                 staking_tx_hash: staking_tx_hash_hex,
-                unbonding_tx_sig: vec![0x01, 0x02, 0x03],
+                unbonding_tx_sig: Binary(vec![0x01, 0x02, 0x03]),
             }],
         };
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -869,29 +753,10 @@ mod tests {
         .unwrap();
 
         // Add a finality provider
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone()],
+            new_fp: vec![new_fp1.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -910,7 +775,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -926,7 +791,7 @@ mod tests {
             total_sat: 150,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -934,9 +799,13 @@ mod tests {
             params_version: 1,
         };
         // Avoid repeated staking tx hash
-        del2.staking_tx[0] += 1;
+        let mut staking_tx = del2.staking_tx.to_vec();
+        staking_tx[0] += 1;
+        del2.staking_tx = Binary(staking_tx);
         // Avoid repeated slashing tx hash
-        del2.slashing_tx[0] += 1;
+        let mut slashing_tx = del2.slashing_tx.to_vec();
+        slashing_tx[0] += 1;
+        del2.slashing_tx = Binary(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -1010,29 +879,10 @@ mod tests {
         .unwrap();
 
         // Add a finality provider
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone()],
+            new_fp: vec![new_fp1.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -1051,7 +901,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1095,71 +945,12 @@ mod tests {
         .unwrap();
 
         // Add a couple finality providers
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
-
-        let fp2 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp2".to_string(),
-                identity: "Finality Provider 2".to_string(),
-                website: "https:://fp2.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp2".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f2".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
-
-        let fp3 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp3".to_string(),
-                identity: "Finality Provider 3".to_string(),
-                website: "https:://fp3.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp3".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f3".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
+        let new_fp2 = create_new_finality_provider(2);
+        let new_fp3 = create_new_finality_provider(3);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone(), fp2.clone(), fp3.clone()],
+            new_fp: vec![new_fp1.clone(), new_fp2.clone(), new_fp3.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -1178,7 +969,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1194,7 +985,7 @@ mod tests {
             total_sat: 150,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1202,9 +993,13 @@ mod tests {
             params_version: 1,
         };
         // Avoid repeated staking tx hash
-        del2.staking_tx[0] += 1;
+        let mut staking_tx = del2.staking_tx.to_vec();
+        staking_tx[0] += 1;
+        del2.staking_tx = Binary(staking_tx);
         // Avoid repeated slashing tx hash
-        del2.slashing_tx[0] += 1;
+        let mut slashing_tx = del2.slashing_tx.to_vec();
+        slashing_tx[0] += 1;
+        del2.slashing_tx = Binary(slashing_tx);
 
         let mut del3 = ActiveBtcDelegation {
             btc_pk_hex: "d3".to_string(),
@@ -1214,7 +1009,7 @@ mod tests {
             total_sat: 75,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![],
+            delegator_slashing_sig: Binary(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1222,9 +1017,13 @@ mod tests {
             params_version: 1,
         };
         // Avoid repeated staking tx hash
-        del3.staking_tx[0] += 2;
+        let mut staking_tx = del3.staking_tx.to_vec();
+        staking_tx[0] += 2;
+        del3.staking_tx = Binary(staking_tx);
         // Avoid repeated slashing tx hash
-        del3.slashing_tx[0] += 2;
+        let mut slashing_tx = del3.slashing_tx.to_vec();
+        slashing_tx[0] += 2;
+        del3.slashing_tx = Binary(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -1312,29 +1111,10 @@ mod tests {
         .unwrap();
 
         // Add a finality provider
-        let fp1 = FinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
-                security_contact: "security_contact".to_string(),
-                details: "details fp1".to_string(),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: vec![],
-                btc_sig: vec![],
-            }),
-            slashed_babylon_height: 0,
-            slashed_btc_height: 0,
-            chain_id: "osmosis-1".to_string(),
-        };
+        let new_fp1 = create_new_finality_provider(1);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![fp1.clone()],
+            new_fp: vec![new_fp1.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -1353,7 +1133,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: vec![0x01, 0x02, 0x03],
+            delegator_slashing_sig: Binary(vec![0x01, 0x02, 0x03]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1374,15 +1154,15 @@ mod tests {
         let msg = ExecuteMsg::SubmitFinalitySignature {
             fp_pubkey_hex: "f1".to_string(),
             height: initial_height + 1,
-            pub_rand: vec![],
+            pub_rand: Binary(vec![]),
             proof: TendermintProof {
                 total: 2,
                 index: 3,
                 leaf_hash: vec![],
                 aunts: vec![],
             },
-            block_hash: vec![0x01, 0x02, 0x03],
-            signature: vec![0x04, 0x05, 0x06],
+            block_hash: Binary(vec![0x01, 0x02, 0x03]),
+            signature: Binary(vec![0x04, 0x05, 0x06]),
         };
 
         // Execute the message at the same height, so that:
