@@ -166,6 +166,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "babylon-merkle"
+version = "0.5.3"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "hex",
+ "schemars",
+ "serde",
+ "sha2 0.10.8",
+ "tendermint-proto",
+ "thiserror",
+]
+
+[[package]]
 name = "babylon-proto"
 version = "0.5.3"
 dependencies = [
