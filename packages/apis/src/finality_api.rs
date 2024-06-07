@@ -27,7 +27,7 @@ pub struct PubRandCommit {
     /// `num_pub_rand` is the number of committed public randomness
     pub num_pub_rand: u64,
     /// `commitment` is the value of the commitment.
-    /// Currently, it's the root of the merkle tree constructed by the public randomness
+    /// Currently, it's the root of the Merkle tree constructed by the public randomness
     pub commitment: Bytes,
 }
 
@@ -68,15 +68,4 @@ pub struct Evidence {
     /// where finality signature is an EOTS signature.
     /// Deserializes to `SchnorrEOTSSig`
     pub fork_finality_sig: Bytes,
-}
-
-/// A `TendermintProof` is a proof of a leaf's existence in a Merkle tree.
-///
-/// Equivalent to tendermint_protos::crypto::Proof, but with `JsonSchema` support.
-#[cw_serde]
-pub struct TendermintProof {
-    pub total: i64,
-    pub index: i64,
-    pub leaf_hash: Bytes,
-    pub aunts: Vec<Bytes>,
 }

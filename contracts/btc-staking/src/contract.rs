@@ -28,13 +28,17 @@ use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::state::public_randomness::{PUB_RAND_COMMITS, PUB_RAND_VALUES};
+use crate::state::public_randomness::{
+    get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
+};
 use crate::state::{
     fps, public_randomness, Config, ADMIN, BTC_HEIGHT, CONFIG, DELEGATIONS, DELEGATION_FPS, FPS,
     FP_DELEGATIONS, PARAMS, SIGNATURES,
 };
-use babylon_apis::finality_api::{PubRandCommit, TendermintProof};
+use babylon_apis::finality_api::PubRandCommit;
+use babylon_merkle::Proof;
 use cw_utils::maybe_addr;
+use k256::sha2::{Digest, Sha256};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -500,13 +504,6 @@ pub fn handle_public_randomness_commit(
             fp_pubkey_hex.to_string(),
         ));
     }
-
-    let pr_commit = PubRandCommit {
-        start_height,
-        num_pub_rand,
-        commitment: commitment.to_vec(),
-    };
-
     // Verify signature over the list
     verify_commitment_signature(
         fp_pubkey_hex,
@@ -533,6 +530,12 @@ pub fn handle_public_randomness_commit(
     }
 
     // All good, store the given public randomness commitment
+    let pr_commit = PubRandCommit {
+        start_height,
+        num_pub_rand,
+        commitment: commitment.to_vec(),
+    };
+
     PUB_RAND_COMMITS.save(
         deps.storage,
         (fp_pubkey_hex, pr_commit.start_height),
@@ -581,8 +584,8 @@ fn handle_finality_signature(
     fp_btc_pk_hex: &str,
     height: u64,
     pub_rand: &[u8],
-    _proof: &TendermintProof,
-    _block_hash: &[u8],
+    proof: &Proof,
+    block_hash: &[u8],
     signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
@@ -631,12 +634,19 @@ fn handle_finality_signature(
         _ => {}
     }
 
-    // TODO: Find the public randomness commitment for this height from this finality provider
-    // let _pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
+    // Find the public randomness commitment for this height from this finality provider
+    let pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
 
-    // TODO: Verify the finality signature message w.r.t. the public randomness commitment
-    // including the public randomness inclusion proof and the finality signature
-    // verify_finality_signature(signature, pr_commit)?;
+    // Verify the finality signature message
+    verify_finality_signature(
+        fp_btc_pk_hex,
+        height,
+        pub_rand,
+        proof,
+        &pr_commit,
+        block_hash,
+        signature,
+    )?;
 
     // The public randomness value is good, save it.
     // TODO?: Don't save public randomness values, to save storage space
@@ -711,6 +721,72 @@ fn handle_finality_signature(
     Ok(Response::new())
 }
 
+/// Verifies the finality signature message w.r.t. the public randomness commitment:
+/// - Public randomness inclusion proof.
+/// - Finality signature
+fn verify_finality_signature(
+    fp_btc_pk_hex: &str,
+    block_height: u64,
+    pub_rand: &[u8],
+    proof: &Proof,
+    pr_commit: &PubRandCommit,
+    app_hash: &[u8],
+    signature: &[u8],
+) -> Result<(), ContractError> {
+    let proof_height = pr_commit.start_height + proof.index;
+    if block_height != proof_height {
+        return Err(ContractError::InvalidFinalitySigHeight(
+            proof_height,
+            block_height,
+        ));
+    }
+    // Verify the total amount of randomness is the same as in the commitment
+    if proof.total != pr_commit.num_pub_rand {
+        return Err(ContractError::InvalidFinalitySigAmount(
+            proof.total,
+            pr_commit.num_pub_rand,
+        ));
+    }
+    // Verify the proof of inclusion for this public randomness
+    proof.validate_basic()?;
+    proof.verify(&pr_commit.commitment, pub_rand)?;
+
+    // Public randomness is good, verify finality signature
+    let pubkey = eots::PublicKey::from_hex(fp_btc_pk_hex)
+        .map_err(|err| ContractError::EotsError(err.to_string()))?;
+    let pub_rand = eots::PubRand::from_xonly_bytes(pub_rand.try_into().map_err(|_| {
+        ContractError::EotsError("Failed to convert public randomness to array".to_string())
+    })?)
+    .ok_or(ContractError::EotsError(
+        "Failed to parse public randomness".to_string(),
+    ))?;
+    let msg = msg_to_sign(block_height, app_hash);
+    let msg_hash = Sha256::digest(msg);
+
+    let signature = eots::Signature::from_slice(signature)
+        .ok_or(ContractError::InvalidSignature(signature.into()))?;
+
+    if !pubkey.verify(
+        &pub_rand,
+        msg_hash.as_slice().try_into().map_err(|_| {
+            ContractError::EotsError("Failed to convert message to array".to_string())
+        })?,
+        &signature,
+    ) {
+        return Err(ContractError::FailedSignatureVerification("EOTS".into()));
+    }
+    Ok(())
+}
+
+/// `msg_to_sign` returns the message for an EOTS signature.
+///
+/// The EOTS signature on a block will be (block_height || block_hash)
+fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
+    let mut msg: Vec<u8> = height.to_be_bytes().to_vec();
+    msg.extend_from_slice(block_hash);
+    msg
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(
     mut deps: DepsMut,
@@ -723,7 +799,10 @@ pub fn sudo(
     }
 }
 
-fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
+fn handle_begin_block(
+    _deps: &mut DepsMut,
+    _env: Env,
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Index BTC height at the current height
     // index_btc_height(deps, env.block.height)?;
 
@@ -734,6 +813,7 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 }
 
 // index_btc_height indexes the current BTC height, and saves it to the state
+#[allow(dead_code)]
 fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
     let btc_tip = get_btc_tip(deps)?;
 
@@ -750,6 +830,7 @@ fn encode_raw_query<T: Into<Binary>, Q: CustomQuery>(addr: &Addr, key: T) -> Que
 }
 
 /// get_btc_tip queries the Babylon contract for the latest BTC tip
+#[allow(dead_code)]
 fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
     // Get the BTC tip from the babylon contract through a raw query
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
@@ -824,10 +905,11 @@ pub(crate) mod tests {
         }
     }
 
-    /// Build a public randomness commit message
+    /// Get public randomness public key, commitment, and signature information
+    ///
+    /// Signature is a Schnorr signature over the commitment
     pub(crate) fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
         let pub_rand_commitment_msg = get_pub_rand_commit();
-
         (
             pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
             PubRandCommit {
@@ -1216,7 +1298,7 @@ pub(crate) mod tests {
         .unwrap();
 
         // Read public randomness commitment test data
-        let (pk_hex, pub_rand, signature) = get_public_randomness_commitment();
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
 
         // Register one FP with a valid pubkey first
         let mut new_fp = create_new_finality_provider();
@@ -1238,7 +1320,7 @@ pub(crate) mod tests {
             start_height: pub_rand.start_height,
             num_pub_rand: pub_rand.num_pub_rand,
             commitment: Binary(pub_rand.commitment),
-            signature: Binary(signature),
+            signature: Binary(pubrand_signature),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

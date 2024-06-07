@@ -7,7 +7,7 @@ use prost::bytes::Bytes;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
-use babylon_proto::babylon::finality::v1::MsgCommitPubRandList;
+use babylon_proto::babylon::finality::v1::{MsgAddFinalitySig, MsgCommitPubRandList};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{env, fs};
@@ -23,6 +23,8 @@ const BTC_TIMESTAMP_HEADER1: &str = "btc_timestamp_header1.dat";
 const PARAMS_DATA: &str = "btcstaking_params.dat";
 const BTC_DELEGATION_DATA: &str = "btc_delegation.dat";
 const COMMIT_PUB_RAND_DATA: &str = "commit_pub_rand_msg.dat";
+const PUB_RAND_VALUE: &str = "pub_rand_value.dat";
+const ADD_FINALITY_SIG_DATA: &str = "add_finality_sig_msg.dat";
 
 const EOTS_DATA: &str = "eots_testdata.json";
 
@@ -155,4 +157,20 @@ pub fn get_pub_rand_commit() -> MsgCommitPubRandList {
     let pub_rand_commit_data: &[u8] = &fs::read(pub_rand_commit_path).unwrap();
 
     MsgCommitPubRandList::decode(pub_rand_commit_data).unwrap()
+}
+
+/// Get public randomness value (at index 1)
+//  TODO: Support indexed public randomness values
+pub fn get_pub_rand_value() -> Vec<u8> {
+    let pub_rand_value_path = find_testdata_path().join(PUB_RAND_VALUE);
+    let pub_rand_value_data: Vec<u8> = fs::read(pub_rand_value_path).unwrap();
+
+    pub_rand_value_data
+}
+
+pub fn get_add_finality_sig() -> MsgAddFinalitySig {
+    let add_finality_sig_path = find_testdata_path().join(ADD_FINALITY_SIG_DATA);
+    let add_finality_sig_data: &[u8] = &fs::read(add_finality_sig_path).unwrap();
+
+    MsgAddFinalitySig::decode(add_finality_sig_data).unwrap()
 }

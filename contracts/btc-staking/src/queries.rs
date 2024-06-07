@@ -189,8 +189,9 @@ mod tests {
         ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, NewFinalityProvider,
         ProofOfPossession, UnbondedBtcDelegation,
     };
-    use babylon_apis::finality_api::TendermintProof;
+    use test_utils::{get_add_finality_sig, get_pub_rand_value};
 
+    use crate::contract::tests::get_public_randomness_commitment;
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, FinalitySignatureResponse, InstantiateMsg};
@@ -1095,7 +1096,14 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = mock_info(CREATOR, &[]);
 
-        let initial_height = 100;
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        // Read equivalent / consistent add finality signature test data
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
 
         let initial_env = mock_env_height(initial_height);
 
@@ -1110,11 +1118,12 @@ mod tests {
         )
         .unwrap();
 
-        // Add a finality provider
-        let new_fp1 = create_new_finality_provider(1);
+        // Register one FP with a valid pubkey first
+        let mut new_fp = create_new_finality_provider(1);
+        new_fp.btc_pk_hex.clone_from(&pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![new_fp1.clone()],
+            new_fp: vec![new_fp.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
@@ -1127,7 +1136,7 @@ mod tests {
 
         let del1 = ActiveBtcDelegation {
             btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
+            fp_btc_pk_list: vec![pk_hex.clone()],
             start_height: 1,
             end_height: 2,
             total_sat: 100,
@@ -1150,40 +1159,51 @@ mod tests {
 
         execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
-        // Submit a finality signature from that finality provider at height initial_height + 1
-        let msg = ExecuteMsg::SubmitFinalitySignature {
-            fp_pubkey_hex: "f1".to_string(),
-            height: initial_height + 1,
-            pub_rand: Binary(vec![]),
-            proof: TendermintProof {
-                total: 2,
-                index: 3,
-                leaf_hash: vec![],
-                aunts: vec![],
-            },
-            block_hash: Binary(vec![0x01, 0x02, 0x03]),
-            signature: Binary(vec![0x04, 0x05, 0x06]),
+        // Submit public randomness commitment for the FP and the involved heights
+        let msg = ExecuteMsg::CommitPublicRandomness {
+            fp_pubkey_hex: pk_hex.clone(),
+            start_height: pub_rand.start_height,
+            num_pub_rand: pub_rand.num_pub_rand,
+            commitment: pub_rand.commitment.into(),
+            signature: pubrand_signature.into(),
         };
 
-        // Execute the message at the same height, so that:
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // Submit a finality signature from that finality provider at height initial_height + 1
+        let finality_signature = add_finality_signature.finality_sig.to_vec();
+        let msg = ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex: pk_hex.clone(),
+            height: initial_height + 1,
+            pub_rand: pub_rand_one.into(),
+            proof: proof.into(),
+            block_hash: add_finality_signature.block_app_hash.to_vec().into(),
+            signature: Binary(finality_signature.clone()),
+        };
+
+        // Execute the message at a higher height, so that:
         // 1. It's not rejected because of height being too high.
         // 2. The FP has consolidated power at such height
         let _res = execute(
             deps.as_mut(),
-            mock_env_height(initial_height + 1),
+            mock_env_height(initial_height + 2),
             info.clone(),
             msg,
         )
         .unwrap();
 
         // Query finality signature for that exact height
-        let sig =
-            crate::queries::finality_signature(deps.as_ref(), "f1".to_string(), initial_height + 1)
-                .unwrap();
+        let sig = crate::queries::finality_signature(
+            deps.as_ref(),
+            pk_hex.to_string(),
+            initial_height + 1,
+        )
+        .unwrap();
         assert_eq!(
             sig,
             FinalitySignatureResponse {
-                signature: vec![0x04, 0x05, 0x06],
+                signature: finality_signature
             }
         );
     }

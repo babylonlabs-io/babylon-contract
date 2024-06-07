@@ -10,6 +10,7 @@ const (
 	forkHeaderHeight    = 90
 	commitPubRandHeight = 100
 	commitPubRandAmount = 10
+	pubRandIndex        = 1
 	testDataPath        = "./packages/test-utils/testdata/"
 )
 
@@ -22,5 +23,6 @@ func main() {
 	utils.GenBTCTimestamp(testDataPath)
 	utils.GenBTCDelegation(testDataPath)
 	utils.GenEOTSTestData(testDataPath)
-	utils.GenCommitPubRandListMsg(commitPubRandHeight, commitPubRandAmount, testDataPath)
+	randListInfo, privKey := utils.GenCommitPubRandListMsg(commitPubRandHeight, commitPubRandAmount, pubRandIndex, testDataPath)
+	utils.GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, privKey, testDataPath)
 }

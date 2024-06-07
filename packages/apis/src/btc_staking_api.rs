@@ -4,7 +4,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Decimal};
 
-use crate::finality_api::TendermintProof;
+use babylon_merkle::Proof;
 
 /// Hash size in bytes
 pub const HASH_SIZE: usize = 32;
@@ -51,7 +51,7 @@ pub enum ExecuteMsg {
         fp_pubkey_hex: String,
         height: u64,
         pub_rand: Binary,
-        proof: TendermintProof,
+        proof: Proof,
         block_hash: Binary,
         signature: Binary,
     },

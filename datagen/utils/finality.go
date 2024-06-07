@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cometbft/cometbft/crypto/merkle"
 
@@ -16,7 +17,9 @@ import (
 )
 
 const (
-	MSG_COMMIT_PUB_RAND = "commit_pub_rand_msg.dat"
+	MSG_COMMIT_PUB_RAND  = "commit_pub_rand_msg.dat"
+	PUB_RAND_VALUE       = "pub_rand_value.dat"
+	MSG_ADD_FINALITY_SIG = "add_finality_sig_msg.dat"
 )
 
 func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
@@ -44,7 +47,7 @@ func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInf
 	return &datagen.RandListInfo{SRList: srList, PRList: prList, Commitment: commitment, ProofList: proofList}, nil
 }
 
-func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, dir string) {
+func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, pubRandIndex uint64, dir string) (*datagen.RandListInfo, *btcec.PrivateKey) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	sk, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -84,15 +87,23 @@ func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, dir string) 
 	if err != nil {
 		panic(err)
 	}
+
+	pubRandValue := randListInfo.PRList[pubRandIndex]
+	pubRandPath := filepath.Join(dir, PUB_RAND_VALUE)
+	err = os.WriteFile(pubRandPath, pubRandValue, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	return randListInfo, sk
 }
 
-/*
 func NewMsgAddFinalitySig(
 	signer string,
 	sk *btcec.PrivateKey,
 	startHeight uint64,
 	blockHeight uint64,
-	randListInfo *RandListInfo,
+	randListInfo *datagen.RandListInfo,
 	blockAppHash []byte,
 ) (*ftypes.MsgAddFinalitySig, error) {
 	idx := blockHeight - startHeight
@@ -116,6 +127,32 @@ func NewMsgAddFinalitySig(
 	return msg, nil
 }
 
+func GenAddFinalitySig(startHeight uint64, index uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey, dir string) *ftypes.MsgAddFinalitySig {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	blockHeight := startHeight + index
+	blockHash := datagen.GenRandomByteArray(r, 32)
+
+	signer := datagen.GenRandomAccount().Address
+	msg, err := NewMsgAddFinalitySig(signer, sk, startHeight, blockHeight, randListInfo, blockHash)
+	if err != nil {
+		panic(err)
+	}
+
+	msgAddFinalitySigBytes, err := msg.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	msgCommitPubRandPath := filepath.Join(dir, MSG_ADD_FINALITY_SIG)
+	err = os.WriteFile(msgCommitPubRandPath, msgAddFinalitySigBytes, 0644)
+	if err != nil {
+		panic(err)
+	}
+	return msg
+}
+
+/*
 func GenRandomEvidence(r *rand.Rand, sk *btcec.PrivateKey, height uint64) (*ftypes.Evidence, error) {
 	pk := sk.PubKey()
 	bip340PK := bbn.NewBIP340PubKeyFromBTCPK(pk)

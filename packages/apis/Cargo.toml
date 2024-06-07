@@ -5,8 +5,11 @@ edition.workspace = true
 
 [dependencies]
 babylon-bitcoin  = { path = "../bitcoin" }
+babylon-merkle   = { path = "../merkle" }
+
 cosmwasm-std     = { workspace = true }
 cosmwasm-schema  = { workspace = true }
+
 hex              = { workspace = true }
 tendermint-proto = { workspace = true }
 thiserror        = { workspace = true }

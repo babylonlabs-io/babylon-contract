@@ -9,6 +9,7 @@ use hex::FromHexError;
 use prost::DecodeError;
 
 use babylon_apis::error::StakingApiError;
+use babylon_merkle::error::MerkleError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -25,9 +26,13 @@ pub enum ContractError {
     #[error("{0}")]
     StakingError(#[from] StakingApiError),
     #[error("{0}")]
+    MerkleError(#[from] MerkleError),
+    #[error("{0}")]
     ProtoError(#[from] DecodeError),
     #[error("{0}")]
     HexError(#[from] FromHexError),
+    #[error("EOTS error: {0}")]
+    EotsError(String),
     #[error("{0}")]
     SecP256K1Error(String), // TODO: inherit errors from k256
     #[error("Unauthorized")]
@@ -68,6 +73,12 @@ pub enum ContractError {
     InvalidPubRandSignature,
     #[error("Public randomness not found for finality provider {0} at height {1}")]
     MissingPubRandCommit(String, u64),
+    #[error("The inclusion proof for height {0} does not correspond to the given height ({1})")]
+    InvalidFinalitySigHeight(u64, u64),
+    #[error("The total amount of public randomnesses in the proof ({0}) does not match the amount of public committed randomness ({1})")]
+    InvalidFinalitySigAmount(u64, u64),
+    #[error("Invalid finality signature: {0:X?}")]
+    InvalidSignature(Vec<u8>),
     #[error("Failed to verify signature: {0}")]
     FailedSignatureVerification(String),
 }
