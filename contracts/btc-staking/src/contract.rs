@@ -718,13 +718,14 @@ pub fn sudo(
     msg: SudoMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        SudoMsg::BeginBlock {} => handle_begin_block(&mut deps, env),
+        // TODO: implement BeginBlock handler
+        SudoMsg::BeginBlock(_) => handle_begin_block(&mut deps, env),
     }
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
     // Index BTC height at the current height
-    index_btc_height(deps, env.block.height)?;
+    // index_btc_height(deps, env.block.height)?;
 
     // Update voting power distribution
     // update_power_distribution();
