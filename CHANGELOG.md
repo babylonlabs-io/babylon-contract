@@ -2,7 +2,49 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0...HEAD)
+
+## [v0.6.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0) (2024-06-07)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0)
+
+**Closed issues:**
+
+- crypto: implement EOTS using `k256` [\#134](https://github.com/babylonchain/babylon-contract/issues/134)
+- fix contract size [\#126](https://github.com/babylonchain/babylon-contract/issues/126)
+- replace `Vec<u8>` with `Binary` for exec messages [\#125](https://github.com/babylonchain/babylon-contract/issues/125)
+- Finality signatures verification [\#117](https://github.com/babylonchain/babylon-contract/issues/117)
+- Benchmarking ci job failing [\#112](https://github.com/babylonchain/babylon-contract/issues/112)
+- admin commands for contracts [\#107](https://github.com/babylonchain/babylon-contract/issues/107)
+- Voting table [\#103](https://github.com/babylonchain/babylon-contract/issues/103)
+- Implement BTC undelegation [\#99](https://github.com/babylonchain/babylon-contract/issues/99)
+- crypto: EOTS in rust [\#93](https://github.com/babylonchain/babylon-contract/issues/93)
+- Add `validate` methods [\#83](https://github.com/babylonchain/babylon-contract/issues/83)
+
+**Merged pull requests:**
+
+- crypto: use k256 instead of secp256kfun for implementing EOTS [\#136](https://github.com/babylonchain/babylon-contract/pull/136) ([SebastianElvis](https://github.com/SebastianElvis))
+- F/finality sig verification [\#128](https://github.com/babylonchain/babylon-contract/pull/128) ([maurolacy](https://github.com/maurolacy))
+- chore: fix size of BTC staking contract [\#127](https://github.com/babylonchain/babylon-contract/pull/127) ([SebastianElvis](https://github.com/SebastianElvis))
+- F/merkle rs [\#124](https://github.com/babylonchain/babylon-contract/pull/124) ([maurolacy](https://github.com/maurolacy))
+- finality: vanilla sudo message [\#123](https://github.com/babylonchain/babylon-contract/pull/123) ([SebastianElvis](https://github.com/SebastianElvis))
+- F/public randomness [\#122](https://github.com/babylonchain/babylon-contract/pull/122) ([maurolacy](https://github.com/maurolacy))
+- chore: fixing inconsistency of protobuf objects [\#121](https://github.com/babylonchain/babylon-contract/pull/121) ([SebastianElvis](https://github.com/SebastianElvis))
+- F/voting table height 2 [\#119](https://github.com/babylonchain/babylon-contract/pull/119) ([maurolacy](https://github.com/maurolacy))
+- F/ibc proto improvements [\#116](https://github.com/babylonchain/babylon-contract/pull/116) ([maurolacy](https://github.com/maurolacy))
+- C/babylon update sync [\#115](https://github.com/babylonchain/babylon-contract/pull/115) ([maurolacy](https://github.com/maurolacy))
+- F/submit finality sigs [\#114](https://github.com/babylonchain/babylon-contract/pull/114) ([maurolacy](https://github.com/maurolacy))
+- F/voting table height [\#113](https://github.com/babylonchain/babylon-contract/pull/113) ([maurolacy](https://github.com/maurolacy))
+- Fix/main ci 2 [\#111](https://github.com/babylonchain/babylon-contract/pull/111) ([maurolacy](https://github.com/maurolacy))
+- Update schemas [\#110](https://github.com/babylonchain/babylon-contract/pull/110) ([maurolacy](https://github.com/maurolacy))
+- feat: Add admin commands [\#108](https://github.com/babylonchain/babylon-contract/pull/108) ([gusin13](https://github.com/gusin13))
+- F/voting table [\#106](https://github.com/babylonchain/babylon-contract/pull/106) ([maurolacy](https://github.com/maurolacy))
+- F/config params [\#105](https://github.com/babylonchain/babylon-contract/pull/105) ([maurolacy](https://github.com/maurolacy))
+- F/begin block handler [\#104](https://github.com/babylonchain/babylon-contract/pull/104) ([maurolacy](https://github.com/maurolacy))
+- F/active delegations queries [\#102](https://github.com/babylonchain/babylon-contract/pull/102) ([maurolacy](https://github.com/maurolacy))
+- F/validate methods [\#101](https://github.com/babylonchain/babylon-contract/pull/101) ([maurolacy](https://github.com/maurolacy))
+- BTC undelegate basic impl [\#98](https://github.com/babylonchain/babylon-contract/pull/98) ([maurolacy](https://github.com/maurolacy))
+- crypto: EOTS implementation [\#95](https://github.com/babylonchain/babylon-contract/pull/95) ([SebastianElvis](https://github.com/SebastianElvis))
 
 ## [v0.5.3](https://github.com/babylonchain/babylon-contract/tree/v0.5.3) (2024-05-13)
 

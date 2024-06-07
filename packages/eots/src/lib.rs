@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use std::ops::Mul;
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::{
     elliptic_curve::{
@@ -12,6 +11,7 @@ use k256::{
     AffinePoint, ProjectivePoint, Scalar, U256,
 };
 use sha2::{Digest, Sha256};
+use std::ops::Mul;
 
 const CHALLENGE_TAG: &[u8] = b"BIP0340/challenge";
 

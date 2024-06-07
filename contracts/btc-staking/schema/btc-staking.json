@@ -1,6 +1,6 @@
 {
   "contract_name": "btc-staking",
-  "contract_version": "0.5.3",
+  "contract_version": "0.6.0-rc.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -209,7 +209,7 @@
                 "minimum": 0.0
               },
               "proof": {
-                "$ref": "#/definitions/TendermintProof"
+                "$ref": "#/definitions/Proof"
               },
               "pub_rand": {
                 "$ref": "#/definitions/Binary"
@@ -523,6 +523,38 @@
         },
         "additionalProperties": false
       },
+      "Proof": {
+        "description": "A `Proof` is a proof of a leaf's existence in a Merkle tree.\n\nThe convention for proofs is to include leaf hashes, but to exclude the root hash. This convention is implemented across IAVL range proofs as well. Keep this consistent unless there's a very good reason to change everything. This affects the generalized proof system as well.\n\nEquivalent to / adapted from cometbft/crypto/merkle/proof.go.",
+        "type": "object",
+        "required": [
+          "aunts",
+          "index",
+          "leaf_hash",
+          "total"
+        ],
+        "properties": {
+          "aunts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "index": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "leaf_hash": {
+            "$ref": "#/definitions/Binary"
+          },
+          "total": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
       "ProofOfPossession": {
         "description": "ProofOfPossession is the proof of possession that a Babylon secp256k1 secret key and a Bitcoin secp256k1 secret key are held by the same person",
         "type": "object",
@@ -606,46 +638,6 @@
           "staking_tx_hash": {
             "description": "staking tx hash of the BTC delegation. It uniquely identifies a BTC delegation",
             "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TendermintProof": {
-        "description": "A `TendermintProof` is a proof of a leaf's existence in a Merkle tree.\n\nEquivalent to tendermint_protos::crypto::Proof, but with `JsonSchema` support.",
-        "type": "object",
-        "required": [
-          "aunts",
-          "index",
-          "leaf_hash",
-          "total"
-        ],
-        "properties": {
-          "aunts": {
-            "type": "array",
-            "items": {
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            }
-          },
-          "index": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "leaf_hash": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0.0
-            }
-          },
-          "total": {
-            "type": "integer",
-            "format": "int64"
           }
         },
         "additionalProperties": false
