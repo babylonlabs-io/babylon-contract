@@ -1216,8 +1216,8 @@ name = "eots"
 version = "0.5.3"
 dependencies = [
  "hex",
+ "k256",
  "rand",
- "secp256kfun",
  "sha2 0.10.8",
  "test-utils",
 ]

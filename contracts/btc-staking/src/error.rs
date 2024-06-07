@@ -77,8 +77,8 @@ pub enum ContractError {
     InvalidFinalitySigHeight(u64, u64),
     #[error("The total amount of public randomnesses in the proof ({0}) does not match the amount of public committed randomness ({1})")]
     InvalidFinalitySigAmount(u64, u64),
-    #[error("Invalid finality signature: {0:X?}")]
-    InvalidSignature(Vec<u8>),
+    #[error("Invalid finality signature: {0}")]
+    InvalidSignature(String),
     #[error("Failed to verify signature: {0}")]
     FailedSignatureVerification(String),
 }

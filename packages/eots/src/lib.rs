@@ -1,48 +1,120 @@
 #![allow(non_snake_case)]
 
-use secp256kfun::{
-    g,
-    hash::{HashAdd, Tag},
-    marker::*,
-    s, Point, Scalar, G,
+use std::ops::Mul;
+use k256::elliptic_curve::sec1::ToEncodedPoint;
+use k256::{
+    elliptic_curve::{
+        ops::{MulByGenerator, Reduce},
+        point::DecompressPoint,
+        subtle::Choice,
+        PrimeField,
+    },
+    AffinePoint, ProjectivePoint, Scalar, U256,
 };
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
+
+const CHALLENGE_TAG: &[u8] = b"BIP0340/challenge";
+
+fn tagged_hash(tag: &[u8]) -> Sha256 {
+    let tag_hash = Sha256::digest(tag);
+    let mut digest = Sha256::new();
+    digest.update(tag_hash);
+    digest.update(tag_hash);
+    digest
+}
 
 /// SecRand is the type for a secret randomness
 /// It is formed as a scalar on the Secp256k1 curve
 pub type SecRand = Scalar;
+
+pub fn new_sec_rand(r: &[u8]) -> Result<SecRand, String> {
+    if r.len() != 32 {
+        return Err(format!("Expected a Vec of length 32 but got {}", r.len()));
+    }
+
+    let mut array = [0u8; 32];
+    array.copy_from_slice(r);
+    match SecRand::from_repr_vartime(array.into()) {
+        Some(sr) => Ok(sr),
+        None => Err("failed to get secret randomness".to_string()),
+    }
+}
+
 /// PubRand is the type for a public randomness
 /// It is formed as a point with even y coord on the Secp256k1 curve
-pub type PubRand = Point<EvenY>;
+pub type PubRand = ProjectivePoint;
+
+pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand, String> {
+    if x_bytes.len() != 32 {
+        return Err(format!(
+            "Expected a Vec of length 32 but got {}",
+            x_bytes.len()
+        ));
+    }
+
+    let mut array = [0u8; 32];
+    array.copy_from_slice(x_bytes);
+
+    // Convert x_bytes to a FieldElement
+    let x = k256::FieldBytes::from(array);
+
+    // Attempt to derive the corresponding y-coordinate
+    let ap_option = AffinePoint::decompress(&x, Choice::from(0));
+    if ap_option.is_some().into() {
+        Ok(ProjectivePoint::from(ap_option.unwrap()))
+    } else {
+        Err("failed to get public randomness".to_string())
+    }
+}
 
 /// Signature is an extractable one-time signature (EOTS)
 /// i.e., s in a Schnorr signature (R, s)
-pub type Signature = Scalar<Public, Zero>;
+pub type Signature = Scalar;
 
-/// bip340_challenge is the hash function with magic bytes specified
-/// by BIP-340
-fn bip340_challenge() -> Sha256 {
-    Sha256::default().tag(b"BIP0340/challenge")
+pub fn new_sig(r: &[u8]) -> Result<Signature, String> {
+    if r.len() != 32 {
+        return Err(format!("Expected a Vec of length 32 but got {}", r.len()));
+    }
+
+    let mut array = [0u8; 32];
+    array.copy_from_slice(r);
+    match Signature::from_repr_vartime(array.into()) {
+        Some(sr) => Ok(sr),
+        None => Err("failed to get secret randomness".to_string()),
+    }
 }
 
 /// SecretKey is a secret key, formed as a 32-byte scalar
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecretKey {
-    inner: Scalar,
+    inner: k256::SecretKey,
 }
 
 /// PublicKey is a public key, formed as a point with even coordinate
 /// on the Secp256k1 curve
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey {
-    inner: Point<EvenY>,
+    inner: k256::PublicKey,
+}
+
+fn point_to_bytes(P: &ProjectivePoint) -> [u8; 32] {
+    let ep = P.to_encoded_point(false);
+    // Extract the x-coordinate as bytes
+    let x_bytes = ep.x().unwrap();
+    let x_array: [u8; 32] = x_bytes
+        .as_slice()
+        .try_into()
+        .expect("slice with incorrect length");
+    x_array
 }
 
 #[allow(clippy::new_without_default)]
 impl SecretKey {
     pub fn from_bytes(x: [u8; 32]) -> Result<Self, String> {
-        let inner = Scalar::from_bytes(x).ok_or("failed to convert bytes to secret key")?;
-        Ok(SecretKey { inner })
+        let inner =
+            Scalar::from_repr_vartime(x.into()).ok_or("failed to convert bytes to secret key")?;
+        let sk = k256::SecretKey::new(inner.into());
+        Ok(SecretKey { inner: sk })
     }
 
     pub fn from_hex(x_hex: &str) -> Result<Self, String> {
@@ -53,35 +125,48 @@ impl SecretKey {
 
     /// pubkey gets the public key corresponding to the secret key
     pub fn pubkey(&self) -> PublicKey {
-        let mut x = self.inner;
-        let P = Point::even_y_from_scalar_mul(G, &mut x);
-        PublicKey { inner: P }
+        let pk = self.inner.public_key();
+        PublicKey { inner: pk }
     }
 
     /// sign creates a signature with the given secret randomness
     /// and message hash
     pub fn sign(&self, sec_rand: &SecRand, msg_hash: &[u8; 32]) -> Signature {
-        let mut x = self.inner;
-        let P = Point::even_y_from_scalar_mul(G, &mut x);
-        let mut r = *sec_rand;
-        let R = Point::even_y_from_scalar_mul(G, &mut r);
-        let c = Scalar::from_hash(bip340_challenge().add(R).add(P).add(msg_hash));
-        let s = s!(r + c * x); // TODO: get rid of s! and g! macros
+        let x = self.inner.to_nonzero_scalar();
+        let P = ProjectivePoint::mul_by_generator(&x);
+        let P_bytes = point_to_bytes(&P);
+        let r = *sec_rand;
+        let R = ProjectivePoint::mul_by_generator(&r);
+        let R_bytes = point_to_bytes(&R);
+        let c = <Scalar as Reduce<U256>>::reduce_bytes(
+            &tagged_hash(CHALLENGE_TAG)
+                .chain_update(R_bytes)
+                .chain_update(P_bytes)
+                .chain_update(msg_hash)
+                .finalize(),
+        );
 
-        s.public()
+        r + c * *x
     }
 
     /// to_bytes converts the secret key into bytes
-    pub fn to_bytes(&self) -> [u8; 32] {
-        self.inner.to_bytes()
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.inner.to_bytes().to_vec()
     }
 }
 
 impl PublicKey {
-    pub fn from_bytes(P: [u8; 32]) -> Result<Self, String> {
-        let inner =
-            Point::<EvenY>::from_xonly_bytes(P).ok_or("failed to convert bytes to public key")?;
-        Ok(PublicKey { inner })
+    pub fn from_bytes(x_bytes: [u8; 32]) -> Result<Self, String> {
+        let x = k256::FieldBytes::from(x_bytes);
+
+        // Attempt to derive the corresponding y-coordinate
+        let ap_option = AffinePoint::decompress(&x, Choice::from(0));
+        if ap_option.is_some().into() {
+            let pk = k256::PublicKey::from_affine(ap_option.unwrap()).map_err(|e| e.to_string())?;
+            Ok(PublicKey { inner: pk })
+        } else {
+            Err("failed to get public key".to_string())
+        }
     }
 
     pub fn from_hex(P_hex: &str) -> Result<Self, String> {
@@ -91,18 +176,28 @@ impl PublicKey {
     }
 
     /// to_bytes converts the public key into bytes
-    pub fn to_bytes(&self) -> [u8; 32] {
-        self.inner.to_xonly_bytes()
+    pub fn to_bytes(&self) -> Vec<u8> {
+        point_to_bytes(&self.inner.to_projective()).to_vec()
     }
 
     /// verify verifies whether the given signature w.r.t. the
     /// public key, public randomness and message hash
     pub fn verify(&self, pub_rand: &PubRand, msg_hash: &[u8; 32], sig: &Signature) -> bool {
-        let P = self.inner;
+        let P = self.inner.to_projective();
+        let P_bytes = point_to_bytes(&P);
         let R = *pub_rand;
-        let c = Scalar::from_hash(bip340_challenge().add(R).add(P).add(msg_hash)).public();
+        let R_bytes = point_to_bytes(&R);
+        let c = <Scalar as Reduce<U256>>::reduce_bytes(
+            &tagged_hash(CHALLENGE_TAG)
+                .chain_update(R_bytes)
+                .chain_update(P_bytes)
+                .chain_update(msg_hash)
+                .finalize(),
+        );
+
         let s = sig;
-        g!(s * G - c * P) == R
+        let recovered_R = ProjectivePoint::mul_by_generator(s) - P.mul(c);
+        recovered_R.eq(&R)
     }
 }
 
@@ -116,21 +211,37 @@ pub fn extract(
     msg2: &[u8; 32],
     sig2: &Signature,
 ) -> Result<SecretKey, String> {
-    let P = pk.inner;
+    let P = pk.inner.to_projective();
+    let P_bytes = point_to_bytes(&P);
     let R = *pub_rand;
+    let R_bytes = point_to_bytes(&R);
 
-    let e1 = Scalar::from_hash(bip340_challenge().add(R).add(P).add(msg1)).public();
-    let e2 = Scalar::from_hash(bip340_challenge().add(R).add(P).add(msg2)).public();
-    let e_delta = s!(e1 - e2).public();
+    // calculate e1 - e2
+    let e1 = <Scalar as Reduce<U256>>::reduce_bytes(
+        &tagged_hash(CHALLENGE_TAG)
+            .chain_update(R_bytes)
+            .chain_update(P_bytes)
+            .chain_update(msg1)
+            .finalize(),
+    );
+    let e2 = <Scalar as Reduce<U256>>::reduce_bytes(
+        &tagged_hash(CHALLENGE_TAG)
+            .chain_update(R_bytes)
+            .chain_update(P_bytes)
+            .chain_update(msg2)
+            .finalize(),
+    );
+    let e_delta = e1 - e2;
 
+    // calculate s1 - s2
     let s1 = sig1;
     let s2 = sig2;
-    let s_delta = s!(s1 - s2).public();
+    let s_delta = s1 - s2;
 
-    let e_delta = e_delta.non_zero().ok_or("zero e_delta".to_string())?;
-    let invrted_e_delta = e_delta.invert();
-    let sk = s!(s_delta * invrted_e_delta);
-    let sk = sk.non_zero().ok_or("zero sk".to_string())?;
+    // calculate (s1-s2) / (e1 - e2)
+    let inverted_e_delta = e_delta.invert().unwrap();
+    let sk = s_delta * inverted_e_delta;
+    let sk = k256::SecretKey::new(sk.into());
     Ok(SecretKey { inner: sk })
 }
 
@@ -141,9 +252,11 @@ mod tests {
     use sha2::{Digest, Sha256};
     use test_utils::get_eots_testdata;
 
+    use k256::{ProjectivePoint, Scalar};
+
     pub fn rand_gen() -> (SecRand, PubRand) {
-        let mut x = Scalar::random(&mut thread_rng());
-        let P = Point::even_y_from_scalar_mul(G, &mut x);
+        let x = Scalar::generate_vartime(&mut thread_rng());
+        let P = ProjectivePoint::mul_by_generator(&x);
         (x, P)
     }
 
@@ -157,7 +270,8 @@ mod tests {
     impl SecretKey {
         /// new creates a random secret key
         pub fn new<R: RngCore>(rng: &mut R) -> Self {
-            let x = Scalar::random(rng);
+            let x = Scalar::generate_vartime(rng);
+            let x = k256::SecretKey::new(x.into());
             SecretKey { inner: x }
         }
     }
@@ -197,12 +311,11 @@ mod tests {
 
         // convert secret/public randomness to Rust types
         let sr_slice = hex::decode(testdata.sr).unwrap();
-        let sr = SecRand::from_slice(&sr_slice).unwrap();
+        let sr = new_sec_rand(&sr_slice).unwrap();
         let pr_slice = hex::decode(testdata.pr).unwrap();
         let pr_bytes: [u8; 32] = pr_slice.try_into().unwrap();
-        let pr = PubRand::from_xonly_bytes(pr_bytes).unwrap();
-        let mut r = sr;
-        assert_eq!(Point::even_y_from_scalar_mul(G, &mut r), pr);
+        let pr = new_pub_rand(&pr_bytes).unwrap();
+        assert_eq!(ProjectivePoint::mul_by_generator(&sr), pr);
 
         // convert messages
         let mut hasher = Sha256::new();
@@ -217,9 +330,9 @@ mod tests {
 
         // convert signatures
         let sig1_slice = hex::decode(testdata.sig1).unwrap();
-        let sig1 = Signature::from_slice(&sig1_slice).unwrap();
+        let sig1 = new_sig(&sig1_slice).unwrap();
         let sig2_slice = hex::decode(testdata.sig2).unwrap();
-        let sig2 = Signature::from_slice(&sig2_slice).unwrap();
+        let sig2 = new_sig(&sig2_slice).unwrap();
 
         // verify signatures
         assert!(pk.verify(&pr, &msg1_hash, &sig1));
