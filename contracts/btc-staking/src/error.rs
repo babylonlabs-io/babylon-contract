@@ -1,12 +1,13 @@
+use hex::FromHexError;
+use prost::DecodeError;
+use thiserror::Error;
+
 use bitcoin::hashes::FromSliceError;
 use bitcoin::hex::HexToArrayError;
-use thiserror::Error;
 
 use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
-use hex::FromHexError;
-use prost::DecodeError;
 
 use babylon_apis::error::StakingApiError;
 use babylon_merkle::error::MerkleError;

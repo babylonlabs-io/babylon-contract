@@ -1,7 +1,5 @@
 use cosmwasm_std::{ContractResult, Response};
-use cosmwasm_vm::testing::{
-    instantiate, mock_env, mock_info, mock_instance,
-};
+use cosmwasm_vm::testing::{instantiate, mock_env, mock_info, mock_instance};
 use cosmwasm_vm::Size;
 
 use btc_staking::msg::InstantiateMsg;

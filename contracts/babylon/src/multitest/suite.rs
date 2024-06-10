@@ -109,7 +109,7 @@ impl Suite {
     }
 
     #[track_caller]
-    pub fn get_btc_staking_config(&self) -> btc_staking::state::Config {
+    pub fn get_btc_staking_config(&self) -> btc_staking::state::config::Config {
         self.app
             .wrap()
             .query_wasm_smart(

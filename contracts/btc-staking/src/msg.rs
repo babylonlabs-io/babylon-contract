@@ -1,9 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-
-use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 use cw_controllers::AdminResponse;
 
-use crate::state::{Config, Params};
+use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
+
+use crate::state::config::{Config, Params};
 
 #[cw_serde]
 #[derive(Default)]

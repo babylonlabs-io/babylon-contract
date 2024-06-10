@@ -1,7 +1,7 @@
 // Adapted from Tgrade's poe-contracts/packages/utils/src/member_indexes.rs
 use cw_storage_plus::{Index, IndexList, MultiIndex};
 
-use crate::state::FinalityProviderState;
+use crate::state::staking::FinalityProviderState;
 
 pub struct FinalityProviderIndexes<'a> {
     // Power (multi-)index (deserializing the (hidden) pk to String)

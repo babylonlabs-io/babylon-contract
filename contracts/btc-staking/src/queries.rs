@@ -1,17 +1,21 @@
+use std::str::FromStr;
+
+use bitcoin::hashes::Hash;
+use bitcoin::Txid;
+
+use cosmwasm_std::{Deps, Order, StdResult};
+use cw_storage_plus::Bound;
+
+use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
+
 use crate::error::ContractError;
 use crate::msg::{
     BtcDelegationsResponse, DelegationsByFPResponse, FinalityProviderInfo,
     FinalityProvidersByPowerResponse, FinalityProvidersResponse, FinalitySignatureResponse,
 };
-use crate::state::{
-    fps, Config, FinalityProviderState, Params, CONFIG, DELEGATIONS, FPS, FP_DELEGATIONS, PARAMS,
-};
-use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
-use bitcoin::hashes::Hash;
-use bitcoin::Txid;
-use cosmwasm_std::{Deps, Order, StdResult};
-use cw_storage_plus::Bound;
-use std::str::FromStr;
+use crate::state::config::{Config, Params};
+use crate::state::config::{CONFIG, PARAMS};
+use crate::state::staking::{fps, FinalityProviderState, DELEGATIONS, FPS, FP_DELEGATIONS};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -171,7 +175,7 @@ pub fn finality_signature(
     btc_pk_hex: String,
     height: u64,
 ) -> Result<FinalitySignatureResponse, ContractError> {
-    let sig = crate::state::SIGNATURES.load(deps.storage, (height, &btc_pk_hex))?;
+    let sig = crate::state::finality::SIGNATURES.load(deps.storage, (height, &btc_pk_hex))?;
     Ok(FinalitySignatureResponse { signature: sig })
 }
 
@@ -195,7 +199,7 @@ mod tests {
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, FinalitySignatureResponse, InstantiateMsg};
-    use crate::state::{FinalityProviderState, FP_STATE_KEY};
+    use crate::state::staking::{FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
 
