@@ -15,9 +15,11 @@ use std::ops::Mul;
 
 const CHALLENGE_TAG: &[u8] = b"BIP0340/challenge";
 
+// adapted from https://github.com/RustCrypto/elliptic-curves/blob/520f67d26be1773bd600d05796cc26d797dd7182/k256/src/schnorr.rs#L181-L187
 fn tagged_hash(tag: &[u8]) -> Sha256 {
     let tag_hash = Sha256::digest(tag);
     let mut digest = Sha256::new();
+    // the hash is in sha256d so we need to hash twice
     digest.update(tag_hash);
     digest.update(tag_hash);
     digest
@@ -27,33 +29,26 @@ fn tagged_hash(tag: &[u8]) -> Sha256 {
 /// It is formed as a scalar on the Secp256k1 curve
 pub type SecRand = Scalar;
 
+/// new_sec_rand parses the given bytes into a new secret randomness
+/// the given byte slice has to be a 32-byte scalar
 pub fn new_sec_rand(r: &[u8]) -> Result<SecRand, String> {
-    if r.len() != 32 {
-        return Err(format!("Expected a Vec of length 32 but got {}", r.len()));
-    }
-
-    let mut array = [0u8; 32];
-    array.copy_from_slice(r);
-    match SecRand::from_repr_vartime(array.into()) {
-        Some(sr) => Ok(sr),
-        None => Err("failed to get secret randomness".to_string()),
-    }
+    let array: [u8; 32] = r
+        .try_into()
+        .map_err(|_| format!("Expected a Vec of length 32 but got {}", r.len()))?;
+    SecRand::from_repr_vartime(array.into()).ok_or("failed to get secret randomness".to_string())
 }
 
 /// PubRand is the type for a public randomness
 /// It is formed as a point with even y coord on the Secp256k1 curve
 pub type PubRand = ProjectivePoint;
 
+/// new_pub_rand parses the given bytes into a new public randomness
+/// the given byte slice has to be 32-byte representation of an x coordinate
+/// on secp256k1 curve
 pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand, String> {
-    if x_bytes.len() != 32 {
-        return Err(format!(
-            "Expected a Vec of length 32 but got {}",
-            x_bytes.len()
-        ));
-    }
-
-    let mut array = [0u8; 32];
-    array.copy_from_slice(x_bytes);
+    let array: [u8; 32] = x_bytes
+        .try_into()
+        .map_err(|_| format!("Expected a Vec of length 32 but got {}", x_bytes.len()))?;
 
     // Convert x_bytes to a FieldElement
     let x = k256::FieldBytes::from(array);
@@ -72,16 +67,10 @@ pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand, String> {
 pub type Signature = Scalar;
 
 pub fn new_sig(r: &[u8]) -> Result<Signature, String> {
-    if r.len() != 32 {
-        return Err(format!("Expected a Vec of length 32 but got {}", r.len()));
-    }
-
-    let mut array = [0u8; 32];
-    array.copy_from_slice(r);
-    match Signature::from_repr_vartime(array.into()) {
-        Some(sr) => Ok(sr),
-        None => Err("failed to get secret randomness".to_string()),
-    }
+    let array: [u8; 32] = r
+        .try_into()
+        .map_err(|_| format!("Expected a Vec of length 32 but got {}", r.len()))?;
+    Signature::from_repr_vartime(array.into()).ok_or("failed to get EOTS signature".to_string())
 }
 
 /// SecretKey is a secret key, formed as a 32-byte scalar
@@ -104,7 +93,7 @@ fn point_to_bytes(P: &ProjectivePoint) -> [u8; 32] {
     let x_array: [u8; 32] = x_bytes
         .as_slice()
         .try_into()
-        .expect("slice with incorrect length");
+        .unwrap(); // cannot fail
     x_array
 }
 
