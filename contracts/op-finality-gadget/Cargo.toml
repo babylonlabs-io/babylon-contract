@@ -1,0 +1,27 @@
+[package]
+name = "op-finality-gadget"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors = ["BabylonChain Inc. <admin@babylonchain.io>", "Snapchain Inc. <info@snapchain.dev>"]
+publish.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "op-finality-gadget-schema"
+path = "src/bin/schema.rs"
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-schema  = { workspace = true }
+cosmwasm-std     = { workspace = true }
+cw-controllers   = { workspace = true }
+cw-storage-plus  = { workspace = true }
+thiserror        = { workspace = true }

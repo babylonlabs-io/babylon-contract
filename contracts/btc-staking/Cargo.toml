@@ -4,7 +4,7 @@ edition.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true
-authors = ["BabylonChain Inc. <admin@babylonchain.io>", "Mauro Lacy <mauro@babylonchain.io"]
+authors = ["BabylonChain Inc. <admin@babylonchain.io>", "Mauro Lacy <mauro@babylonchain.io>"]
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
