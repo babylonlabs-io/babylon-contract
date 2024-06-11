@@ -42,6 +42,9 @@ cargo run-script lint
 ```
 
 ### Test the contract
+
+Note: Requires the optimized contract to be built (`cargo optimize`)
+
 Runs all the CI checks locally (in your actual toolchain).
 
 ```bash
@@ -50,7 +53,7 @@ cargo test --lib
 
 ### Integration tests the contract
 
-Requires the optimized contract to be built.
+Note: Requires the optimized contract to be built (`cargo optimize`)
 
 ```bash
 cargo test --test integration
