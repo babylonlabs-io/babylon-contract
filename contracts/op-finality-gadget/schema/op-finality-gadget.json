@@ -6,6 +6,18 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
+    "required": [
+      "admin",
+      "consumer_id"
+    ],
+    "properties": {
+      "admin": {
+        "type": "string"
+      },
+      "consumer_id": {
+        "type": "string"
+      }
+    },
     "additionalProperties": false
   },
   "execute": {
