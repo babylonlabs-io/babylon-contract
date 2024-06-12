@@ -316,8 +316,7 @@ fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::Binary;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use crate::contract::tests::{
         create_new_finality_provider, get_public_randomness_commitment, CREATOR,
@@ -328,7 +327,7 @@ mod tests {
     #[test]
     fn commit_public_randomness_works() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -363,8 +362,8 @@ mod tests {
             fp_pubkey_hex: pk_hex,
             start_height: pub_rand.start_height,
             num_pub_rand: pub_rand.num_pub_rand,
-            commitment: Binary(pub_rand.commitment),
-            signature: Binary(pubrand_signature),
+            commitment: pub_rand.commitment.into(),
+            signature: pubrand_signature.into(),
         };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

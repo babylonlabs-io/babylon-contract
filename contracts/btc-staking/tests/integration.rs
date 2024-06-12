@@ -1,18 +1,17 @@
 use cosmwasm_std::{ContractResult, Response};
 use cosmwasm_vm::testing::{instantiate, mock_env, mock_info, mock_instance};
-use cosmwasm_vm::Size;
 
 use btc_staking::msg::InstantiateMsg;
 
 static WASM: &[u8] = include_bytes!("../../../artifacts/btc_staking.wasm");
-const MAX_WASM_LEN: Size = Size::kibi(800);
+const MAX_WASM_LEN: usize = 800 * 1000; // 800 kibi
 
 const CREATOR: &str = "creator";
 
 #[test]
 fn wasm_size_limit_check() {
     assert!(
-        WASM.len() < MAX_WASM_LEN.0,
+        WASM.len() < MAX_WASM_LEN,
         "Wasm file too large: {}",
         WASM.len()
     );

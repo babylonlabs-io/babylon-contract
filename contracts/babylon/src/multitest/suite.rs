@@ -1,4 +1,5 @@
 use crate::msg::contract::{InstantiateMsg, QueryMsg};
+use crate::multitest::CONTRACT1_ADDR;
 use crate::state::config::Config;
 use anyhow::Result as AnyResult;
 use babylon_bindings::BabylonMsg;
@@ -112,10 +113,7 @@ impl Suite {
     pub fn get_btc_staking_config(&self) -> btc_staking::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(
-                Addr::unchecked("contract1"),
-                &btc_staking::msg::QueryMsg::Config {},
-            )
+            .query_wasm_smart(CONTRACT1_ADDR, &btc_staking::msg::QueryMsg::Config {})
             .unwrap()
     }
 

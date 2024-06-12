@@ -219,8 +219,8 @@ pub(crate) mod tests {
 
     use cosmwasm_std::{
         from_json,
-        testing::{mock_dependencies, mock_env, mock_info},
-        Addr, Binary, Decimal,
+        testing::{message_info, mock_dependencies, mock_env},
+        Binary, Decimal,
     };
     use cw_controllers::AdminResponse;
 
@@ -251,28 +251,30 @@ pub(crate) mod tests {
             start_height: del.start_height,
             end_height: del.end_height,
             total_sat: del.total_sat,
-            staking_tx: Binary(del.staking_tx.to_vec()),
-            slashing_tx: Binary(del.slashing_tx.to_vec()),
-            delegator_slashing_sig: Binary(vec![]),
+            staking_tx: Binary::new(del.staking_tx.to_vec()),
+            slashing_tx: Binary::new(del.slashing_tx.to_vec()),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: del
                 .covenant_sigs
                 .iter()
                 .map(|cov_sig| CovenantAdaptorSignatures {
-                    cov_pk: Binary(cov_sig.cov_pk.to_vec()),
+                    cov_pk: Binary::new(cov_sig.cov_pk.to_vec()),
                     adaptor_sigs: cov_sig
                         .adaptor_sigs
                         .iter()
-                        .map(|adaptor_sig| Binary(adaptor_sig.to_vec()))
+                        .map(|adaptor_sig| Binary::new(adaptor_sig.to_vec()))
                         .collect(),
                 })
                 .collect(),
             staking_output_idx: del.staking_output_idx,
             unbonding_time: del.unbonding_time,
             undelegation_info: Some(BtcUndelegationInfo {
-                unbonding_tx: Binary(btc_undelegation.unbonding_tx.to_vec()),
-                slashing_tx: Binary(btc_undelegation.slashing_tx.to_vec()),
-                delegator_unbonding_sig: Binary(vec![]),
-                delegator_slashing_sig: Binary(btc_undelegation.delegator_slashing_sig.to_vec()),
+                unbonding_tx: Binary::new(btc_undelegation.unbonding_tx.to_vec()),
+                slashing_tx: Binary::new(btc_undelegation.slashing_tx.to_vec()),
+                delegator_unbonding_sig: Binary::new(vec![]),
+                delegator_slashing_sig: Binary::new(
+                    btc_undelegation.delegator_slashing_sig.to_vec(),
+                ),
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
             }),
@@ -310,8 +312,8 @@ pub(crate) mod tests {
             btc_pk_hex: "f1".to_string(),
             pop: Some(ProofOfPossession {
                 btc_sig_type: 0,
-                babylon_sig: Binary(vec![]),
-                btc_sig: Binary(vec![]),
+                babylon_sig: Binary::new(vec![]),
+                btc_sig: Binary::new(vec![]),
             }),
             consumer_id: "osmosis-1".to_string(),
         }
@@ -327,7 +329,7 @@ pub(crate) mod tests {
             admin: None, // No admin provided
         };
 
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         // Call the instantiate function
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -343,14 +345,15 @@ pub(crate) mod tests {
     #[test]
     fn instantiate_with_admin() {
         let mut deps = mock_dependencies();
+        let init_admin = deps.api.addr_make(INIT_ADMIN);
 
         // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
         let msg = InstantiateMsg {
             params: None,
-            admin: Some(INIT_ADMIN.into()), // Admin provided
+            admin: Some(init_admin.to_string()), // Admin provided
         };
 
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         // Call the instantiate function
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -360,27 +363,27 @@ pub(crate) mod tests {
 
         // Use assert_admin to verify that the admin was set correctly
         // This uses the assert_admin helper function provided by the Admin crate
-        ADMIN
-            .assert_admin(deps.as_ref(), &Addr::unchecked(INIT_ADMIN))
-            .unwrap();
+        ADMIN.assert_admin(deps.as_ref(), &init_admin).unwrap();
 
         // ensure the admin is queryable as well
         let res = query(deps.as_ref(), mock_env(), QueryMsg::Admin {}).unwrap();
         let admin: AdminResponse = from_json(res).unwrap();
-        assert_eq!(admin.admin.unwrap(), INIT_ADMIN)
+        assert_eq!(admin.admin.unwrap(), init_admin.as_str())
     }
 
     #[test]
     fn test_update_admin() {
         let mut deps = mock_dependencies();
+        let init_admin = deps.api.addr_make(INIT_ADMIN);
+        let new_admin = deps.api.addr_make(NEW_ADMIN);
 
         // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
         let instantiate_msg = InstantiateMsg {
             params: None,
-            admin: Some(INIT_ADMIN.into()), // Admin provided
+            admin: Some(init_admin.to_string()), // Admin provided
         };
 
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         // Call the instantiate function
         let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
@@ -389,17 +392,15 @@ pub(crate) mod tests {
         assert_eq!(0, res.messages.len());
 
         // Use assert_admin to verify that the admin was set correctly
-        ADMIN
-            .assert_admin(deps.as_ref(), &Addr::unchecked(INIT_ADMIN))
-            .unwrap();
+        ADMIN.assert_admin(deps.as_ref(), &init_admin).unwrap();
 
-        // Update the admin to NEW_ADMIN
+        // Update the admin to new_admin
         let update_admin_msg = ExecuteMsg::UpdateAdmin {
-            admin: Some(NEW_ADMIN.to_string()),
+            admin: Some(new_admin.to_string()),
         };
 
-        // Execute the UpdateAdmin message with a non-admin info
-        let non_admin_info = mock_info("non_admin", &[]);
+        // Execute the UpdateAdmin message with non-admin info
+        let non_admin_info = message_info(&deps.api.addr_make("non_admin"), &[]);
         let err = execute(
             deps.as_mut(),
             mock_env(),
@@ -413,15 +414,13 @@ pub(crate) mod tests {
         );
 
         // Execute the UpdateAdmin message with the initial admin info
-        let admin_info = mock_info(INIT_ADMIN, &[]);
+        let admin_info = message_info(&init_admin, &[]);
         let res = execute(deps.as_mut(), mock_env(), admin_info, update_admin_msg).unwrap();
 
         // Assert that no messages were sent
         assert_eq!(0, res.messages.len());
 
         // Use assert_admin to verify that the admin was updated correctly
-        ADMIN
-            .assert_admin(deps.as_ref(), &Addr::unchecked(NEW_ADMIN))
-            .unwrap();
+        ADMIN.assert_admin(deps.as_ref(), &new_admin).unwrap();
     }
 }

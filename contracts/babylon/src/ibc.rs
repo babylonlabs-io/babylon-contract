@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use crate::msg::ibc::{new_ack_err, new_ack_res};
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
@@ -7,7 +6,8 @@ use babylon_proto::babylon::zoneconcierge::v1::{
 use cosmwasm_std::{
     DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError, StdResult,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdAck, StdError,
+    StdResult,
 };
 use prost::Message;
 
@@ -115,10 +115,10 @@ pub fn ibc_packet_receive(
     .or_else(|e| {
         // we try to capture all app-level errors and convert them into
         // acknowledgement packets that contain an error code.
-        let acknowledgement = new_ack_err(format!("invalid packet: {e}")); // TODO: design error ack format
-        Ok(IbcReceiveResponse::new()
-            .set_ack(acknowledgement.encode_to_vec())
-            .add_event(Event::new("ibc").add_attribute("packet", "receive")))
+        Ok(
+            IbcReceiveResponse::new(StdAck::error(format!("invalid packet: {e}"))) // TODO: design error ack format
+                .add_event(Event::new("ibc").add_attribute("packet", "receive")),
+        )
     })
 }
 
@@ -132,7 +132,7 @@ mod ibc_packet {
         UnbondedBtcDelegation,
     };
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
-    use cosmwasm_std::{to_json_binary, Binary, Decimal, WasmMsg};
+    use cosmwasm_std::{to_json_binary, Decimal, WasmMsg};
     use std::str::FromStr;
 
     pub fn handle_btc_timestamp(
@@ -147,12 +147,10 @@ mod ibc_packet {
         let msg_option = crate::state::handle_btc_timestamp(storage, btc_ts)?;
 
         // construct response
-        let mut resp: IbcReceiveResponse<BabylonMsg> = IbcReceiveResponse::new();
-        // add attribute to response
+        let mut resp: IbcReceiveResponse<BabylonMsg> =
+            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
+                                                              // add attribute to response
         resp = resp.add_attribute("action", "receive_btc_timestamp");
-        // add ack message to response
-        let acknowledgement = new_ack_res(); // TODO: design response format
-        resp = resp.set_ack(acknowledgement.encode_to_vec());
 
         // if the BTC timestamp carries a Babylon message for the Cosmos zone, and
         // the contract enables sending messages to the Cosmos zone, then
@@ -198,13 +196,13 @@ mod ibc_packet {
                             }),
                         commission: Decimal::from_str(&fp.commission)?,
                         babylon_pk: fp.babylon_pk.as_ref().map(|pk| PubKey {
-                            key: Binary(pk.key.to_vec()),
+                            key: pk.key.to_vec().into(),
                         }),
                         btc_pk_hex: fp.btc_pk_hex.clone(),
                         pop: fp.pop.as_ref().map(|pop| ProofOfPossession {
                             btc_sig_type: pop.btc_sig_type,
-                            babylon_sig: Binary(pop.babylon_sig.to_vec()),
-                            btc_sig: Binary(pop.btc_sig.to_vec()),
+                            babylon_sig: pop.babylon_sig.to_vec().into(),
+                            btc_sig: pop.btc_sig.to_vec().into(),
                         }),
                         consumer_id: fp.consumer_id.clone(),
                     })
@@ -219,45 +217,45 @@ mod ibc_packet {
                     start_height: d.start_height,
                     end_height: d.end_height,
                     total_sat: d.total_sat,
-                    staking_tx: Binary(d.staking_tx.to_vec()),
-                    slashing_tx: Binary(d.slashing_tx.to_vec()),
-                    delegator_slashing_sig: Binary(d.delegator_slashing_sig.to_vec()),
+                    staking_tx: d.staking_tx.to_vec().into(),
+                    slashing_tx: d.slashing_tx.to_vec().into(),
+                    delegator_slashing_sig: d.delegator_slashing_sig.to_vec().into(),
                     covenant_sigs: d
                         .covenant_sigs
                         .iter()
                         .map(|s| CovenantAdaptorSignatures {
-                            cov_pk: Binary(s.cov_pk.to_vec()),
+                            cov_pk: s.cov_pk.to_vec().into(),
                             adaptor_sigs: s
                                 .adaptor_sigs
                                 .iter()
-                                .map(|a| Binary(a.to_vec()))
+                                .map(|a| a.to_vec().into())
                                 .collect(),
                         })
                         .collect(),
                     staking_output_idx: d.staking_output_idx,
                     unbonding_time: d.unbonding_time,
                     undelegation_info: d.undelegation_info.as_ref().map(|ui| BtcUndelegationInfo {
-                        unbonding_tx: Binary(ui.unbonding_tx.to_vec()),
-                        delegator_unbonding_sig: Binary(ui.delegator_unbonding_sig.to_vec()),
+                        unbonding_tx: ui.unbonding_tx.to_vec().into(),
+                        delegator_unbonding_sig: ui.delegator_unbonding_sig.to_vec().into(),
                         covenant_unbonding_sig_list: ui
                             .covenant_unbonding_sig_list
                             .iter()
                             .map(|s| SignatureInfo {
-                                pk: Binary(s.pk.to_vec()),
-                                sig: Binary(s.sig.to_vec()),
+                                pk: s.pk.to_vec().into(),
+                                sig: s.sig.to_vec().into(),
                             })
                             .collect(),
-                        slashing_tx: Binary(ui.slashing_tx.to_vec()),
-                        delegator_slashing_sig: Binary(ui.delegator_slashing_sig.to_vec()),
+                        slashing_tx: ui.slashing_tx.to_vec().into(),
+                        delegator_slashing_sig: ui.delegator_slashing_sig.to_vec().into(),
                         covenant_slashing_sigs: ui
                             .covenant_slashing_sigs
                             .iter()
                             .map(|s| CovenantAdaptorSignatures {
-                                cov_pk: Binary(s.cov_pk.to_vec()),
+                                cov_pk: s.cov_pk.to_vec().into(),
                                 adaptor_sigs: s
                                     .adaptor_sigs
                                     .iter()
-                                    .map(|a| Binary(a.to_vec()))
+                                    .map(|a| a.to_vec().into())
                                     .collect(),
                             })
                             .collect(),
@@ -271,7 +269,7 @@ mod ibc_packet {
                 .iter()
                 .map(|u| UnbondedBtcDelegation {
                     staking_tx_hash: u.staking_tx_hash.clone(),
-                    unbonding_tx_sig: Binary(u.unbonding_tx_sig.to_vec()),
+                    unbonding_tx_sig: u.unbonding_tx_sig.to_vec().into(),
                 })
                 .collect(),
         };
@@ -283,14 +281,12 @@ mod ibc_packet {
         };
 
         // construct response
-        let mut resp: IbcReceiveResponse<BabylonMsg> = IbcReceiveResponse::new();
-        // add wasm message to response
+        let mut resp: IbcReceiveResponse<BabylonMsg> =
+            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
+                                                              // add wasm message to response
         resp = resp.add_message(wasm_msg);
         // add attribute to response
         resp = resp.add_attribute("action", "receive_btc_staking");
-        // add ack message to response
-        let acknowledgement = new_ack_res(); // TODO: design response format
-        resp = resp.set_ack(acknowledgement.encode_to_vec());
 
         Ok(resp)
     }
@@ -319,9 +315,9 @@ mod tests {
     use super::*;
     use crate::contract::instantiate;
     use crate::msg::contract::InstantiateMsg;
+    use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_ibc_channel_open_try, mock_info, MockApi, MockQuerier,
-        MockStorage,
+        mock_dependencies, mock_env, mock_ibc_channel_open_try, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::OwnedDeps;
 
@@ -339,7 +335,7 @@ mod tests {
             btc_staking_msg: None,
             admin: None,
         };
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
         deps

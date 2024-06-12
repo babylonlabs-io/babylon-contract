@@ -16,13 +16,13 @@
 //!          //...
 //!      });
 //! 4. Anywhere you see query(&deps, ...) you must replace it with query(&mut deps, ...)
-use cosmwasm_std::testing::mock_ibc_channel_open_try;
-use cosmwasm_std::{from_json, ContractResult, IbcOrder, Response};
+use cosmwasm_std::testing::{message_info, mock_ibc_channel_open_try};
+use cosmwasm_std::{from_json, Addr, ContractResult, IbcOrder, Response};
 use cosmwasm_vm::testing::{
     execute, ibc_channel_open, instantiate, mock_env, mock_info, mock_instance,
     mock_instance_with_gas_limit, query, MockApi, MockQuerier, MockStorage,
 };
-use cosmwasm_vm::{Instance, Size};
+use cosmwasm_vm::Instance;
 use test_utils::{get_btc_lc_fork_msg, get_btc_lc_mainchain_resp};
 
 use babylon_bindings::BabylonMsg;
@@ -31,7 +31,7 @@ use babylon_contract::msg::btc_header::{BtcHeader, BtcHeadersResponse};
 use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 
 static WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
-const MAX_WASM_LEN: Size = Size::kibi(800);
+const MAX_WASM_LEN: usize = 800 * 1000; // 800 kibi
 
 const CREATOR: &str = "creator";
 
@@ -48,7 +48,7 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
         btc_staking_msg: None,
         admin: None,
     };
-    let info = mock_info(CREATOR, &[]);
+    let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
     deps
@@ -76,7 +76,7 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
 #[test]
 fn wasm_size_limit_check() {
     assert!(
-        WASM.len() < MAX_WASM_LEN.0,
+        WASM.len() < MAX_WASM_LEN,
         "Wasm file too large: {}",
         WASM.len()
     );
@@ -96,7 +96,7 @@ fn instantiate_works() {
         btc_staking_msg: None,
         admin: None,
     };
-    let info = mock_info(CREATOR, &[]);
+    let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);
     let msgs = res.unwrap().messages;
     assert_eq!(0, msgs.len());

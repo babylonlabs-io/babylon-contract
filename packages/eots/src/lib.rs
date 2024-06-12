@@ -90,10 +90,7 @@ fn point_to_bytes(P: &ProjectivePoint) -> [u8; 32] {
     let ep = P.to_encoded_point(false);
     // Extract the x-coordinate as bytes
     let x_bytes = ep.x().unwrap();
-    let x_array: [u8; 32] = x_bytes
-        .as_slice()
-        .try_into()
-        .unwrap(); // cannot fail
+    let x_array: [u8; 32] = x_bytes.as_slice().try_into().unwrap(); // cannot fail
     x_array
 }
 

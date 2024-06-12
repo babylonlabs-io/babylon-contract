@@ -6,7 +6,7 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 
-use cosmwasm_std::{Binary, DepsMut, Env, MessageInfo, Response, Storage};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Storage};
 
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
@@ -299,7 +299,7 @@ fn btc_undelegate(
 ) -> Result<(), ContractError> {
     match &mut btc_del.undelegation_info {
         Some(undelegation_info) => {
-            undelegation_info.delegator_unbonding_sig = Binary(unbondind_tx_sig.to_vec());
+            undelegation_info.delegator_unbonding_sig = unbondind_tx_sig.to_vec().into();
         }
         None => {
             return Err(ContractError::MissingUnbondingInfo);
@@ -321,13 +321,14 @@ fn btc_undelegate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cosmwasm_std::Binary;
 
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use babylon_apis::btc_staking_api::BtcUndelegationInfo;
 
     use crate::contract::tests::{
-        create_new_finality_provider, get_active_btc_delegation, CREATOR,
+        create_new_finality_provider, get_active_btc_delegation, CREATOR, INIT_ADMIN,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -336,7 +337,8 @@ mod tests {
     #[test]
     fn test_btc_staking_add_fp_unauthorized() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let init_admin = deps.api.addr_make(INIT_ADMIN);
 
         instantiate(
             deps.as_mut(),
@@ -344,7 +346,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: None,
-                admin: Some(crate::contract::tests::INIT_ADMIN.into()), // Admin provided
+                admin: Some(init_admin.to_string()), // Admin provided
             },
         )
         .unwrap();
@@ -359,7 +361,7 @@ mod tests {
         };
 
         // Only the Creator or Admin can call this
-        let other_info = mock_info("other", &[]);
+        let other_info = message_info(&deps.api.addr_make("other"), &[]);
         let err = execute(deps.as_mut(), mock_env(), other_info, msg.clone()).unwrap_err();
         assert_eq!(err, ContractError::Unauthorized);
     }
@@ -367,7 +369,8 @@ mod tests {
     #[test]
     fn test_btc_staking_add_fp_admin() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let init_admin = deps.api.addr_make(INIT_ADMIN);
 
         instantiate(
             deps.as_mut(),
@@ -375,12 +378,12 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: None,
-                admin: Some(crate::contract::tests::INIT_ADMIN.into()), // Admin provided
+                admin: Some(init_admin.to_string()), // Admin provided
             },
         )
         .unwrap();
 
-        let admin_info = mock_info(crate::contract::tests::INIT_ADMIN, &[]); // Mock info for the admin
+        let admin_info = message_info(&init_admin, &[]); // Mock info for the admin
         let new_fp = create_new_finality_provider();
 
         let msg = ExecuteMsg::BtcStaking {
@@ -412,7 +415,7 @@ mod tests {
     #[test]
     fn btc_staking_active_delegation_happy_path() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -474,7 +477,7 @@ mod tests {
     #[test]
     fn btc_staking_undelegation_works() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -519,7 +522,7 @@ mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx,
                 slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: Binary(vec![]),
+                delegator_unbonding_sig: Binary::new(vec![]),
                 delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
@@ -529,7 +532,7 @@ mod tests {
         // Now send the undelegation message
         let undelegation = UnbondedBtcDelegation {
             staking_tx_hash: staking_tx_hash_hex.clone(),
-            unbonding_tx_sig: Binary(vec![0x01, 0x02, 0x03]), // TODO: Use a proper signature
+            unbonding_tx_sig: Binary::new(vec![0x01, 0x02, 0x03]), // TODO: Use a proper signature
         };
 
         let msg = ExecuteMsg::BtcStaking {
@@ -542,7 +545,7 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        // Check the delegation is not active anymore (updated with the unbonding tx signature)
+        // Check the delegation is not active any more (updated with the unbonding tx signature)
         let active_delegation_undelegation = active_delegation.undelegation_info.unwrap();
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
         let btc_undelegation = btc_del.undelegation_info.unwrap();
@@ -551,7 +554,7 @@ mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx,
                 slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: Binary(vec![0x01, 0x02, 0x03]),
+                delegator_unbonding_sig: Binary::new(vec![0x01, 0x02, 0x03]),
                 delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],

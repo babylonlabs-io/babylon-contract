@@ -27,8 +27,8 @@ pub const FP_POWER_KEY: &str = "fp_state__power";
 /// The power index is a `MultiIndex`, as there can be multiple FPs with the same power.
 ///
 /// The indexes are not snapshotted; only the current power is indexed at any given time.
-pub fn fps<'a>(
-) -> IndexedSnapshotMap<'a, &'a str, FinalityProviderState, FinalityProviderIndexes<'a>> {
+pub fn fps<'a>() -> IndexedSnapshotMap<&'a str, FinalityProviderState, FinalityProviderIndexes<'a>>
+{
     let indexes = FinalityProviderIndexes {
         power: MultiIndex::new(|_, fp_state| fp_state.power, FP_STATE_KEY, FP_POWER_KEY),
     };

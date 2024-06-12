@@ -3,7 +3,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
     Response, SubMsg, SubMsgResponse, WasmMsg,
 };
-use cw_utils::parse_instantiate_response_data;
+use cw_utils::ParseReplyError;
 
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
@@ -70,13 +70,34 @@ fn reply_init_callback(
     deps: DepsMut,
     reply: SubMsgResponse,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    let init_data = parse_instantiate_response_data(&reply.data.unwrap())?;
-    let btc_staking = Addr::unchecked(init_data.contract_address);
-    CONFIG.update(deps.storage, |mut cfg| {
-        cfg.btc_staking = Some(btc_staking.clone());
-        Ok::<_, ContractError>(cfg)
-    })?;
-    Ok(Response::new())
+    // Try to get contract address from events in reply
+    for event in reply.events {
+        if event.ty == "instantiate" {
+            for attr in event.attributes {
+                if attr.key == "_contract_address" {
+                    let btc_staking = Addr::unchecked(attr.value);
+                    CONFIG.update(deps.storage, |mut cfg| {
+                        cfg.btc_staking = Some(btc_staking.clone());
+                        Ok::<_, ContractError>(cfg)
+                    })?;
+                    return Ok(Response::new());
+                }
+            }
+        }
+    }
+    // Fall back to deprecated way of getting contract address from data
+    // TODO: Remove this if the method above works
+    // TODO: Use the new `msg_responses` field if / when available
+    // let init_data = parse_instantiate_response_data(&reply.data.unwrap())?;
+    // let btc_staking = Addr::unchecked(init_data.contract_address);
+    // CONFIG.update(deps.storage, |mut cfg| {
+    //     cfg.btc_staking = Some(btc_staking.clone());
+    //     Ok::<_, ContractError>(cfg)
+    // })?;
+    // Ok(Response::new())
+    Err(ContractError::ParseReply(ParseReplyError::ParseFailure(
+        "Cannot parse contract address".to_string(),
+    )))
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
@@ -146,7 +167,8 @@ pub fn execute(
 mod tests {
     use super::*;
     use babylon_bitcoin::BlockHeader;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::message_info;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
     const CREATOR: &str = "creator";
 
@@ -171,7 +193,7 @@ mod tests {
             btc_staking_msg: None,
             admin: None,
         };
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }

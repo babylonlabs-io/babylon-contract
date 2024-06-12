@@ -184,7 +184,7 @@ mod tests {
     use bitcoin::Transaction;
 
     use cosmwasm_std::storage_keys::namespace_with_key;
-    use cosmwasm_std::testing::mock_info;
+    use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
     use cosmwasm_std::{from_json, Binary, Decimal, Env, Storage};
@@ -224,8 +224,8 @@ mod tests {
             btc_pk_hex: format!("f{}", id),
             pop: Some(ProofOfPossession {
                 btc_sig_type: 0,
-                babylon_sig: Binary(vec![]),
-                btc_sig: Binary(vec![]),
+                babylon_sig: Binary::new(vec![]),
+                btc_sig: Binary::new(vec![]),
             }),
             consumer_id: format!("osmosis-{}", id),
         }
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn test_finality_providers() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn test_delegations() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -325,7 +325,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -341,7 +341,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -351,11 +351,11 @@ mod tests {
         // Avoid repeated staking tx hash
         let mut staking_tx = del2.staking_tx.to_vec();
         staking_tx[0] += 1;
-        del2.staking_tx = Binary(staking_tx);
+        del2.staking_tx = Binary::new(staking_tx);
         // Avoid repeated slashing tx hash
         let mut slashing_tx = del2.slashing_tx.to_vec();
         slashing_tx[0] += 1;
-        del2.slashing_tx = Binary(slashing_tx);
+        del2.slashing_tx = Binary::new(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -397,7 +397,7 @@ mod tests {
     #[test]
     fn test_active_delegations() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -433,7 +433,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -449,7 +449,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -459,11 +459,11 @@ mod tests {
         // Avoid repeated staking tx hash
         let mut staking_tx = del2.staking_tx.to_vec();
         staking_tx[0] += 1;
-        del2.staking_tx = Binary(staking_tx);
+        del2.staking_tx = Binary::new(staking_tx);
         // Avoid repeated slashing tx hash
         let mut slashing_tx = del2.slashing_tx.to_vec();
         slashing_tx[0] += 1;
-        del2.slashing_tx = Binary(slashing_tx);
+        del2.slashing_tx = Binary::new(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -493,7 +493,7 @@ mod tests {
             slashed_del: vec![],
             unbonded_del: vec![UnbondedBtcDelegation {
                 staking_tx_hash: staking_tx_hash_hex,
-                unbonding_tx_sig: Binary(vec![0x01, 0x02, 0x03]),
+                unbonding_tx_sig: Binary::new(vec![0x01, 0x02, 0x03]),
             }],
         };
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -521,7 +521,7 @@ mod tests {
     #[test]
     fn test_delegations_by_fp() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -558,7 +558,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -574,7 +574,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -584,11 +584,11 @@ mod tests {
         // Avoid repeated staking tx hash
         let mut staking_tx = del2.staking_tx.to_vec();
         staking_tx[0] += 1;
-        del2.staking_tx = Binary(staking_tx);
+        del2.staking_tx = Binary::new(staking_tx);
         // Avoid repeated slashing tx hash
         let mut slashing_tx = del2.slashing_tx.to_vec();
         slashing_tx[0] += 1;
-        del2.slashing_tx = Binary(slashing_tx);
+        del2.slashing_tx = Binary::new(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -616,7 +616,7 @@ mod tests {
     #[test]
     fn test_active_delegations_by_fp() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -652,7 +652,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -668,7 +668,7 @@ mod tests {
             total_sat: 200,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -678,11 +678,11 @@ mod tests {
         // Avoid repeated staking tx hash
         let mut staking_tx = del2.staking_tx.to_vec();
         staking_tx[0] += 1;
-        del2.staking_tx = Binary(staking_tx);
+        del2.staking_tx = Binary::new(staking_tx);
         // Avoid repeated slashing tx hash
         let mut slashing_tx = del2.slashing_tx.to_vec();
         slashing_tx[0] += 1;
-        del2.slashing_tx = Binary(slashing_tx);
+        del2.slashing_tx = Binary::new(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -717,7 +717,7 @@ mod tests {
             slashed_del: vec![],
             unbonded_del: vec![UnbondedBtcDelegation {
                 staking_tx_hash: staking_tx_hash_hex,
-                unbonding_tx_sig: Binary(vec![0x01, 0x02, 0x03]),
+                unbonding_tx_sig: Binary::new(vec![0x01, 0x02, 0x03]),
             }],
         };
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -742,7 +742,7 @@ mod tests {
     #[test]
     fn test_fp_info() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         let initial_env = mock_env_height(10);
 
@@ -780,7 +780,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -796,7 +796,7 @@ mod tests {
             total_sat: 150,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -806,11 +806,11 @@ mod tests {
         // Avoid repeated staking tx hash
         let mut staking_tx = del2.staking_tx.to_vec();
         staking_tx[0] += 1;
-        del2.staking_tx = Binary(staking_tx);
+        del2.staking_tx = Binary::new(staking_tx);
         // Avoid repeated slashing tx hash
         let mut slashing_tx = del2.slashing_tx.to_vec();
         slashing_tx[0] += 1;
-        del2.slashing_tx = Binary(slashing_tx);
+        del2.slashing_tx = Binary::new(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -870,7 +870,7 @@ mod tests {
     #[test]
     fn test_fp_info_raw_query() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -906,7 +906,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -936,7 +936,7 @@ mod tests {
     #[test]
     fn test_fps_by_power() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         instantiate(
             deps.as_mut(),
@@ -974,7 +974,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -990,7 +990,7 @@ mod tests {
             total_sat: 150,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1000,11 +1000,11 @@ mod tests {
         // Avoid repeated staking tx hash
         let mut staking_tx = del2.staking_tx.to_vec();
         staking_tx[0] += 1;
-        del2.staking_tx = Binary(staking_tx);
+        del2.staking_tx = Binary::new(staking_tx);
         // Avoid repeated slashing tx hash
         let mut slashing_tx = del2.slashing_tx.to_vec();
         slashing_tx[0] += 1;
-        del2.slashing_tx = Binary(slashing_tx);
+        del2.slashing_tx = Binary::new(slashing_tx);
 
         let mut del3 = ActiveBtcDelegation {
             btc_pk_hex: "d3".to_string(),
@@ -1014,7 +1014,7 @@ mod tests {
             total_sat: 75,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![]),
+            delegator_slashing_sig: Binary::new(vec![]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1024,11 +1024,11 @@ mod tests {
         // Avoid repeated staking tx hash
         let mut staking_tx = del3.staking_tx.to_vec();
         staking_tx[0] += 2;
-        del3.staking_tx = Binary(staking_tx);
+        del3.staking_tx = Binary::new(staking_tx);
         // Avoid repeated slashing tx hash
         let mut slashing_tx = del3.slashing_tx.to_vec();
         slashing_tx[0] += 2;
-        del3.slashing_tx = Binary(slashing_tx);
+        del3.slashing_tx = Binary::new(slashing_tx);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -1098,7 +1098,7 @@ mod tests {
     #[test]
     fn test_finality_signature() {
         let mut deps = mock_dependencies();
-        let info = mock_info(CREATOR, &[]);
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
         // Read public randomness commitment test data
         let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
@@ -1146,7 +1146,7 @@ mod tests {
             total_sat: 100,
             staking_tx: base_del.staking_tx.clone(),
             slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary(vec![0x01, 0x02, 0x03]),
+            delegator_slashing_sig: Binary::new(vec![0x01, 0x02, 0x03]),
             covenant_sigs: vec![],
             staking_output_idx: 0,
             unbonding_time: 1234,
@@ -1183,7 +1183,7 @@ mod tests {
             pub_rand: pub_rand_one.into(),
             proof: proof.into(),
             block_hash: add_finality_signature.block_app_hash.to_vec().into(),
-            signature: Binary(finality_signature.clone()),
+            signature: Binary::new(finality_signature.clone()),
         };
 
         // Execute the message at a higher height, so that:
