@@ -23,8 +23,144 @@
   "execute": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "ExecuteMsg",
-    "type": "string",
-    "enum": []
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "commit_public_randomness"
+        ],
+        "properties": {
+          "commit_public_randomness": {
+            "type": "object",
+            "required": [
+              "commitment",
+              "fp_pubkey_hex",
+              "num_pub_rand",
+              "signature",
+              "start_height"
+            ],
+            "properties": {
+              "commitment": {
+                "description": "`commitment` is the commitment of these public randomness values. Currently, it's the root of the Merkle tree that includes the public randomness",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Binary"
+                  }
+                ]
+              },
+              "fp_pubkey_hex": {
+                "description": "`fp_pubkey_hex` is the BTC PK of the finality provider that commits the public randomness",
+                "type": "string"
+              },
+              "num_pub_rand": {
+                "description": "`num_pub_rand` is the amount of public randomness committed",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "signature": {
+                "description": "`signature` is the signature on (start_height || num_pub_rand || commitment) signed by the SK corresponding to `fp_pubkey_hex`. This prevents others committing public randomness on behalf of `fp_pubkey_hex`",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Binary"
+                  }
+                ]
+              },
+              "start_height": {
+                "description": "`start_height` is the start block height of the list of public randomness",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Submit Finality Signature.\n\nThis is a message that can be called by a finality provider to submit their finality signature to the Consumer chain. The signature is verified by the Consumer chain using the finality provider's public key\n\nThis message is equivalent to the `MsgAddFinalitySig` message in the Babylon finality protobuf defs.",
+        "type": "object",
+        "required": [
+          "submit_finality_signature"
+        ],
+        "properties": {
+          "submit_finality_signature": {
+            "type": "object",
+            "required": [
+              "block_hash",
+              "fp_pubkey_hex",
+              "height",
+              "proof",
+              "pub_rand",
+              "signature"
+            ],
+            "properties": {
+              "block_hash": {
+                "$ref": "#/definitions/Binary"
+              },
+              "fp_pubkey_hex": {
+                "type": "string"
+              },
+              "height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "proof": {
+                "$ref": "#/definitions/Proof"
+              },
+              "pub_rand": {
+                "$ref": "#/definitions/Binary"
+              },
+              "signature": {
+                "$ref": "#/definitions/Binary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Proof": {
+        "description": "A `Proof` is a proof of a leaf's existence in a Merkle tree.\n\nThe convention for proofs is to include leaf hashes, but to exclude the root hash. This convention is implemented across IAVL range proofs as well. Keep this consistent unless there's a very good reason to change everything. This affects the generalized proof system as well.\n\nEquivalent to / adapted from cometbft/crypto/merkle/proof.go.",
+        "type": "object",
+        "required": [
+          "aunts",
+          "index",
+          "leaf_hash",
+          "total"
+        ],
+        "properties": {
+          "aunts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "index": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "leaf_hash": {
+            "$ref": "#/definitions/Binary"
+          },
+          "total": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "query": {
     "$schema": "http://json-schema.org/draft-07/schema#",

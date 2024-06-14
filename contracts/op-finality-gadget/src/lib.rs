@@ -2,6 +2,8 @@ use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Respons
 use error::ContractError;
 use msg::{ExecuteMsg, InstantiateMsg};
 
+mod finality;
+
 pub mod contract;
 pub mod error;
 pub mod msg;

@@ -1,6 +1,7 @@
 use crate::error::ContractError;
+use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{ADMIN, CONSUMER_CHAIN_ID};
+use crate::state::config::{ADMIN, CONSUMER_CHAIN_ID};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_utils::maybe_addr;
 
@@ -24,10 +25,42 @@ pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
+    deps: DepsMut,
+    env: Env,
     _info: MessageInfo,
-    _msg: ExecuteMsg,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    unimplemented!();
+    match msg {
+        ExecuteMsg::CommitPublicRandomness {
+            fp_pubkey_hex,
+            start_height,
+            num_pub_rand,
+            commitment,
+            signature,
+        } => handle_public_randomness_commit(
+            deps,
+            &fp_pubkey_hex,
+            start_height,
+            num_pub_rand,
+            &commitment,
+            &signature,
+        ),
+        ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex,
+            height,
+            pub_rand,
+            proof,
+            block_hash,
+            signature,
+        } => handle_finality_signature(
+            deps,
+            env,
+            &fp_pubkey_hex,
+            height,
+            &pub_rand,
+            &proof,
+            &block_hash,
+            &signature,
+        ),
+    }
 }
