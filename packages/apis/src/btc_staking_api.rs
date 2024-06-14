@@ -60,13 +60,25 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum SudoMsg {
     /// The SDK should call SudoMsg::BeginBlock{} once per block (in BeginBlock).
-    /// It allows the virtual staking contract to index the BTC height, and update the power
+    /// It allows the BTC staking contract to index the BTC height, and update the power
     /// distribution of the active Finality Providers.
     BeginBlock(BeginBlockMsg),
+    /// The SDK should call SudoMsg::EndBlock{} once per block (in EndBlock).
+    /// It allows the BTC staking contract to tally all non-finalised blocks.
+    EndBlock(EndBlockMsg),
 }
 
 #[cw_serde]
 pub struct BeginBlockMsg {
+    height: i64,
+    hash_hex: String,
+    time: String,
+    chain_id: String,
+    app_hash_hex: String,
+}
+
+#[cw_serde]
+pub struct EndBlockMsg {
     height: i64,
     hash_hex: String,
     time: String,

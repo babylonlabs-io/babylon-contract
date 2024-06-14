@@ -174,11 +174,12 @@ pub fn sudo(
     msg: SudoMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        // TODO: implement BeginBlock handler
         SudoMsg::BeginBlock(_) => handle_begin_block(&mut deps, env),
+        SudoMsg::EndBlock(_) => handle_end_block(&mut deps, env),
     }
 }
 
+// TODO: implement BeginBlock handler
 fn handle_begin_block(
     _deps: &mut DepsMut,
     _env: Env,
@@ -189,6 +190,11 @@ fn handle_begin_block(
     // Update voting power distribution
     // update_power_distribution();
 
+    Ok(Response::new())
+}
+
+// TODO: implement EndBlock handler
+fn handle_end_block(_deps: &mut DepsMut, _env: Env) -> Result<Response<BabylonMsg>, ContractError> {
     Ok(Response::new())
 }
 
