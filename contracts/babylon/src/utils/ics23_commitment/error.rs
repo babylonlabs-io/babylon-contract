@@ -1,9 +1,7 @@
-use prost::DecodeError;
-
 #[derive(Debug)]
 pub enum CommitmentError {
     /// failed to decode commitment proof error: `{0}`
-    CommitmentProofDecodingFailed(DecodeError),
+    CommitmentProofDecodingFailed,
     /// empty merkle proof
     EmptyMerkleProof,
     /// empty merkle root

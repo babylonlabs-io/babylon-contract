@@ -19,10 +19,10 @@ use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 use crate::error::ContractError;
 use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::queries;
 use crate::staking::handle_btc_staking;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::BTC_HEIGHT;
+use crate::{queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -97,6 +97,29 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         )?),
         QueryMsg::FinalitySignature { btc_pk_hex, height } => Ok(to_json_binary(
             &queries::finality_signature(deps, btc_pk_hex, height)?,
+        )?),
+        QueryMsg::PubRandCommit {
+            btc_pk_hex,
+            start_after,
+            limit,
+            reverse,
+        } => Ok(to_json_binary(
+            &state::public_randomness::get_pub_rand_commit(
+                deps.storage,
+                &btc_pk_hex,
+                start_after,
+                limit,
+                reverse,
+            )?,
+        )?),
+        QueryMsg::LastPubRandCommit { btc_pk_hex, limit } => Ok(to_json_binary(
+            &state::public_randomness::get_pub_rand_commit(
+                deps.storage,
+                &btc_pk_hex,
+                None,
+                Some(limit.unwrap_or(1)),
+                Some(true),
+            )?,
         )?),
     }
 }

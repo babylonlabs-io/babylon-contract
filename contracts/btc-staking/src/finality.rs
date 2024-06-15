@@ -52,7 +52,7 @@ pub fn handle_public_randomness_commit(
 
     if let Some(last_pr_commit) = last_pr_commit {
         // Ensure height and start_height do not overlap, i.e., height < start_height
-        let last_pr_end_height = last_pr_commit.end_height();
+        let last_pr_end_height = last_pr_commit[0].end_height();
         if start_height <= last_pr_end_height {
             return Err(ContractError::InvalidPubRandHeight(
                 start_height,

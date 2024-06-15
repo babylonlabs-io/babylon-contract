@@ -79,7 +79,7 @@ pub fn convert_tm_proto_to_ics_merkle_proof(
     for op in &tm_proto_proof.ops {
         let mut parsed = CommitmentProof { proof: None };
         prost::Message::merge(&mut parsed, op.data.as_slice())
-            .map_err(CommitmentError::CommitmentProofDecodingFailed)?;
+            .map_err(|_err| CommitmentError::CommitmentProofDecodingFailed)?;
 
         proofs.push(parsed);
     }

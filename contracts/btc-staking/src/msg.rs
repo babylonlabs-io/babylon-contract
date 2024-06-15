@@ -2,6 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_controllers::AdminResponse;
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
+use babylon_apis::finality_api::PubRandCommit;
 
 use crate::state::config::{Config, Params};
 
@@ -84,6 +85,33 @@ pub enum QueryMsg {
     ///
     #[returns(FinalitySignatureResponse)]
     FinalitySignature { btc_pk_hex: String, height: u64 },
+    /// `PubRandCommit` returns the public random commitments for a given FP.
+    ///
+    /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
+    ///
+    /// `start_after` is the height of to start after (before, if `reverse` is `true`),
+    /// or `None` to start from the beginning (end, if `reverse` is `true`).
+    /// `limit` is the maximum number of commitments to return.
+    /// `reverse` is an optional flag to return the commitments in reverse order
+    #[returns(PubRandCommit)]
+    PubRandCommit {
+        btc_pk_hex: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        reverse: Option<bool>,
+    },
+    /// `LastPubRandCommit` returns the last public random commitments for a given FP.
+    ///
+    /// It's a convenience shortcut of `PubRandCommit` with a `limit` default of 1, and `reverse`
+    /// set to true.
+    ///
+    /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
+    /// `limit` is the maximum number of commitments to return, or one if not provided
+    #[returns(PubRandCommit)]
+    LastPubRandCommit {
+        btc_pk_hex: String,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]
