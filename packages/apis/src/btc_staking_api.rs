@@ -69,6 +69,7 @@ pub enum SudoMsg {
 }
 
 #[cw_serde]
+// FIXME: Remove `height`, `time` and `chain_id`, as we can use the block info for that
 pub struct BeginBlockMsg {
     pub height: i64,
     pub hash_hex: String,

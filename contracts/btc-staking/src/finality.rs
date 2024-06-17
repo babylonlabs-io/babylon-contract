@@ -451,14 +451,28 @@ fn finalize_block(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
+    use babylon_apis::btc_staking_api::{EndBlockMsg, SudoMsg};
+    use babylon_apis::finality_api::IndexedBlock;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
+    use cosmwasm_std::StdError::NotFound;
+    use cosmwasm_std::{Binary, Env};
+    use hex::ToHex;
+    use test_utils::{get_add_finality_sig, get_pub_rand_value};
 
     use crate::contract::tests::{
         create_new_finality_provider, get_public_randomness_commitment, CREATOR,
     };
     use crate::contract::{execute, instantiate};
-    use crate::msg::{ExecuteMsg, InstantiateMsg};
+    use crate::error::ContractError;
+    use crate::msg::{ExecuteMsg, FinalitySignatureResponse, InstantiateMsg};
+
+    pub(crate) fn mock_env_height(height: u64) -> Env {
+        let mut env = mock_env();
+        env.block.height = height;
+
+        env
+    }
 
     #[test]
     fn commit_public_randomness_works() {
@@ -480,7 +494,7 @@ mod tests {
         let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
 
         // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider();
+        let mut new_fp = create_new_finality_provider(1);
         new_fp.btc_pk_hex.clone_from(&pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
@@ -504,5 +518,231 @@ mod tests {
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn finality_signature_happy_path() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        // Read equivalent / consistent add finality signature test data
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+
+        let initial_env = mock_env_height(initial_height);
+
+        instantiate(
+            deps.as_mut(),
+            initial_env.clone(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
+        )
+        .unwrap();
+
+        // Register one FP with a valid pubkey first
+        let mut new_fp = create_new_finality_provider(1);
+        new_fp.btc_pk_hex.clone_from(&pk_hex);
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![new_fp.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+
+        // Activated height is not set
+        let res = crate::queries::activated_height(deps.as_ref()).unwrap();
+        assert_eq!(res.height, 0);
+
+        // Add a delegation, so that the finality provider has some power
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
+
+        // Activated height is now set
+        let activated_height = crate::queries::activated_height(deps.as_ref()).unwrap();
+        assert_eq!(activated_height.height, initial_height + 1);
+
+        // Submit public randomness commitment for the FP and the involved heights
+        let msg = ExecuteMsg::CommitPublicRandomness {
+            fp_pubkey_hex: pk_hex.clone(),
+            start_height: pub_rand.start_height,
+            num_pub_rand: pub_rand.num_pub_rand,
+            commitment: pub_rand.commitment.into(),
+            signature: pubrand_signature.into(),
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // Submit a finality signature from that finality provider at height initial_height + 1
+        let finality_signature = add_finality_signature.finality_sig.to_vec();
+        let msg = ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex: pk_hex.clone(),
+            height: initial_height + 1,
+            pub_rand: pub_rand_one.into(),
+            proof: proof.into(),
+            block_hash: add_finality_signature.block_app_hash.to_vec().into(),
+            signature: Binary::new(finality_signature.clone()),
+        };
+
+        // Execute the message at a higher height, so that:
+        // 1. It's not rejected because of height being too high.
+        // 2. The FP has consolidated power at such height
+        let _res = execute(
+            deps.as_mut(),
+            mock_env_height(initial_height + 2),
+            info.clone(),
+            msg,
+        )
+        .unwrap();
+
+        // Query finality signature for that exact height
+        let sig = crate::queries::finality_signature(
+            deps.as_ref(),
+            pk_hex.to_string(),
+            initial_height + 1,
+        )
+        .unwrap();
+        assert_eq!(
+            sig,
+            FinalitySignatureResponse {
+                signature: finality_signature
+            }
+        );
+    }
+
+    #[test]
+    fn finality_round_works() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        // Read equivalent / consistent add finality signature test data
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+
+        let initial_env = mock_env_height(initial_height);
+
+        instantiate(
+            deps.as_mut(),
+            initial_env.clone(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
+        )
+        .unwrap();
+
+        // Register one FP with a valid pubkey first
+        let mut new_fp = create_new_finality_provider(1);
+        new_fp.btc_pk_hex.clone_from(&pk_hex);
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![new_fp.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+
+        // Add a delegation, so that the finality provider has some power
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
+
+        // Submit public randomness commitment for the FP and the involved heights
+        let msg = ExecuteMsg::CommitPublicRandomness {
+            fp_pubkey_hex: pk_hex.clone(),
+            start_height: pub_rand.start_height,
+            num_pub_rand: pub_rand.num_pub_rand,
+            commitment: pub_rand.commitment.into(),
+            signature: pubrand_signature.into(),
+        };
+
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Submit a finality signature from that finality provider at height initial_height + 1
+        let submit_height = initial_height + 1;
+        let finality_signature = add_finality_signature.finality_sig.to_vec();
+        let msg = ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex: pk_hex.clone(),
+            height: submit_height,
+            pub_rand: pub_rand_one.into(),
+            proof: proof.into(),
+            block_hash: add_finality_signature.block_app_hash.to_vec().into(),
+            signature: Binary::new(finality_signature.clone()),
+        };
+
+        // Execute the message at a higher height, so that:
+        // 1. It's not rejected because of height being too high.
+        // 2. The FP has consolidated power at such height
+        let _res = execute(
+            deps.as_mut(),
+            mock_env_height(initial_height + 2),
+            info.clone(),
+            msg,
+        )
+        .unwrap();
+
+        // Call the end blocker, to process the finality signature
+        let end_env = mock_env_height(initial_height + 3);
+        let end_block_msg = EndBlockMsg {
+            height: submit_height as i64,
+            hash_hex: "deadbeef".to_string(),
+            time: end_env.block.time.to_string(),
+            chain_id: end_env.block.chain_id.clone(),
+            app_hash_hex: add_finality_signature.block_app_hash.encode_hex(),
+        };
+
+        let err = crate::contract::sudo(deps.as_mut(), end_env, SudoMsg::EndBlock(end_block_msg))
+            .unwrap_err(); // Expected, as not all the blocks are yet indexed
+        assert!(matches!(err, ContractError::Std(NotFound { .. })));
+        assert!(err.to_string().contains("IndexedBlock"));
+
+        // Assert the submitted block has been indexed
+        let indexed_block = crate::queries::block(deps.as_ref(), submit_height).unwrap();
+        assert_eq!(
+            indexed_block,
+            IndexedBlock {
+                height: submit_height,
+                app_hash: add_finality_signature.block_app_hash.to_vec(),
+                finalized: false,
+            }
+        );
+
+        // TODO / FIXME: Assert the block has been finalised (after proper fp_set support)
     }
 }

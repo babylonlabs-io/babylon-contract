@@ -255,6 +255,7 @@ fn handle_end_block(
     env: Env,
     msg: &EndBlockMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
+    assert!(msg.height > 0, "Height must be greater than 0!");
     // If the BTC staking protocol is activated i.e. there exists a height where at least one
     // finality provider has voting power, start indexing and tallying blocks
     let mut res = Response::new();
@@ -263,7 +264,7 @@ fn handle_end_block(
         // Index the current block
         let ev = finality::index_block(
             deps,
-            env.block.height,
+            msg.height as u64,
             &hex::decode(msg.app_hash_hex.clone())?,
         )?;
         res = res.add_event(ev);
@@ -345,6 +346,39 @@ pub(crate) mod tests {
         }
     }
 
+    // Build a derived active BTC delegation from the base (from testdata) BTC delegation
+    pub(crate) fn get_derived_btc_delegation(del_id: u8, fp_ids: &[u8]) -> ActiveBtcDelegation {
+        assert!(
+            0 < del_id && del_id < 10,
+            "Derived delegation id must be between 1 and 9"
+        );
+        fp_ids.iter().for_each(|&fp_id| {
+            assert!(
+                0 < fp_id && fp_id < 10,
+                "Derived FP ids must be between 1 and 9"
+            )
+        });
+        let mut del = get_active_btc_delegation();
+
+        // Change the BTC public key and the finality provider public key list based on the id
+        del.btc_pk_hex = format!("d{del_id}");
+        del.fp_btc_pk_list = fp_ids.iter().map(|fp_id| format!("f{fp_id}")).collect();
+
+        // Avoid repeated staking tx hash
+        let mut staking_tx = del.staking_tx.to_vec();
+        // FIXME: First byte can be 0xff, just by chance
+        staking_tx[0] += del_id - 1;
+        // FIXME: Binary breaks lexicographical order.
+        del.staking_tx = Binary::new(staking_tx);
+
+        // Avoid repeated slashing tx hash
+        let mut slashing_tx = del.slashing_tx.to_vec();
+        slashing_tx[0] += del_id - 1;
+        del.slashing_tx = Binary::new(slashing_tx);
+
+        del
+    }
+
     /// Get public randomness public key, commitment, and signature information
     ///
     /// Signature is a Schnorr signature over the commitment
@@ -361,24 +395,24 @@ pub(crate) mod tests {
         )
     }
 
-    pub(crate) fn create_new_finality_provider() -> NewFinalityProvider {
+    pub(crate) fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
         NewFinalityProvider {
             description: Some(FinalityProviderDescription {
-                moniker: "fp1".to_string(),
-                identity: "Finality Provider 1".to_string(),
-                website: "https:://fp1.com".to_string(),
+                moniker: format!("fp{}", id),
+                identity: format!("Finality Provider {}", id),
+                website: format!("https:://fp{}.com", id),
                 security_contact: "security_contact".to_string(),
-                details: "details".to_string(),
+                details: format!("details fp{}", id),
             }),
             commission: Decimal::percent(5),
             babylon_pk: None,
-            btc_pk_hex: "f1".to_string(),
+            btc_pk_hex: format!("f{}", id),
             pop: Some(ProofOfPossession {
                 btc_sig_type: 0,
                 babylon_sig: Binary::new(vec![]),
                 btc_sig: Binary::new(vec![]),
             }),
-            consumer_id: "osmosis-1".to_string(),
+            consumer_id: format!("osmosis-{}", id),
         }
     }
 

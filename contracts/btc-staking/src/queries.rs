@@ -238,49 +238,18 @@ mod tests {
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
-    use cosmwasm_std::{from_json, Binary, Decimal, Env, Storage};
+    use cosmwasm_std::{from_json, Binary, Storage};
 
-    use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, FinalityProvider, FinalityProviderDescription, NewFinalityProvider,
-        ProofOfPossession, UnbondedBtcDelegation,
-    };
-    use test_utils::{get_add_finality_sig, get_pub_rand_value};
+    use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
 
-    use crate::contract::tests::get_public_randomness_commitment;
+    use crate::contract::tests::create_new_finality_provider;
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
-    use crate::msg::{ExecuteMsg, FinalityProviderInfo, FinalitySignatureResponse, InstantiateMsg};
+    use crate::finality::tests::mock_env_height;
+    use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
     use crate::state::staking::{FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
-
-    fn mock_env_height(height: u64) -> Env {
-        let mut env = mock_env();
-        env.block.height = height;
-
-        env
-    }
-
-    fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
-        NewFinalityProvider {
-            description: Some(FinalityProviderDescription {
-                moniker: format!("fp{}", id),
-                identity: format!("Finality Provider {}", id),
-                website: format!("https:://fp{}.com", id),
-                security_contact: "security_contact".to_string(),
-                details: format!("details fp{}", id),
-            }),
-            commission: Decimal::percent(5),
-            babylon_pk: None,
-            btc_pk_hex: format!("f{}", id),
-            pop: Some(ProofOfPossession {
-                btc_sig_type: 0,
-                babylon_sig: Binary::new(vec![]),
-                btc_sig: Binary::new(vec![]),
-            }),
-            consumer_id: format!("osmosis-{}", id),
-        }
-    }
 
     #[test]
     fn test_finality_providers() {
@@ -366,47 +335,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let base_del = crate::contract::tests::get_active_btc_delegation();
-
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-
-        let mut del2 = ActiveBtcDelegation {
-            btc_pk_hex: "d2".to_string(),
-            fp_btc_pk_list: vec!["f2".to_string()],
-            start_height: 2,
-            end_height: 3,
-            total_sat: 200,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del2.staking_tx.to_vec();
-        staking_tx[0] += 1;
-        del2.staking_tx = Binary::new(staking_tx);
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del2.slashing_tx.to_vec();
-        slashing_tx[0] += 1;
-        del2.slashing_tx = Binary::new(slashing_tx);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -474,47 +404,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let base_del = crate::contract::tests::get_active_btc_delegation();
-
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-
-        let mut del2 = ActiveBtcDelegation {
-            btc_pk_hex: "d2".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 2,
-            end_height: 3,
-            total_sat: 200,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del2.staking_tx.to_vec();
-        staking_tx[0] += 1;
-        del2.staking_tx = Binary::new(staking_tx);
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del2.slashing_tx.to_vec();
-        slashing_tx[0] += 1;
-        del2.slashing_tx = Binary::new(slashing_tx);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -599,47 +490,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let base_del = crate::contract::tests::get_active_btc_delegation();
-
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-
-        let mut del2 = ActiveBtcDelegation {
-            btc_pk_hex: "d2".to_string(),
-            fp_btc_pk_list: vec!["f2".to_string()],
-            start_height: 2,
-            end_height: 3,
-            total_sat: 200,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del2.staking_tx.to_vec();
-        staking_tx[0] += 1;
-        del2.staking_tx = Binary::new(staking_tx);
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del2.slashing_tx.to_vec();
-        slashing_tx[0] += 1;
-        del2.slashing_tx = Binary::new(slashing_tx);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -693,47 +545,12 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let base_del = crate::contract::tests::get_active_btc_delegation();
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-
-        let mut del2 = ActiveBtcDelegation {
-            btc_pk_hex: "d2".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 2,
-            end_height: 3,
-            total_sat: 200,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del2.staking_tx.to_vec();
-        staking_tx[0] += 1;
-        del2.staking_tx = Binary::new(staking_tx);
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del2.slashing_tx.to_vec();
-        slashing_tx[0] += 1;
-        del2.slashing_tx = Binary::new(slashing_tx);
+        // Adjust staking amounts
+        del1.total_sat = 100;
+        del2.total_sat = 200;
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -795,7 +612,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
-        let initial_env = mock_env_height(10);
+        let initial_env = crate::finality::tests::mock_env_height(10);
 
         instantiate(
             deps.as_mut(),
@@ -821,47 +638,12 @@ mod tests {
         let _res = execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let base_del = crate::contract::tests::get_active_btc_delegation();
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-
-        let mut del2 = ActiveBtcDelegation {
-            btc_pk_hex: "d2".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 2,
-            end_height: 3,
-            total_sat: 150,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del2.staking_tx.to_vec();
-        staking_tx[0] += 1;
-        del2.staking_tx = Binary::new(staking_tx);
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del2.slashing_tx.to_vec();
-        slashing_tx[0] += 1;
-        del2.slashing_tx = Binary::new(slashing_tx);
+        // Adjust staking amounts
+        del1.total_sat = 100;
+        del2.total_sat = 150;
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -947,23 +729,9 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a delegation
-        let base_del = crate::contract::tests::get_active_btc_delegation();
-
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        // Adjust staking amount
+        del1.total_sat = 100;
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -1015,71 +783,14 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add some delegations
-        let base_del = crate::contract::tests::get_active_btc_delegation();
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1, 3]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
+        let mut del3 = crate::contract::tests::get_derived_btc_delegation(3, &[2]);
 
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec!["f1".to_string(), "f3".to_string()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-
-        let mut del2 = ActiveBtcDelegation {
-            btc_pk_hex: "d2".to_string(),
-            fp_btc_pk_list: vec!["f2".to_string()],
-            start_height: 2,
-            end_height: 3,
-            total_sat: 150,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del2.staking_tx.to_vec();
-        staking_tx[0] += 1;
-        del2.staking_tx = Binary::new(staking_tx);
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del2.slashing_tx.to_vec();
-        slashing_tx[0] += 1;
-        del2.slashing_tx = Binary::new(slashing_tx);
-
-        let mut del3 = ActiveBtcDelegation {
-            btc_pk_hex: "d3".to_string(),
-            fp_btc_pk_list: vec!["f2".to_string()],
-            start_height: 2,
-            end_height: 3,
-            total_sat: 75,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del3.staking_tx.to_vec();
-        staking_tx[0] += 2;
-        del3.staking_tx = Binary::new(staking_tx);
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del3.slashing_tx.to_vec();
-        slashing_tx[0] += 2;
-        del3.slashing_tx = Binary::new(slashing_tx);
+        // Adjust staking amounts
+        del1.total_sat = 100;
+        del2.total_sat = 150;
+        del3.total_sat = 75;
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -1144,122 +855,5 @@ mod tests {
                 power: 100,
             }
         });
-    }
-
-    #[test]
-    fn test_finality_signature() {
-        let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
-
-        // Read public randomness commitment test data
-        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
-        let pub_rand_one = get_pub_rand_value();
-        // Read equivalent / consistent add finality signature test data
-        let add_finality_signature = get_add_finality_sig();
-        let proof = add_finality_signature.proof.unwrap();
-
-        let initial_height = pub_rand.start_height;
-
-        let initial_env = mock_env_height(initial_height);
-
-        instantiate(
-            deps.as_mut(),
-            initial_env.clone(),
-            info.clone(),
-            InstantiateMsg {
-                params: None,
-                admin: None,
-            },
-        )
-        .unwrap();
-
-        // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
-
-        let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![new_fp.clone()],
-            active_del: vec![],
-            slashed_del: vec![],
-            unbonded_del: vec![],
-        };
-
-        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
-
-        // Add a delegation, so that the finality provider has some power
-        let base_del = crate::contract::tests::get_active_btc_delegation();
-
-        let del1 = ActiveBtcDelegation {
-            btc_pk_hex: "d1".to_string(),
-            fp_btc_pk_list: vec![pk_hex.clone()],
-            start_height: 1,
-            end_height: 2,
-            total_sat: 100,
-            staking_tx: base_del.staking_tx.clone(),
-            slashing_tx: base_del.slashing_tx.clone(),
-            delegator_slashing_sig: Binary::new(vec![0x01, 0x02, 0x03]),
-            covenant_sigs: vec![],
-            staking_output_idx: 0,
-            unbonding_time: 1234,
-            undelegation_info: base_del.undelegation_info.clone(),
-            params_version: 1,
-        };
-
-        let msg = ExecuteMsg::BtcStaking {
-            new_fp: vec![],
-            active_del: vec![del1.clone()],
-            slashed_del: vec![],
-            unbonded_del: vec![],
-        };
-
-        execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
-
-        // Submit public randomness commitment for the FP and the involved heights
-        let msg = ExecuteMsg::CommitPublicRandomness {
-            fp_pubkey_hex: pk_hex.clone(),
-            start_height: pub_rand.start_height,
-            num_pub_rand: pub_rand.num_pub_rand,
-            commitment: pub_rand.commitment.into(),
-            signature: pubrand_signature.into(),
-        };
-
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // Submit a finality signature from that finality provider at height initial_height + 1
-        let finality_signature = add_finality_signature.finality_sig.to_vec();
-        let msg = ExecuteMsg::SubmitFinalitySignature {
-            fp_pubkey_hex: pk_hex.clone(),
-            height: initial_height + 1,
-            pub_rand: pub_rand_one.into(),
-            proof: proof.into(),
-            block_hash: add_finality_signature.block_app_hash.to_vec().into(),
-            signature: Binary::new(finality_signature.clone()),
-        };
-
-        // Execute the message at a higher height, so that:
-        // 1. It's not rejected because of height being too high.
-        // 2. The FP has consolidated power at such height
-        let _res = execute(
-            deps.as_mut(),
-            mock_env_height(initial_height + 2),
-            info.clone(),
-            msg,
-        )
-        .unwrap();
-
-        // Query finality signature for that exact height
-        let sig = crate::queries::finality_signature(
-            deps.as_ref(),
-            pk_hex.to_string(),
-            initial_height + 1,
-        )
-        .unwrap();
-        assert_eq!(
-            sig,
-            FinalitySignatureResponse {
-                signature: finality_signature
-            }
-        );
     }
 }

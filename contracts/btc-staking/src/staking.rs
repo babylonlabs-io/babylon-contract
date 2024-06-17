@@ -246,7 +246,7 @@ pub fn handle_active_delegation(
 
     // Store activated height, if first delegation
     if ACTIVATED_HEIGHT.may_load(storage)?.is_none() {
-        ACTIVATED_HEIGHT.save(storage, &height)?;
+        ACTIVATED_HEIGHT.save(storage, &(height + 1))?; // Active from the next block onwards
     }
 
     // TODO: Emit corresponding events
@@ -359,7 +359,7 @@ mod tests {
         )
         .unwrap();
 
-        let new_fp = create_new_finality_provider();
+        let new_fp = create_new_finality_provider(1);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -392,7 +392,7 @@ mod tests {
         .unwrap();
 
         let admin_info = message_info(&init_admin, &[]); // Mock info for the admin
-        let new_fp = create_new_finality_provider();
+        let new_fp = create_new_finality_provider(1);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -440,7 +440,7 @@ mod tests {
         let active_delegation = get_active_btc_delegation();
 
         // Register one FP first
-        let mut new_fp = create_new_finality_provider();
+        let mut new_fp = create_new_finality_provider(1);
         new_fp
             .btc_pk_hex
             .clone_from(&active_delegation.fp_btc_pk_list[0]);
@@ -502,7 +502,7 @@ mod tests {
         let active_delegation = get_active_btc_delegation();
 
         // Register one FP first
-        let mut new_fp = create_new_finality_provider();
+        let mut new_fp = create_new_finality_provider(1);
         new_fp
             .btc_pk_hex
             .clone_from(&active_delegation.fp_btc_pk_list[0]);
