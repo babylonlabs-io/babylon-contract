@@ -1,20 +1,24 @@
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
+use std::cmp::max;
+use std::collections::HashSet;
 
-use cosmwasm_std::{DepsMut, Env, Response};
+use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::{DepsMut, Env, Event, Response, StdResult, Storage};
 
-use babylon_apis::finality_api::PubRandCommit;
+use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
 
 use crate::error::ContractError;
+use crate::msg::FinalityProviderInfo;
 use crate::state::config::PARAMS;
-use crate::state::finality::SIGNATURES;
+use crate::state::finality::{BLOCKS, NEXT_HEIGHT, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
-use crate::state::staking::{fps, FPS};
+use crate::state::staking::{fps, FPS, FP_SET};
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -312,6 +316,138 @@ fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
     let mut msg: Vec<u8> = height.to_be_bytes().to_vec();
     msg.extend_from_slice(block_hash);
     msg
+}
+
+pub fn index_block(
+    deps: &mut DepsMut,
+    height: u64,
+    app_hash: &[u8],
+) -> Result<Event, ContractError> {
+    let indexed_block = IndexedBlock {
+        height,
+        app_hash: app_hash.into(),
+        finalized: false,
+    };
+    BLOCKS.save(deps.storage, height, &indexed_block)?;
+
+    // Register the indexed block height
+    let ev = Event::new("index_block")
+        .add_attribute("module", "finality")
+        .add_attribute("last_height", height.to_string());
+    Ok(ev)
+}
+
+/// TallyBlocks tries to finalise all blocks that are non-finalised AND have a non-nil
+/// finality provider set, from the earliest to the latest.
+///
+/// This function is invoked upon each `EndBlock`, after the BTC staking protocol is activated.
+/// It ensures that at height `h`, the ancestor chain `[activated_height, h-1]` contains either
+/// - finalised blocks (i.e., blocks with a finality provider set AND QC of this finality provider set),
+/// - non-finalisable blocks (i.e. blocks with no active finality providers),
+/// but no blocks that have a finality provider set and do not receive a QC
+///
+/// It must be invoked only after the BTC staking protocol is activated.
+pub fn tally_blocks(
+    deps: &mut DepsMut,
+    activated_height: u64,
+    height: u64,
+) -> Result<Vec<Event>, ContractError> {
+    // Start finalising blocks since max(activated_height, next_height)
+    let next_height = NEXT_HEIGHT.may_load(deps.storage)?.unwrap_or(0);
+    let start_height = max(activated_height, next_height);
+
+    // Find all blocks that are non-finalised AND have a finality provider set since
+    // max(activated_height, last_finalized_height + 1)
+    // There are 4 different scenarios:
+    // - Has finality providers, non-finalised: Tally and try to finalise.
+    // - Does not have finality providers, non-finalised: Non-finalisable, continue.
+    // - Has finality providers, finalised: Impossible, panic.
+    // - Does not have finality providers, finalised: Impossible, panic.
+    // After this for loop, the blocks since the earliest activated height are either finalised or
+    // non-finalisable
+    let mut events = vec![];
+    for h in start_height..=height {
+        let mut indexed_block = BLOCKS.load(deps.storage, h)?;
+        // Get the finality provider set of this block
+        let fp_set = FP_SET.may_load(deps.storage, h)?;
+
+        match (fp_set, indexed_block.finalized) {
+            (Some(fp_set), false) => {
+                // Has finality providers, non-finalised: tally and try to finalise the block
+                let voter_btc_pks = SIGNATURES
+                    .prefix(indexed_block.height)
+                    .keys(deps.storage, None, None, Ascending)
+                    .collect::<StdResult<Vec<_>>>()?;
+                if tally(&fp_set, &voter_btc_pks) {
+                    // If this block gets >2/3 votes, finalise it
+                    let ev = finalize_block(deps.storage, &mut indexed_block, &voter_btc_pks)?;
+                    events.push(ev);
+                } else {
+                    // If not, then this block and all subsequent blocks should not be finalised.
+                    // Thus, we need to break here
+                    break;
+                }
+            }
+            (None, false) => {
+                // Does not have finality providers, non-finalised: not finalisable,
+                // Increment the next height to finalise and continue
+                NEXT_HEIGHT.save(deps.storage, &(indexed_block.height + 1))?;
+                continue;
+            }
+            (Some(_), true) => {
+                // Has finality providers and the block is finalised.
+                // This can only be a programming error
+                return Err(ContractError::FinalisedBlockWithFinalityProviderSet(
+                    indexed_block.height,
+                ));
+            }
+            (None, true) => {
+                // Does not have finality providers, finalised: impossible to happen
+                return Err(ContractError::FinalisedBlockWithoutFinalityProviderSet(
+                    indexed_block.height,
+                ));
+            }
+        }
+    }
+    Ok(events)
+}
+
+/// `tally` checks whether a block with the given finality provider set and votes reaches a quorum
+/// or not
+fn tally(fp_set: &[FinalityProviderInfo], voters: &[String]) -> bool {
+    let voters: HashSet<String> = voters.iter().cloned().collect();
+    let mut total_power = 0;
+    let mut voted_power = 0;
+    for fp_info in fp_set {
+        total_power += fp_info.power;
+        if voters.contains(&fp_info.btc_pk_hex) {
+            voted_power += fp_info.power;
+        }
+    }
+    voted_power * 3 > total_power * 2
+}
+
+/// `finalize_block` sets a block to be finalised, and distributes rewards to finality providers
+/// and delegators
+fn finalize_block(
+    store: &mut dyn Storage,
+    block: &mut IndexedBlock,
+    _voters: &[String],
+) -> Result<Event, ContractError> {
+    // Set block to be finalised
+    block.finalized = true;
+    BLOCKS.save(store, block.height, block)?;
+
+    // Set the next height to finalise as height+1
+    NEXT_HEIGHT.save(store, &(block.height + 1))?;
+
+    // TODO: Distribute rewards to BTC staking delegators
+
+    // Record the last finalized height metric
+    let ev = Event::new("finalize_block")
+        .add_attribute("module", "finality")
+        .add_attribute("finalized_height", block.height.to_string());
+    Ok(ev)
 }
 
 #[cfg(test)]

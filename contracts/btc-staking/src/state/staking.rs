@@ -1,6 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use cw_storage_plus::{IndexedSnapshotMap, Map, MultiIndex, Strategy};
+use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 
+use crate::msg::FinalityProviderInfo;
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider, HASH_SIZE};
 
 use crate::state::fp_index::FinalityProviderIndexes;
@@ -20,6 +21,12 @@ pub const FP_STATE_KEY: &str = "fp_state";
 const FP_STATE_CHECKPOINTS: &str = "fp_state__checkpoints";
 const FP_STATE_CHANGELOG: &str = "fp_state__changelog";
 pub const FP_POWER_KEY: &str = "fp_state__power";
+
+/// The height at which the contract gets its first delegation
+pub const ACTIVATED_HEIGHT: Item<u64> = Item::new("activated_height");
+
+/// `FP_SET` is the calculated list of the active finality providers by height
+pub const FP_SET: Map<u64, Vec<FinalityProviderInfo>> = Map::new("fp_set");
 
 /// Indexed snapshot map for finality providers.
 ///

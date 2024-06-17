@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
 
-use babylon_apis::btc_staking_api::SudoMsg;
+use babylon_apis::btc_staking_api::{EndBlockMsg, SudoMsg};
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
@@ -21,8 +21,9 @@ use crate::finality::{handle_finality_signature, handle_public_randomness_commit
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::handle_btc_staking;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
+use crate::state::staking::ACTIVATED_HEIGHT;
 use crate::state::BTC_HEIGHT;
-use crate::{queries, state};
+use crate::{finality, queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -121,6 +122,20 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
                 Some(true),
             )?,
         )?),
+        QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
+        QueryMsg::Block { height } => Ok(to_json_binary(&queries::block(deps, height)?)?),
+        QueryMsg::Blocks {
+            start_after,
+            limit,
+            finalised,
+            reverse,
+        } => Ok(to_json_binary(&queries::blocks(
+            deps,
+            start_after,
+            limit,
+            finalised,
+            reverse,
+        )?)?),
     }
 }
 
@@ -198,7 +213,7 @@ pub fn sudo(
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
         SudoMsg::BeginBlock(_) => handle_begin_block(&mut deps, env),
-        SudoMsg::EndBlock(_) => handle_end_block(&mut deps, env),
+        SudoMsg::EndBlock(msg) => handle_end_block(&mut deps, env, &msg),
     }
 }
 
@@ -213,11 +228,6 @@ fn handle_begin_block(
     // Update voting power distribution
     // update_power_distribution();
 
-    Ok(Response::new())
-}
-
-// TODO: implement EndBlock handler
-fn handle_end_block(_deps: &mut DepsMut, _env: Env) -> Result<Response<BabylonMsg>, ContractError> {
     Ok(Response::new())
 }
 
@@ -238,6 +248,30 @@ fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
 
     let tip_bytes: Bytes = deps.querier.query(&query)?;
     Ok(BtcHeaderInfo::decode(tip_bytes)?)
+}
+
+fn handle_end_block(
+    deps: &mut DepsMut,
+    env: Env,
+    msg: &EndBlockMsg,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // If the BTC staking protocol is activated i.e. there exists a height where at least one
+    // finality provider has voting power, start indexing and tallying blocks
+    let mut res = Response::new();
+
+    if let Some(activated_height) = ACTIVATED_HEIGHT.may_load(deps.storage)? {
+        // Index the current block
+        let ev = finality::index_block(
+            deps,
+            env.block.height,
+            &hex::decode(msg.app_hash_hex.clone())?,
+        )?;
+        res = res.add_event(ev);
+        // Tally all non-finalised blocks
+        let events = finality::tally_blocks(deps, activated_height, env.block.height)?;
+        res = res.add_events(events);
+    }
+    Ok(res)
 }
 
 #[cfg(test)]

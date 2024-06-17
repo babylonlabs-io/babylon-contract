@@ -267,6 +267,162 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "`PubRandCommit` returns the public random commitments for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.\n\n`start_after` is the height of to start after (before, if `reverse` is `true`), or `None` to start from the beginning (end, if `reverse` is `true`). `limit` is the maximum number of commitments to return. `reverse` is an optional flag to return the commitments in reverse order",
+      "type": "object",
+      "required": [
+        "pub_rand_commit"
+      ],
+      "properties": {
+        "pub_rand_commit": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "reverse": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "`LastPubRandCommit` returns the last public random commitments for a given FP.\n\nIt's a convenience shortcut of `PubRandCommit` with a `limit` default of 1, and `reverse` set to true.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format. `limit` is the maximum number of commitments to return, or one if not provided",
+      "type": "object",
+      "required": [
+        "last_pub_rand_commit"
+      ],
+      "properties": {
+        "last_pub_rand_commit": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "`ActivatedHeight` returns the height at which the contract gets its first delegation, if any",
+      "type": "object",
+      "required": [
+        "activated_height"
+      ],
+      "properties": {
+        "activated_height": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "`Block` returns the indexed block information at height",
+      "type": "object",
+      "required": [
+        "block"
+      ],
+      "properties": {
+        "block": {
+          "type": "object",
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "`Blocks` return the list of indexed blocks.\n\n`start_after` is the height of the block to start after (before, if `reverse` is `true`), or `None` to start from the beginning (end, if `reverse` is `true`). `limit` is the maximum number of blocks to return. `finalised` is an optional filter to return only finalised blocks. `reverse` is an optional flag to return the blocks in reverse order",
+      "type": "object",
+      "required": [
+        "blocks"
+      ],
+      "properties": {
+        "blocks": {
+          "type": "object",
+          "properties": {
+            "finalised": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "reverse": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

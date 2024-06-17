@@ -82,4 +82,8 @@ pub enum ContractError {
     InvalidSignature(String),
     #[error("Failed to verify signature: {0}")]
     FailedSignatureVerification(String),
+    #[error("Block {0} is finalized, but last finalized height does not reach here")]
+    FinalisedBlockWithFinalityProviderSet(u64),
+    #[error("Block {0} is finalized, but does not have a finality provider set")]
+    FinalisedBlockWithoutFinalityProviderSet(u64),
 }

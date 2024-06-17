@@ -3,19 +3,25 @@ use std::str::FromStr;
 use bitcoin::hashes::Hash;
 use bitcoin::Txid;
 
+use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{Deps, Order, StdResult};
 use cw_storage_plus::Bound;
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
+use babylon_apis::finality_api::IndexedBlock;
 
 use crate::error::ContractError;
 use crate::msg::{
-    BtcDelegationsResponse, DelegationsByFPResponse, FinalityProviderInfo,
-    FinalityProvidersByPowerResponse, FinalityProvidersResponse, FinalitySignatureResponse,
+    ActivatedHeightResponse, BlocksResponse, BtcDelegationsResponse, DelegationsByFPResponse,
+    FinalityProviderInfo, FinalityProvidersByPowerResponse, FinalityProvidersResponse,
+    FinalitySignatureResponse,
 };
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::staking::{fps, FinalityProviderState, DELEGATIONS, FPS, FP_DELEGATIONS};
+use crate::state::finality::BLOCKS;
+use crate::state::staking::{
+    fps, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, FPS, FP_DELEGATIONS,
+};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -177,6 +183,51 @@ pub fn finality_signature(
 ) -> Result<FinalitySignatureResponse, ContractError> {
     let sig = crate::state::finality::SIGNATURES.load(deps.storage, (height, &btc_pk_hex))?;
     Ok(FinalitySignatureResponse { signature: sig })
+}
+
+pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractError> {
+    let activaed_height = ACTIVATED_HEIGHT.may_load(deps.storage)?.unwrap_or_default();
+    Ok(ActivatedHeightResponse {
+        height: activaed_height,
+    })
+}
+
+pub fn block(deps: Deps, height: u64) -> StdResult<IndexedBlock> {
+    BLOCKS.load(deps.storage, height)
+}
+
+/// Get list of blocks.
+/// `start_after`: The height to start after, if any.
+/// `finalised`: List only finalised blocks if true, otherwise list all blocks.
+/// `reverse`: List in descending order if present and true, otherwise in ascending order.
+pub fn blocks(
+    deps: Deps,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    finalised: Option<bool>,
+    reverse: Option<bool>,
+) -> Result<BlocksResponse, ContractError> {
+    let finalised = finalised.unwrap_or_default();
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start_after = start_after.map(Bound::exclusive);
+    let (start, end, order) = if reverse.unwrap_or(false) {
+        (None, start_after, Descending)
+    } else {
+        (start_after, None, Ascending)
+    };
+    let blocks = BLOCKS
+        .range_raw(deps.storage, start, end, order)
+        .filter(|item| {
+            if let Ok((_, block)) = item {
+                !finalised || block.finalized
+            } else {
+                true // don't filter errors
+            }
+        })
+        .take(limit)
+        .map(|item| item.map(|(_, v)| v))
+        .collect::<Result<Vec<IndexedBlock>, _>>()?;
+    Ok(BlocksResponse { blocks })
 }
 
 #[cfg(test)]

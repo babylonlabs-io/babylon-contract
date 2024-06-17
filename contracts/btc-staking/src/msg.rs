@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_controllers::AdminResponse;
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
-use babylon_apis::finality_api::PubRandCommit;
+use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
 
 use crate::state::config::{Config, Params};
 
@@ -112,6 +112,28 @@ pub enum QueryMsg {
         btc_pk_hex: String,
         limit: Option<u32>,
     },
+    /// `ActivatedHeight` returns the height at which the contract gets its first delegation, if any
+    ///
+    #[returns(ActivatedHeightResponse)]
+    ActivatedHeight {},
+    /// `Block` returns the indexed block information at height
+    ///
+    #[returns(IndexedBlock)]
+    Block { height: u64 },
+    /// `Blocks` return the list of indexed blocks.
+    ///
+    /// `start_after` is the height of the block to start after (before, if `reverse` is `true`),
+    /// or `None` to start from the beginning (end, if `reverse` is `true`).
+    /// `limit` is the maximum number of blocks to return.
+    /// `finalised` is an optional filter to return only finalised blocks.
+    /// `reverse` is an optional flag to return the blocks in reverse order
+    #[returns(BlocksResponse)]
+    Blocks {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        finalised: Option<bool>,
+        reverse: Option<bool>,
+    },
 }
 
 #[cw_serde]
@@ -147,4 +169,14 @@ pub struct FinalityProviderInfo {
 #[cw_serde]
 pub struct FinalitySignatureResponse {
     pub signature: Vec<u8>,
+}
+
+#[cw_serde]
+pub struct ActivatedHeightResponse {
+    pub height: u64,
+}
+
+#[cw_serde]
+pub struct BlocksResponse {
+    pub blocks: Vec<IndexedBlock>,
 }

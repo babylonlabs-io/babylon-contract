@@ -936,6 +936,162 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "`PubRandCommit` returns the public random commitments for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.\n\n`start_after` is the height of to start after (before, if `reverse` is `true`), or `None` to start from the beginning (end, if `reverse` is `true`). `limit` is the maximum number of commitments to return. `reverse` is an optional flag to return the commitments in reverse order",
+        "type": "object",
+        "required": [
+          "pub_rand_commit"
+        ],
+        "properties": {
+          "pub_rand_commit": {
+            "type": "object",
+            "required": [
+              "btc_pk_hex"
+            ],
+            "properties": {
+              "btc_pk_hex": {
+                "type": "string"
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "reverse": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "start_after": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "`LastPubRandCommit` returns the last public random commitments for a given FP.\n\nIt's a convenience shortcut of `PubRandCommit` with a `limit` default of 1, and `reverse` set to true.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format. `limit` is the maximum number of commitments to return, or one if not provided",
+        "type": "object",
+        "required": [
+          "last_pub_rand_commit"
+        ],
+        "properties": {
+          "last_pub_rand_commit": {
+            "type": "object",
+            "required": [
+              "btc_pk_hex"
+            ],
+            "properties": {
+              "btc_pk_hex": {
+                "type": "string"
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "`ActivatedHeight` returns the height at which the contract gets its first delegation, if any",
+        "type": "object",
+        "required": [
+          "activated_height"
+        ],
+        "properties": {
+          "activated_height": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "`Block` returns the indexed block information at height",
+        "type": "object",
+        "required": [
+          "block"
+        ],
+        "properties": {
+          "block": {
+            "type": "object",
+            "required": [
+              "height"
+            ],
+            "properties": {
+              "height": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "`Blocks` return the list of indexed blocks.\n\n`start_after` is the height of the block to start after (before, if `reverse` is `true`), or `None` to start from the beginning (end, if `reverse` is `true`). `limit` is the maximum number of blocks to return. `finalised` is an optional filter to return only finalised blocks. `reverse` is an optional flag to return the blocks in reverse order",
+        "type": "object",
+        "required": [
+          "blocks"
+        ],
+        "properties": {
+          "blocks": {
+            "type": "object",
+            "properties": {
+              "finalised": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "reverse": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "start_after": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -969,6 +1125,22 @@
   },
   "sudo": null,
   "responses": {
+    "activated_height": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ActivatedHeightResponse",
+      "type": "object",
+      "required": [
+        "height"
+      ],
+      "properties": {
+        "height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "admin": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AdminResponse",
@@ -983,6 +1155,89 @@
         }
       },
       "additionalProperties": false
+    },
+    "block": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IndexedBlock",
+      "description": "`IndexedBlock` is the necessary metadata and finalization status of a block",
+      "type": "object",
+      "required": [
+        "app_hash",
+        "finalized",
+        "height"
+      ],
+      "properties": {
+        "app_hash": {
+          "description": "`app_hash` is the AppHash of the block",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "finalized": {
+          "description": "`finalized` indicates whether the IndexedBlock is finalised by 2/3 of the finality providers or not",
+          "type": "boolean"
+        },
+        "height": {
+          "description": "`height` is the height of the block",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "blocks": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BlocksResponse",
+      "type": "object",
+      "required": [
+        "blocks"
+      ],
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/IndexedBlock"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "IndexedBlock": {
+          "description": "`IndexedBlock` is the necessary metadata and finalization status of a block",
+          "type": "object",
+          "required": [
+            "app_hash",
+            "finalized",
+            "height"
+          ],
+          "properties": {
+            "app_hash": {
+              "description": "`app_hash` is the AppHash of the block",
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
+            },
+            "finalized": {
+              "description": "`finalized` indicates whether the IndexedBlock is finalised by 2/3 of the finality providers or not",
+              "type": "boolean"
+            },
+            "height": {
+              "description": "`height` is the height of the block",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      }
     },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1920,6 +2175,41 @@
       },
       "additionalProperties": false
     },
+    "last_pub_rand_commit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PubRandCommit",
+      "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
+      "type": "object",
+      "required": [
+        "commitment",
+        "num_pub_rand",
+        "start_height"
+      ],
+      "properties": {
+        "commitment": {
+          "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "num_pub_rand": {
+          "description": "`num_pub_rand` is the number of committed public randomness",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "start_height": {
+          "description": "`start_height` is the height of the first commitment",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "params": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Params",
@@ -1938,6 +2228,41 @@
         },
         "min_pub_rand": {
           "description": "`min_pub_rand` is the minimum amount of public randomness each public randomness commitment should commit",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "pub_rand_commit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PubRandCommit",
+      "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
+      "type": "object",
+      "required": [
+        "commitment",
+        "num_pub_rand",
+        "start_height"
+      ],
+      "properties": {
+        "commitment": {
+          "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "num_pub_rand": {
+          "description": "`num_pub_rand` is the number of committed public randomness",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "start_height": {
+          "description": "`start_height` is the height of the first commitment",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0

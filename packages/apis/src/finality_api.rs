@@ -12,8 +12,8 @@ pub struct IndexedBlock {
     pub height: u64,
     /// `app_hash` is the AppHash of the block
     pub app_hash: Bytes,
-    /// `finalized` indicates whether the IndexedBlock is finalised by 2/3
-    /// finality providers or not
+    /// `finalized` indicates whether the IndexedBlock is finalised by 2/3 of the finality
+    /// providers or not
     pub finalized: bool,
 }
 

@@ -17,7 +17,9 @@ use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG};
-use crate::state::staking::{fps, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS};
+use crate::state::staking::{
+    fps, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
+};
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -241,6 +243,12 @@ pub fn handle_active_delegation(
     }
     // Add this BTC delegation
     DELEGATIONS.save(storage, staking_tx_hash.as_ref(), delegation)?;
+
+    // Store activated height, if first delegation
+    if ACTIVATED_HEIGHT.may_load(storage)?.is_none() {
+        ACTIVATED_HEIGHT.save(storage, &height)?;
+    }
+
     // TODO: Emit corresponding events
 
     Ok(())
