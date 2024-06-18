@@ -452,11 +452,10 @@ fn finalize_block(
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use babylon_apis::btc_staking_api::{EndBlockMsg, SudoMsg};
+    use babylon_apis::btc_staking_api::SudoMsg;
     use babylon_apis::finality_api::IndexedBlock;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::StdError::NotFound;
-    use cosmwasm_std::{Binary, Env};
+    use cosmwasm_std::{Binary, Env, Event};
     use hex::ToHex;
     use test_utils::{get_add_finality_sig, get_pub_rand_value};
 
@@ -464,7 +463,6 @@ pub(crate) mod tests {
         create_new_finality_provider, get_public_randomness_commitment, CREATOR,
     };
     use crate::contract::{execute, instantiate};
-    use crate::error::ContractError;
     use crate::msg::{ExecuteMsg, FinalitySignatureResponse, InstantiateMsg};
 
     pub(crate) fn mock_env_height(height: u64) -> Env {
@@ -706,31 +704,32 @@ pub(crate) mod tests {
             signature: Binary::new(finality_signature.clone()),
         };
 
-        // Execute the message at a higher height, so that:
+        // Execute the message at the exact submit height, so that:
         // 1. It's not rejected because of height being too high.
         // 2. The FP has consolidated power at such height
-        let _res = execute(
-            deps.as_mut(),
-            mock_env_height(initial_height + 2),
-            info.clone(),
-            msg,
-        )
-        .unwrap();
+        // 3. There are no more pending / future blocks to process
+        let submit_env = mock_env_height(submit_height);
+        let _res = execute(deps.as_mut(), submit_env.clone(), info.clone(), msg).unwrap();
 
         // Call the end blocker, to process the finality signature
-        let end_env = mock_env_height(initial_height + 3);
-        let end_block_msg = EndBlockMsg {
-            height: submit_height as i64,
-            hash_hex: "deadbeef".to_string(),
-            time: end_env.block.time.to_string(),
-            chain_id: end_env.block.chain_id.clone(),
-            app_hash_hex: add_finality_signature.block_app_hash.encode_hex(),
-        };
-
-        let err = crate::contract::sudo(deps.as_mut(), end_env, SudoMsg::EndBlock(end_block_msg))
-            .unwrap_err(); // Expected, as not all the blocks are yet indexed
-        assert!(matches!(err, ContractError::Std(NotFound { .. })));
-        assert!(err.to_string().contains("IndexedBlock"));
+        let res = crate::contract::sudo(
+            deps.as_mut(),
+            submit_env,
+            SudoMsg::EndBlock {
+                hash_hex: "deadbeef".to_string(),
+                app_hash_hex: add_finality_signature.block_app_hash.encode_hex(),
+            },
+        )
+        .unwrap();
+        assert_eq!(0, res.attributes.len());
+        assert_eq!(1, res.events.len());
+        assert_eq!(
+            res.events[0],
+            Event::new("index_block")
+                .add_attribute("module", "finality")
+                .add_attribute("last_height", submit_height.to_string())
+        );
+        assert_eq!(0, res.messages.len());
 
         // Assert the submitted block has been indexed
         let indexed_block = crate::queries::block(deps.as_ref(), submit_height).unwrap();

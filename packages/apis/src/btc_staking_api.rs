@@ -62,29 +62,16 @@ pub enum SudoMsg {
     /// The SDK should call SudoMsg::BeginBlock{} once per block (in BeginBlock).
     /// It allows the staking module to index the BTC height, and update the power
     /// distribution of the active Finality Providers.
-    BeginBlock(BeginBlockMsg),
+    BeginBlock {
+        hash_hex: String,
+        app_hash_hex: String,
+    },
     /// The SDK should call SudoMsg::EndBlock{} once per block (in EndBlock).
     /// It allows the finality module to Index and tally the finality provider votes
-    EndBlock(EndBlockMsg),
-}
-
-#[cw_serde]
-// FIXME: Remove `height`, `time` and `chain_id`, as we can use the block info for that
-pub struct BeginBlockMsg {
-    pub height: i64,
-    pub hash_hex: String,
-    pub time: String,
-    pub chain_id: String,
-    pub app_hash_hex: String,
-}
-
-#[cw_serde]
-pub struct EndBlockMsg {
-    pub height: i64,
-    pub hash_hex: String,
-    pub time: String,
-    pub chain_id: String,
-    pub app_hash_hex: String,
+    EndBlock {
+        hash_hex: String,
+        app_hash_hex: String,
+    },
 }
 
 #[cw_serde]

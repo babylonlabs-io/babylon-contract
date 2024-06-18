@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
 
-use babylon_apis::btc_staking_api::{EndBlockMsg, SudoMsg};
+use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
@@ -212,8 +212,11 @@ pub fn sudo(
     msg: SudoMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        SudoMsg::BeginBlock(_) => handle_begin_block(&mut deps, env),
-        SudoMsg::EndBlock(msg) => handle_end_block(&mut deps, env, &msg),
+        SudoMsg::BeginBlock { .. } => handle_begin_block(&mut deps, env),
+        SudoMsg::EndBlock {
+            hash_hex,
+            app_hash_hex,
+        } => handle_end_block(&mut deps, env, &hash_hex, &app_hash_hex),
     }
 }
 
@@ -253,20 +256,16 @@ fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
 fn handle_end_block(
     deps: &mut DepsMut,
     env: Env,
-    msg: &EndBlockMsg,
+    _hash_hex: &str,
+    app_hash_hex: &str,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    assert!(msg.height > 0, "Height must be greater than 0!");
     // If the BTC staking protocol is activated i.e. there exists a height where at least one
     // finality provider has voting power, start indexing and tallying blocks
     let mut res = Response::new();
 
     if let Some(activated_height) = ACTIVATED_HEIGHT.may_load(deps.storage)? {
         // Index the current block
-        let ev = finality::index_block(
-            deps,
-            msg.height as u64,
-            &hex::decode(msg.app_hash_hex.clone())?,
-        )?;
+        let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
         res = res.add_event(ev);
         // Tally all non-finalised blocks
         let events = finality::tally_blocks(deps, activated_height, env.block.height)?;
