@@ -19,7 +19,7 @@ use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 use crate::error::ContractError;
 use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::staking::handle_btc_staking;
+use crate::staking::{compute_active_finality_providers, handle_btc_staking};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::staking::ACTIVATED_HEIGHT;
 use crate::state::BTC_HEIGHT;
@@ -220,16 +220,13 @@ pub fn sudo(
     }
 }
 
-// TODO: implement BeginBlock handler
-fn handle_begin_block(
-    _deps: &mut DepsMut,
-    _env: Env,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    // Index BTC height at the current height
+fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
+    // TODO: Index BTC height at the current height
     // index_btc_height(deps, env.block.height)?;
 
-    // Update voting power distribution
-    // update_power_distribution();
+    // Compute active finality provider set
+    let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
+    compute_active_finality_providers(deps.storage, env, max_active_fps)?;
 
     Ok(Response::new())
 }

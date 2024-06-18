@@ -6,7 +6,7 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, Storage};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Order, Response, Storage};
 
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
@@ -16,9 +16,10 @@ use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
+use crate::msg::FinalityProviderInfo;
 use crate::state::config::{ADMIN, CONFIG};
 use crate::state::staking::{
-    fps, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
+    fps, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS, FP_SET, TOTAL_POWER,
 };
 
 /// handle_btc_staking handles the BTC staking operations
@@ -322,6 +323,47 @@ fn btc_undelegate(
     //  - How to notify them? Emit event?
 
     // TODO? Record event that the BTC delegation becomes unbonded at this height
+
+    Ok(())
+}
+
+/// `compute_active_finality_providers` sorts all finality providers, counts the total voting
+/// power of top finality providers, and records them in the contract state
+pub fn compute_active_finality_providers(
+    storage: &mut dyn Storage,
+    env: Env,
+    max_active_fps: usize,
+) -> Result<(), ContractError> {
+    // Sort finality providers by power
+    let (finality_providers, running_total): (_, Vec<_>) = fps()
+        .idx
+        .power
+        .range(storage, None, None, Order::Descending)
+        .take(max_active_fps)
+        .scan(0u64, |acc, item| {
+            let (pk_hex, fp_state) = item.ok()?; // Error ends the iteration
+
+            let fp_info = FinalityProviderInfo {
+                btc_pk_hex: pk_hex,
+                power: fp_state.power,
+            };
+            *acc += fp_state.power;
+            Some((fp_info, *acc))
+        })
+        .filter(|(fp, _)| {
+            // Filter out FPs with no voting power
+            fp.power > 0
+        })
+        .unzip();
+
+    // TODO: Online FPs verification
+    // TODO: Filter out offline / jailed FPs
+    // Save the new set of active finality providers
+    // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
+    FP_SET.save(storage, env.block.height, &finality_providers)?;
+    // Save the total voting power of the top n finality providers
+    let total_power = running_total.last().copied().unwrap_or_default();
+    TOTAL_POWER.save(storage, &total_power)?;
 
     Ok(())
 }

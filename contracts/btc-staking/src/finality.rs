@@ -711,7 +711,21 @@ pub(crate) mod tests {
         let submit_env = mock_env_height(submit_height);
         let _res = execute(deps.as_mut(), submit_env.clone(), info.clone(), msg).unwrap();
 
-        // Call the end blocker, to process the finality signature
+        // Call the begin blocker, to compute the active FP set
+        let res = crate::contract::sudo(
+            deps.as_mut(),
+            submit_env.clone(),
+            SudoMsg::BeginBlock {
+                hash_hex: "deadbeef".to_string(),
+                app_hash_hex: add_finality_signature.block_app_hash.encode_hex(),
+            },
+        )
+        .unwrap();
+        assert_eq!(0, res.attributes.len());
+        assert_eq!(0, res.events.len());
+        assert_eq!(0, res.messages.len());
+
+        // Call the end blocker, to process the finality signatures
         let res = crate::contract::sudo(
             deps.as_mut(),
             submit_env,
@@ -722,26 +736,30 @@ pub(crate) mod tests {
         )
         .unwrap();
         assert_eq!(0, res.attributes.len());
-        assert_eq!(1, res.events.len());
+        assert_eq!(2, res.events.len());
         assert_eq!(
             res.events[0],
             Event::new("index_block")
                 .add_attribute("module", "finality")
                 .add_attribute("last_height", submit_height.to_string())
         );
+        assert_eq!(
+            res.events[1],
+            Event::new("finalize_block")
+                .add_attribute("module", "finality")
+                .add_attribute("finalized_height", submit_height.to_string())
+        );
         assert_eq!(0, res.messages.len());
 
-        // Assert the submitted block has been indexed
+        // Assert the submitted block has been indexed and finalised
         let indexed_block = crate::queries::block(deps.as_ref(), submit_height).unwrap();
         assert_eq!(
             indexed_block,
             IndexedBlock {
                 height: submit_height,
                 app_hash: add_finality_signature.block_app_hash.to_vec(),
-                finalized: false,
+                finalized: true,
             }
         );
-
-        // TODO / FIXME: Assert the block has been finalised (after proper fp_set support)
     }
 }
