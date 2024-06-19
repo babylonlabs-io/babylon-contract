@@ -2,11 +2,41 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...HEAD)
 
-## [v0.6.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0) (2024-06-07)
+## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-18)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0-rc.0...v0.7.0)
+
+**Closed issues:**
+
+- Finality round [\#153](https://github.com/babylonchain/babylon-contract/issues/153)
+- Upgrade to CosmWasm 2.x [\#140](https://github.com/babylonchain/babylon-contract/issues/140)
+- Refactor btc-staking contract into modules [\#130](https://github.com/babylonchain/babylon-contract/issues/130)
+- Active finality provider set [\#118](https://github.com/babylonchain/babylon-contract/issues/118)
+- Finality signatures submission [\#109](https://github.com/babylonchain/babylon-contract/issues/109)
+
+**Merged pull requests:**
+
+- Active finality provider set [\#163](https://github.com/babylonchain/babylon-contract/pull/163) ([maurolacy](https://github.com/maurolacy))
+- R/sudo msgs [\#162](https://github.com/babylonchain/babylon-contract/pull/162) ([maurolacy](https://github.com/maurolacy))
+- F/finality queries tests [\#161](https://github.com/babylonchain/babylon-contract/pull/161) ([maurolacy](https://github.com/maurolacy))
+- Add last pub rand commit by FP query [\#160](https://github.com/babylonchain/babylon-contract/pull/160) ([maurolacy](https://github.com/maurolacy))
+- Update protocgen.sh [\#156](https://github.com/babylonchain/babylon-contract/pull/156) ([lesterli](https://github.com/lesterli))
+- F/finality round [\#155](https://github.com/babylonchain/babylon-contract/pull/155) ([maurolacy](https://github.com/maurolacy))
+- sudo: EndBlock sudo message [\#154](https://github.com/babylonchain/babylon-contract/pull/154) ([SebastianElvis](https://github.com/SebastianElvis))
+- U/cosmwasm 2.x [\#151](https://github.com/babylonchain/babylon-contract/pull/151) ([maurolacy](https://github.com/maurolacy))
+- \[op finality gadget\] feat: 5/x - add CommitPublicRandomness and SubmitFinalitySignature [\#150](https://github.com/babylonchain/babylon-contract/pull/150) ([bap2pecs](https://github.com/bap2pecs))
+- \[op finality gadget\] feat: 2/x - set admin and consumer chain while instantiating [\#147](https://github.com/babylonchain/babylon-contract/pull/147) ([bap2pecs](https://github.com/bap2pecs))
+- \[op finality gadget\] feat: 1/x - set up crate skeleton  [\#144](https://github.com/babylonchain/babylon-contract/pull/144) ([bap2pecs](https://github.com/bap2pecs))
+- docs: add missing instruction before running test [\#143](https://github.com/babylonchain/babylon-contract/pull/143) ([bap2pecs](https://github.com/bap2pecs))
+- Fix build-optimizer.sh to properly generate code for arm64 [\#142](https://github.com/babylonchain/babylon-contract/pull/142) ([bap2pecs](https://github.com/bap2pecs))
+- crypto: error/option handling in EOTS implementation [\#139](https://github.com/babylonchain/babylon-contract/pull/139) ([SebastianElvis](https://github.com/SebastianElvis))
+- R/btc staking modules [\#138](https://github.com/babylonchain/babylon-contract/pull/138) ([maurolacy](https://github.com/maurolacy))
+
+## [v0.6.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0-rc.0)
 
 **Closed issues:**
 
@@ -109,7 +139,7 @@
 - Babylon contract benchmarks [\#61](https://github.com/babylonchain/babylon-contract/pull/61) ([maurolacy](https://github.com/maurolacy))
 - Upgrade to latest rust-bitcoin 0.31.x [\#60](https://github.com/babylonchain/babylon-contract/pull/60) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.4.0](https://github.com/babylonchain/babylon-contract/tree/v0.4.0) (2024-02-13)
+## [v0.4.0](https://github.com/babylonchain/babylon-contract/tree/v0.4.0) (2024-02-14)
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.3.0...v0.4.0)
 
@@ -117,18 +147,6 @@
 
 - Refactor: BTC light client header storage [\#57](https://github.com/babylonchain/babylon-contract/pull/57) ([maurolacy](https://github.com/maurolacy))
 - More queries [\#56](https://github.com/babylonchain/babylon-contract/pull/56) ([maurolacy](https://github.com/maurolacy))
-
-## [v0.3.0](https://github.com/babylonchain/babylon-contract/tree/v0.3.0) (2024-02-09)
-
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.2.0...v0.3.0)
-
-**Closed issues:**
-
-- Get rid of Makefile [\#48](https://github.com/babylonchain/babylon-contract/issues/48)
-
-**Merged pull requests:**
-
-- Release 0.3 [\#58](https://github.com/babylonchain/babylon-contract/pull/58) ([maurolacy](https://github.com/maurolacy))
 - Add queries [\#55](https://github.com/babylonchain/babylon-contract/pull/55) ([maurolacy](https://github.com/maurolacy))
 - Update CI rust image to a more recent version \(1.75.0\) [\#54](https://github.com/babylonchain/babylon-contract/pull/54) ([maurolacy](https://github.com/maurolacy))
 - Remove Makefile [\#53](https://github.com/babylonchain/babylon-contract/pull/53) ([maurolacy](https://github.com/maurolacy))
@@ -141,6 +159,14 @@
 - chore: bump Babylon with ABCI++ [\#41](https://github.com/babylonchain/babylon-contract/pull/41) ([SebastianElvis](https://github.com/SebastianElvis))
 - Babylon tag format [\#40](https://github.com/babylonchain/babylon-contract/pull/40) ([maurolacy](https://github.com/maurolacy))
 
+## [v0.3.0](https://github.com/babylonchain/babylon-contract/tree/v0.3.0) (2024-02-09)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.2.0...v0.3.0)
+
+**Closed issues:**
+
+- Get rid of Makefile [\#48](https://github.com/babylonchain/babylon-contract/issues/48)
+
 ## [v0.2.0](https://github.com/babylonchain/babylon-contract/tree/v0.2.0) (2023-12-22)
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.1.0...v0.2.0)
@@ -149,7 +175,7 @@
 
 - API adjustments / serialisation support [\#37](https://github.com/babylonchain/babylon-contract/pull/37) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.1.0](https://github.com/babylonchain/babylon-contract/tree/v0.1.0) (2023-12-21)
+## [v0.1.0](https://github.com/babylonchain/babylon-contract/tree/v0.1.0) (2023-12-22)
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/975426f4cef50ce47610b51a55c576c5ddd1d39b...v0.1.0)
 
