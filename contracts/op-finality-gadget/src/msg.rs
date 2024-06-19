@@ -1,6 +1,6 @@
 use babylon_merkle::Proof;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Timestamp};
+use cosmwasm_std::Binary;
 
 use crate::state::config::Config;
 
@@ -21,7 +21,7 @@ pub enum QueryMsg {
     BlockFinalized {
         height: u64,
         hash: String,
-        timestamp: Timestamp,
+        btc_height: u64,
     },
 }
 

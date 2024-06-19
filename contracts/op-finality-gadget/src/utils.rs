@@ -1,22 +1,10 @@
 use anybuf::{Anybuf, Bufany};
-use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_json_vec, Binary, ContractResult, Deps, GrpcQuery, QueryRequest, StdError, StdResult,
     SystemResult,
 };
 
-/// BTC staking consumer messages / API
-/// The definitions here follow the same structure as the equivalent protobuf message types,
-/// defined in `packages/proto/src/gen/babylon.btcstkconsumer.v1.rs`
-/// QueryFinalityProviderResponse contains information about a finality provider
-#[cw_serde]
-pub struct QueryFinalityProviderResponse {
-    /// finality_provider contains the FinalityProvider
-    pub finality_provider: Option<FinalityProviderResponse>,
-}
-
 /// FinalityProviderResponse defines a finality provider with voting power information.
-#[cw_serde]
 pub struct FinalityProviderResponse {
     /// slashed_babylon_height indicates the Babylon height when
     /// the finality provider is slashed.

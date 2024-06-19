@@ -29,9 +29,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BlockFinalized {
             height,
             hash,
-            timestamp,
+            btc_height,
         } => Ok(to_json_binary(&query_block_finalized(
-            deps, height, hash, timestamp,
+            deps, height, hash, btc_height,
         )?)?),
         QueryMsg::Config {} => Ok(to_json_binary(&query_config(deps)?)?),
     }
