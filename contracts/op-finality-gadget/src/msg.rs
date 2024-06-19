@@ -2,15 +2,21 @@ use babylon_merkle::Proof;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Timestamp};
 
+use crate::state::config::Config;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: String,
     pub consumer_id: String,
+    pub activated_height: u64,
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    /// `Config` returns the configuration of the op-finality-gadget contract
+    #[returns(Config)]
+    Config {},
     #[returns(QueryBlockFinalizedResponse)]
     QueryBlockFinalized {
         height: u64,

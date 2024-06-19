@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::error::ContractError;
-use crate::state::config::CONSUMER_CHAIN_ID;
+use crate::state::config::CONFIG;
 use crate::state::finality::{BLOCK_VOTES, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
@@ -321,9 +321,8 @@ fn check_fp_exist(
     fp_pubkey_hex: &str,
 ) -> Result<(), ContractError> {
     let querier = BabylonQuerier::new(&deps.querier);
-    let consumer_id = CONSUMER_CHAIN_ID.load(deps.storage)?;
-    let fp =
-        querier.query_finality_provider(consumer_id.clone(), fp_pubkey_hex.to_string().clone());
+    let config = CONFIG.load(deps.storage)?;
+    let fp = querier.query_finality_provider(config.consumer_id.clone(), fp_pubkey_hex.to_string());
     match fp {
         Ok(_value) => {
             // TODO: check the slash
@@ -331,8 +330,8 @@ fn check_fp_exist(
             Ok(())
         }
         Err(_e) => Err(ContractError::NotFoundFinalityProvider(
-            consumer_id.clone(),
-            fp_pubkey_hex.to_string().clone(),
+            config.consumer_id,
+            fp_pubkey_hex.to_string(),
         )),
     }
 }

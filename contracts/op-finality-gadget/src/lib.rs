@@ -2,8 +2,6 @@ use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Respons
 use error::ContractError;
 use msg::{ExecuteMsg, InstantiateMsg};
 
-use babylon_apis::queries::BabylonQueryWrapper;
-
 mod finality;
 
 pub mod contract;
@@ -23,7 +21,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps<BabylonQueryWrapper>, env: Env, msg: msg::QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: msg::QueryMsg) -> StdResult<Binary> {
     contract::query(deps, env, msg)
 }
 

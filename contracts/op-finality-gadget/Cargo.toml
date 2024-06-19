@@ -31,3 +31,6 @@ eots             = { path = "../../packages/eots" }
 hex              = { workspace = true }
 k256             = { workspace = true } 
 thiserror        = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-vm       = { workspace = true }

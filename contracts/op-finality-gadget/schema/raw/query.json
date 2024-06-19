@@ -3,6 +3,20 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "`Config` returns the configuration of the op-finality-gadget contract",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "type": "object",
       "required": [
         "query_block_finalized"

@@ -1,12 +1,15 @@
+use crate::msg::QueryBlockFinalizedResponse;
+use crate::state::config::{Config, CONFIG};
+use crate::state::finality::BLOCK_VOTES;
+use cosmwasm_std::{Deps, StdResult, Timestamp};
 use std::collections::HashSet;
 
-use babylon_apis::queries::BabylonQueryWrapper;
-use cosmwasm_std::{Deps, StdResult, Timestamp};
-
-use crate::{msg::QueryBlockFinalizedResponse, state::finality::BLOCK_VOTES};
+pub fn query_config(deps: Deps) -> StdResult<Config> {
+    CONFIG.load(deps.storage)
+}
 
 pub fn query_block_finalized(
-    deps: Deps<BabylonQueryWrapper>,
+    deps: Deps,
     // height, hash and timestamp for the L2 block
     height: u64,
     hash: String,
