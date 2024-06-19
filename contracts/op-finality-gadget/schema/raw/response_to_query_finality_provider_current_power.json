@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryFinalityProviderCurrentPowerResponse",
+  "description": "QueryFinalityProviderCurrentPowerResponse is the response type for the Query/FinalityProviderCurrentPower RPC method.",
+  "type": "object",
+  "required": [
+    "height",
+    "voting_power"
+  ],
+  "properties": {
+    "height": {
+      "description": "height is the current height",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "voting_power": {
+      "description": "voting_power is the voting power of the finality provider",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

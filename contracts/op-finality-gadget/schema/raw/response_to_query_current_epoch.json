@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryCurrentEpochResponse",
+  "description": "QueryCurrentEpochResponse is the response type for the Query/CurrentEpoch RPC method",
+  "type": "object",
+  "required": [
+    "current_epoch",
+    "epoch_boundary"
+  ],
+  "properties": {
+    "current_epoch": {
+      "description": "current_epoch is the current epoch number",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "epoch_boundary": {
+      "description": "epoch_boundary is the height of this epoch's last block",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

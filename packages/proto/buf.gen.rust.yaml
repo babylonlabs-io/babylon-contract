@@ -22,6 +22,8 @@ types:
     - babylon.finality.v1.PubRandCommit
     - babylon.finality.v1.MsgAddFinalitySig
     - babylon.finality.v1.MsgCommitPubRandList
+    - babylon.btcstkconsumer.v1.QueryFinalityProviderRequest
+    - babylon.btcstkconsumer.v1.QueryFinalityProviderResponse
 plugins:
   - plugin: buf.build/community/neoeinstein-prost:v0.2.3
     out: src/gen

@@ -5,6 +5,8 @@ use crate::state::config::{ADMIN, CONSUMER_CHAIN_ID};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_utils::maybe_addr;
 
+use babylon_apis::queries::BabylonQueryWrapper;
+
 pub fn instantiate(
     mut deps: DepsMut,
     _env: Env,
@@ -20,12 +22,12 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(_deps: Deps<BabylonQueryWrapper>, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!();
 }
 
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQueryWrapper>,
     env: Env,
     _info: MessageInfo,
     msg: ExecuteMsg,

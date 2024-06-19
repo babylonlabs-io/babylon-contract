@@ -1,18 +1,20 @@
 use crate::error::ContractError;
+use crate::state::config::CONSUMER_CHAIN_ID;
 use crate::state::finality::SIGNATURES;
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
 use babylon_apis::finality_api::PubRandCommit;
+use babylon_apis::queries::{BabylonQuerier, BabylonQueryWrapper};
 use babylon_merkle::Proof;
-use cosmwasm_std::{DepsMut, Env, Response};
+use cosmwasm_std::{Deps, DepsMut, Env, Response};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
 
 // Most logic copied from contracts/btc-staking/src/finality.rs
 pub fn handle_public_randomness_commit(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQueryWrapper>,
     fp_pubkey_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -20,7 +22,7 @@ pub fn handle_public_randomness_commit(
     signature: &[u8],
 ) -> Result<Response, ContractError> {
     // Ensure the finality provider is registered
-    // TODO (lester): use gRPC to query the Babylon Chain
+    check_fp_exist(deps.as_ref(), fp_pubkey_hex)?;
 
     // TODO: ensure log_2(num_pub_rand) is an integer?
 
@@ -100,7 +102,7 @@ fn verify_commitment_signature(
 // Most logic copied from contracts/btc-staking/src/finality.rs
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQueryWrapper>,
     env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
@@ -110,7 +112,7 @@ pub fn handle_finality_signature(
     signature: &[u8],
 ) -> Result<Response, ContractError> {
     // Ensure the finality provider exists
-    // TODO (lester): use gRPC to query the Babylon Chain
+    check_fp_exist(deps.as_ref(), fp_btc_pk_hex)?;
 
     // TODO: Ensure the finality provider is not slashed at this time point
     // NOTE: It's possible that the finality provider equivocates for height h, and the signature is
@@ -299,4 +301,25 @@ fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
     let mut msg: Vec<u8> = height.to_be_bytes().to_vec();
     msg.extend_from_slice(block_hash);
     msg
+}
+
+fn check_fp_exist(
+    deps: Deps<BabylonQueryWrapper>,
+    fp_pubkey_hex: &str,
+) -> Result<(), ContractError> {
+    let querier = BabylonQuerier::new(&deps.querier);
+    let consumer_id = CONSUMER_CHAIN_ID.load(deps.storage)?;
+    let fp =
+        querier.query_finality_provider(consumer_id.clone(), fp_pubkey_hex.to_string().clone());
+    match fp {
+        Ok(_value) => {
+            // TODO: check the slash
+            // value.slashed_babylon_height != value.height;
+            Ok(())
+        }
+        Err(_e) => Err(ContractError::NotFoundFinalityProvider(
+            consumer_id.clone(),
+            fp_pubkey_hex.to_string().clone(),
+        )),
+    }
 }
