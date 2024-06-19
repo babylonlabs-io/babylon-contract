@@ -1,8 +1,9 @@
 use crate::error::ContractError;
 use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::queries::query_block_finalized;
 use crate::state::config::{ADMIN, CONSUMER_CHAIN_ID};
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_utils::maybe_addr;
 
 use babylon_apis::queries::BabylonQueryWrapper;
@@ -22,8 +23,16 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
-pub fn query(_deps: Deps<BabylonQueryWrapper>, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!();
+pub fn query(deps: Deps<BabylonQueryWrapper>, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::QueryBlockFinalized {
+            height,
+            hash,
+            timestamp,
+        } => Ok(to_json_binary(&query_block_finalized(
+            deps, height, hash, timestamp,
+        )?)?),
+    }
 }
 
 pub fn execute(

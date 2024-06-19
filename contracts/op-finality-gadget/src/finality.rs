@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use crate::error::ContractError;
 use crate::state::config::CONSUMER_CHAIN_ID;
-use crate::state::finality::SIGNATURES;
+use crate::state::finality::{BLOCK_VOTES, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
@@ -214,6 +216,17 @@ pub fn handle_finality_signature(
 
     // This signature is good, save the vote to the store
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
+
+    // Check if the key (height, block_hash) exists
+    let mut block_votes_fp_set = BLOCK_VOTES
+        .may_load(deps.storage, (height, block_hash))?
+        .unwrap_or_else(HashSet::new);
+
+    // Add the fp_btc_pk_hex to the set
+    block_votes_fp_set.insert(fp_btc_pk_hex.to_string());
+
+    // Save the updated set back to storage
+    BLOCK_VOTES.save(deps.storage, (height, block_hash), &block_votes_fp_set)?;
 
     // TODO: If this finality provider has signed the canonical block before, slash it via
     // extracting its secret key, and emit an event

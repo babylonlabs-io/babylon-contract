@@ -19,7 +19,7 @@
   "additionalProperties": false,
   "definitions": {
     "FinalityProviderResponse": {
-      "description": "FinalityProviderResponse defines a finality provider with voting power information. Keep these commented-out fields for convenience to get the right order of decoding fields.",
+      "description": "FinalityProviderResponse defines a finality provider with voting power information.",
       "type": "object",
       "required": [
         "consumer_id",

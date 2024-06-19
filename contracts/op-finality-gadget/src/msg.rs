@@ -1,6 +1,6 @@
 use babylon_merkle::Proof;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Binary, Timestamp};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -10,7 +10,19 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(QueryBlockFinalizedResponse)]
+    QueryBlockFinalized {
+        height: u64,
+        hash: String,
+        timestamp: Timestamp,
+    },
+}
+
+#[cw_serde]
+pub struct QueryBlockFinalizedResponse {
+    pub finalized: bool,
+}
 
 // Note: copied from packages/apis/src/btc_staking_api.rs
 #[cw_serde]
