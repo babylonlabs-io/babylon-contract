@@ -17,8 +17,8 @@ pub enum QueryMsg {
     /// `Config` returns the configuration of the op-finality-gadget contract
     #[returns(Config)]
     Config {},
-    #[returns(QueryBlockFinalizedResponse)]
-    QueryBlockFinalized {
+    #[returns(BlockFinalizedResponse)]
+    BlockFinalized {
         height: u64,
         hash: String,
         timestamp: Timestamp,
@@ -26,7 +26,7 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct QueryBlockFinalizedResponse {
+pub struct BlockFinalizedResponse {
     pub finalized: bool,
 }
 

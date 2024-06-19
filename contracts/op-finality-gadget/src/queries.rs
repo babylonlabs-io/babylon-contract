@@ -1,4 +1,4 @@
-use crate::msg::QueryBlockFinalizedResponse;
+use crate::msg::BlockFinalizedResponse;
 use crate::state::config::{Config, CONFIG};
 use crate::state::finality::BLOCK_VOTES;
 use cosmwasm_std::{Deps, StdResult, Timestamp};
@@ -14,7 +14,7 @@ pub fn query_block_finalized(
     height: u64,
     hash: String,
     _timestamp: Timestamp,
-) -> StdResult<QueryBlockFinalizedResponse> {
+) -> StdResult<BlockFinalizedResponse> {
     // find all FPs that voted for this (height, hash) combination
     let _block_votes_fp_set = BLOCK_VOTES
         .may_load(deps.storage, (height, hash.as_bytes()))?
@@ -28,5 +28,5 @@ pub fn query_block_finalized(
       - return true if P/S > 2/3; otherwise return false
     */
 
-    Ok(QueryBlockFinalizedResponse { finalized: true })
+    Ok(BlockFinalizedResponse { finalized: true })
 }

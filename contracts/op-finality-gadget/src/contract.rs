@@ -28,7 +28,7 @@ pub fn instantiate(
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::QueryBlockFinalized {
+        QueryMsg::BlockFinalized {
             height,
             hash,
             timestamp,

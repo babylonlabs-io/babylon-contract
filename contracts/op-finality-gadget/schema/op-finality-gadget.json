@@ -189,10 +189,10 @@
       {
         "type": "object",
         "required": [
-          "query_block_finalized"
+          "block_finalized"
         ],
         "properties": {
-          "query_block_finalized": {
+          "block_finalized": {
             "type": "object",
             "required": [
               "hash",
@@ -241,6 +241,20 @@
   },
   "sudo": null,
   "responses": {
+    "block_finalized": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BlockFinalizedResponse",
+      "type": "object",
+      "required": [
+        "finalized"
+      ],
+      "properties": {
+        "finalized": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",
@@ -258,20 +272,6 @@
         },
         "consumer_id": {
           "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "query_block_finalized": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "QueryBlockFinalizedResponse",
-      "type": "object",
-      "required": [
-        "finalized"
-      ],
-      "properties": {
-        "finalized": {
-          "type": "boolean"
         }
       },
       "additionalProperties": false
