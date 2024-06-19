@@ -83,7 +83,6 @@ checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 name = "babylon-apis"
 version = "0.7.0"
 dependencies = [
- "anybuf",
  "babylon-bitcoin",
  "babylon-merkle",
  "cosmwasm-schema",
@@ -1717,6 +1716,7 @@ checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 name = "op-finality-gadget"
 version = "0.7.0"
 dependencies = [
+ "anybuf",
  "babylon-apis",
  "babylon-merkle",
  "cosmwasm-schema",

@@ -9,7 +9,6 @@ babylon-merkle   = { path = "../merkle" }
 
 cosmwasm-std     = { workspace = true }
 cosmwasm-schema  = { workspace = true }
-anybuf           = { workspace = true }
 hex              = { workspace = true }
 tendermint-proto = { workspace = true }
 thiserror        = { workspace = true }

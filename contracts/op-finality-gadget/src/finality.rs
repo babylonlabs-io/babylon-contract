@@ -6,8 +6,9 @@ use crate::state::finality::{BLOCK_VOTES, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
+use crate::utils::query_finality_provider;
+
 use babylon_apis::finality_api::PubRandCommit;
-use babylon_apis::queries::{BabylonQuerier, BabylonQueryWrapper};
 use babylon_merkle::Proof;
 use cosmwasm_std::{Deps, DepsMut, Env, Response};
 use k256::ecdsa::signature::Verifier;
@@ -16,7 +17,7 @@ use k256::sha2::{Digest, Sha256};
 
 // Most logic copied from contracts/btc-staking/src/finality.rs
 pub fn handle_public_randomness_commit(
-    deps: DepsMut<BabylonQueryWrapper>,
+    deps: DepsMut,
     fp_pubkey_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -104,7 +105,7 @@ fn verify_commitment_signature(
 // Most logic copied from contracts/btc-staking/src/finality.rs
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
-    deps: DepsMut<BabylonQueryWrapper>,
+    deps: DepsMut,
     env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
@@ -316,13 +317,9 @@ fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
     msg
 }
 
-fn check_fp_exist(
-    deps: Deps<BabylonQueryWrapper>,
-    fp_pubkey_hex: &str,
-) -> Result<(), ContractError> {
-    let querier = BabylonQuerier::new(&deps.querier);
+fn check_fp_exist(deps: Deps, fp_pubkey_hex: &str) -> Result<(), ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let fp = querier.query_finality_provider(config.consumer_id.clone(), fp_pubkey_hex.to_string());
+    let fp = query_finality_provider(deps, config.consumer_id.clone(), fp_pubkey_hex.to_string());
     match fp {
         Ok(_value) => {
             // TODO: check the slash

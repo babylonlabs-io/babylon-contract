@@ -1,8 +1,6 @@
 pub mod btc_staking_api;
-pub mod btcstk_consumer_api;
 pub mod error;
 pub mod finality_api;
-pub mod queries;
 mod validate;
 
 use cosmwasm_std::{Addr, Binary, CustomQuery, QueryRequest, WasmQuery};

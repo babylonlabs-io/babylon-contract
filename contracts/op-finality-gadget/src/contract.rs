@@ -6,8 +6,6 @@ use crate::state::config::{Config, ADMIN, CONFIG};
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_utils::maybe_addr;
 
-use babylon_apis::queries::BabylonQueryWrapper;
-
 pub fn instantiate(
     mut deps: DepsMut,
     _env: Env,
@@ -40,7 +38,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn execute(
-    deps: DepsMut<BabylonQueryWrapper>,
+    deps: DepsMut,
     env: Env,
     _info: MessageInfo,
     msg: ExecuteMsg,
