@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
 use crate::error::ContractError;
+use crate::queries::query_last_pub_rand_commit;
 use crate::state::config::CONFIG;
 use crate::state::finality::{BLOCK_VOTES, SIGNATURES};
 use crate::state::public_randomness::{
-    get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
+    get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
 use crate::utils::query_finality_provider;
 
@@ -40,7 +41,7 @@ pub fn handle_public_randomness_commit(
 
     // Get last public randomness commitment
     // TODO: allow committing public randomness earlier than existing ones?
-    let last_pr_commit = get_last_pub_rand_commit(deps.storage, fp_pubkey_hex).ok();
+    let last_pr_commit = query_last_pub_rand_commit(deps.storage, fp_pubkey_hex).ok();
 
     if let Some(last_pr_commit) = last_pr_commit {
         // Ensure height and start_height do not overlap, i.e., height < start_height

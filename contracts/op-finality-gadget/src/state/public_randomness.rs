@@ -41,27 +41,3 @@ pub fn get_pub_rand_commit_for_height(
         Ok(res[0].clone())
     }
 }
-
-// Copied from contracts/btc-staking/src/state/public_randomness.rs
-pub fn get_last_pub_rand_commit(
-    storage: &dyn Storage,
-    fp_btc_pk_hex: &str,
-) -> Result<PubRandCommit, ContractError> {
-    let res = PUB_RAND_COMMITS
-        .prefix(fp_btc_pk_hex)
-        .range_raw(storage, None, None, Descending)
-        .take(1)
-        .map(|item| {
-            let (_, value) = item?;
-            Ok(value)
-        })
-        .collect::<StdResult<Vec<_>>>()?;
-    if res.is_empty() {
-        Err(ContractError::MissingPubRandCommit(
-            fp_btc_pk_hex.to_string(),
-            0,
-        ))
-    } else {
-        Ok(res[0].clone())
-    }
-}

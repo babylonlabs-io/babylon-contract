@@ -1,8 +1,8 @@
+use crate::state::config::Config;
+use babylon_apis::finality_api::PubRandCommit;
 use babylon_merkle::Proof;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
-
-use crate::state::config::Config;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -23,6 +23,11 @@ pub enum QueryMsg {
         hash: String,
         btc_height: u64,
     },
+    /// `LastPubRandCommit` returns the last public random commitments for a given FP.
+    ///
+    /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
+    #[returns(PubRandCommit)]
+    LastPubRandCommit { btc_pk_hex: String },
 }
 
 #[cw_serde]

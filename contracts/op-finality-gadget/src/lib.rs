@@ -1,4 +1,6 @@
-use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    entry_point, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
+};
 use error::ContractError;
 use msg::{ExecuteMsg, InstantiateMsg};
 
@@ -22,7 +24,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: msg::QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: msg::QueryMsg) -> Result<QueryResponse, ContractError> {
     contract::query(deps, env, msg)
 }
 
