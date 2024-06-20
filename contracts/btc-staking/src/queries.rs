@@ -186,9 +186,9 @@ pub fn finality_signature(
 }
 
 pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractError> {
-    let activaed_height = ACTIVATED_HEIGHT.may_load(deps.storage)?.unwrap_or_default();
+    let activated_height = ACTIVATED_HEIGHT.may_load(deps.storage)?.unwrap_or_default();
     Ok(ActivatedHeightResponse {
-        height: activaed_height,
+        height: activated_height,
     })
 }
 
