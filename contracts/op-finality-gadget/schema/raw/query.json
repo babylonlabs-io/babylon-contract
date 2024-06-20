@@ -19,22 +19,16 @@
     {
       "type": "object",
       "required": [
-        "block_finalized"
+        "block_votes"
       ],
       "properties": {
-        "block_finalized": {
+        "block_votes": {
           "type": "object",
           "required": [
-            "btc_height",
             "hash",
             "height"
           ],
           "properties": {
-            "btc_height": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
             "hash": {
               "type": "string"
             },

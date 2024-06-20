@@ -3,6 +3,7 @@ use babylon_apis::finality_api::PubRandCommit;
 use babylon_merkle::Proof;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
+use std::collections::HashSet;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -17,12 +18,8 @@ pub enum QueryMsg {
     /// `Config` returns the configuration of the op-finality-gadget contract
     #[returns(Config)]
     Config {},
-    #[returns(BlockFinalizedResponse)]
-    BlockFinalized {
-        height: u64,
-        hash: String,
-        btc_height: u64,
-    },
+    #[returns(BlockVotesResponse)]
+    BlockVotes { height: u64, hash: String },
     /// `LastPubRandCommit` returns the last public random commitments for a given FP.
     ///
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
@@ -31,8 +28,8 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct BlockFinalizedResponse {
-    pub finalized: bool,
+pub struct BlockVotesResponse {
+    pub fp_pubkey_hex_list: HashSet<String>,
 }
 
 // Note: copied from packages/apis/src/btc_staking_api.rs

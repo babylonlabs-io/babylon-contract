@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::queries::{query_block_finalized, query_config, query_last_pub_rand_commit};
+use crate::queries::{query_block_votes, query_config, query_last_pub_rand_commit};
 use crate::state::config::{Config, ADMIN, CONFIG};
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
@@ -28,13 +28,9 @@ pub fn instantiate(
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
     match msg {
-        QueryMsg::BlockFinalized {
-            height,
-            hash,
-            btc_height,
-        } => Ok(to_json_binary(&query_block_finalized(
-            deps, height, hash, btc_height,
-        )?)?),
+        QueryMsg::BlockVotes { height, hash } => {
+            Ok(to_json_binary(&query_block_votes(deps, height, hash)?)?)
+        }
         QueryMsg::Config {} => Ok(to_json_binary(&query_config(deps)?)?),
         QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
             &query_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,

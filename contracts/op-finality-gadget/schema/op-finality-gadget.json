@@ -189,22 +189,16 @@
       {
         "type": "object",
         "required": [
-          "block_finalized"
+          "block_votes"
         ],
         "properties": {
-          "block_finalized": {
+          "block_votes": {
             "type": "object",
             "required": [
-              "btc_height",
               "hash",
               "height"
             ],
             "properties": {
-              "btc_height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
               "hash": {
                 "type": "string"
               },
@@ -251,16 +245,20 @@
   },
   "sudo": null,
   "responses": {
-    "block_finalized": {
+    "block_votes": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BlockFinalizedResponse",
+      "title": "BlockVotesResponse",
       "type": "object",
       "required": [
-        "finalized"
+        "fp_pubkey_hex_list"
       ],
       "properties": {
-        "finalized": {
-          "type": "boolean"
+        "fp_pubkey_hex_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
         }
       },
       "additionalProperties": false
