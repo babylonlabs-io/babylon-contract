@@ -4,7 +4,7 @@
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...HEAD)
 
-## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-18)
+## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-21)
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0-rc.0...v0.7.0)
 
@@ -34,7 +34,10 @@
 - crypto: error/option handling in EOTS implementation [\#139](https://github.com/babylonchain/babylon-contract/pull/139) ([SebastianElvis](https://github.com/SebastianElvis))
 - R/btc staking modules [\#138](https://github.com/babylonchain/babylon-contract/pull/138) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.6.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
+**Bug fixes:**
+- Fix: Set initial FP power to zero [\#180](https://github.com/babylonchain/babylon-contract/pull/180) ([maurolacy](https://github.com/maurolacy))
+
+## [v0.6.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0-rc.0)
 
