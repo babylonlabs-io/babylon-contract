@@ -19,7 +19,8 @@ use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
 use crate::state::config::{ADMIN, CONFIG};
 use crate::state::staking::{
-    fps, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS, FP_SET, TOTAL_POWER,
+    fps, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
+    FP_SET, TOTAL_POWER,
 };
 
 /// handle_btc_staking handles the BTC staking operations
@@ -38,7 +39,7 @@ pub fn handle_btc_staking(
     }
 
     for fp in new_fps {
-        handle_new_fp(deps.storage, fp)?;
+        handle_new_fp(deps.storage, fp, env.block.height)?;
     }
 
     // Process active delegations
@@ -64,6 +65,7 @@ pub fn handle_btc_staking(
 pub fn handle_new_fp(
     storage: &mut dyn Storage,
     new_fp: &NewFinalityProvider,
+    height: u64,
 ) -> Result<(), ContractError> {
     // Avoid overwriting existing finality providers
     if FPS.has(storage, &new_fp.btc_pk_hex) {
@@ -77,6 +79,10 @@ pub fn handle_new_fp(
     let fp = FinalityProvider::from(new_fp);
     // save to DB
     FPS.save(storage, &fp.btc_pk_hex, &fp)?;
+    // Set its voting power to zero
+    let fp_state = FinalityProviderState::default();
+    fps().save(storage, &fp.btc_pk_hex, &fp_state, height)?;
+
     Ok(())
 }
 
