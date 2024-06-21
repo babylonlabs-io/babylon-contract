@@ -99,6 +99,28 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Enable or disable finality gadget.\n\nThis message can be called by the admin only. If disabled, the verifier should bypass the EOTS verification logic, allowing the OP derivation derivation pipeline to pass through. Note this should be implemented in the verifier and is not enforced by the contract itself.",
+      "type": "object",
+      "required": [
+        "set_enabled"
+      ],
+      "properties": {
+        "set_enabled": {
+          "type": "object",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

@@ -1,8 +1,9 @@
 use crate::error::ContractError;
-use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
+use crate::exec::admin::set_enabled;
+use crate::exec::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries::{query_block_votes, query_config, query_last_pub_rand_commit};
-use crate::state::config::{Config, ADMIN, CONFIG};
+use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
@@ -16,6 +17,7 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     let api = deps.api;
     ADMIN.set(deps.branch(), maybe_addr(api, Some(msg.admin))?)?;
+    IS_ENABLED.save(deps.storage, &false)?;
 
     let config = Config {
         consumer_id: msg.consumer_id,
@@ -28,20 +30,22 @@ pub fn instantiate(
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
     match msg {
+        QueryMsg::Config {} => Ok(to_json_binary(&query_config(deps)?)?),
+        QueryMsg::Admin {} => Ok(to_json_binary(&ADMIN.query_admin(deps)?)?),
         QueryMsg::BlockVotes { height, hash } => {
             Ok(to_json_binary(&query_block_votes(deps, height, hash)?)?)
         }
-        QueryMsg::Config {} => Ok(to_json_binary(&query_config(deps)?)?),
         QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
             &query_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
         )?),
+        QueryMsg::IsEnabled {} => Ok(to_json_binary(&IS_ENABLED.load(deps.storage)?)?),
     }
 }
 
 pub fn execute(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
@@ -76,5 +80,6 @@ pub fn execute(
             &block_hash,
             &signature,
         ),
+        ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
     }
 }

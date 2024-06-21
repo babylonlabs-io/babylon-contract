@@ -127,6 +127,28 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "Enable or disable finality gadget.\n\nThis message can be called by the admin only. If disabled, the verifier should bypass the EOTS verification logic, allowing the OP derivation derivation pipeline to pass through. Note this should be implemented in the verifier and is not enforced by the contract itself.",
+        "type": "object",
+        "required": [
+          "set_enabled"
+        ],
+        "properties": {
+          "set_enabled": {
+            "type": "object",
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -189,6 +211,19 @@
       {
         "type": "object",
         "required": [
+          "admin"
+        ],
+        "properties": {
+          "admin": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "block_votes"
         ],
         "properties": {
@@ -234,6 +269,19 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_enabled"
+        ],
+        "properties": {
+          "is_enabled": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ]
   },
@@ -245,6 +293,21 @@
   },
   "sudo": null,
   "responses": {
+    "admin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AdminResponse",
+      "description": "Returned from Admin.query_admin()",
+      "type": "object",
+      "properties": {
+        "admin": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "block_votes": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BlockVotesResponse",
@@ -283,6 +346,11 @@
         }
       },
       "additionalProperties": false
+    },
+    "is_enabled": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
     },
     "last_pub_rand_commit": {
       "$schema": "http://json-schema.org/draft-07/schema#",

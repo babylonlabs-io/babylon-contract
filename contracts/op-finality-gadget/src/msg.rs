@@ -3,6 +3,7 @@ use babylon_apis::finality_api::PubRandCommit;
 use babylon_merkle::Proof;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
+use cw_controllers::AdminResponse;
 use std::collections::HashSet;
 
 #[cw_serde]
@@ -18,6 +19,8 @@ pub enum QueryMsg {
     /// `Config` returns the configuration of the op-finality-gadget contract
     #[returns(Config)]
     Config {},
+    #[returns(AdminResponse)]
+    Admin {},
     #[returns(BlockVotesResponse)]
     BlockVotes { height: u64, hash: String },
     /// `LastPubRandCommit` returns the last public random commitments for a given FP.
@@ -25,6 +28,8 @@ pub enum QueryMsg {
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
     #[returns(PubRandCommit)]
     LastPubRandCommit { btc_pk_hex: String },
+    #[returns(bool)]
+    IsEnabled {},
 }
 
 #[cw_serde]
@@ -67,4 +72,11 @@ pub enum ExecuteMsg {
         block_hash: Binary,
         signature: Binary,
     },
+    /// Enable or disable finality gadget.
+    ///
+    /// This message can be called by the admin only.
+    /// If disabled, the verifier should bypass the EOTS verification logic, allowing the OP derivation
+    /// derivation pipeline to pass through. Note this should be implemented in the verifier and is not
+    /// enforced by the contract itself.
+    SetEnabled { enabled: bool },
 }

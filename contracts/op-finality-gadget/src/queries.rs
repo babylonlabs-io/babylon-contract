@@ -1,11 +1,12 @@
 use crate::error::ContractError;
 use crate::msg::BlockVotesResponse;
-use crate::state::config::{Config, CONFIG};
+use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use crate::state::finality::BLOCK_VOTES;
 use crate::state::public_randomness::PUB_RAND_COMMITS;
 use babylon_apis::finality_api::PubRandCommit;
 use cosmwasm_std::Order::Descending;
 use cosmwasm_std::{Deps, StdResult, Storage};
+use cw_controllers::AdminResponse;
 
 pub fn query_config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -39,4 +40,12 @@ pub fn query_last_pub_rand_commit(
     } else {
         Ok(res[0].clone())
     }
+}
+
+pub fn query_is_enabled(deps: Deps) -> StdResult<bool> {
+    IS_ENABLED.load(deps.storage)
+}
+
+pub fn query_admin(deps: Deps) -> StdResult<AdminResponse> {
+    ADMIN.query_admin(deps)
 }
