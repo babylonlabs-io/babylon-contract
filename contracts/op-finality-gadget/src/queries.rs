@@ -22,7 +22,7 @@ pub fn query_block_votes(deps: Deps, height: u64, hash: String) -> StdResult<Blo
 pub fn query_last_pub_rand_commit(
     storage: &dyn Storage,
     fp_btc_pk_hex: &str,
-) -> Result<PubRandCommit, ContractError> {
+) -> Result<Option<PubRandCommit>, ContractError> {
     let res = PUB_RAND_COMMITS
         .prefix(fp_btc_pk_hex)
         .range_raw(storage, None, None, Descending)
@@ -33,12 +33,11 @@ pub fn query_last_pub_rand_commit(
         })
         .collect::<StdResult<Vec<_>>>()?;
     if res.is_empty() {
-        Err(ContractError::MissingPubRandCommit(
-            fp_btc_pk_hex.to_string(),
-            0,
-        ))
+        // when the FP just get started, it won't have any PR committed in this contract, which is
+        // expected behavior
+        Ok(None)
     } else {
-        Ok(res[0].clone())
+        Ok(Some(res[0].clone()))
     }
 }
 
