@@ -180,9 +180,11 @@ pub fn finality_signature(
     deps: Deps,
     btc_pk_hex: String,
     height: u64,
-) -> Result<FinalitySignatureResponse, ContractError> {
-    let sig = crate::state::finality::SIGNATURES.load(deps.storage, (height, &btc_pk_hex))?;
-    Ok(FinalitySignatureResponse { signature: sig })
+) -> StdResult<FinalitySignatureResponse> {
+    match crate::state::finality::SIGNATURES.may_load(deps.storage, (height, &btc_pk_hex))? {
+        Some(sig) => Ok(FinalitySignatureResponse { signature: sig }),
+        None => Ok(FinalitySignatureResponse { signature: Vec::new() }), // Empty signature response
+    }
 }
 
 pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractError> {

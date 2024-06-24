@@ -54,14 +54,16 @@ pub fn handle_public_randomness_commit(
     // TODO: allow committing public randomness earlier than existing ones?
     let last_pr_commit = get_last_pub_rand_commit(deps.storage, fp_pubkey_hex).ok();
 
+    // Check for overlapping heights if there is a last commit
     if let Some(last_pr_commit) = last_pr_commit {
-        // Ensure height and start_height do not overlap, i.e., height < start_height
-        let last_pr_end_height = last_pr_commit[0].end_height();
-        if start_height <= last_pr_end_height {
-            return Err(ContractError::InvalidPubRandHeight(
-                start_height,
-                last_pr_end_height,
-            ));
+        if !last_pr_commit.is_empty() {
+            let last_pr_end_height = last_pr_commit[0].end_height();
+            if start_height <= last_pr_end_height {
+                return Err(ContractError::InvalidPubRandHeight(
+                    start_height,
+                    last_pr_end_height,
+                ));
+            }
         }
     }
 

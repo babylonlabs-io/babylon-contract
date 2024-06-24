@@ -75,12 +75,7 @@ pub fn get_pub_rand_commit(
             Ok(value)
         })
         .collect::<StdResult<Vec<_>>>()?;
-    if res.is_empty() {
-        Err(ContractError::MissingPubRandCommit(
-            fp_btc_pk_hex.to_string(),
-            0,
-        ))
-    } else {
-        Ok(res)
-    }
+
+    // Return the results or an empty vector if no results found
+    Ok(res)
 }
