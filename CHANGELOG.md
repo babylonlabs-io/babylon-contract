@@ -4,9 +4,48 @@
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...HEAD)
 
-## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-21)
+## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-24)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0-rc.0...v0.7.0)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0-rc.1...v0.7.0)
+
+**Closed issues:**
+
+- add a killswitch to disable finality gadget [\#181](https://github.com/babylonchain/babylon-contract/issues/181)
+
+**Merged pull requests:**
+
+- fix: build-optimizer.sh to properly generate code for arm64 [\#185](https://github.com/babylonchain/babylon-contract/pull/185) ([bap2pecs](https://github.com/bap2pecs))
+- fix: init pr empty issue [\#184](https://github.com/babylonchain/babylon-contract/pull/184) ([bap2pecs](https://github.com/bap2pecs))
+- fix: pub rand and finality sig query [\#183](https://github.com/babylonchain/babylon-contract/pull/183) ([gusin13](https://github.com/gusin13))
+- feat: implement killswitch [\#182](https://github.com/babylonchain/babylon-contract/pull/182) ([parketh](https://github.com/parketh))
+- fix: comment out unused code [\#146](https://github.com/babylonchain/babylon-contract/pull/146) ([bap2pecs](https://github.com/bap2pecs))
+
+## [v0.7.0-rc.1](https://github.com/babylonchain/babylon-contract/tree/v0.7.0-rc.1) (2024-06-21)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0-rc.0...v0.7.0-rc.1)
+
+**Closed issues:**
+
+- Simplify packages/apis/src/queries.rs [\#172](https://github.com/babylonchain/babylon-contract/issues/172)
+- Set an activated height when deploying the op-finality-gadget contract [\#167](https://github.com/babylonchain/babylon-contract/issues/167)
+- Store block hash in the op-finality-gadget contract [\#159](https://github.com/babylonchain/babylon-contract/issues/159)
+
+**Merged pull requests:**
+
+- Fix: Set initial FP power to zero [\#180](https://github.com/babylonchain/babylon-contract/pull/180) ([maurolacy](https://github.com/maurolacy))
+- chore: change to query block votes [\#178](https://github.com/babylonchain/babylon-contract/pull/178) ([lesterli](https://github.com/lesterli))
+- feat: query last pub rand commit [\#177](https://github.com/babylonchain/babylon-contract/pull/177) ([lesterli](https://github.com/lesterli))
+- \[op finality gadget\] feat: add QueryMsg::QueryBlockFinalized \(part 2\) [\#174](https://github.com/babylonchain/babylon-contract/pull/174) ([bap2pecs](https://github.com/bap2pecs))
+- chore: move queries [\#173](https://github.com/babylonchain/babylon-contract/pull/173) ([lesterli](https://github.com/lesterli))
+- chore: simplify the naming [\#171](https://github.com/babylonchain/babylon-contract/pull/171) ([lesterli](https://github.com/lesterli))
+- \[op finality gadget\] feat: add QueryMsg::QueryBlockFinalized \(part 1\) [\#170](https://github.com/babylonchain/babylon-contract/pull/170) ([bap2pecs](https://github.com/bap2pecs))
+- fix: typo [\#169](https://github.com/babylonchain/babylon-contract/pull/169) ([lesterli](https://github.com/lesterli))
+- feat: set activated height [\#168](https://github.com/babylonchain/babylon-contract/pull/168) ([lesterli](https://github.com/lesterli))
+- feat: Use gRPC to query the Babylon Chain [\#158](https://github.com/babylonchain/babylon-contract/pull/158) ([lesterli](https://github.com/lesterli))
+
+## [v0.7.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0-rc.0) (2024-06-19)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0-rc.0...v0.7.0-rc.0)
 
 **Closed issues:**
 
@@ -34,10 +73,7 @@
 - crypto: error/option handling in EOTS implementation [\#139](https://github.com/babylonchain/babylon-contract/pull/139) ([SebastianElvis](https://github.com/SebastianElvis))
 - R/btc staking modules [\#138](https://github.com/babylonchain/babylon-contract/pull/138) ([maurolacy](https://github.com/maurolacy))
 
-**Bug fixes:**
-- Fix: Set initial FP power to zero [\#180](https://github.com/babylonchain/babylon-contract/pull/180) ([maurolacy](https://github.com/maurolacy))
-
-## [v0.6.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
+## [v0.6.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0-rc.0)
 
