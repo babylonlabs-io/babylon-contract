@@ -183,7 +183,9 @@ pub fn finality_signature(
 ) -> StdResult<FinalitySignatureResponse> {
     match crate::state::finality::SIGNATURES.may_load(deps.storage, (height, &btc_pk_hex))? {
         Some(sig) => Ok(FinalitySignatureResponse { signature: sig }),
-        None => Ok(FinalitySignatureResponse { signature: Vec::new() }), // Empty signature response
+        None => Ok(FinalitySignatureResponse {
+            signature: Vec::new(),
+        }), // Empty signature response
     }
 }
 

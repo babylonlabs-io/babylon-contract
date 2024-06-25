@@ -35,3 +35,4 @@ anybuf           = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-vm       = { workspace = true }
+test-utils        = { path = "../../packages/test-utils" }

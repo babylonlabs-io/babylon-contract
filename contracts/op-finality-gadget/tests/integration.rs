@@ -3,6 +3,7 @@ use cosmwasm_vm::testing::{
     execute, instantiate, mock_env, mock_info, mock_instance, query, MockApi,
 };
 
+use cw_controllers::AdminResponse;
 use op_finality_gadget::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use op_finality_gadget::state::config::Config;
 
@@ -11,12 +12,11 @@ const CREATOR: &str = "creator";
 
 #[test]
 fn instantiate_works() {
+    // Setup
     let mut deps = mock_instance(WASM, &[]);
-    let mock_api = MockApi::default();
-    let admin_addr = mock_api.addr_make(CREATOR);
-    let env = mock_env();
+    let mock_api: MockApi = MockApi::default();
     let msg = InstantiateMsg {
-        admin: admin_addr,
+        admin: mock_api.addr_make(CREATOR),
         consumer_id: "op-stack-l2-11155420".to_string(),
         activated_height: 13513311,
     };
@@ -25,10 +25,21 @@ fn instantiate_works() {
     let msgs = res.unwrap().messages;
     assert_eq!(0, msgs.len());
 
-    // check the config is properly stored in the state and returned
-    let res: Config = from_json(query(&mut deps, env, QueryMsg::Config {}).unwrap()).unwrap();
+    // Check the config is properly stored in the state and returned
+    let res: Config =
+        from_json(query(&mut deps, mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
     assert_eq!(msg.consumer_id, res.consumer_id);
     assert_eq!(msg.activated_height, res.activated_height);
+
+    // Check the admin is properly stored in the state and returned
+    let res: AdminResponse =
+        from_json(query(&mut deps, mock_env(), QueryMsg::Admin {}).unwrap()).unwrap();
+    assert_eq!(mock_api.addr_make(CREATOR), res.admin.unwrap());
+
+    // Check the contract is disabled on instantiation
+    let enabled: bool =
+        from_json(query(&mut deps, mock_env(), QueryMsg::IsEnabled {}).unwrap()).unwrap();
+    assert!(!enabled);
 }
 
 #[test]

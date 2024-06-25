@@ -1728,6 +1728,7 @@ dependencies = [
  "eots",
  "hex",
  "k256",
+ "test-utils",
  "thiserror",
 ]
 

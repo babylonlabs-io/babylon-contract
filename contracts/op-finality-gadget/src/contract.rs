@@ -7,7 +7,6 @@ use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
-use cw_utils::maybe_addr;
 
 pub fn instantiate(
     mut deps: DepsMut,
@@ -16,7 +15,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let api = deps.api;
-    ADMIN.set(deps.branch(), maybe_addr(api, Some(msg.admin))?)?;
+    ADMIN.set(deps.branch(), Some(api.addr_validate(&msg.admin)?))?;
     IS_ENABLED.save(deps.storage, &false)?;
 
     let config = Config {
@@ -81,5 +80,50 @@ pub fn execute(
             &signature,
         ),
         ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
+    }
+}
+
+// Most logic copied from contracts/btc-staking/src/contract.rs
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    use cosmwasm_std::{
+        from_json,
+        testing::{message_info, mock_dependencies, mock_env},
+    };
+    use cw_controllers::AdminResponse;
+
+    pub(crate) const CREATOR: &str = "creator";
+    pub(crate) const INIT_ADMIN: &str = "initial_admin";
+
+    #[test]
+    fn instantiate_works() {
+        let mut deps = mock_dependencies();
+        let init_admin = deps.api.addr_make(INIT_ADMIN);
+        let consumer_id = "op".to_string();
+        let activated_height = 1000;
+
+        // Create an InstantiateMsg with admin set to init_admin
+        let msg = InstantiateMsg {
+            admin: init_admin.to_string(),
+            consumer_id,
+            activated_height,
+        };
+
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        // Call the instantiate function
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // Assert that no messages were returned
+        assert_eq!(0, res.messages.len());
+
+        ADMIN.assert_admin(deps.as_ref(), &init_admin).unwrap();
+
+        // ensure the admin is queryable as well
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::Admin {}).unwrap();
+        let admin: AdminResponse = from_json(res).unwrap();
+        assert_eq!(admin.admin.unwrap(), init_admin.as_str())
     }
 }

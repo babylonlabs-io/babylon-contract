@@ -72,7 +72,7 @@ pub fn handle_public_randomness_commit(
 }
 
 // Copied from contracts/btc-staking/src/finality.rs
-fn verify_commitment_signature(
+pub(crate) fn verify_commitment_signature(
     fp_btc_pk_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -260,7 +260,7 @@ pub fn handle_finality_signature(
 /// Verifies the finality signature message w.r.t. the public randomness commitment:
 /// - Public randomness inclusion proof.
 /// - Finality signature
-fn verify_finality_signature(
+pub(crate) fn verify_finality_signature(
     fp_btc_pk_hex: &str,
     block_height: u64,
     pub_rand: &[u8],
@@ -331,5 +331,74 @@ fn check_fp_exist(deps: Deps, fp_pubkey_hex: &str) -> Result<(), ContractError> 
             config.consumer_id,
             fp_pubkey_hex.to_string(),
         )),
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    use babylon_apis::finality_api::PubRandCommit;
+    use hex::ToHex;
+    use test_utils::{get_add_finality_sig, get_pub_rand_commit, get_pub_rand_value};
+
+    /// Get public randomness public key, commitment, and signature information
+    ///
+    /// Signature is a Schnorr signature over the commitment
+    pub(crate) fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
+        let pub_rand_commitment_msg = get_pub_rand_commit();
+        (
+            pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
+            PubRandCommit {
+                start_height: pub_rand_commitment_msg.start_height,
+                num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
+                commitment: pub_rand_commitment_msg.commitment.to_vec(),
+            },
+            pub_rand_commitment_msg.sig.to_vec(),
+        )
+    }
+
+    #[test]
+    fn verify_commitment_signature_works() {
+        // Define test values
+        let (fp_btc_pk_hex, pr_commit, sig) = get_public_randomness_commitment();
+
+        // Verify commitment signature
+        let res = verify_commitment_signature(
+            &fp_btc_pk_hex,
+            pr_commit.start_height,
+            pr_commit.num_pub_rand,
+            &pr_commit.commitment,
+            &sig,
+        );
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn verify_finality_signature_works() {
+        // Read public randomness commitment test data
+        let (pk_hex, pr_commit, _) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pr_commit.start_height;
+
+        // Verify finality signature
+        if proof.index < 0 {
+            panic!("Proof index should be non-negative");
+        }
+        let res = verify_finality_signature(
+            &pk_hex,
+            initial_height + proof.index.unsigned_abs(),
+            &pub_rand_one,
+            // we need to add a typecast below because the provided proof is of type
+            // tendermint_proto::crypto::Proof, whereas the fn expects babylon_merkle::proof
+            &proof.into(),
+            &pr_commit,
+            &add_finality_signature.block_app_hash,
+            &add_finality_signature.finality_sig,
+        );
+        assert!(res.is_ok());
     }
 }
