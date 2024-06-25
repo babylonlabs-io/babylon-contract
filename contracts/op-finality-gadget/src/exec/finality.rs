@@ -144,10 +144,7 @@ pub fn handle_finality_signature(
     if signature.is_empty() {
         return Err(ContractError::EmptySignature);
     }
-    // Ensure the height is proper
-    if env.block.height < height {
-        return Err(ContractError::HeightTooHigh);
-    }
+
     // Ensure the finality provider has not cast the same vote yet
     let existing_sig = SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
     match existing_sig {
