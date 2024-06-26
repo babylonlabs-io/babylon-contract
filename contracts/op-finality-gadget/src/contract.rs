@@ -7,6 +7,7 @@ use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
+use cw_controllers::AdminError;
 
 pub fn instantiate(
     mut deps: DepsMut,
@@ -47,6 +48,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let api = deps.api;
+
     match msg {
         ExecuteMsg::CommitPublicRandomness {
             fp_pubkey_hex,
@@ -80,6 +83,12 @@ pub fn execute(
             &signature,
         ),
         ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
+        ExecuteMsg::UpdateAdmin { admin } => ADMIN
+            .execute_update_admin(deps, info, Some(api.addr_validate(&admin)?))
+            .map_err(|err| match err {
+                AdminError::Std(e) => ContractError::StdError(e),
+                AdminError::NotAdmin {} => ContractError::Unauthorized,
+            }),
     }
 }
 
@@ -96,6 +105,7 @@ pub(crate) mod tests {
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
+    const NEW_ADMIN: &str = "new_admin";
 
     #[test]
     fn instantiate_works() {
@@ -125,5 +135,56 @@ pub(crate) mod tests {
         let res = query(deps.as_ref(), mock_env(), QueryMsg::Admin {}).unwrap();
         let admin: AdminResponse = from_json(res).unwrap();
         assert_eq!(admin.admin.unwrap(), init_admin.as_str())
+    }
+
+    #[test]
+    fn test_update_admin() {
+        let mut deps = mock_dependencies();
+        let init_admin = deps.api.addr_make(INIT_ADMIN);
+        let new_admin = deps.api.addr_make(NEW_ADMIN);
+
+        // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
+        let instantiate_msg = InstantiateMsg {
+            admin: init_admin.to_string(), // Admin provided
+            consumer_id: "op-stack-l2-11155420".to_string(),
+            activated_height: 13513311,
+        };
+
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        // Call the instantiate function
+        let res = instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
+
+        // Assert that no messages were sent
+        assert_eq!(0, res.messages.len());
+
+        // Use assert_admin to verify that the admin was set correctly
+        ADMIN.assert_admin(deps.as_ref(), &init_admin).unwrap();
+
+        // Update the admin to new_admin
+        let update_admin_msg = ExecuteMsg::UpdateAdmin {
+            admin: new_admin.to_string(),
+        };
+
+        // Execute the UpdateAdmin message with non-admin info
+        let non_admin_info = message_info(&deps.api.addr_make("non_admin"), &[]);
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            non_admin_info,
+            update_admin_msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized);
+
+        // Execute the UpdateAdmin message with the initial admin info
+        let admin_info = message_info(&init_admin, &[]);
+        let res = execute(deps.as_mut(), mock_env(), admin_info, update_admin_msg).unwrap();
+
+        // Assert that no messages were sent
+        assert_eq!(0, res.messages.len());
+
+        // Use assert_admin to verify that the admin was updated correctly
+        ADMIN.assert_admin(deps.as_ref(), &new_admin).unwrap();
     }
 }

@@ -78,5 +78,13 @@ pub enum ExecuteMsg {
     /// If disabled, the verifier should bypass the EOTS verification logic, allowing the OP derivation
     /// derivation pipeline to pass through. Note this should be implemented in the verifier and is not
     /// enforced by the contract itself.
-    SetEnabled { enabled: bool },
+    SetEnabled {
+        enabled: bool,
+    },
+    // Update the admin address.
+    //
+    // This message can be called by the admin only.
+    UpdateAdmin {
+        admin: String,
+    },
 }
