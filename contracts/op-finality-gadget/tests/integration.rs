@@ -19,6 +19,7 @@ fn instantiate_works() {
         admin: mock_api.addr_make(CREATOR),
         consumer_id: "op-stack-l2-11155420".to_string(),
         activated_height: 13513311,
+        is_enabled: false,
     };
     let info = mock_info(CREATOR, &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg.clone());
@@ -51,6 +52,7 @@ fn disable_and_reenable_works() {
         admin: mock_api.addr_make(CREATOR),
         consumer_id: "op-stack-l2-11155420".to_string(),
         activated_height: 13513311,
+        is_enabled: false,
     };
     let info = mock_info(CREATOR, &[]);
     let mut res: ContractResult<Response> =
@@ -99,4 +101,25 @@ fn disable_and_reenable_works() {
     assert!(res.is_ok());
     enabled = from_json(query(&mut instance, mock_env(), QueryMsg::IsEnabled {}).unwrap()).unwrap();
     assert!(enabled, "Re-enabling works");
+}
+
+#[test]
+fn instantiate_enabled() {
+    // Setup
+    let mut instance = mock_instance(WASM, &[]);
+    let mock_api = MockApi::default();
+    let msg = InstantiateMsg {
+        admin: mock_api.addr_make(CREATOR),
+        consumer_id: "op-stack-l2-11155420".to_string(),
+        activated_height: 13513311,
+        is_enabled: true,
+    };
+    let info = mock_info(CREATOR, &[]);
+    let res: ContractResult<Response> = instantiate(&mut instance, mock_env(), info, msg.clone());
+    assert!(res.is_ok());
+
+    // Check the contract is disabled on instantiation
+    let enabled: bool =
+        from_json(query(&mut instance, mock_env(), QueryMsg::IsEnabled {}).unwrap()).unwrap();
+    assert!(enabled, "Contract should be enabled on instantiation");
 }

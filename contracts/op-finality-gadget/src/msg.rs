@@ -11,6 +11,7 @@ pub struct InstantiateMsg {
     pub admin: String,
     pub consumer_id: String,
     pub activated_height: u64,
+    pub is_enabled: bool,
 }
 
 #[cw_serde]

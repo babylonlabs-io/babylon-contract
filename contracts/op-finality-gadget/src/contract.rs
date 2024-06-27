@@ -17,7 +17,7 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     let api = deps.api;
     ADMIN.set(deps.branch(), Some(api.addr_validate(&msg.admin)?))?;
-    IS_ENABLED.save(deps.storage, &false)?;
+    IS_ENABLED.save(deps.storage, &msg.is_enabled)?;
 
     let config = Config {
         consumer_id: msg.consumer_id,
@@ -119,6 +119,7 @@ pub(crate) mod tests {
             admin: init_admin.to_string(),
             consumer_id,
             activated_height,
+            is_enabled: true,
         };
 
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
@@ -148,6 +149,7 @@ pub(crate) mod tests {
             admin: init_admin.to_string(), // Admin provided
             consumer_id: "op-stack-l2-11155420".to_string(),
             activated_height: 13513311,
+            is_enabled: true,
         };
 
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);

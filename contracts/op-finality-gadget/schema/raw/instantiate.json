@@ -5,7 +5,8 @@
   "required": [
     "activated_height",
     "admin",
-    "consumer_id"
+    "consumer_id",
+    "is_enabled"
   ],
   "properties": {
     "activated_height": {
@@ -18,6 +19,9 @@
     },
     "consumer_id": {
       "type": "string"
+    },
+    "is_enabled": {
+      "type": "boolean"
     }
   },
   "additionalProperties": false
