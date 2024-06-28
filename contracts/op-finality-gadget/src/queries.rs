@@ -12,9 +12,22 @@ pub fn query_config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
 }
 
-pub fn query_block_votes(deps: Deps, height: u64, hash: String) -> StdResult<BlockVotesResponse> {
+pub fn query_block_votes(
+    deps: Deps,
+    height: u64,
+    hash: String,
+) -> Result<BlockVotesResponse, ContractError> {
+    let block_hash_bytes: Vec<u8> = hex::decode(&hash).map_err(ContractError::HexError)?;
     // find all FPs that voted for this (height, hash) combination
-    let fp_pubkey_hex_list = BLOCK_VOTES.load(deps.storage, (height, hash.as_bytes()))?;
+    let fp_pubkey_hex_list = BLOCK_VOTES
+        .load(deps.storage, (height, &block_hash_bytes))
+        .map_err(|e| {
+            ContractError::NotFoundBlockVotes(
+                height,
+                hash.clone(),
+                format!("Original error: {:?}", e),
+            )
+        })?;
     Ok(BlockVotesResponse { fp_pubkey_hex_list })
 }
 
