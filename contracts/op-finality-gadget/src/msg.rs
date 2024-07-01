@@ -29,6 +29,8 @@ pub enum QueryMsg {
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
     #[returns(PubRandCommit)]
     LastPubRandCommit { btc_pk_hex: String },
+    #[returns(PubRandCommit)]
+    PubRandCommit { btc_pk_hex: String, height: u64 },
     #[returns(bool)]
     IsEnabled {},
 }

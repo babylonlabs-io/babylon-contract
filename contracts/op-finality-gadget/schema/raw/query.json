@@ -81,6 +81,33 @@
     {
       "type": "object",
       "required": [
+        "pub_rand_commit"
+      ],
+      "properties": {
+        "pub_rand_commit": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex",
+            "height"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "type": "string"
+            },
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "is_enabled"
       ],
       "properties": {

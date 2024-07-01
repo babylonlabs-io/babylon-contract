@@ -2,7 +2,9 @@ use crate::error::ContractError;
 use crate::exec::admin::set_enabled;
 use crate::exec::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::queries::{query_block_votes, query_config, query_last_pub_rand_commit};
+use crate::queries::{
+    query_block_votes, query_config, query_last_pub_rand_commit, query_pub_rand_commit,
+};
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
@@ -37,6 +39,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         }
         QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
             &query_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
+        )?),
+        QueryMsg::PubRandCommit { btc_pk_hex, height } => Ok(to_json_binary(
+            &query_pub_rand_commit(deps.storage, &btc_pk_hex, height)?,
         )?),
         QueryMsg::IsEnabled {} => Ok(to_json_binary(&IS_ENABLED.load(deps.storage)?)?),
     }

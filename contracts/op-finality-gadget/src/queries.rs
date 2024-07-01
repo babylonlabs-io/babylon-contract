@@ -2,6 +2,7 @@ use crate::error::ContractError;
 use crate::msg::BlockVotesResponse;
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use crate::state::finality::BLOCK_VOTES;
+use crate::state::public_randomness::get_pub_rand_commit_for_height;
 use crate::state::public_randomness::PUB_RAND_COMMITS;
 use babylon_apis::finality_api::PubRandCommit;
 use cosmwasm_std::Order::Descending;
@@ -60,4 +61,12 @@ pub fn query_is_enabled(deps: Deps) -> StdResult<bool> {
 
 pub fn query_admin(deps: Deps) -> StdResult<AdminResponse> {
     ADMIN.query_admin(deps)
+}
+
+pub fn query_pub_rand_commit(
+    storage: &dyn Storage,
+    fp_btc_pk_hex: &str,
+    height: u64,
+) -> Result<PubRandCommit, ContractError> {
+    get_pub_rand_commit_for_height(storage, fp_btc_pk_hex, height)
 }

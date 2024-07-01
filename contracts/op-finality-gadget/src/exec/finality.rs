@@ -107,7 +107,7 @@ pub(crate) fn verify_commitment_signature(
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
     pub_rand: &[u8],
