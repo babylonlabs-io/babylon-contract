@@ -17,22 +17,22 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// `Config` returns the configuration of the op-finality-gadget contract
-    #[returns(Config)]
-    Config {},
     #[returns(AdminResponse)]
     Admin {},
     #[returns(BlockVotesResponse)]
     BlockVotes { height: u64, hash: String },
+    /// `Config` returns the configuration of the op-finality-gadget contract
+    #[returns(Config)]
+    Config {},
+    #[returns(PubRandCommit)]
+    FirstPubRandCommit { btc_pk_hex: String },
+    #[returns(bool)]
+    IsEnabled {},
     /// `LastPubRandCommit` returns the last public random commitments for a given FP.
     ///
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
     #[returns(PubRandCommit)]
     LastPubRandCommit { btc_pk_hex: String },
-    #[returns(PubRandCommit)]
-    PubRandCommit { btc_pk_hex: String, height: u64 },
-    #[returns(bool)]
-    IsEnabled {},
 }
 
 #[cw_serde]

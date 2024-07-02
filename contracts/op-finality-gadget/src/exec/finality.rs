@@ -11,7 +11,7 @@ use crate::utils::query_finality_provider;
 
 use babylon_apis::finality_api::PubRandCommit;
 use babylon_merkle::Proof;
-use cosmwasm_std::{Deps, DepsMut, Env, Response};
+use cosmwasm_std::{Deps, DepsMut, Env, Event, Response};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
@@ -67,8 +67,12 @@ pub fn handle_public_randomness_commit(
         &pr_commit,
     )?;
 
-    // TODO: Add events
-    Ok(Response::new())
+    let event = Event::new("public_randomness_commit")
+        .add_attribute("fp_pubkey_hex", fp_pubkey_hex)
+        .add_attribute("pr_commit.start_height", pr_commit.start_height.to_string())
+        .add_attribute("pr_commit.num_pub_rand", pr_commit.num_pub_rand.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 // Copied from contracts/btc-staking/src/finality.rs
@@ -250,8 +254,12 @@ pub fn handle_finality_signature(
     }
     */
 
-    // TODO: Add events
-    Ok(Response::new())
+    let event = Event::new("submit_finality_signature")
+        .add_attribute("fp_pubkey_hex", fp_btc_pk_hex)
+        .add_attribute("block_height", height.to_string())
+        .add_attribute("block_hash", hex::encode(block_hash));
+
+    Ok(Response::new().add_event(event))
 }
 
 /// Verifies the finality signature message w.r.t. the public randomness commitment:

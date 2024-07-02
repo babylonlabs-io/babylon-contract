@@ -220,20 +220,6 @@
     "title": "QueryMsg",
     "oneOf": [
       {
-        "description": "`Config` returns the configuration of the op-finality-gadget contract",
-        "type": "object",
-        "required": [
-          "config"
-        ],
-        "properties": {
-          "config": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "type": "object",
         "required": [
           "admin"
@@ -274,13 +260,26 @@
         "additionalProperties": false
       },
       {
-        "description": "`LastPubRandCommit` returns the last public random commitments for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
+        "description": "`Config` returns the configuration of the op-finality-gadget contract",
         "type": "object",
         "required": [
-          "last_pub_rand_commit"
+          "config"
         ],
         "properties": {
-          "last_pub_rand_commit": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "first_pub_rand_commit"
+        ],
+        "properties": {
+          "first_pub_rand_commit": {
             "type": "object",
             "required": [
               "btc_pk_hex"
@@ -298,38 +297,33 @@
       {
         "type": "object",
         "required": [
-          "pub_rand_commit"
+          "is_enabled"
         ],
         "properties": {
-          "pub_rand_commit": {
+          "is_enabled": {
             "type": "object",
-            "required": [
-              "btc_pk_hex",
-              "height"
-            ],
-            "properties": {
-              "btc_pk_hex": {
-                "type": "string"
-              },
-              "height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
             "additionalProperties": false
           }
         },
         "additionalProperties": false
       },
       {
+        "description": "`LastPubRandCommit` returns the last public random commitments for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
         "type": "object",
         "required": [
-          "is_enabled"
+          "last_pub_rand_commit"
         ],
         "properties": {
-          "is_enabled": {
+          "last_pub_rand_commit": {
             "type": "object",
+            "required": [
+              "btc_pk_hex"
+            ],
+            "properties": {
+              "btc_pk_hex": {
+                "type": "string"
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -399,12 +393,7 @@
       },
       "additionalProperties": false
     },
-    "is_enabled": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Boolean",
-      "type": "boolean"
-    },
-    "last_pub_rand_commit": {
+    "first_pub_rand_commit": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PubRandCommit",
       "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
@@ -439,7 +428,12 @@
       },
       "additionalProperties": false
     },
-    "pub_rand_commit": {
+    "is_enabled": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
+    },
+    "last_pub_rand_commit": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PubRandCommit",
       "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
