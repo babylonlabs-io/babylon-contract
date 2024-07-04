@@ -2,9 +2,8 @@ use crate::error::ContractError;
 use crate::msg::BlockVotesResponse;
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use crate::state::finality::BLOCK_VOTES;
-use crate::state::public_randomness::PUB_RAND_COMMITS;
+use crate::state::public_randomness::get_pub_rand_commit;
 use babylon_apis::finality_api::PubRandCommit;
-use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{Deps, StdResult, Storage};
 use cw_controllers::AdminResponse;
 
@@ -35,41 +34,16 @@ pub fn query_first_pub_rand_commit(
     storage: &dyn Storage,
     fp_btc_pk_hex: &str,
 ) -> Result<Option<PubRandCommit>, ContractError> {
-    let res = PUB_RAND_COMMITS
-        .prefix(fp_btc_pk_hex)
-        .range_raw(storage, None, None, Ascending)
-        .take(1)
-        .map(|item| {
-            let (_, value) = item?;
-            Ok(value)
-        })
-        .collect::<StdResult<Vec<_>>>()?;
-    if res.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(res[0].clone()))
-    }
+    let res = get_pub_rand_commit(storage, fp_btc_pk_hex, None, Some(1), Some(false))?;
+    Ok(res.into_iter().next())
 }
 
-// Copied from contracts/btc-staking/src/state/public_randomness.rs
 pub fn query_last_pub_rand_commit(
     storage: &dyn Storage,
     fp_btc_pk_hex: &str,
 ) -> Result<Option<PubRandCommit>, ContractError> {
-    let res = PUB_RAND_COMMITS
-        .prefix(fp_btc_pk_hex)
-        .range_raw(storage, None, None, Descending)
-        .take(1)
-        .map(|item| {
-            let (_, value) = item?;
-            Ok(value)
-        })
-        .collect::<StdResult<Vec<_>>>()?;
-    if res.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(res[0].clone()))
-    }
+    let res = get_pub_rand_commit(storage, fp_btc_pk_hex, None, Some(1), Some(true))?;
+    Ok(res.into_iter().next())
 }
 
 pub fn query_is_enabled(deps: Deps) -> StdResult<bool> {

@@ -24,15 +24,18 @@ pub enum QueryMsg {
     /// `Config` returns the configuration of the op-finality-gadget contract
     #[returns(Config)]
     Config {},
-    #[returns(PubRandCommit)]
-    FirstPubRandCommit { btc_pk_hex: String },
-    #[returns(bool)]
-    IsEnabled {},
-    /// `LastPubRandCommit` returns the last public random commitments for a given FP.
+    /// `FirstPubRandCommit` returns the first public random commitment (if any) for a given FP.
     ///
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
-    #[returns(PubRandCommit)]
+    #[returns(Option<PubRandCommit>)]
+    FirstPubRandCommit { btc_pk_hex: String },
+    /// `LastPubRandCommit` returns the last public random commitment (if any) for a given FP.
+    ///
+    /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
+    #[returns(Option<PubRandCommit>)]
     LastPubRandCommit { btc_pk_hex: String },
+    #[returns(bool)]
+    IsEnabled {},
 }
 
 #[cw_serde]

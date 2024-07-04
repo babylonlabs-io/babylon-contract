@@ -313,7 +313,29 @@
       "additionalProperties": false
     },
     {
-      "description": "`LastPubRandCommit` returns the last public random commitments for a given FP.\n\nIt's a convenience shortcut of `PubRandCommit` with a `limit` default of 1, and `reverse` set to true.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format. `limit` is the maximum number of commitments to return, or one if not provided",
+      "description": "`FirstPubRandCommit` returns the first public random commitment (if any) for a given FP.\n\nIt's a convenience shortcut of `PubRandCommit` with a `limit` of 1, and `reverse` set to false.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
+      "type": "object",
+      "required": [
+        "first_pub_rand_commit"
+      ],
+      "properties": {
+        "first_pub_rand_commit": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "`LastPubRandCommit` returns the last public random commitment (if any) for a given FP.\n\nIt's a convenience shortcut of `PubRandCommit` with a `limit` of 1, and `reverse` set to true.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
       "type": "object",
       "required": [
         "last_pub_rand_commit"
@@ -327,14 +349,6 @@
           "properties": {
             "btc_pk_hex": {
               "type": "string"
-            },
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint32",
-              "minimum": 0.0
             }
           },
           "additionalProperties": false

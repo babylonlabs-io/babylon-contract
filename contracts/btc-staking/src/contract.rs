@@ -113,14 +113,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
                 reverse,
             )?,
         )?),
-        QueryMsg::LastPubRandCommit { btc_pk_hex, limit } => Ok(to_json_binary(
-            &state::public_randomness::get_pub_rand_commit(
-                deps.storage,
-                &btc_pk_hex,
-                None,
-                Some(limit.unwrap_or(1)),
-                Some(true),
-            )?,
+        QueryMsg::FirstPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
+            &state::public_randomness::get_first_pub_rand_commit(deps.storage, &btc_pk_hex)?,
+        )?),
+        QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
+            &state::public_randomness::get_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
         )?),
         QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
         QueryMsg::Block { height } => Ok(to_json_binary(&queries::block(deps, height)?)?),

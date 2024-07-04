@@ -41,11 +41,20 @@ pub fn get_pub_rand_commit_for_height(
     }
 }
 
+pub fn get_first_pub_rand_commit(
+    storage: &dyn Storage,
+    fp_btc_pk_hex: &str,
+) -> Result<Option<PubRandCommit>, ContractError> {
+    let res = get_pub_rand_commit(storage, fp_btc_pk_hex, None, Some(1), Some(false))?;
+    Ok(res.into_iter().next())
+}
+
 pub fn get_last_pub_rand_commit(
     storage: &dyn Storage,
     fp_btc_pk_hex: &str,
-) -> Result<Vec<PubRandCommit>, ContractError> {
-    get_pub_rand_commit(storage, fp_btc_pk_hex, None, Some(1), Some(true))
+) -> Result<Option<PubRandCommit>, ContractError> {
+    let res = get_pub_rand_commit(storage, fp_btc_pk_hex, None, Some(1), Some(true))?;
+    Ok(res.into_iter().next())
 }
 
 // Settings for pagination

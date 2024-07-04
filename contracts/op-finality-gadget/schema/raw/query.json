@@ -57,12 +57,35 @@
       "additionalProperties": false
     },
     {
+      "description": "`FirstPubRandCommit` returns the first public random commitment (if any) for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
       "type": "object",
       "required": [
         "first_pub_rand_commit"
       ],
       "properties": {
         "first_pub_rand_commit": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "`LastPubRandCommit` returns the last public random commitment (if any) for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
+      "type": "object",
+      "required": [
+        "last_pub_rand_commit"
+      ],
+      "properties": {
+        "last_pub_rand_commit": {
           "type": "object",
           "required": [
             "btc_pk_hex"
@@ -85,28 +108,6 @@
       "properties": {
         "is_enabled": {
           "type": "object",
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "`LastPubRandCommit` returns the last public random commitments for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
-      "type": "object",
-      "required": [
-        "last_pub_rand_commit"
-      ],
-      "properties": {
-        "last_pub_rand_commit": {
-          "type": "object",
-          "required": [
-            "btc_pk_hex"
-          ],
-          "properties": {
-            "btc_pk_hex": {
-              "type": "string"
-            }
-          },
           "additionalProperties": false
         }
       },

@@ -274,12 +274,35 @@
         "additionalProperties": false
       },
       {
+        "description": "`FirstPubRandCommit` returns the first public random commitment (if any) for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
         "type": "object",
         "required": [
           "first_pub_rand_commit"
         ],
         "properties": {
           "first_pub_rand_commit": {
+            "type": "object",
+            "required": [
+              "btc_pk_hex"
+            ],
+            "properties": {
+              "btc_pk_hex": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "`LastPubRandCommit` returns the last public random commitment (if any) for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
+        "type": "object",
+        "required": [
+          "last_pub_rand_commit"
+        ],
+        "properties": {
+          "last_pub_rand_commit": {
             "type": "object",
             "required": [
               "btc_pk_hex"
@@ -302,28 +325,6 @@
         "properties": {
           "is_enabled": {
             "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "`LastPubRandCommit` returns the last public random commitments for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
-        "type": "object",
-        "required": [
-          "last_pub_rand_commit"
-        ],
-        "properties": {
-          "last_pub_rand_commit": {
-            "type": "object",
-            "required": [
-              "btc_pk_hex"
-            ],
-            "properties": {
-              "btc_pk_hex": {
-                "type": "string"
-              }
-            },
             "additionalProperties": false
           }
         },
@@ -395,38 +396,50 @@
     },
     "first_pub_rand_commit": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PubRandCommit",
-      "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
-      "type": "object",
-      "required": [
-        "commitment",
-        "num_pub_rand",
-        "start_height"
-      ],
-      "properties": {
-        "commitment": {
-          "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          }
+      "title": "Nullable_PubRandCommit",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PubRandCommit"
         },
-        "num_pub_rand": {
-          "description": "`num_pub_rand` is the number of committed public randomness",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "start_height": {
-          "description": "`start_height` is the height of the first commitment",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
+        {
+          "type": "null"
         }
-      },
-      "additionalProperties": false
+      ],
+      "definitions": {
+        "PubRandCommit": {
+          "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
+          "type": "object",
+          "required": [
+            "commitment",
+            "num_pub_rand",
+            "start_height"
+          ],
+          "properties": {
+            "commitment": {
+              "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
+            },
+            "num_pub_rand": {
+              "description": "`num_pub_rand` is the number of committed public randomness",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_height": {
+              "description": "`start_height` is the height of the first commitment",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      }
     },
     "is_enabled": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -435,38 +448,50 @@
     },
     "last_pub_rand_commit": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PubRandCommit",
-      "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
-      "type": "object",
-      "required": [
-        "commitment",
-        "num_pub_rand",
-        "start_height"
-      ],
-      "properties": {
-        "commitment": {
-          "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          }
+      "title": "Nullable_PubRandCommit",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PubRandCommit"
         },
-        "num_pub_rand": {
-          "description": "`num_pub_rand` is the number of committed public randomness",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "start_height": {
-          "description": "`start_height` is the height of the first commitment",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
+        {
+          "type": "null"
         }
-      },
-      "additionalProperties": false
+      ],
+      "definitions": {
+        "PubRandCommit": {
+          "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
+          "type": "object",
+          "required": [
+            "commitment",
+            "num_pub_rand",
+            "start_height"
+          ],
+          "properties": {
+            "commitment": {
+              "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "uint8",
+                "minimum": 0.0
+              }
+            },
+            "num_pub_rand": {
+              "description": "`num_pub_rand` is the number of committed public randomness",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_height": {
+              "description": "`start_height` is the height of the first commitment",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      }
     }
   }
 }

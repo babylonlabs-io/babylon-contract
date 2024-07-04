@@ -100,18 +100,22 @@ pub enum QueryMsg {
         limit: Option<u32>,
         reverse: Option<bool>,
     },
-    /// `LastPubRandCommit` returns the last public random commitments for a given FP.
+    /// `FirstPubRandCommit` returns the first public random commitment (if any) for a given FP.
     ///
-    /// It's a convenience shortcut of `PubRandCommit` with a `limit` default of 1, and `reverse`
-    /// set to true.
+    /// It's a convenience shortcut of `PubRandCommit` with a `limit` of 1, and `reverse` set to
+    /// false.
     ///
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
-    /// `limit` is the maximum number of commitments to return, or one if not provided
-    #[returns(PubRandCommit)]
-    LastPubRandCommit {
-        btc_pk_hex: String,
-        limit: Option<u32>,
-    },
+    #[returns(Option<PubRandCommit>)]
+    FirstPubRandCommit { btc_pk_hex: String },
+    /// `LastPubRandCommit` returns the last public random commitment (if any) for a given FP.
+    ///
+    /// It's a convenience shortcut of `PubRandCommit` with a `limit` of 1, and `reverse` set to
+    /// true.
+    ///
+    /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
+    #[returns(Option<PubRandCommit>)]
+    LastPubRandCommit { btc_pk_hex: String },
     /// `ActivatedHeight` returns the height at which the contract gets its first delegation, if any
     ///
     #[returns(ActivatedHeightResponse)]
