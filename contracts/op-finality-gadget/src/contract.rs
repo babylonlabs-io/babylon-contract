@@ -3,7 +3,7 @@ use crate::exec::admin::set_enabled;
 use crate::exec::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries::{
-    query_block_votes, query_config, query_first_pub_rand_commit, query_last_pub_rand_commit,
+    query_block_voters, query_config, query_first_pub_rand_commit, query_last_pub_rand_commit,
 };
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use cosmwasm_std::{
@@ -34,8 +34,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&query_config(deps)?)?),
         QueryMsg::Admin {} => Ok(to_json_binary(&ADMIN.query_admin(deps)?)?),
-        QueryMsg::BlockVotes { height, hash } => {
-            Ok(to_json_binary(&query_block_votes(deps, height, hash)?)?)
+        QueryMsg::BlockVoters { height, hash } => {
+            Ok(to_json_binary(&query_block_voters(deps, height, hash)?)?)
         }
         QueryMsg::FirstPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
             &query_first_pub_rand_commit(deps.storage, &btc_pk_hex)?,

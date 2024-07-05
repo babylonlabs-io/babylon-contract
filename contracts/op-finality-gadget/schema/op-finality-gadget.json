@@ -235,10 +235,10 @@
       {
         "type": "object",
         "required": [
-          "block_votes"
+          "block_voters"
         ],
         "properties": {
-          "block_votes": {
+          "block_voters": {
             "type": "object",
             "required": [
               "hash",
@@ -355,23 +355,17 @@
       },
       "additionalProperties": false
     },
-    "block_votes": {
+    "block_voters": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BlockVotesResponse",
-      "type": "object",
-      "required": [
-        "fp_pubkey_hex_list"
+      "title": "Nullable_Set_of_String",
+      "type": [
+        "array",
+        "null"
       ],
-      "properties": {
-        "fp_pubkey_hex_list": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true
-        }
+      "items": {
+        "type": "string"
       },
-      "additionalProperties": false
+      "uniqueItems": true
     },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",

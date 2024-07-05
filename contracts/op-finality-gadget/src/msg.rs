@@ -19,8 +19,8 @@ pub struct InstantiateMsg {
 pub enum QueryMsg {
     #[returns(AdminResponse)]
     Admin {},
-    #[returns(BlockVotesResponse)]
-    BlockVotes { height: u64, hash: String },
+    #[returns(Option<HashSet<String>>)]
+    BlockVoters { height: u64, hash: String },
     /// `Config` returns the configuration of the op-finality-gadget contract
     #[returns(Config)]
     Config {},
@@ -36,11 +36,6 @@ pub enum QueryMsg {
     LastPubRandCommit { btc_pk_hex: String },
     #[returns(bool)]
     IsEnabled {},
-}
-
-#[cw_serde]
-pub struct BlockVotesResponse {
-    pub fp_pubkey_hex_list: HashSet<String>,
 }
 
 // Note: copied from packages/apis/src/btc_staking_api.rs

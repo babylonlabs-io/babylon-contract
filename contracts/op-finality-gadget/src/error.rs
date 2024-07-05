@@ -32,8 +32,8 @@ pub enum ContractError {
     SecP256K1Error(String), // TODO: inherit errors from k256
     #[error("{0}")]
     StdError(#[from] StdError),
-    #[error("Block votes not found for block {0} with hash {1}. {2}")]
-    NotFoundBlockVotes(u64, String, String),
+    #[error("Failed to query block voters for block {0} with hash {1}. {2}")]
+    QueryBlockVoterError(u64, String, String),
     #[error("Finality provider not found for consumer {0} with pubkey {1}")]
     NotFoundFinalityProvider(String, String),
     #[error("Failed to query the voting power of the finality provider {0}")]
