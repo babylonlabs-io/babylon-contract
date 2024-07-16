@@ -3,7 +3,7 @@ use babylon_bitcoin::{deserialize, Transaction};
 use cosmwasm_std::StdError;
 
 use crate::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProviderDescription, NewFinalityProvider, ProofOfPossession,
+    ActiveBtcDelegation, FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
     UnbondedBtcDelegation, HASH_SIZE,
 };
 use crate::error::StakingApiError;
@@ -94,7 +94,7 @@ impl Validate for FinalityProviderDescription {
     }
 }
 
-impl Validate for ProofOfPossession {
+impl Validate for ProofOfPossessionBtc {
     // TODO: Validate proof of possession
     fn validate(&self) -> Result<(), StakingApiError> {
         Ok(())

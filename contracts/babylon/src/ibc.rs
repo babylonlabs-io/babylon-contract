@@ -128,7 +128,7 @@ mod ibc_packet {
     use crate::state::config::CONFIG;
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
-        FinalityProviderDescription, NewFinalityProvider, ProofOfPossession, PubKey, SignatureInfo,
+        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
         UnbondedBtcDelegation,
     };
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
@@ -195,13 +195,10 @@ mod ibc_packet {
                                 details: d.details.clone(),
                             }),
                         commission: Decimal::from_str(&fp.commission)?,
-                        babylon_pk: fp.babylon_pk.as_ref().map(|pk| PubKey {
-                            key: pk.key.to_vec().into(),
-                        }),
+                        addr: fp.addr.clone(),
                         btc_pk_hex: fp.btc_pk_hex.clone(),
-                        pop: fp.pop.as_ref().map(|pop| ProofOfPossession {
+                        pop: fp.pop.as_ref().map(|pop| ProofOfPossessionBtc {
                             btc_sig_type: pop.btc_sig_type,
-                            babylon_sig: pop.babylon_sig.to_vec().into(),
                             btc_sig: pop.btc_sig.to_vec().into(),
                         }),
                         consumer_id: fp.consumer_id.clone(),
@@ -212,6 +209,7 @@ mod ibc_packet {
                 .active_del
                 .iter()
                 .map(|d| ActiveBtcDelegation {
+                    staker_addr: d.staker_addr.clone(),
                     btc_pk_hex: d.btc_pk_hex.clone(),
                     fp_btc_pk_list: d.fp_btc_pk_list.clone(),
                     start_height: d.start_height,

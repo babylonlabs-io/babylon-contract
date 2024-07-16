@@ -80,13 +80,13 @@ pub struct NewFinalityProvider {
     pub description: Option<FinalityProviderDescription>,
     /// commission defines the commission rate of the finality provider.
     pub commission: Decimal,
-    /// babylon_pk is the Babylon secp256k1 PK of this finality provider
-    pub babylon_pk: Option<PubKey>,
+    /// addr is the bech32 address identifier of the finality provider
+    pub addr: String,
     /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
     /// the PK follows encoding in BIP-340 spec in hex format
     pub btc_pk_hex: String,
     /// pop is the proof of possession of the babylon_pk and btc_pk
-    pub pop: Option<ProofOfPossession>,
+    pub pop: Option<ProofOfPossessionBtc>,
     /// consumer_id is the ID of the consumer that the finality provider is operating on.
     pub consumer_id: String,
 }
@@ -97,13 +97,13 @@ pub struct FinalityProvider {
     pub description: Option<FinalityProviderDescription>,
     /// commission defines the commission rate of the finality provider.
     pub commission: Decimal,
-    /// babylon_pk is the Babylon secp256k1 PK of this finality provider
-    pub babylon_pk: Option<PubKey>,
+    /// addr is the bech32 address identifier of the finality provider
+    pub addr: String,
     /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
     /// the PK follows encoding in BIP-340 spec in hex format
     pub btc_pk_hex: String,
     /// pop is the proof of possession of the babylon_pk and btc_pk
-    pub pop: Option<ProofOfPossession>,
+    pub pop: Option<ProofOfPossessionBtc>,
     /// slashed_height is the height on which the finality provider is slashed
     pub slashed_height: u64,
     /// slashed_btc_height is the BTC height on which the finality provider is slashed
@@ -117,7 +117,7 @@ impl From<&NewFinalityProvider> for FinalityProvider {
         FinalityProvider {
             description: new_fp.description.clone(),
             commission: new_fp.commission,
-            babylon_pk: new_fp.babylon_pk.clone(),
+            addr: new_fp.addr.clone(),
             btc_pk_hex: new_fp.btc_pk_hex.clone(),
             pop: new_fp.pop.clone(),
             slashed_height: 0,
@@ -161,15 +161,13 @@ pub struct PubKey {
     pub key: Binary,
 }
 
-/// ProofOfPossession is the proof of possession that a Babylon secp256k1
+/// ProofOfPossessionBtc is the proof of possession that a Babylon secp256k1
 /// secret key and a Bitcoin secp256k1 secret key are held by the same
 /// person
 #[cw_serde]
-pub struct ProofOfPossession {
+pub struct ProofOfPossessionBtc {
     /// btc_sig_type indicates the type of btc_sig in the pop
     pub btc_sig_type: i32,
-    /// babylon_sig is the signature generated via sign(sk_babylon, pk_btc)
-    pub babylon_sig: Binary,
     /// btc_sig is the signature generated via sign(sk_btc, babylon_sig)
     /// the signature follows encoding in either BIP-340 spec or BIP-322 spec
     pub btc_sig: Binary,
@@ -198,6 +196,8 @@ pub enum BTCDelegationStatus {
 /// and thus becomes active
 #[cw_serde]
 pub struct ActiveBtcDelegation {
+    /// staker_addr is the address to receive rewards from BTC delegation
+    pub staker_addr: String,
     /// btc_pk_hex is the Bitcoin secp256k1 PK of the BTC delegator.
     /// The PK follows encoding in BIP-340 spec in hex format
     pub btc_pk_hex: String,

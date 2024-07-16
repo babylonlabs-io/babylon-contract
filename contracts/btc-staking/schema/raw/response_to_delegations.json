@@ -26,6 +26,7 @@
         "fp_btc_pk_list",
         "params_version",
         "slashing_tx",
+        "staker_addr",
         "staking_output_idx",
         "staking_tx",
         "start_height",
@@ -78,6 +79,10 @@
               "$ref": "#/definitions/Binary"
             }
           ]
+        },
+        "staker_addr": {
+          "description": "staker_addr is the address to receive rewards from BTC delegation",
+          "type": "string"
         },
         "staking_output_idx": {
           "description": "staking_output_idx is the index of the staking output in the staking tx",

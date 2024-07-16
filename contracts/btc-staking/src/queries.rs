@@ -165,7 +165,7 @@ pub fn finality_providers_by_power(
     let fps = fps()
         .idx
         .power
-        .range(deps.storage, None, start, Order::Descending)
+        .range(deps.storage, None, start, Descending)
         .take(limit)
         .map(|item| {
             let (btc_pk_hex, FinalityProviderState { power }) = item?;
@@ -236,24 +236,32 @@ pub fn blocks(
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::Transaction;
-
     use cosmwasm_std::storage_keys::namespace_with_key;
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
     use cosmwasm_std::{from_json, Binary, Storage};
 
-    use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
+    use babylon_apis::btc_staking_api::{
+        ActiveBtcDelegation, FinalityProvider, UnbondedBtcDelegation,
+    };
 
     use crate::contract::tests::create_new_finality_provider;
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use crate::finality::tests::mock_env_height;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
+    use crate::staking::tests::staking_tx_hash;
     use crate::state::staking::{FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
+
+    // Sort delegations by staking tx hash
+    fn sort_delegations(dels: &[ActiveBtcDelegation]) -> Vec<ActiveBtcDelegation> {
+        let mut dels = dels.to_vec();
+        dels.sort_by_key(staking_tx_hash);
+        dels
+    }
 
     #[test]
     fn test_finality_providers() {
@@ -355,28 +363,30 @@ mod tests {
         let dels = crate::queries::delegations(deps.as_ref(), None, None, None)
             .unwrap()
             .delegations;
+
         assert_eq!(dels.len(), 2);
-        assert_eq!(dels[0], del1);
-        assert_eq!(dels[1], del2);
+        // Sort original delegations by staking tx hash (to compare with the query result)
+        let sorted_dels = sort_delegations(&[del1.clone(), del2.clone()]);
+        assert_eq!(dels[0], sorted_dels[0]);
+        assert_eq!(dels[1], sorted_dels[1]);
 
         // Query delegations with limit
         let dels = crate::queries::delegations(deps.as_ref(), None, Some(1), None)
             .unwrap()
             .delegations;
+
         assert_eq!(dels.len(), 1);
-        assert_eq!(dels[0], del1);
+        assert_eq!(dels[0], sorted_dels[0]);
 
         // Query delegations with start_after
-        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del1.staking_tx).unwrap();
-        let staking_tx_hash = staking_tx.txid();
-        let staking_tx_hash_hex = staking_tx_hash.to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&sorted_dels[0]).to_string();
         let dels =
             crate::queries::delegations(deps.as_ref(), Some(staking_tx_hash_hex), None, None)
                 .unwrap()
                 .delegations;
 
         assert_eq!(dels.len(), 1);
-        assert_eq!(dels[0], del2);
+        assert_eq!(dels[0], sorted_dels[1]);
     }
 
     #[test]
@@ -425,14 +435,14 @@ mod tests {
             .unwrap()
             .delegations;
         assert_eq!(dels.len(), 2);
-        assert_eq!(dels[0], del1);
-        assert_eq!(dels[1], del2);
+        // Sort original delegations by staking tx hash (to compare with the query result)
+        let sorted_dels = sort_delegations(&[del1.clone(), del2.clone()]);
+        assert_eq!(dels[0], sorted_dels[0]);
+        assert_eq!(dels[1], sorted_dels[1]);
 
         // Unbond the second delegation
         // Compute staking tx hash
-        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del2.staking_tx).unwrap();
-        let staking_tx_hash = staking_tx.txid();
-        let staking_tx_hash_hex = staking_tx_hash.to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&del2).to_string();
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],
@@ -580,9 +590,7 @@ mod tests {
 
         // Unbond the first delegation
         // Compute staking tx hash
-        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del1.staking_tx).unwrap();
-        let staking_tx_hash = staking_tx.txid();
-        let staking_tx_hash_hex = staking_tx_hash.to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&del1).to_string();
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],

@@ -3,6 +3,7 @@
   "title": "FinalityProvider",
   "type": "object",
   "required": [
+    "addr",
     "btc_pk_hex",
     "commission",
     "consumer_id",
@@ -10,16 +11,9 @@
     "slashed_height"
   ],
   "properties": {
-    "babylon_pk": {
-      "description": "babylon_pk is the Babylon secp256k1 PK of this finality provider",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/PubKey"
-        },
-        {
-          "type": "null"
-        }
-      ]
+    "addr": {
+      "description": "addr is the bech32 address identifier of the finality provider",
+      "type": "string"
     },
     "btc_pk_hex": {
       "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
@@ -52,7 +46,7 @@
       "description": "pop is the proof of possession of the babylon_pk and btc_pk",
       "anyOf": [
         {
-          "$ref": "#/definitions/ProofOfPossession"
+          "$ref": "#/definitions/ProofOfPossessionBtc"
         },
         {
           "type": "null"
@@ -115,23 +109,14 @@
       },
       "additionalProperties": false
     },
-    "ProofOfPossession": {
-      "description": "ProofOfPossession is the proof of possession that a Babylon secp256k1 secret key and a Bitcoin secp256k1 secret key are held by the same person",
+    "ProofOfPossessionBtc": {
+      "description": "ProofOfPossessionBtc is the proof of possession that a Babylon secp256k1 secret key and a Bitcoin secp256k1 secret key are held by the same person",
       "type": "object",
       "required": [
-        "babylon_sig",
         "btc_sig",
         "btc_sig_type"
       ],
       "properties": {
-        "babylon_sig": {
-          "description": "babylon_sig is the signature generated via sign(sk_babylon, pk_btc)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Binary"
-            }
-          ]
-        },
         "btc_sig": {
           "description": "btc_sig is the signature generated via sign(sk_btc, babylon_sig) the signature follows encoding in either BIP-340 spec or BIP-322 spec",
           "allOf": [
@@ -144,24 +129,6 @@
           "description": "btc_sig_type indicates the type of btc_sig in the pop",
           "type": "integer",
           "format": "int32"
-        }
-      },
-      "additionalProperties": false
-    },
-    "PubKey": {
-      "description": "PubKey defines a secp256k1 public key. Key is the compressed form of the pubkey. The first byte is a 0x02 byte if the y-coordinate is the lexicographically largest of the two associated with the x-coordinate. Otherwise, the first byte is a 0x03. This prefix is followed with the x-coordinate.",
-      "type": "object",
-      "required": [
-        "key"
-      ],
-      "properties": {
-        "key": {
-          "description": "key is the compressed public key of the finality provider",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Binary"
-            }
-          ]
         }
       },
       "additionalProperties": false

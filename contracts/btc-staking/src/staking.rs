@@ -375,7 +375,7 @@ pub fn compute_active_finality_providers(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use cosmwasm_std::Binary;
 
@@ -389,6 +389,12 @@ mod tests {
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::queries;
+
+    // Compute staking tx hash of an active delegation
+    pub(crate) fn staking_tx_hash(del: &ActiveBtcDelegation) -> Txid {
+        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del.staking_tx).unwrap();
+        staking_tx.txid()
+    }
 
     #[test]
     fn test_btc_staking_add_fp_unauthorized() {
@@ -519,9 +525,8 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // Check the active delegation is being stored
-        let staking_tx: Transaction = deserialize(&active_delegation.staking_tx).unwrap();
-        let staking_tx_hash = staking_tx.txid();
-        let query_res = queries::delegation(deps.as_ref(), staking_tx_hash.to_string()).unwrap();
+        let staking_tx_hash_hex = staking_tx_hash(&active_delegation).to_string();
+        let query_res = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
         assert_eq!(query_res, active_delegation);
 
         // Check that the finality provider power has been updated
@@ -568,8 +573,7 @@ mod tests {
         // Check the delegation is active (it has no unbonding or slashing tx signature)
         let active_delegation_undelegation = active_delegation.undelegation_info.clone().unwrap();
         // Compute the staking tx hash
-        let staking_tx: Transaction = deserialize(&active_delegation.staking_tx).unwrap();
-        let staking_tx_hash_hex = staking_tx.txid().to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&active_delegation).to_string();
 
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex.clone()).unwrap();
         let btc_undelegation = btc_del.undelegation_info.unwrap();

@@ -283,7 +283,7 @@ pub(crate) mod tests {
 
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
-        FinalityProviderDescription, NewFinalityProvider, ProofOfPossession,
+        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
     };
     use babylon_apis::finality_api::PubRandCommit;
 
@@ -299,6 +299,7 @@ pub(crate) mod tests {
         let btc_undelegation = del.btc_undelegation.unwrap();
 
         ActiveBtcDelegation {
+            staker_addr: del.staker_addr,
             btc_pk_hex: del.btc_pk.encode_hex(),
             fp_btc_pk_list: del
                 .fp_btc_pk_list
@@ -390,6 +391,7 @@ pub(crate) mod tests {
 
     pub(crate) fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
         NewFinalityProvider {
+            addr: format!("a{}", id),
             description: Some(FinalityProviderDescription {
                 moniker: format!("fp{}", id),
                 identity: format!("Finality Provider {}", id),
@@ -398,11 +400,9 @@ pub(crate) mod tests {
                 details: format!("details fp{}", id),
             }),
             commission: Decimal::percent(5),
-            babylon_pk: None,
             btc_pk_hex: format!("f{}", id),
-            pop: Some(ProofOfPossession {
+            pop: Some(ProofOfPossessionBtc {
                 btc_sig_type: 0,
-                babylon_sig: Binary::new(vec![]),
                 btc_sig: Binary::new(vec![]),
             }),
             consumer_id: format!("osmosis-{}", id),

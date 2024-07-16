@@ -8,7 +8,7 @@ require (
 	cosmossdk.io/math v1.3.0
 	github.com/babylonchain/babylon v0.8.0
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d
-	github.com/btcsuite/btcd v0.24.0
+	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/cometbft/cometbft v0.38.6
 	github.com/stretchr/testify v1.9.0
@@ -177,6 +177,7 @@ require (
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.2 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
@@ -219,7 +220,7 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon v0.8.0 => github.com/babylonchain/babylon v0.8.6-0.20240527005816-ae2182029020
+	github.com/babylonchain/babylon v0.8.0 => github.com/babylonchain/babylon v0.9.0-rc.2.0.20240703134344-1c4a32e16e95
 
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 )

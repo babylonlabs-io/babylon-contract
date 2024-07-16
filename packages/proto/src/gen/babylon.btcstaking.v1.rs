@@ -1,19 +1,16 @@
 // @generated
-/// ProofOfPossession is the proof of possession that a Babylon secp256k1
-/// secret key and a Bitcoin secp256k1 secret key are held by the same
+/// ProofOfPossessionBTC is the proof of possession that a Babylon
+/// address and a Bitcoin secp256k1 secret key are held by the same
 /// person
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ProofOfPossession {
+pub struct ProofOfPossessionBtc {
     /// btc_sig_type indicates the type of btc_sig in the pop
     #[prost(enumeration="BtcSigType", tag="1")]
     pub btc_sig_type: i32,
-    /// babylon_sig is the signature generated via sign(sk_babylon, pk_btc)
-    #[prost(bytes="bytes", tag="2")]
-    pub babylon_sig: ::prost::bytes::Bytes,
-    /// btc_sig is the signature generated via sign(sk_btc, babylon_sig)
+    /// btc_sig is the signature generated via sign(sk_btc, babylon_staker_address)
     /// the signature follows encoding in either BIP-340 spec or BIP-322 spec
-    #[prost(bytes="bytes", tag="3")]
+    #[prost(bytes="bytes", tag="2")]
     pub btc_sig: ::prost::bytes::Bytes,
 }
 /// BTCSigType indicates the type of btc_sig in a pop
@@ -54,16 +51,16 @@ impl BtcSigType {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BtcDelegation {
-    /// babylon_pk is the Babylon secp256k1 PK of this BTC delegation
-    #[prost(message, optional, tag="1")]
-    pub babylon_pk: ::core::option::Option<cosmos_sdk_proto::cosmos::crypto::secp256k1::PubKey>,
+    /// staker_addr is the address to receive rewards from BTC delegation.
+    #[prost(string, tag="1")]
+    pub staker_addr: ::prost::alloc::string::String,
     /// btc_pk is the Bitcoin secp256k1 PK of this BTC delegation
     /// the PK follows encoding in BIP-340 spec
     #[prost(bytes="bytes", tag="2")]
     pub btc_pk: ::prost::bytes::Bytes,
     /// pop is the proof of possession of babylon_pk and btc_pk
     #[prost(message, optional, tag="3")]
-    pub pop: ::core::option::Option<ProofOfPossession>,
+    pub pop: ::core::option::Option<ProofOfPossessionBtc>,
     /// fp_btc_pk_list is the list of BIP-340 PKs of the finality providers that
     /// this BTC delegation delegates to
     /// If there is more than 1 PKs, then this means the delegation is restaked
@@ -242,16 +239,16 @@ pub struct NewFinalityProvider {
     /// It forms as a string converted from "cosmossdk.io/math.LegacyDec"
     #[prost(string, tag="2")]
     pub commission: ::prost::alloc::string::String,
-    /// babylon_pk is the Babylon secp256k1 PK of this finality provider
-    #[prost(message, optional, tag="3")]
-    pub babylon_pk: ::core::option::Option<cosmos_sdk_proto::cosmos::crypto::secp256k1::PubKey>,
+    /// addr is the bech32 address identifier of the finality provider.
+    #[prost(string, tag="3")]
+    pub addr: ::prost::alloc::string::String,
     /// btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider
     /// the PK follows encoding in BIP-340 spec in hex format
     #[prost(string, tag="4")]
     pub btc_pk_hex: ::prost::alloc::string::String,
     /// pop is the proof of possession of babylon_pk and btc_pk
     #[prost(message, optional, tag="5")]
-    pub pop: ::core::option::Option<ProofOfPossession>,
+    pub pop: ::core::option::Option<ProofOfPossessionBtc>,
     /// consumer_id is the ID of the consumer the finality provider is operating on.
     /// If it's missing / empty, it's assumed the finality provider is operating in Babylon.
     #[prost(string, tag="8")]
@@ -262,6 +259,9 @@ pub struct NewFinalityProvider {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActiveBtcDelegation {
+    /// staker_addr is the address to receive rewards from BTC delegation.
+    #[prost(string, tag="11")]
+    pub staker_addr: ::prost::alloc::string::String,
     /// btc_pk_hex is the Bitcoin secp256k1 PK of this BTC delegation
     /// the PK follows encoding in BIP-340 spec in hex format
     #[prost(string, tag="1")]
