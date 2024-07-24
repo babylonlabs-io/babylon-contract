@@ -24,5 +24,7 @@ func main() {
 	utils.GenBTCDelegation(testDataPath)
 	utils.GenEOTSTestData(testDataPath)
 	randListInfo, privKey := utils.GenCommitPubRandListMsg(commitPubRandHeight, commitPubRandAmount, pubRandIndex, testDataPath)
-	utils.GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, privKey, testDataPath)
+	utils.GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, privKey, testDataPath, 1)
+	// Conflicting signature / double signing
+	utils.GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, privKey, testDataPath, 2)
 }

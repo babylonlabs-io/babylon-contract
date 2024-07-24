@@ -24,7 +24,7 @@ const PARAMS_DATA: &str = "btcstaking_params.dat";
 const BTC_DELEGATION_DATA: &str = "btc_delegation.dat";
 const COMMIT_PUB_RAND_DATA: &str = "commit_pub_rand_msg.dat";
 const PUB_RAND_VALUE: &str = "pub_rand_value.dat";
-const ADD_FINALITY_SIG_DATA: &str = "add_finality_sig_msg.dat";
+const ADD_FINALITY_SIG_DATA: &str = "add_finality_sig_{}_msg.dat";
 
 const EOTS_DATA: &str = "eots_testdata.json";
 
@@ -169,7 +169,14 @@ pub fn get_pub_rand_value() -> Vec<u8> {
 }
 
 pub fn get_add_finality_sig() -> MsgAddFinalitySig {
-    let add_finality_sig_path = find_testdata_path().join(ADD_FINALITY_SIG_DATA);
+    let add_finality_sig_path = find_testdata_path().join(ADD_FINALITY_SIG_DATA.replace("{}", "1"));
+    let add_finality_sig_data: &[u8] = &fs::read(add_finality_sig_path).unwrap();
+
+    MsgAddFinalitySig::decode(add_finality_sig_data).unwrap()
+}
+
+pub fn get_add_finality_sig_2() -> MsgAddFinalitySig {
+    let add_finality_sig_path = find_testdata_path().join(ADD_FINALITY_SIG_DATA.replace("{}", "2"));
     let add_finality_sig_data: &[u8] = &fs::read(add_finality_sig_path).unwrap();
 
     MsgAddFinalitySig::decode(add_finality_sig_data).unwrap()

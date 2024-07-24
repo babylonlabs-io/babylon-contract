@@ -60,8 +60,8 @@ pub struct Evidence {
     pub fork_app_hash: Bytes,
     /// `canonical_finality_sig` is the finality signature to the canonical block,
     /// where finality signature is an EOTS signature, i.e.,
-    /// the `s` in a Schnorr signature `(r, s)`
-    /// `r` is the public randomness that is already committed by the finality provider
+    /// the `s` in a Schnorr signature `(r, s)`.
+    /// `r` is the public randomness already committed by the finality provider.
     /// Deserializes to `SchnorrEOTSSig`
     pub canonical_finality_sig: Bytes,
     /// `fork_finality_sig` is the finality signature to the fork block,

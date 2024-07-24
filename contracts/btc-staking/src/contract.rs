@@ -218,8 +218,8 @@ pub fn sudo(
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
-    // TODO: Index BTC height at the current height
-    // index_btc_height(deps, env.block.height)?;
+    // Index BTC height at the current height
+    index_btc_height(deps, env.block.height)?;
 
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
@@ -231,7 +231,11 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 // index_btc_height indexes the current BTC height, and saves it to the state
 #[allow(dead_code)]
 fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
-    let btc_tip = get_btc_tip(deps)?;
+    // FIXME: Turn this into a hard error. Requires `babylon-contract` instance, and up and running
+    // BTC light client loop (which requires a running BTC node / simulator)
+    let btc_tip = get_btc_tip(deps) //?;
+        .ok()
+        .unwrap_or_default();
 
     Ok(BTC_HEIGHT.save(deps.storage, height, &btc_tip.height)?)
 }
@@ -256,7 +260,6 @@ fn handle_end_block(
     // If the BTC staking protocol is activated i.e. there exists a height where at least one
     // finality provider has voting power, start indexing and tallying blocks
     let mut res = Response::new();
-
     if let Some(activated_height) = ACTIVATED_HEIGHT.may_load(deps.storage)? {
         // Index the current block
         let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;

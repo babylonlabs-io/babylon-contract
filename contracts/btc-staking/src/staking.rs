@@ -8,13 +8,6 @@ use bitcoin::{Transaction, Txid};
 
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Order, Response, Storage};
 
-use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
-    UnbondedBtcDelegation,
-};
-use babylon_apis::Validate;
-use babylon_bindings::BabylonMsg;
-
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
 use crate::state::config::{ADMIN, CONFIG};
@@ -22,6 +15,13 @@ use crate::state::staking::{
     fps, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
     FP_SET, TOTAL_POWER,
 };
+use crate::state::BTC_HEIGHT;
+use babylon_apis::btc_staking_api::{
+    ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
+    UnbondedBtcDelegation,
+};
+use babylon_apis::Validate;
+use babylon_bindings::BabylonMsg;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -213,30 +213,36 @@ pub fn handle_active_delegation(
     // Update delegations by registered finality provider
     let fps = fps();
     let mut registered_fp = false;
-    for fp_btc_pk in &delegation.fp_btc_pk_list {
+    for fp_btc_pk_hex in &delegation.fp_btc_pk_list {
         // Skip if finality provider is not registered, as it can belong to another Consumer, or Babylon
-        if !FPS.has(storage, fp_btc_pk) {
+        if !FPS.has(storage, fp_btc_pk_hex) {
             continue;
         }
-        // - TODO: Skip slashed FPs
-        // - TODO?: Skip FPs whose registered epochs are not finalised
+
+        // Skip slashed FPs
+        let fp = FPS.load(storage, fp_btc_pk_hex)?;
+        if fp.slashed_height > 0 {
+            continue;
+        }
+
+        // TODO?: Skip FPs whose registered epochs are not finalised
 
         // Update staking tx hash by finality provider map
         let mut fp_delegations = FP_DELEGATIONS
-            .may_load(storage, fp_btc_pk)?
+            .may_load(storage, fp_btc_pk_hex)?
             .unwrap_or(vec![]);
         fp_delegations.push(staking_tx_hash.as_byte_array().to_vec());
-        FP_DELEGATIONS.save(storage, fp_btc_pk, &fp_delegations)?;
+        FP_DELEGATIONS.save(storage, fp_btc_pk_hex, &fp_delegations)?;
 
         // Update finality provider by staking tx hash reverse map
         let mut delegation_fps = DELEGATION_FPS
             .may_load(storage, staking_tx_hash.as_ref())?
             .unwrap_or(vec![]);
-        delegation_fps.push(fp_btc_pk.clone());
+        delegation_fps.push(fp_btc_pk_hex.clone());
         DELEGATION_FPS.save(storage, staking_tx_hash.as_ref(), &delegation_fps)?;
 
         // Update aggregated voting power by FP
-        fps.update(storage, fp_btc_pk, height, |fp_state| {
+        fps.update(storage, fp_btc_pk_hex, height, |fp_state| {
             let mut fp_state = fp_state.unwrap_or_default();
             fp_state.power = fp_state.power.saturating_add(delegation.total_sat);
             Ok::<_, ContractError>(fp_state)
@@ -370,6 +376,48 @@ pub fn compute_active_finality_providers(
     // Save the total voting power of the top n finality providers
     let total_power = running_total.last().copied().unwrap_or_default();
     TOTAL_POWER.save(storage, &total_power)?;
+
+    Ok(())
+}
+
+/// `slash_finality_provider` slashes a finality provider with the given PK.
+/// A slashed finality provider will not have voting power
+pub(crate) fn slash_finality_provider(
+    store: &mut dyn Storage,
+    env: Env,
+    fp_btc_pk_hex: &str,
+    height: u64,
+) -> Result<(), ContractError> {
+    // Ensure finality provider exists
+    let mut fp = FPS.load(store, fp_btc_pk_hex)?;
+
+    // Check if the finality provider is already slashed
+    if fp.slashed_height > 0 {
+        return Err(ContractError::FinalityProviderAlreadySlashed(
+            fp_btc_pk_hex.to_string(),
+        ));
+    }
+    // Set the finality provider as slashed
+    fp.slashed_height = height;
+
+    // Set BTC slashing height (if available from the store)
+    // FIXME: Turn this into a hard error
+    // return fmt.Errorf("failed to get current BTC tip")
+    let btc_height = BTC_HEIGHT.may_load(store, height)?.unwrap_or_default();
+    fp.slashed_btc_height = btc_height;
+
+    // Record slashed event. The next `BeginBlock` will consume this event for updating the active
+    // FP set.
+    // We simply set the FP voting power to zero from the next *processing* height (See NOTE in
+    // `handle_finality_signature`)
+    fps().update(store, fp_btc_pk_hex, env.block.height + 1, |fp| {
+        let mut fp = fp.unwrap_or_default();
+        fp.power = 0;
+        Ok::<_, ContractError>(fp)
+    })?;
+
+    // Save the finality provider back
+    FPS.save(store, fp_btc_pk_hex, &fp)?;
 
     Ok(())
 }

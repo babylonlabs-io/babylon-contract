@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ import (
 const (
 	MSG_COMMIT_PUB_RAND  = "commit_pub_rand_msg.dat"
 	PUB_RAND_VALUE       = "pub_rand_value.dat"
-	MSG_ADD_FINALITY_SIG = "add_finality_sig_msg.dat"
+	MSG_ADD_FINALITY_SIG = "add_finality_sig_%d_msg.dat"
 )
 
 func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
@@ -127,7 +128,7 @@ func NewMsgAddFinalitySig(
 	return msg, nil
 }
 
-func GenAddFinalitySig(startHeight uint64, index uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey, dir string) *ftypes.MsgAddFinalitySig {
+func GenAddFinalitySig(startHeight uint64, index uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey, dir string, signatureIndex uint32) *ftypes.MsgAddFinalitySig {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	blockHeight := startHeight + index
@@ -144,7 +145,7 @@ func GenAddFinalitySig(startHeight uint64, index uint64, randListInfo *datagen.R
 		panic(err)
 	}
 
-	msgCommitPubRandPath := filepath.Join(dir, MSG_ADD_FINALITY_SIG)
+	msgCommitPubRandPath := filepath.Join(dir, fmt.Sprintf(MSG_ADD_FINALITY_SIG, signatureIndex))
 	err = os.WriteFile(msgCommitPubRandPath, msgAddFinalitySigBytes, 0644)
 	if err != nil {
 		panic(err)

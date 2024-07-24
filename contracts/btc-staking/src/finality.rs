@@ -7,14 +7,15 @@ use std::collections::HashSet;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{DepsMut, Env, Event, Response, StdResult, Storage};
 
-use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
+use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
 
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
+use crate::staking;
 use crate::state::config::PARAMS;
-use crate::state::finality::{BLOCKS, NEXT_HEIGHT, SIGNATURES};
+use crate::state::finality::{BLOCKS, EVIDENCES, NEXT_HEIGHT, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
@@ -122,17 +123,17 @@ pub fn handle_finality_signature(
     height: u64,
     pub_rand: &[u8],
     proof: &Proof,
-    block_hash: &[u8],
+    block_app_hash: &[u8],
     signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
-    FPS.load(deps.storage, fp_btc_pk_hex)?;
+    let fp = FPS.load(deps.storage, fp_btc_pk_hex)?;
 
-    // TODO: Ensure the finality provider is not slashed at this time point
+    // Ensure the finality provider is not slashed at this time point
     // NOTE: It's possible that the finality provider equivocates for height h, and the signature is
     // processed at height h' > h. In this case:
     // - We should reject any new signature from this finality provider, since it's known to be adversarial.
-    // - We should set its voting power since height h'+1 to be zero, for to the same reason.
+    // - We should set its voting power since height h'+1 to be zero, for the same reason.
     // - We should NOT set its voting power between [h, h'] to be zero, since
     //   - Babylon BTC staking ensures safety upon 2f+1 votes, *even if* f of them are adversarial.
     //     This is because as long as a block gets 2f+1 votes, any other block with 2f+1 votes has a
@@ -145,7 +146,12 @@ pub fn handle_finality_signature(
     //   - To fix the above issue, Babylon has to allow finalised and not-finalised blocks. However,
     //     this means Babylon will lose safety under an adaptive adversary corrupting even 1
     //     finality provider. It can simply corrupt a new finality provider and equivocate a
-    //     historical block over and over again, making a previous block not finalisable forever.
+    //     historical block over and over again, making a previous block not finalisable forever
+    if fp.slashed_height > 0 && fp.slashed_height < height {
+        return Err(ContractError::FinalityProviderAlreadySlashed(
+            fp_btc_pk_hex.to_string(),
+        ));
+    }
 
     // Ensure the finality provider has voting power at this height
     fps()
@@ -181,7 +187,7 @@ pub fn handle_finality_signature(
         pub_rand,
         proof,
         &pr_commit,
-        block_hash,
+        block_app_hash,
         signature,
     )?;
 
@@ -189,73 +195,100 @@ pub fn handle_finality_signature(
     // TODO?: Don't save public randomness values, to save storage space
     PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand.to_vec())?;
 
-    // TODO: Verify whether the voted block is a fork or not
-    /*
-    indexedBlock, err := ms.GetBlock(ctx, req.BlockHeight)
-    if err != nil {
-        return nil, err
-    }
-    if !bytes.Equal(indexedBlock.AppHash, req.BlockAppHash) {
-        // the finality provider votes for a fork!
+    // Verify whether the voted block is a fork or not
+    // TODO?: Do not rely on 'canonical' (i.e. BFT-consensus provided) blocks info
+    let indexed_block = BLOCKS
+        .load(deps.storage, height)
+        .map_err(|err| ContractError::BlockNotFound(height, err.to_string()))?;
 
-        // construct evidence
-        evidence := &types.Evidence{
-            FpBtcPk:              req.FpBtcPk,
-            BlockHeight:          req.BlockHeight,
-            PubRand:              req.PubRand,
-            CanonicalAppHash:     indexedBlock.AppHash,
-            CanonicalFinalitySig: nil,
-            ForkAppHash:          req.BlockAppHash,
-            ForkFinalitySig:      signature,
+    let mut res = Response::new();
+    if indexed_block.app_hash != block_app_hash {
+        // The finality provider votes for a fork!
+
+        // Construct evidence
+        let mut evidence = Evidence {
+            fp_btc_pk: hex::decode(fp_btc_pk_hex)?,
+            block_height: height,
+            pub_rand: pub_rand.to_vec(),
+            canonical_app_hash: indexed_block.app_hash,
+            canonical_finality_sig: vec![],
+            fork_app_hash: block_app_hash.to_vec(),
+            fork_finality_sig: signature.to_vec(),
+        };
+
+        // If this finality provider has also signed the canonical block, slash it
+        let canonical_sig = SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+        if let Some(canonical_sig) = canonical_sig {
+            // Set canonical sig
+            evidence.canonical_finality_sig = canonical_sig;
+            // Slash this finality provider, including setting its voting power to zero, extracting
+            // its BTC SK, and emitting an event
+            let ev = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+            res = res.add_event(ev);
         }
+        // TODO?: Also slash if this finality provider has signed another fork before
 
-        // if this finality provider has also signed canonical block, slash it
-        canonicalSig, err := ms.GetSig(ctx, req.BlockHeight, fpPK)
-        if err == nil {
-            //set canonical sig
-            evidence.CanonicalFinalitySig = canonicalSig
-            // slash this finality provider, including setting its voting power to
-            // zero, extracting its BTC SK, and emit an event
-            ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
-        }
+        // Save evidence
+        EVIDENCES.save(deps.storage, (fp_btc_pk_hex, height), &evidence)?;
 
-        // save evidence
-        ms.SetEvidence(ctx, evidence)
-
-        // NOTE: we should NOT return error here, otherwise the state change triggered in this tx
+        // NOTE: We should NOT return error here, otherwise the state change triggered in this tx
         // (including the evidence) will be rolled back
-        return &types.MsgAddFinalitySigResponse{}, nil
+        return Ok(res);
     }
-    */
 
     // This signature is good, save the vote to the store
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
 
-    // TODO: If this finality provider has signed the canonical block before, slash it via
-    // extracting its secret key, and emit an event
-    /*
-    if ms.HasEvidence(ctx, req.FpBtcPk, req.BlockHeight) {
-        // the finality provider has voted for a fork before!
-        // If this evidence is at the same height as this signature, slash this finality provider
+    // If this finality provider has signed the canonical block before, slash it via extracting its
+    // secret key, and emit an event
+    if let Some(mut evidence) = EVIDENCES.may_load(deps.storage, (fp_btc_pk_hex, height))? {
+        // The finality provider has voted for a fork before!
+        // This evidence is at the same height as this signature, slash this finality provider
 
-        // get evidence
-        evidence, err := ms.GetEvidence(ctx, req.FpBtcPk, req.BlockHeight)
-        if err != nil {
-            panic(fmt.Errorf("failed to get evidence despite HasEvidence returns true"))
-        }
+        // Set canonical sig to this evidence
+        evidence.canonical_finality_sig = signature.to_vec();
+        EVIDENCES.save(deps.storage, (fp_btc_pk_hex, height), &evidence)?;
 
-        // set canonical sig to this evidence
-        evidence.CanonicalFinalitySig = signature
-        ms.SetEvidence(ctx, evidence)
-
-        // slash this finality provider, including setting its voting power to
-        // zero, extracting its BTC SK, and emit an event
-        ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
+        // Slash this finality provider, including setting its voting power to zero, extracting its
+        // BTC SK, and emit an event
+        let ev = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+        res = res.add_event(ev);
     }
-    */
 
-    // TODO: Add events
-    Ok(Response::new())
+    Ok(res)
+}
+
+/// `slash_finality_provider` slashes a finality provider with the given evidence including setting
+/// its voting power to zero, extracting its BTC SK, and emitting an event
+fn slash_finality_provider(
+    store: &mut dyn Storage,
+    env: Env,
+    fp_btc_pk_hex: &str,
+    evidence: &Evidence,
+) -> Result<Event, ContractError> {
+    // Slash this finality provider, i.e., set its slashing height to the block height
+    staking::slash_finality_provider(store, env, fp_btc_pk_hex, evidence.block_height)
+        .map_err(|err| ContractError::FailedToSlashFinalityProvider(err.to_string()))?;
+
+    // Emit slashing event
+    let ev = Event::new("slashed_finality_provider")
+        .add_attribute("module", "finality")
+        .add_attribute("finality_provider", fp_btc_pk_hex)
+        .add_attribute("block_height", evidence.block_height.to_string())
+        .add_attribute(
+            "canonical_app_hash",
+            hex::encode(&evidence.canonical_app_hash),
+        )
+        .add_attribute(
+            "canonical_finality_sig",
+            hex::encode(&evidence.canonical_finality_sig),
+        )
+        .add_attribute("fork_app_hash", hex::encode(&evidence.fork_app_hash))
+        .add_attribute(
+            "fork_finality_sig",
+            hex::encode(&evidence.fork_finality_sig),
+        );
+    Ok(ev)
 }
 
 /// Verifies the finality signature message w.r.t. the public randomness commitment:
@@ -455,10 +488,13 @@ fn finalize_block(
 pub(crate) mod tests {
     use babylon_apis::btc_staking_api::SudoMsg;
     use babylon_apis::finality_api::IndexedBlock;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{Binary, Env, Event};
+    use babylon_bindings::BabylonMsg;
+    use cosmwasm_std::testing::{
+        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+    };
+    use cosmwasm_std::{Binary, Env, Event, OwnedDeps, Response};
     use hex::ToHex;
-    use test_utils::{get_add_finality_sig, get_pub_rand_value};
+    use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
 
     use crate::contract::tests::{
         create_new_finality_provider, get_public_randomness_commitment, CREATOR,
@@ -471,6 +507,48 @@ pub(crate) mod tests {
         env.block.height = height;
 
         env
+    }
+
+    #[track_caller]
+    pub(crate) fn call_begin_block(
+        deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier>,
+        app_hash: &[u8],
+        height: u64,
+    ) -> Result<Response<BabylonMsg>, crate::error::ContractError> {
+        let env = mock_env_height(height);
+        // Hash is not used in the begin-block handler
+        let hash_hex = "deadbeef".to_string();
+        let app_hash_hex = app_hash.encode_hex();
+
+        crate::contract::sudo(
+            deps.as_mut(),
+            env.clone(),
+            SudoMsg::BeginBlock {
+                hash_hex,
+                app_hash_hex,
+            },
+        )
+    }
+
+    #[track_caller]
+    pub(crate) fn call_end_block(
+        deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier>,
+        app_hash: &[u8],
+        height: u64,
+    ) -> Result<Response<BabylonMsg>, crate::error::ContractError> {
+        let env = mock_env_height(height);
+        // Hash is not used in the begin-block handler
+        let hash_hex = "deadbeef".to_string();
+        let app_hash_hex = app_hash.encode_hex();
+
+        crate::contract::sudo(
+            deps.as_mut(),
+            env.clone(),
+            SudoMsg::EndBlock {
+                hash_hex,
+                app_hash_hex,
+            },
+        )
     }
 
     #[test]
@@ -592,6 +670,34 @@ pub(crate) mod tests {
         let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
 
+        // Call the begin-block sudo handler, for completeness
+        let res = call_begin_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            initial_height + 1,
+        )
+        .unwrap();
+        assert_eq!(0, res.attributes.len());
+        assert_eq!(0, res.messages.len());
+        assert_eq!(0, res.events.len());
+
+        // Call the end-block sudo handler, so that the block is indexed in the store
+        let res = call_end_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            initial_height + 1,
+        )
+        .unwrap();
+        assert_eq!(0, res.attributes.len());
+        assert_eq!(0, res.messages.len());
+        assert_eq!(1, res.events.len());
+        assert_eq!(
+            res.events[0],
+            Event::new("index_block")
+                .add_attribute("module", "finality")
+                .add_attribute("last_height", (initial_height + 1).to_string())
+        );
+
         // Submit a finality signature from that finality provider at height initial_height + 1
         let finality_signature = add_finality_signature.finality_sig.to_vec();
         let msg = ExecuteMsg::SubmitFinalitySignature {
@@ -693,6 +799,34 @@ pub(crate) mod tests {
 
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
+        // Call the begin-block sudo handler, for completeness
+        let res = call_begin_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            initial_height + 1,
+        )
+        .unwrap();
+        assert_eq!(0, res.attributes.len());
+        assert_eq!(0, res.messages.len());
+        assert_eq!(0, res.events.len());
+
+        // Call the end-block sudo handler, so that the block is indexed in the store
+        let res = call_end_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            initial_height + 1,
+        )
+        .unwrap();
+        assert_eq!(0, res.attributes.len());
+        assert_eq!(0, res.messages.len());
+        assert_eq!(1, res.events.len());
+        assert_eq!(
+            res.events[0],
+            Event::new("index_block")
+                .add_attribute("module", "finality")
+                .add_attribute("last_height", (initial_height + 1).to_string())
+        );
+
         // Submit a finality signature from that finality provider at height initial_height + 1
         let submit_height = initial_height + 1;
         let finality_signature = add_finality_signature.finality_sig.to_vec();
@@ -713,13 +847,10 @@ pub(crate) mod tests {
         let _res = execute(deps.as_mut(), submit_env.clone(), info.clone(), msg).unwrap();
 
         // Call the begin blocker, to compute the active FP set
-        let res = crate::contract::sudo(
-            deps.as_mut(),
-            submit_env.clone(),
-            SudoMsg::BeginBlock {
-                hash_hex: "deadbeef".to_string(),
-                app_hash_hex: add_finality_signature.block_app_hash.encode_hex(),
-            },
+        let res = call_begin_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            submit_height,
         )
         .unwrap();
         assert_eq!(0, res.attributes.len());
@@ -727,13 +858,10 @@ pub(crate) mod tests {
         assert_eq!(0, res.messages.len());
 
         // Call the end blocker, to process the finality signatures
-        let res = crate::contract::sudo(
-            deps.as_mut(),
-            submit_env,
-            SudoMsg::EndBlock {
-                hash_hex: "deadbeef".to_string(),
-                app_hash_hex: add_finality_signature.block_app_hash.encode_hex(),
-            },
+        let res = call_end_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            submit_height,
         )
         .unwrap();
         assert_eq!(0, res.attributes.len());
@@ -762,5 +890,149 @@ pub(crate) mod tests {
                 finalized: true,
             }
         );
+    }
+
+    #[test]
+    fn slashing_works() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        // Read equivalent / consistent add finality signature test data
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+        let initial_env = mock_env_height(initial_height);
+
+        instantiate(
+            deps.as_mut(),
+            initial_env.clone(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
+        )
+        .unwrap();
+
+        // Register one FP with a valid pubkey first
+        let mut new_fp = create_new_finality_provider(1);
+        new_fp.btc_pk_hex.clone_from(&pk_hex);
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![new_fp.clone()],
+            active_del: vec![],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+
+        // Add a delegation, so that the finality provider has some power
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![del1.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+
+        // Submit public randomness commitment for the FP and the involved heights
+        let msg = ExecuteMsg::CommitPublicRandomness {
+            fp_pubkey_hex: pk_hex.clone(),
+            start_height: pub_rand.start_height,
+            num_pub_rand: pub_rand.num_pub_rand,
+            commitment: pub_rand.commitment.into(),
+            signature: pubrand_signature.into(),
+        };
+
+        execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
+
+        // Call the begin-block sudo handler at the next height, for completeness
+        let next_height = initial_height + 1;
+        call_begin_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            next_height,
+        )
+        .unwrap();
+
+        // Call the end-block sudo handler, so that the block is indexed in the store
+        call_end_block(
+            &mut deps,
+            &add_finality_signature.block_app_hash,
+            next_height,
+        )
+        .unwrap();
+
+        // Submit a finality signature from that finality provider at next height (initial_height + 1)
+        let submit_height = next_height;
+        // Increase block height
+        let next_height = next_height + 1;
+        let next_env = mock_env_height(next_height);
+        // Call the begin-block sudo handler at the next height, for completeness
+        call_begin_block(&mut deps, "deadbeef01".as_bytes(), next_height).unwrap();
+
+        let finality_signature = add_finality_signature.finality_sig.to_vec();
+        let msg = ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex: pk_hex.clone(),
+            height: submit_height,
+            pub_rand: pub_rand_one.clone().into(),
+            proof: proof.clone().into(),
+            block_hash: add_finality_signature.block_app_hash.to_vec().into(),
+            signature: Binary::new(finality_signature.clone()),
+        };
+
+        let _res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg.clone()).unwrap();
+
+        // Submitting the same signature twice is tolerated
+        let _res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg).unwrap();
+
+        // Submit another (different and valid) finality signature, from the same finality provider
+        // at the same height
+        let add_finality_signature_2 = get_add_finality_sig_2();
+        let msg = ExecuteMsg::SubmitFinalitySignature {
+            fp_pubkey_hex: pk_hex.clone(),
+            height: submit_height,
+            pub_rand: pub_rand_one.into(),
+            proof: proof.into(),
+            block_hash: add_finality_signature_2.block_app_hash.to_vec().into(),
+            signature: Binary::new(add_finality_signature_2.finality_sig.to_vec()),
+        };
+        let _res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg).unwrap();
+
+        // Call the end-block sudo handler for completeness / realism
+        call_end_block(&mut deps, "deadbeef01".as_bytes(), next_height).unwrap();
+
+        // Call the next (final) block begin blocker, to compute the active FP set
+        let final_height = next_height + 1;
+        call_begin_block(&mut deps, "deadbeef02".as_bytes(), final_height).unwrap();
+
+        // Call the next (final) block end blocker, to process the finality signatures
+        call_end_block(&mut deps, "deadbeef02".as_bytes(), final_height).unwrap();
+
+        // Assert the canonical block has been indexed (and finalised)
+        let indexed_block = crate::queries::block(deps.as_ref(), submit_height).unwrap();
+        assert_eq!(
+            indexed_block,
+            IndexedBlock {
+                height: submit_height,
+                app_hash: add_finality_signature.block_app_hash.to_vec(),
+                finalized: true,
+            }
+        );
+
+        // Assert the finality provider has been slashed
+        let fp = crate::queries::finality_provider(deps.as_ref(), pk_hex.clone()).unwrap();
+        assert_eq!(fp.slashed_height, submit_height);
+
+        // TODO: Assert the double signing evidence is there
     }
 }
