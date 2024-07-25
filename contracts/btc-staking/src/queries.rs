@@ -13,12 +13,12 @@ use babylon_apis::finality_api::IndexedBlock;
 use crate::error::ContractError;
 use crate::msg::{
     ActivatedHeightResponse, BlocksResponse, BtcDelegationsResponse, DelegationsByFPResponse,
-    FinalityProviderInfo, FinalityProvidersByPowerResponse, FinalityProvidersResponse,
-    FinalitySignatureResponse,
+    EvidenceResponse, FinalityProviderInfo, FinalityProvidersByPowerResponse,
+    FinalityProvidersResponse, FinalitySignatureResponse,
 };
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::finality::BLOCKS;
+use crate::state::finality::{BLOCKS, EVIDENCES};
 use crate::state::staking::{
     fps, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, FPS, FP_DELEGATIONS,
 };
@@ -232,6 +232,11 @@ pub fn blocks(
         .map(|item| item.map(|(_, v)| v))
         .collect::<Result<Vec<IndexedBlock>, _>>()?;
     Ok(BlocksResponse { blocks })
+}
+
+pub fn evidence(deps: Deps, btc_pk_hex: String, height: u64) -> StdResult<EvidenceResponse> {
+    let evidence = EVIDENCES.may_load(deps.storage, (&btc_pk_hex, height))?;
+    Ok(EvidenceResponse { evidence })
 }
 
 #[cfg(test)]

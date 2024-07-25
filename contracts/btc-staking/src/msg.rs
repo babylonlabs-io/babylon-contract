@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_controllers::AdminResponse;
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
-use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
+use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 
 use crate::state::config::{Config, Params};
 
@@ -138,6 +138,9 @@ pub enum QueryMsg {
         finalised: Option<bool>,
         reverse: Option<bool>,
     },
+    /// `Evidence` returns the evidence for a given FP and block height
+    #[returns(EvidenceResponse)]
+    Evidence { btc_pk_hex: String, height: u64 },
 }
 
 #[cw_serde]
@@ -183,4 +186,9 @@ pub struct ActivatedHeightResponse {
 #[cw_serde]
 pub struct BlocksResponse {
     pub blocks: Vec<IndexedBlock>,
+}
+
+#[cw_serde]
+pub struct EvidenceResponse {
+    pub evidence: Option<Evidence>,
 }

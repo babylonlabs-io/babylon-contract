@@ -1033,6 +1033,11 @@ pub(crate) mod tests {
         let fp = crate::queries::finality_provider(deps.as_ref(), pk_hex.clone()).unwrap();
         assert_eq!(fp.slashed_height, submit_height);
 
-        // TODO: Assert the double signing evidence is there
+        // Assert the double signing evidence is there
+        let res = crate::queries::evidence(deps.as_ref(), pk_hex.clone(), submit_height).unwrap();
+        let btc_pk = hex::decode(pk_hex).unwrap();
+        let evidence = res.evidence.unwrap();
+        assert_eq!(evidence.block_height, submit_height);
+        assert_eq!(evidence.fp_btc_pk, btc_pk);
     }
 }
