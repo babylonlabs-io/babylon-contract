@@ -1,7 +1,7 @@
 [package]
 name = "babylon-bindings-test"
 version = "0.4.0"
-authors = ["BabylonLabs <admin@babylonlabs.io>"]
+authors = ["Babylon Labs <admin@babylonlabs.io>"]
 edition = "2021"
 description = "Multitest (and other test helpers) support for Babylon-specific contracts"
 repository = "https://github.com/babylonlabs-io/babylon-contract"
