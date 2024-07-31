@@ -1,11 +1,11 @@
 [package]
 name = "babylon-bindings-test"
 version = "0.4.0"
-authors = ["Babylonchain <info@bylonchain.io>"]
+authors = ["Babylon Labs <admin@babylonlabs.io>"]
 edition = "2021"
 description = "Multitest (and other test helpers) support for Babylon-specific contracts"
-repository = "https://github.com/babylonchain/babylon-contract"
-homepage = "https://babylonchain.io"
+repository = "https://github.com/babylonlabs-io/babylon-contract"
+homepage = "https://babylonlabs.io"
 license = "Apache-2.0"
 
 [dependencies]

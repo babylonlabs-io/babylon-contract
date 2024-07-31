@@ -1,12 +1,12 @@
 # Changelog
 
-## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
+## [Unreleased](https://github.com/babylonlabs-io/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...HEAD)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.7.0...HEAD)
 
-## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-24)
+## [v0.7.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.7.0) (2024-06-24)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0-rc.1...v0.7.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.7.0-rc.1...v0.7.0)
 
 **Closed issues:**
 
@@ -20,9 +20,9 @@
 - feat: implement killswitch [\#182](https://github.com/babylonchain/babylon-contract/pull/182) ([parketh](https://github.com/parketh))
 - fix: comment out unused code [\#146](https://github.com/babylonchain/babylon-contract/pull/146) ([bap2pecs](https://github.com/bap2pecs))
 
-## [v0.7.0-rc.1](https://github.com/babylonchain/babylon-contract/tree/v0.7.0-rc.1) (2024-06-21)
+## [v0.7.0-rc.1](https://github.com/babylonlabs-io/babylon-contract/tree/v0.7.0-rc.1) (2024-06-21)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0-rc.0...v0.7.0-rc.1)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.7.0-rc.0...v0.7.0-rc.1)
 
 **Closed issues:**
 
@@ -43,9 +43,9 @@
 - feat: set activated height [\#168](https://github.com/babylonchain/babylon-contract/pull/168) ([lesterli](https://github.com/lesterli))
 - feat: Use gRPC to query the Babylon Chain [\#158](https://github.com/babylonchain/babylon-contract/pull/158) ([lesterli](https://github.com/lesterli))
 
-## [v0.7.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0-rc.0) (2024-06-19)
+## [v0.7.0-rc.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.7.0-rc.0) (2024-06-19)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0-rc.0...v0.7.0-rc.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.6.0-rc.0...v0.7.0-rc.0)
 
 **Closed issues:**
 
@@ -73,9 +73,9 @@
 - crypto: error/option handling in EOTS implementation [\#139](https://github.com/babylonchain/babylon-contract/pull/139) ([SebastianElvis](https://github.com/SebastianElvis))
 - R/btc staking modules [\#138](https://github.com/babylonchain/babylon-contract/pull/138) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.6.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
+## [v0.6.0-rc.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0-rc.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.5.3...v0.6.0-rc.0)
 
 **Closed issues:**
 
@@ -115,9 +115,9 @@
 - BTC undelegate basic impl [\#98](https://github.com/babylonchain/babylon-contract/pull/98) ([maurolacy](https://github.com/maurolacy))
 - crypto: EOTS implementation [\#95](https://github.com/babylonchain/babylon-contract/pull/95) ([SebastianElvis](https://github.com/SebastianElvis))
 
-## [v0.5.3](https://github.com/babylonchain/babylon-contract/tree/v0.5.3) (2024-05-13)
+## [v0.5.3](https://github.com/babylonlabs-io/babylon-contract/tree/v0.5.3) (2024-05-13)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.2...v0.5.3)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.5.2...v0.5.3)
 
 **Closed issues:**
 
@@ -127,18 +127,18 @@
 
 - Fix/reverse hash [\#96](https://github.com/babylonchain/babylon-contract/pull/96) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.5.2](https://github.com/babylonchain/babylon-contract/tree/v0.5.2) (2024-05-07)
+## [v0.5.2](https://github.com/babylonlabs-io/babylon-contract/tree/v0.5.2) (2024-05-07)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.1...v0.5.2)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.5.1...v0.5.2)
 
 **Merged pull requests:**
 
 - Fix/protos [\#91](https://github.com/babylonchain/babylon-contract/pull/91) ([maurolacy](https://github.com/maurolacy))
 - Fix: publish schemas on release [\#90](https://github.com/babylonchain/babylon-contract/pull/90) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.5.1](https://github.com/babylonchain/babylon-contract/tree/v0.5.1) (2024-05-06)
+## [v0.5.1](https://github.com/babylonlabs-io/babylon-contract/tree/v0.5.1) (2024-05-06)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.0...v0.5.1)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.5.0...v0.5.1)
 
 **Closed issues:**
 
@@ -150,9 +150,9 @@
 - Release 0.5 follow up [\#87](https://github.com/babylonchain/babylon-contract/pull/87) ([maurolacy](https://github.com/maurolacy))
 - datagen: refactor datagen and test utilities [\#86](https://github.com/babylonchain/babylon-contract/pull/86) ([SebastianElvis](https://github.com/SebastianElvis))
 
-## [v0.5.0](https://github.com/babylonchain/babylon-contract/tree/v0.5.0) (2024-05-03)
+## [v0.5.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.5.0) (2024-05-03)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.4.0...v0.5.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.4.0...v0.5.0)
 
 **Closed issues:**
 
@@ -178,9 +178,9 @@
 - Babylon contract benchmarks [\#61](https://github.com/babylonchain/babylon-contract/pull/61) ([maurolacy](https://github.com/maurolacy))
 - Upgrade to latest rust-bitcoin 0.31.x [\#60](https://github.com/babylonchain/babylon-contract/pull/60) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.4.0](https://github.com/babylonchain/babylon-contract/tree/v0.4.0) (2024-02-14)
+## [v0.4.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.4.0) (2024-02-14)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.3.0...v0.4.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.3.0...v0.4.0)
 
 **Merged pull requests:**
 
@@ -198,25 +198,25 @@
 - chore: bump Babylon with ABCI++ [\#41](https://github.com/babylonchain/babylon-contract/pull/41) ([SebastianElvis](https://github.com/SebastianElvis))
 - Babylon tag format [\#40](https://github.com/babylonchain/babylon-contract/pull/40) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.3.0](https://github.com/babylonchain/babylon-contract/tree/v0.3.0) (2024-02-09)
+## [v0.3.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.3.0) (2024-02-09)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.2.0...v0.3.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.2.0...v0.3.0)
 
 **Closed issues:**
 
 - Get rid of Makefile [\#48](https://github.com/babylonchain/babylon-contract/issues/48)
 
-## [v0.2.0](https://github.com/babylonchain/babylon-contract/tree/v0.2.0) (2023-12-22)
+## [v0.2.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.2.0) (2023-12-22)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.1.0...v0.2.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.1.0...v0.2.0)
 
 **Merged pull requests:**
 
 - API adjustments / serialisation support [\#37](https://github.com/babylonchain/babylon-contract/pull/37) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.1.0](https://github.com/babylonchain/babylon-contract/tree/v0.1.0) (2023-12-22)
+## [v0.1.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.1.0) (2023-12-22)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/975426f4cef50ce47610b51a55c576c5ddd1d39b...v0.1.0)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/975426f4cef50ce47610b51a55c576c5ddd1d39b...v0.1.0)
 
 **Closed issues:**
 

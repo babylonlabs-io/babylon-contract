@@ -6,7 +6,7 @@ CUR_BASENAME=$(basename $CUR_DIR)
 
 # Native arch
 BUILDARCH=$(uname -m)
-OPTIMIZER_IMAGE_NAME="babylonchain/rust-optimizer-$BUILDARCH"
+OPTIMIZER_IMAGE_NAME="babylonlabs-io/rust-optimizer-$BUILDARCH"
 
 if [ -z "$($DOCKER images -q $OPTIMIZER_IMAGE_NAME)" ]
 then 
