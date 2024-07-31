@@ -1,3 +1,4 @@
+use babylon_apis::finality_api::Evidence;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, StdError, StdResult};
 
@@ -63,6 +64,13 @@ pub enum ExecuteMsg {
         /// `headers` is a list of BTC headers. Typically:
         /// - A given delta of headers a user wants to add to the tip of, or fork the BTC chain.
         headers: Vec<BtcHeader>,
+    },
+    /// `slashing` is a slashing event from the BTC staking contract.
+    ///
+    /// This will be forwarded over IBC to the Babylon side for propagation to other Consumers, and to Babylon itself
+    Slashing {
+        /// `evidence` is the slashing evidence
+        evidence: Evidence,
     },
 }
 

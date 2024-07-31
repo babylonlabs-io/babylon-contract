@@ -4,15 +4,19 @@ use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
 use cosmwasm_std::{
-    DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannelCloseMsg,
+    DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdAck, StdError,
-    StdResult,
+    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, Never, StdAck,
+    StdError, StdResult,
 };
+use cw_storage_plus::Item;
 use prost::Message;
 
 pub const IBC_VERSION: &str = "zoneconcierge-1";
 pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
+
+// IBC specific state
+pub const IBC_CHANNEL: Item<IbcChannel> = Item::new("ibc_channel");
 
 /// This is executed during the ChannelOpenInit and ChannelOpenTry
 /// of the IBC 4-step channel protocol
@@ -20,18 +24,22 @@ pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
 /// In the case of ChannelOpenTry there's a counterparty_version attribute in the message.
 /// Here we ensure the ordering and version constraints.
 pub fn ibc_channel_open(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
-    // the IBC channel has to be ordered
+    // Ensure we have no channel yet
+    if IBC_CHANNEL.may_load(deps.storage)?.is_some() {
+        return Err(ContractError::IbcChannelAlreadyOpen {});
+    }
+    // The IBC channel has to be ordered
     let channel = msg.channel();
     if channel.order != IBC_ORDERING {
         return Err(ContractError::IbcUnorderedChannel {});
     }
 
-    // In ibcv3 we don't check the version string passed in the message
-    // and only check the counterparty version.
+    // In IBCv3 we don't check the version string passed in the message
+    // and only check the counterparty version
     if let Some(counter_version) = msg.counterparty_version() {
         if counter_version != IBC_VERSION {
             return Err(ContractError::IbcInvalidCounterPartyVersion {
@@ -40,22 +48,28 @@ pub fn ibc_channel_open(
         }
     }
 
-    // We return the version we need (which could be different than the counterparty version)
+    // We return the version we need (which could be different from the counterparty version)
     Ok(Some(Ibc3ChannelOpenResponse {
         version: IBC_VERSION.to_string(),
     }))
 }
 
-/// Second part of the 4-step handshake, i.e.,
-/// ChannelOpenAck and ChannelOpenConfirm.
+/// Second part of the 4-step handshake, i.e. ChannelOpenAck and ChannelOpenConfirm.
 pub fn ibc_channel_connect(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     msg: IbcChannelConnectMsg,
-) -> StdResult<IbcBasicResponse> {
+) -> Result<IbcBasicResponse, ContractError> {
+    // Ensure we have no channel yet
+    if IBC_CHANNEL.may_load(deps.storage)?.is_some() {
+        return Err(ContractError::IbcChannelAlreadyOpen {});
+    }
     let channel = msg.channel();
-    let chan_id = &channel.endpoint.channel_id;
 
+    // Store the channel
+    IBC_CHANNEL.save(deps.storage, channel)?;
+
+    let chan_id = &channel.endpoint.channel_id;
     Ok(IbcBasicResponse::new()
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
@@ -70,7 +84,7 @@ pub fn ibc_channel_close(
     msg: IbcChannelCloseMsg,
 ) -> StdResult<IbcBasicResponse> {
     let channel = msg.channel();
-    // get contract address and remove lookup
+    // Get contract address and remove lookup
     let channel_id = channel.endpoint.channel_id.as_str();
 
     Ok(IbcBasicResponse::new()
@@ -123,16 +137,21 @@ pub fn ibc_packet_receive(
 }
 
 // Methods to handle PacketMsg variants
-mod ibc_packet {
+pub(crate) mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
-    use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
-        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
-        UnbondedBtcDelegation,
+    use babylon_apis::ibc_consumer::{consumer_packet_data, ConsumerPacketData};
+    use babylon_apis::{
+        btc_staking_api::{
+            ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
+            FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
+            UnbondedBtcDelegation,
+        },
+        finality_api::Evidence,
+        ibc_consumer,
     };
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
-    use cosmwasm_std::{to_json_binary, Decimal, WasmMsg};
+    use cosmwasm_std::{to_json_binary, Decimal, IbcChannel, IbcMsg, WasmMsg};
     use std::str::FromStr;
 
     pub fn handle_btc_timestamp(
@@ -288,24 +307,49 @@ mod ibc_packet {
 
         Ok(resp)
     }
+
+    pub fn slashing_msg(
+        env: &Env,
+        channel: &IbcChannel,
+        evidence: Evidence,
+    ) -> Result<IbcMsg, ContractError> {
+        let packet = ConsumerPacketData {
+            packet: consumer_packet_data::Packet::Slashing(ibc_consumer::Slashing { evidence }),
+        };
+        let msg = IbcMsg::SendPacket {
+            channel_id: channel.endpoint.channel_id.clone(),
+            data: to_json_binary(&packet)?,
+            timeout: packet_timeout(env),
+        };
+        Ok(msg)
+    }
 }
 
-/// never should be called as we do not send packets
+const DEFAULT_TIMEOUT: u64 = 10 * 60;
+
+pub fn packet_timeout(env: &Env) -> IbcTimeout {
+    let timeout = env.block.time.plus_seconds(DEFAULT_TIMEOUT);
+    IbcTimeout::with_timestamp(timeout)
+}
+
 pub fn ibc_packet_ack(
     _deps: DepsMut,
     _env: Env,
     _msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    Err(ContractError::IbcUnsupportedMethod {})
+    Ok(IbcBasicResponse::default())
 }
 
-/// never should be called as we do not send packets
 pub fn ibc_packet_timeout(
     _deps: DepsMut,
     _env: Env,
-    _msg: IbcPacketTimeoutMsg,
+    msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    Err(ContractError::IbcUnsupportedMethod {})
+    // TODO: handle the timeout / error
+    Err(ContractError::IbcTimeout(
+        msg.packet.dest.channel_id,
+        msg.packet.dest.port_id,
+    ))
 }
 
 #[cfg(test)]

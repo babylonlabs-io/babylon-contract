@@ -70,6 +70,7 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
     let resp: ExecuteMsg = from_json(testdata).unwrap();
     match resp {
         ExecuteMsg::BtcHeaders { headers } => headers,
+        ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
     }
 }
 

@@ -5,7 +5,7 @@ use std::cmp::max;
 use std::collections::HashSet;
 
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{DepsMut, Env, Event, Response, StdResult, Storage};
+use cosmwasm_std::{to_json_binary, DepsMut, Env, Event, Response, StdResult, Storage, WasmMsg};
 
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 use babylon_bindings::BabylonMsg;
@@ -14,7 +14,7 @@ use babylon_merkle::Proof;
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
 use crate::staking;
-use crate::state::config::PARAMS;
+use crate::state::config::{CONFIG, PARAMS};
 use crate::state::finality::{BLOCKS, EVIDENCES, NEXT_HEIGHT, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
@@ -223,7 +223,8 @@ pub fn handle_finality_signature(
             evidence.canonical_finality_sig = canonical_sig;
             // Slash this finality provider, including setting its voting power to zero, extracting
             // its BTC SK, and emitting an event
-            let ev = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+            let (msg, ev) = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+            res = res.add_message(msg);
             res = res.add_event(ev);
         }
         // TODO?: Also slash if this finality provider has signed another fork before
@@ -250,8 +251,9 @@ pub fn handle_finality_signature(
         EVIDENCES.save(deps.storage, (fp_btc_pk_hex, height), &evidence)?;
 
         // Slash this finality provider, including setting its voting power to zero, extracting its
-        // BTC SK, and emit an event
-        let ev = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+        // BTC SK, and emitting an event
+        let (msg, ev) = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+        res = res.add_message(msg);
         res = res.add_event(ev);
     }
 
@@ -265,12 +267,25 @@ fn slash_finality_provider(
     env: Env,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
-) -> Result<Event, ContractError> {
+) -> Result<(WasmMsg, Event), ContractError> {
     // Slash this finality provider, i.e., set its slashing height to the block height
     staking::slash_finality_provider(store, env, fp_btc_pk_hex, evidence.block_height)
         .map_err(|err| ContractError::FailedToSlashFinalityProvider(err.to_string()))?;
 
     // Emit slashing event
+    // Raise slashing event to babylon over IBC. Send to babylon-contract for forwarding
+    let msg = babylon_contract::ExecuteMsg::Slashing {
+        evidence: evidence.clone(),
+    };
+
+    let babylon_addr = CONFIG.load(store)?.babylon;
+
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: babylon_addr.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+
     let ev = Event::new("slashed_finality_provider")
         .add_attribute("module", "finality")
         .add_attribute("finality_provider", fp_btc_pk_hex)
@@ -288,7 +303,7 @@ fn slash_finality_provider(
             "fork_finality_sig",
             hex::encode(&evidence.fork_finality_sig),
         );
-    Ok(ev)
+    Ok((wasm_msg, ev))
 }
 
 /// Verifies the finality signature message w.r.t. the public randomness commitment:
@@ -492,7 +507,7 @@ pub(crate) mod tests {
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{Binary, Env, Event, OwnedDeps, Response};
+    use cosmwasm_std::{to_json_binary, Binary, Env, Event, OwnedDeps, Response, SubMsg, WasmMsg};
     use hex::ToHex;
     use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
 
@@ -990,10 +1005,14 @@ pub(crate) mod tests {
             signature: Binary::new(finality_signature.clone()),
         };
 
-        let _res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg.clone()).unwrap();
+        let res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg.clone()).unwrap();
+        assert_eq!(0, res.messages.len());
+        assert_eq!(0, res.events.len());
 
         // Submitting the same signature twice is tolerated
-        let _res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        assert_eq!(0, res.events.len());
 
         // Submit another (different and valid) finality signature, from the same finality provider
         // at the same height
@@ -1006,7 +1025,33 @@ pub(crate) mod tests {
             block_hash: add_finality_signature_2.block_app_hash.to_vec().into(),
             signature: Binary::new(add_finality_signature_2.finality_sig.to_vec()),
         };
-        let _res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), next_env.clone(), info.clone(), msg).unwrap();
+
+        // Assert the double signing evidence is proper
+        let btc_pk = hex::decode(pk_hex.clone()).unwrap();
+        let evidence = crate::queries::evidence(deps.as_ref(), pk_hex.clone(), submit_height)
+            .unwrap()
+            .evidence
+            .unwrap();
+        assert_eq!(evidence.block_height, submit_height);
+        assert_eq!(evidence.fp_btc_pk, btc_pk);
+
+        // Assert the slashing propagation msg is there
+        assert_eq!(1, res.messages.len());
+        // Assert the slashing propagation msg is proper
+        let babylon_addr = crate::queries::config(deps.as_ref()).unwrap().babylon;
+        assert_eq!(
+            res.messages[0],
+            SubMsg::new(WasmMsg::Execute {
+                contract_addr: babylon_addr.to_string(),
+                msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing { evidence }).unwrap(),
+                funds: vec![]
+            })
+        );
+        // Assert the slashing event is there
+        assert_eq!(1, res.events.len());
+        // Assert the slashing event is proper
+        assert_eq!(res.events[0].ty, "slashed_finality_provider".to_string());
 
         // Call the end-block sudo handler for completeness / realism
         call_end_block(&mut deps, "deadbeef01".as_bytes(), next_height).unwrap();
@@ -1030,14 +1075,7 @@ pub(crate) mod tests {
         );
 
         // Assert the finality provider has been slashed
-        let fp = crate::queries::finality_provider(deps.as_ref(), pk_hex.clone()).unwrap();
+        let fp = crate::queries::finality_provider(deps.as_ref(), pk_hex).unwrap();
         assert_eq!(fp.slashed_height, submit_height);
-
-        // Assert the double signing evidence is there
-        let res = crate::queries::evidence(deps.as_ref(), pk_hex.clone(), submit_height).unwrap();
-        let btc_pk = hex::decode(pk_hex).unwrap();
-        let evidence = res.evidence.unwrap();
-        assert_eq!(evidence.block_height, submit_height);
-        assert_eq!(evidence.fp_btc_pk, btc_pk);
     }
 }

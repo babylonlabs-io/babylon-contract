@@ -232,7 +232,6 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 }
 
 // index_btc_height indexes the current BTC height, and saves it to the state
-#[allow(dead_code)]
 fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
     // FIXME: Turn this into a hard error. Requires `babylon-contract` instance, and up and running
     // BTC light client loop (which requires a running BTC node / simulator)
@@ -244,7 +243,6 @@ fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError
 }
 
 /// get_btc_tip queries the Babylon contract for the latest BTC tip
-#[allow(dead_code)]
 fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
     // Get the BTC tip from the babylon contract through a raw query
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;

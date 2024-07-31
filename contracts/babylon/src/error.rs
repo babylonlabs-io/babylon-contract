@@ -20,12 +20,20 @@ pub enum ContractError {
     BabylonEpochError(#[from] BabylonEpochChainError),
     #[error("{0}")]
     CzHeaderError(#[from] CZHeaderChainError),
+    #[error("Contract already has an open IBC channel")]
+    IbcChannelAlreadyOpen {},
     #[error("The contract only supports ordered channels")]
     IbcUnorderedChannel {},
     #[error("Counterparty version must be `{version}`")]
     IbcInvalidCounterPartyVersion { version: String },
     #[error("IBC method is not supported")]
     IbcUnsupportedMethod {},
+    #[error("IBC send timed out: dest: channel {0}, port {1}")]
+    IbcTimeout(String, String),
+    #[error("Unauthorized")]
+    Unauthorized {},
+    #[error("The BTC staking contract is not set")]
+    BtcStakingNotSet {},
 }
 
 #[derive(Error, Debug, PartialEq)]

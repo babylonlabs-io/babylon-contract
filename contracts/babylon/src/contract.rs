@@ -5,6 +5,7 @@ use cosmwasm_std::{
 };
 use cw_utils::ParseReplyError;
 
+use crate::ibc::{ibc_packet, IBC_CHANNEL};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
@@ -144,8 +145,8 @@ pub fn migrate(
 
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    env: Env,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
@@ -159,6 +160,22 @@ pub fn execute(
             }
             // TODO: Add events
             Ok(Response::new())
+        }
+        ExecuteMsg::Slashing { evidence } => {
+            // This is an internal routing message from the `btc-staking` contract
+            // Check sender
+            let btc_staking = CONFIG
+                .load(deps.storage)?
+                .btc_staking
+                .ok_or(ContractError::BtcStakingNotSet {})?;
+            if info.sender != btc_staking {
+                return Err(ContractError::Unauthorized {});
+            }
+            // Send over IBC to the Provider (Babylon)
+            let channel = IBC_CHANNEL.load(deps.storage)?;
+            let msg = ibc_packet::slashing_msg(&env, &channel, evidence)?;
+            // TODO: Add events
+            Ok(Response::new().add_message(msg))
         }
     }
 }

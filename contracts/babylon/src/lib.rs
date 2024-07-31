@@ -6,9 +6,11 @@ use cosmwasm_std::{
     IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Never, Reply, Response, StdResult,
 };
 
-use crate::error::ContractError;
-use crate::msg::{contract::ExecuteMsg, contract::InstantiateMsg};
 use babylon_bindings::BabylonMsg;
+
+use crate::error::ContractError;
+pub use crate::msg::contract::ExecuteMsg;
+use crate::msg::contract::InstantiateMsg;
 
 mod bindings;
 pub mod contract;
@@ -70,7 +72,7 @@ pub fn ibc_channel_connect(
     deps: DepsMut,
     env: Env,
     msg: IbcChannelConnectMsg,
-) -> StdResult<IbcBasicResponse> {
+) -> Result<IbcBasicResponse, ContractError> {
     ibc::ibc_channel_connect(deps, env, msg)
 }
 
