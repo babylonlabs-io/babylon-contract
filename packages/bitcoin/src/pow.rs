@@ -31,7 +31,7 @@ pub fn verify_header_pow(
 /// verify_next_header_pow checks whether the given btc_header extends the given
 /// prev_btc_header, including checking prev hash and PoW.
 /// It is identical to BTCLightclient's implementation in
-/// https://github.com/babylonchain/babylon/blob/v0.5.0/x/btclightclient/keeper/msg_server.go#L126-L149
+/// https://github.com/babylonlabs-io/babylon/blob/v0.5.0/x/btclightclient/keeper/msg_server.go#L126-L149
 pub fn verify_next_header_pow(
     chain_params: &bitcoin::consensus::Params,
     prev_header: &BlockHeader,

@@ -7,7 +7,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{CosmosMsg, Empty};
 
 /// BabylonMsg is the message that the Babylon contract can send to the Cosmos zone.
-/// The Cosmos zone has to integrate https://github.com/babylonchain/wasmbinding for
+/// The Cosmos zone has to integrate https://github.com/babylonlabs-io/wasmbinding for
 /// handling these messages
 #[cw_serde]
 pub enum BabylonMsg {
