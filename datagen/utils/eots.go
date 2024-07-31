@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/babylonchain/babylon/crypto/eots"
+	"github.com/babylonlabs-io/babylon/crypto/eots"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 )
 

@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	bbnapp "github.com/babylonchain/babylon/app"
-	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/babylon/types"
-	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
+	bbnapp "github.com/babylonlabs-io/babylon/app"
+	"github.com/babylonlabs-io/babylon/testutil/datagen"
+	"github.com/babylonlabs-io/babylon/types"
+	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
 	"github.com/btcsuite/btcd/chaincfg"
 )
 
