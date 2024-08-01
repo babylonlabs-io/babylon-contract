@@ -284,10 +284,13 @@ fn slash_finality_provider(
     )
     .map_err(|err| ContractError::SecretKeyExtractionError(err.to_string()))?;
 
-    // Emit slashing event
-    // Raise slashing event to babylon over IBC. Send to babylon-contract for forwarding
+    // Emit slashing event.
+    // Raises slashing event to babylon over IBC.
+    // Send to babylon-contract for forwarding
     let msg = babylon_contract::ExecuteMsg::Slashing {
-        evidence: evidence.clone(),
+        fp_btc_pk: evidence.fp_btc_pk.clone(),
+        block_height: evidence.block_height,
+        secret_key: btc_sk.to_bytes(),
     };
 
     let babylon_addr = CONFIG.load(store)?.babylon;
@@ -1042,18 +1045,25 @@ pub(crate) mod tests {
         assert_eq!(1, res.messages.len());
         // Assert the slashing propagation msg is proper
         let babylon_addr = crate::queries::config(deps.as_ref()).unwrap().babylon;
-        assert_eq!(
-            res.messages[0],
-            SubMsg::new(WasmMsg::Execute {
-                contract_addr: babylon_addr.to_string(),
-                msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing { evidence }).unwrap(),
-                funds: vec![]
-            })
-        );
         // Assert the slashing event is there
         assert_eq!(1, res.events.len());
         // Assert the slashing event is proper
         assert_eq!(res.events[0].ty, "slashed_finality_provider".to_string());
+        // Use the extracted secret key for simplicity
+        let btc_sk = hex::decode(res.events[0].attributes[7].value.clone()).unwrap();
+        assert_eq!(
+            res.messages[0],
+            SubMsg::new(WasmMsg::Execute {
+                contract_addr: babylon_addr.to_string(),
+                msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing {
+                    fp_btc_pk: btc_pk.clone(),
+                    block_height: submit_height,
+                    secret_key: btc_sk
+                })
+                .unwrap(),
+                funds: vec![]
+            })
+        );
 
         // Call the end-block sudo handler for completeness / realism
         call_end_block(&mut deps, "deadbeef01".as_bytes(), next_height).unwrap();
