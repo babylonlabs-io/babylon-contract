@@ -20,7 +20,7 @@ pub const IBC_CHANNEL: Item<IbcChannel> = Item::new("ibc_channel");
 
 /// This is executed during the ChannelOpenInit and ChannelOpenTry
 /// of the IBC 4-step channel protocol
-/// (see https://github.com/cosmos/ibc/tree/main/spec/core/ics-004-channel-and-packet-semantics#channel-lifecycle-management)
+/// (see https://gpub pub ithub.com/cosmos/ibc/tree/main/spec/core/ics-004-channel-and-packet-semantics#channel-lifecycle-management)
 /// In the case of ChannelOpenTry there's a counterparty_version attribute in the message.
 /// Here we ensure the ordering and version constraints.
 pub fn ibc_channel_open(
@@ -141,15 +141,11 @@ pub(crate) mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
     use babylon_apis::ibc_consumer::{consumer_packet_data, ConsumerPacketData};
-    use babylon_apis::{
-        btc_staking_api::{
-            ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
-            FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
-            UnbondedBtcDelegation,
-        },
-        finality_api::Evidence,
-        ibc_consumer,
-    };
+    use babylon_apis::{btc_staking_api::{
+        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
+        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
+        UnbondedBtcDelegation,
+    }, ibc_consumer};
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use cosmwasm_std::{to_json_binary, Decimal, IbcChannel, IbcMsg, WasmMsg};
     use std::str::FromStr;
@@ -311,11 +307,15 @@ pub(crate) mod ibc_packet {
     pub fn slashing_msg(
         env: &Env,
         channel: &IbcChannel,
-        evidence: Evidence,
+        fp_btc_pk: &[u8],
+        block_height: u64,
+        secret_key: &[u8],
     ) -> Result<IbcMsg, ContractError> {
-        let packet = ConsumerPacketData {
-            packet: consumer_packet_data::Packet::Slashing(ibc_consumer::Slashing { evidence }),
-        };
+        let packet = ConsumerPacketData { packet: consumer_packet_data::Packet::Slashing(ibc_consumer::Slashing {
+            fp_btc_pk: fp_btc_pk.to_vec(),
+            block_height,
+            secret_key: secret_key.to_vec(),
+        }), };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.endpoint.channel_id.clone(),
             data: to_json_binary(&packet)?,
