@@ -52,7 +52,7 @@ pub struct Evidence {
     /// `block_height` is the height of the conflicting blocks
     pub block_height: u64,
     /// `pub_rand is` the public randomness the finality provider has committed to.
-    /// Deserializes `SchnorrPubRand`
+    /// Deserializes to `SchnorrPubRand`
     pub pub_rand: Bytes,
     /// `canonical_app_hash` is the AppHash of the canonical block
     pub canonical_app_hash: Bytes,

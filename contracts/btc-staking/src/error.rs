@@ -92,4 +92,8 @@ pub enum ContractError {
     FinalityProviderAlreadySlashed(String),
     #[error("Failed to slash finality provider: {0}")]
     FailedToSlashFinalityProvider(String),
+    #[error("Failed to extract secret key: {0}")]
+    SecretKeyExtractionError(String),
+    #[error("Hash length error: {0}")]
+    WrongHashLength(String),
 }

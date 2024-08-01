@@ -7,6 +7,10 @@ use std::collections::HashSet;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{to_json_binary, DepsMut, Env, Event, Response, StdResult, Storage, WasmMsg};
 
+use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_bindings::BabylonMsg;
+use babylon_merkle::Proof;
+
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
 use crate::staking;
@@ -16,9 +20,6 @@ use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
 use crate::state::staking::{fps, FPS, FP_SET};
-use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
-use babylon_bindings::BabylonMsg;
-use babylon_merkle::Proof;
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -271,6 +272,18 @@ fn slash_finality_provider(
     staking::slash_finality_provider(store, env, fp_btc_pk_hex, evidence.block_height)
         .map_err(|err| ContractError::FailedToSlashFinalityProvider(err.to_string()))?;
 
+    // Extract BTC SK using the evidence
+    let pk = eots::PublicKey::from_hex(fp_btc_pk_hex).map_err(ContractError::EotsError)?;
+    let btc_sk = eots::extract(
+        &pk,
+        &evidence.pub_rand,
+        &evidence.canonical_app_hash,
+        &evidence.canonical_finality_sig,
+        &evidence.fork_app_hash,
+        &evidence.fork_finality_sig,
+    )
+    .map_err(|err| ContractError::SecretKeyExtractionError(err.to_string()))?;
+
     // Emit slashing event
     // Raise slashing event to babylon over IBC. Send to babylon-contract for forwarding
     let msg = babylon_contract::ExecuteMsg::Slashing {
@@ -301,7 +314,8 @@ fn slash_finality_provider(
         .add_attribute(
             "fork_finality_sig",
             hex::encode(&evidence.fork_finality_sig),
-        );
+        )
+        .add_attribute("secret_key", hex::encode(btc_sk.to_bytes()));
     Ok((wasm_msg, ev))
 }
 
