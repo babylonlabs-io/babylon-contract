@@ -1,5 +1,10 @@
 #![allow(non_snake_case)]
 
+pub mod error;
+
+use error::EotsError;
+pub type Result<T> = std::result::Result<T, EotsError>;
+
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::{
     elliptic_curve::{
@@ -31,11 +36,11 @@ pub type SecRand = Scalar;
 
 /// new_sec_rand parses the given bytes into a new secret randomness
 /// the given byte slice has to be a 32-byte scalar
-pub fn new_sec_rand(r: &[u8]) -> Result<SecRand, String> {
+pub fn new_sec_rand(r: &[u8]) -> Result<SecRand> {
     let array: [u8; 32] = r
         .try_into()
-        .map_err(|_| format!("Expected a Vec of length 32 but got {}", r.len()))?;
-    SecRand::from_repr_vartime(array.into()).ok_or("failed to get secret randomness".to_string())
+        .map_err(|_| EotsError::InvalidInputLength(r.len()))?;
+    SecRand::from_repr_vartime(array.into()).ok_or(EotsError::SecretRandomnessParseFailed {})
 }
 
 /// PubRand is the type for a public randomness
@@ -45,10 +50,10 @@ pub type PubRand = ProjectivePoint;
 /// new_pub_rand parses the given bytes into a new public randomness
 /// the given byte slice has to be 32-byte representation of an x coordinate
 /// on secp256k1 curve
-pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand, String> {
+pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand> {
     let array: [u8; 32] = x_bytes
         .try_into()
-        .map_err(|_| format!("Expected a Vec of length 32 but got {}", x_bytes.len()))?;
+        .map_err(|_| EotsError::InvalidInputLength(x_bytes.len()))?;
 
     // Convert x_bytes to a FieldElement
     let x = k256::FieldBytes::from(array);
@@ -58,7 +63,7 @@ pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand, String> {
     if ap_option.is_some().into() {
         Ok(ProjectivePoint::from(ap_option.unwrap()))
     } else {
-        Err("failed to get public randomness".to_string())
+        Err(EotsError::PublicRandomnessParseFailed {})
     }
 }
 
@@ -66,11 +71,11 @@ pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand, String> {
 /// i.e., s in a Schnorr signature (R, s)
 pub type Signature = Scalar;
 
-pub fn new_sig(r: &[u8]) -> Result<Signature, String> {
+pub fn new_sig(r: &[u8]) -> Result<Signature> {
     let array: [u8; 32] = r
         .try_into()
-        .map_err(|_| format!("Expected a Vec of length 32 but got {}", r.len()))?;
-    Signature::from_repr_vartime(array.into()).ok_or("failed to get EOTS signature".to_string())
+        .map_err(|_| EotsError::InvalidInputLength(r.len()))?;
+    Signature::from_repr_vartime(array.into()).ok_or(EotsError::SignatureParseFailed {})
 }
 
 /// SecretKey is a secret key, formed as a 32-byte scalar
@@ -96,16 +101,21 @@ fn point_to_bytes(P: &ProjectivePoint) -> [u8; 32] {
 
 #[allow(clippy::new_without_default)]
 impl SecretKey {
-    pub fn from_bytes(x: [u8; 32]) -> Result<Self, String> {
+    pub fn from_bytes(x: [u8; 32]) -> Result<Self> {
         let inner =
-            Scalar::from_repr_vartime(x.into()).ok_or("failed to convert bytes to secret key")?;
+            Scalar::from_repr_vartime(x.into()).ok_or(EotsError::SecretKeyParseFailed {})?;
+
         let sk = k256::SecretKey::new(inner.into());
         Ok(SecretKey { inner: sk })
     }
 
-    pub fn from_hex(x_hex: &str) -> Result<Self, String> {
-        let x_slice = hex::decode(x_hex).map_err(|e| e.to_string())?;
-        let x: [u8; 32] = x_slice.try_into().map_err(|_| "wrong hex string length")?;
+    pub fn from_hex(x_hex: &str) -> Result<Self> {
+        let x_slice = hex::decode(x_hex)?;
+        let x: [u8; 32] = x_slice
+            .clone()
+            .try_into()
+            .map_err(|_| EotsError::InvalidInputLength(x_slice.len()))?;
+
         SecretKey::from_bytes(x)
     }
 
@@ -142,22 +152,27 @@ impl SecretKey {
 }
 
 impl PublicKey {
-    pub fn from_bytes(x_bytes: [u8; 32]) -> Result<Self, String> {
+    pub fn from_bytes(x_bytes: [u8; 32]) -> Result<Self> {
         let x = k256::FieldBytes::from(x_bytes);
 
         // Attempt to derive the corresponding y-coordinate
         let ap_option = AffinePoint::decompress(&x, Choice::from(0));
         if ap_option.is_some().into() {
-            let pk = k256::PublicKey::from_affine(ap_option.unwrap()).map_err(|e| e.to_string())?;
+            let pk = k256::PublicKey::from_affine(ap_option.unwrap())
+                .map_err(|e| EotsError::EllipticCurveError(e.to_string()))?;
             Ok(PublicKey { inner: pk })
         } else {
-            Err("failed to get public key".to_string())
+            Err(EotsError::PublicKeyParseFailed {})
         }
     }
 
-    pub fn from_hex(P_hex: &str) -> Result<Self, String> {
-        let P_slice = hex::decode(P_hex).map_err(|e| e.to_string())?;
-        let P: [u8; 32] = P_slice.try_into().map_err(|_| "wrong hex string length")?;
+    pub fn from_hex(P_hex: &str) -> Result<Self> {
+        let P_slice = hex::decode(P_hex)?;
+        let P: [u8; 32] = P_slice
+            .clone()
+            .try_into()
+            .map_err(|_| EotsError::InvalidInputLength(P_slice.len()))?;
+
         PublicKey::from_bytes(P)
     }
 
@@ -196,7 +211,7 @@ pub fn extract(
     sig1: &Signature,
     msg2: &[u8; 32],
     sig2: &Signature,
-) -> Result<SecretKey, String> {
+) -> Result<SecretKey> {
     let P = pk.inner.to_projective();
     let P_bytes = point_to_bytes(&P);
     let R = *pub_rand;
