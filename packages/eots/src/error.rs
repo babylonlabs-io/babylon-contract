@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum EotsError {
     #[error("Invalid input length: expected 32 bytes, got {0}")]
     InvalidInputLength(usize),
