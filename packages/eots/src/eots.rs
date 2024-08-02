@@ -196,7 +196,7 @@ impl PublicKey {
 
     /// verify verifies whether the given signature w.r.t. the
     /// public key, public randomness and message hash
-    pub fn verify(&self, pub_rand: &[u8], msg_hash: &[u8], sig: &Signature) -> Result<bool> {
+    pub fn verify(&self, pub_rand: &[u8], msg_hash: &[u8], sig: &[u8]) -> Result<bool> {
         let msg_hash: [u8; 32] = msg_hash
             .try_into()
             .map_err(|_| Error::InvalidInputLength(msg_hash.len()))?;
@@ -212,8 +212,8 @@ impl PublicKey {
                 .finalize(),
         );
 
-        let s = sig;
-        let recovered_r = ProjectivePoint::mul_by_generator(s) - p.mul(c);
+        let s = new_sig(sig)?;
+        let recovered_r = ProjectivePoint::mul_by_generator(&s) - p.mul(c);
 
         Ok(recovered_r.eq(&r))
     }
@@ -303,7 +303,7 @@ mod tests {
         let msg_hash = [1u8; 32];
         let sig = sk.sign(&sec_rand.to_bytes(), &msg_hash);
         assert!(pk
-            .verify(&pub_rand.to_bytes(), &msg_hash, &sig.unwrap())
+            .verify(&pub_rand.to_bytes(), &msg_hash, &sig.unwrap().to_bytes())
             .unwrap());
     }
 
@@ -356,8 +356,12 @@ mod tests {
         let sig2 = new_sig(&sig2_slice).unwrap();
 
         // verify signatures
-        assert!(pk.verify(&pr.to_bytes(), &msg1_hash, &sig1).unwrap());
-        assert!(pk.verify(&pr.to_bytes(), &msg2_hash, &sig2).unwrap());
+        assert!(pk
+            .verify(&pr.to_bytes(), &msg1_hash, &sig1.to_bytes())
+            .unwrap());
+        assert!(pk
+            .verify(&pr.to_bytes(), &msg2_hash, &sig2.to_bytes())
+            .unwrap());
 
         // extract SK
         let extracted_sk = extract(&pk, &pr, &msg1_hash, &sig1, &msg2_hash, &sig2).unwrap();
