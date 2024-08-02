@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::error::Error;
 use crate::Result;
 
@@ -89,10 +87,10 @@ pub struct PublicKey {
     inner: k256::PublicKey,
 }
 
-fn point_to_bytes(P: &ProjectivePoint) -> [u8; 32] {
-    let ep = P.to_encoded_point(false);
+fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
+    let encoded_p = p.to_encoded_point(false);
     // Extract the x-coordinate as bytes
-    let x_bytes = ep.x().unwrap();
+    let x_bytes = encoded_p.x().unwrap();
     let x_array: [u8; 32] = x_bytes.as_slice().try_into().unwrap(); // cannot fail
     x_array
 }
@@ -126,15 +124,15 @@ impl SecretKey {
     /// and message hash
     pub fn sign(&self, sec_rand: &SecRand, msg_hash: &[u8; 32]) -> Signature {
         let x = self.inner.to_nonzero_scalar();
-        let P = ProjectivePoint::mul_by_generator(&x);
-        let P_bytes = point_to_bytes(&P);
+        let p = ProjectivePoint::mul_by_generator(&x);
+        let p_bytes = point_to_bytes(&p);
         let r = *sec_rand;
-        let R = ProjectivePoint::mul_by_generator(&r);
-        let R_bytes = point_to_bytes(&R);
+        let r_point = ProjectivePoint::mul_by_generator(&r);
+        let r_bytes = point_to_bytes(&r_point);
         let c = <Scalar as Reduce<U256>>::reduce_bytes(
             &tagged_hash(CHALLENGE_TAG)
-                .chain_update(R_bytes)
-                .chain_update(P_bytes)
+                .chain_update(r_bytes)
+                .chain_update(p_bytes)
                 .chain_update(msg_hash)
                 .finalize(),
         );
@@ -163,14 +161,14 @@ impl PublicKey {
         }
     }
 
-    pub fn from_hex(P_hex: &str) -> Result<Self> {
-        let P_slice = hex::decode(P_hex)?;
-        let P: [u8; 32] = P_slice
+    pub fn from_hex(p_hex: &str) -> Result<Self> {
+        let p_slice = hex::decode(p_hex)?;
+        let p: [u8; 32] = p_slice
             .clone()
             .try_into()
-            .map_err(|_| Error::InvalidInputLength(P_slice.len()))?;
+            .map_err(|_| Error::InvalidInputLength(p_slice.len()))?;
 
-        PublicKey::from_bytes(P)
+        PublicKey::from_bytes(p)
     }
 
     /// to_bytes converts the public key into bytes
@@ -181,21 +179,21 @@ impl PublicKey {
     /// verify verifies whether the given signature w.r.t. the
     /// public key, public randomness and message hash
     pub fn verify(&self, pub_rand: &PubRand, msg_hash: &[u8; 32], sig: &Signature) -> bool {
-        let P = self.inner.to_projective();
-        let P_bytes = point_to_bytes(&P);
-        let R = *pub_rand;
-        let R_bytes = point_to_bytes(&R);
+        let p = self.inner.to_projective();
+        let p_bytes = point_to_bytes(&p);
+        let r = *pub_rand;
+        let r_bytes = point_to_bytes(&r);
         let c = <Scalar as Reduce<U256>>::reduce_bytes(
             &tagged_hash(CHALLENGE_TAG)
-                .chain_update(R_bytes)
-                .chain_update(P_bytes)
+                .chain_update(r_bytes)
+                .chain_update(p_bytes)
                 .chain_update(msg_hash)
                 .finalize(),
         );
 
         let s = sig;
-        let recovered_R = ProjectivePoint::mul_by_generator(s) - P.mul(c);
-        recovered_R.eq(&R)
+        let recovered_r = ProjectivePoint::mul_by_generator(s) - p.mul(c);
+        recovered_r.eq(&r)
     }
 }
 
@@ -209,23 +207,23 @@ pub fn extract(
     msg2: &[u8; 32],
     sig2: &Signature,
 ) -> Result<SecretKey> {
-    let P = pk.inner.to_projective();
-    let P_bytes = point_to_bytes(&P);
-    let R = *pub_rand;
-    let R_bytes = point_to_bytes(&R);
+    let p = pk.inner.to_projective();
+    let p_bytes = point_to_bytes(&p);
+    let r = *pub_rand;
+    let r_bytes = point_to_bytes(&r);
 
     // calculate e1 - e2
     let e1 = <Scalar as Reduce<U256>>::reduce_bytes(
         &tagged_hash(CHALLENGE_TAG)
-            .chain_update(R_bytes)
-            .chain_update(P_bytes)
+            .chain_update(r_bytes)
+            .chain_update(p_bytes)
             .chain_update(msg1)
             .finalize(),
     );
     let e2 = <Scalar as Reduce<U256>>::reduce_bytes(
         &tagged_hash(CHALLENGE_TAG)
-            .chain_update(R_bytes)
-            .chain_update(P_bytes)
+            .chain_update(r_bytes)
+            .chain_update(p_bytes)
             .chain_update(msg2)
             .finalize(),
     );
@@ -254,8 +252,8 @@ mod tests {
 
     pub fn rand_gen() -> (SecRand, PubRand) {
         let x = Scalar::generate_vartime(&mut thread_rng());
-        let P = ProjectivePoint::mul_by_generator(&x);
-        (x, P)
+        let p = ProjectivePoint::mul_by_generator(&x);
+        (x, p)
     }
 
     impl Default for SecretKey {
