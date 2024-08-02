@@ -97,21 +97,20 @@ fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
 
 #[allow(clippy::new_without_default)]
 impl SecretKey {
-    pub fn from_bytes(x: [u8; 32]) -> Result<Self> {
-        let inner = Scalar::from_repr_vartime(x.into()).ok_or(Error::SecretKeyParseFailed {})?;
+    pub fn from_bytes(x: &[u8]) -> Result<Self> {
+        let x_array: [u8; 32] = x
+            .try_into()
+            .map_err(|_| Error::InvalidInputLength(x.len()))?;
+        let inner =
+            Scalar::from_repr_vartime(x_array.into()).ok_or(Error::SecretKeyParseFailed {})?;
 
         let sk = k256::SecretKey::new(inner.into());
         Ok(SecretKey { inner: sk })
     }
 
     pub fn from_hex(x_hex: &str) -> Result<Self> {
-        let x_slice = hex::decode(x_hex)?;
-        let x: [u8; 32] = x_slice
-            .clone()
-            .try_into()
-            .map_err(|_| Error::InvalidInputLength(x_slice.len()))?;
-
-        SecretKey::from_bytes(x)
+        let x = hex::decode(x_hex)?;
+        SecretKey::from_bytes(&x)
     }
 
     /// pubkey gets the public key corresponding to the secret key
@@ -122,11 +121,14 @@ impl SecretKey {
 
     /// sign creates a signature with the given secret randomness
     /// and message hash
-    pub fn sign(&self, sec_rand: &SecRand, msg_hash: &[u8; 32]) -> Signature {
+    pub fn sign(&self, sec_rand: &[u8], msg_hash: &[u8]) -> Result<Signature> {
+        let msg_hash: [u8; 32] = msg_hash
+            .try_into()
+            .map_err(|_| Error::InvalidInputLength(msg_hash.len()))?;
         let x = self.inner.to_nonzero_scalar();
         let p = ProjectivePoint::mul_by_generator(&x);
         let p_bytes = point_to_bytes(&p);
-        let r = *sec_rand;
+        let r = new_sec_rand(sec_rand)?;
         let r_point = ProjectivePoint::mul_by_generator(&r);
         let r_bytes = point_to_bytes(&r_point);
         let c = <Scalar as Reduce<U256>>::reduce_bytes(
@@ -137,7 +139,7 @@ impl SecretKey {
                 .finalize(),
         );
 
-        r + c * *x
+        Ok(r + c * *x)
     }
 
     /// to_bytes converts the secret key into bytes
@@ -278,8 +280,8 @@ mod tests {
         let pk = sk.pubkey();
         let (sec_rand, pub_rand) = rand_gen();
         let msg_hash = [1u8; 32];
-        let sig = sk.sign(&sec_rand, &msg_hash);
-        assert!(pk.verify(&pub_rand, &msg_hash, &sig));
+        let sig = sk.sign(&sec_rand.to_bytes(), &msg_hash);
+        assert!(pk.verify(&pub_rand, &msg_hash, &sig.unwrap()));
     }
 
     #[test]
@@ -289,8 +291,8 @@ mod tests {
         let (sec_rand, pub_rand) = rand_gen();
         let msg_hash1 = [1u8; 32];
         let msg_hash2 = [2u8; 32];
-        let sig1 = sk.sign(&sec_rand, &msg_hash1);
-        let sig2 = sk.sign(&sec_rand, &msg_hash2);
+        let sig1 = sk.sign(&sec_rand.to_bytes(), &msg_hash1).unwrap();
+        let sig2 = sk.sign(&sec_rand.to_bytes(), &msg_hash2).unwrap();
 
         let extracted_sk = extract(&pk, &pub_rand, &msg_hash1, &sig1, &msg_hash2, &sig2).unwrap();
         assert_eq!(sk.pubkey().to_bytes(), extracted_sk.pubkey().to_bytes());
