@@ -223,15 +223,21 @@ impl PublicKey {
 /// randomness, and two pairs of message hashes and signatures
 pub fn extract(
     pk: &PublicKey,
-    pub_rand: &PubRand,
-    msg1: &[u8; 32],
-    sig1: &Signature,
-    msg2: &[u8; 32],
-    sig2: &Signature,
+    pub_rand: &[u8],
+    msg1_hash: &[u8],
+    sig1: &[u8],
+    msg2_hash: &[u8],
+    sig2: &[u8],
 ) -> Result<SecretKey> {
+    if msg1_hash.len() != 32 {
+        return Err(Error::InvalidInputLength(msg1_hash.len()));
+    }
+    if msg2_hash.len() != 32 {
+        return Err(Error::InvalidInputLength(msg2_hash.len()));
+    }
     let p = pk.inner.to_projective();
     let p_bytes = point_to_bytes(&p);
-    let r = *pub_rand;
+    let r = new_pub_rand(pub_rand)?;
     let r_bytes = point_to_bytes(&r);
 
     // calculate e1 - e2
@@ -239,21 +245,21 @@ pub fn extract(
         &tagged_hash(CHALLENGE_TAG)
             .chain_update(r_bytes)
             .chain_update(p_bytes)
-            .chain_update(msg1)
+            .chain_update(msg1_hash)
             .finalize(),
     );
     let e2 = <Scalar as Reduce<U256>>::reduce_bytes(
         &tagged_hash(CHALLENGE_TAG)
             .chain_update(r_bytes)
             .chain_update(p_bytes)
-            .chain_update(msg2)
+            .chain_update(msg2_hash)
             .finalize(),
     );
     let e_delta = e1 - e2;
 
     // calculate s1 - s2
-    let s1 = sig1;
-    let s2 = sig2;
+    let s1 = new_sig(sig1)?;
+    let s2 = new_sig(sig2)?;
     let s_delta = s1 - s2;
 
     // calculate (s1-s2) / (e1 - e2)
@@ -317,7 +323,15 @@ mod tests {
         let sig1 = sk.sign(&sec_rand.to_bytes(), &msg_hash1).unwrap();
         let sig2 = sk.sign(&sec_rand.to_bytes(), &msg_hash2).unwrap();
 
-        let extracted_sk = extract(&pk, &pub_rand, &msg_hash1, &sig1, &msg_hash2, &sig2).unwrap();
+        let extracted_sk = extract(
+            &pk,
+            &pub_rand.to_bytes(),
+            &msg_hash1,
+            &sig1.to_bytes(),
+            &msg_hash2,
+            &sig2.to_bytes(),
+        )
+        .unwrap();
         assert_eq!(sk.pubkey().to_bytes(), extracted_sk.pubkey().to_bytes());
     }
 
@@ -364,7 +378,15 @@ mod tests {
             .unwrap());
 
         // extract SK
-        let extracted_sk = extract(&pk, &pr, &msg1_hash, &sig1, &msg2_hash, &sig2).unwrap();
+        let extracted_sk = extract(
+            &pk,
+            &pr.to_bytes(),
+            &msg1_hash,
+            &sig1.to_bytes(),
+            &msg2_hash,
+            &sig2.to_bytes(),
+        )
+        .unwrap();
         assert_eq!(sk.pubkey().to_bytes(), extracted_sk.pubkey().to_bytes());
     }
 }
