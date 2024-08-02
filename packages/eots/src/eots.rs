@@ -43,19 +43,37 @@ pub fn new_sec_rand(r: &[u8]) -> Result<SecRand> {
 /// It is formed as a point with even y coord on the Secp256k1 curve
 pub type PubRand = ProjectivePoint;
 
-/// new_pub_rand parses the given bytes into a new public randomness
-/// the given byte slice has to be 32-byte representation of an x coordinate
-/// on secp256k1 curve
+/// new_pub_rand parses the given bytes into a new public randomness value on the secp256k1 curve.
+/// The given byte slice can be:
+///   - A 32-byte representation of an x coordinate (the y-coordinate is derived as even).
+///   - A 33-byte compressed representation of an x coordinate (the y-coordinate is derived).
+///   - A 65-byte uncompressed representation of an x-y coordinate pair (the y-coordinate is _also_
+///     derived).
+/// See https://crypto.stackexchange.com/a/108092/119110 for format / prefix details
 pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand> {
-    let array: [u8; 32] = x_bytes
-        .try_into()
-        .map_err(|_| Error::InvalidInputLength(x_bytes.len()))?;
-
-    // Convert x_bytes to a FieldElement
-    let x = k256::FieldBytes::from(array);
+    // Reject if the input is not 32 (naked), 33 (compressed) or 65 (uncompressed) bytes
+    let (x_bytes, y_is_odd) = match x_bytes.len() {
+        32 => (x_bytes, false), // Assume even y-coordinate as even
+        33 => {
+            if x_bytes[0] != 0x02 && x_bytes[0] != 0x03 {
+                return Err(Error::InvalidInputLength(x_bytes.len()));
+            }
+            (&x_bytes[1..], x_bytes[0] == 0x03) // y-coordinate parity
+        }
+        65 => {
+            if x_bytes[0] != 0x04 {
+                return Err(Error::InvalidInputLength(x_bytes.len()));
+            }
+            // FIXME: Deserialize y-coordinate directly, instead of deriving it below
+            (&x_bytes[1..33], x_bytes[64] & 0x01 == 0x01) // y-coordinate parity
+        }
+        _ => return Err(Error::InvalidInputLength(x_bytes.len())),
+    };
+    // Convert x_array to a FieldElement
+    let x = k256::FieldBytes::from_slice(x_bytes);
 
     // Attempt to derive the corresponding y-coordinate
-    let ap_option = AffinePoint::decompress(&x, Choice::from(0));
+    let ap_option = AffinePoint::decompress(x, Choice::from(y_is_odd as u8));
     if ap_option.is_some().into() {
         Ok(ProjectivePoint::from(ap_option.unwrap()))
     } else {
@@ -178,13 +196,13 @@ impl PublicKey {
 
     /// verify verifies whether the given signature w.r.t. the
     /// public key, public randomness and message hash
-    pub fn verify(&self, pub_rand: &PubRand, msg_hash: &[u8], sig: &Signature) -> Result<bool> {
+    pub fn verify(&self, pub_rand: &[u8], msg_hash: &[u8], sig: &Signature) -> Result<bool> {
         let msg_hash: [u8; 32] = msg_hash
             .try_into()
             .map_err(|_| Error::InvalidInputLength(msg_hash.len()))?;
         let p = self.inner.to_projective();
         let p_bytes = point_to_bytes(&p);
-        let r = *pub_rand;
+        let r = new_pub_rand(pub_rand)?;
         let r_bytes = point_to_bytes(&r);
         let c = <Scalar as Reduce<U256>>::reduce_bytes(
             &tagged_hash(CHALLENGE_TAG)
@@ -252,6 +270,7 @@ mod tests {
     use sha2::{Digest, Sha256};
     use test_utils::get_eots_testdata;
 
+    use k256::elliptic_curve::group::GroupEncoding;
     use k256::{ProjectivePoint, Scalar};
 
     pub fn rand_gen() -> (SecRand, PubRand) {
@@ -283,7 +302,9 @@ mod tests {
         let (sec_rand, pub_rand) = rand_gen();
         let msg_hash = [1u8; 32];
         let sig = sk.sign(&sec_rand.to_bytes(), &msg_hash);
-        assert!(pk.verify(&pub_rand, &msg_hash, &sig.unwrap()).unwrap());
+        assert!(pk
+            .verify(&pub_rand.to_bytes(), &msg_hash, &sig.unwrap())
+            .unwrap());
     }
 
     #[test]
@@ -335,8 +356,8 @@ mod tests {
         let sig2 = new_sig(&sig2_slice).unwrap();
 
         // verify signatures
-        assert!(pk.verify(&pr, &msg1_hash, &sig1).unwrap());
-        assert!(pk.verify(&pr, &msg2_hash, &sig2).unwrap());
+        assert!(pk.verify(&pr.to_bytes(), &msg1_hash, &sig1).unwrap());
+        assert!(pk.verify(&pr.to_bytes(), &msg2_hash, &sig2).unwrap());
 
         // extract SK
         let extracted_sk = extract(&pk, &pr, &msg1_hash, &sig1, &msg2_hash, &sig2).unwrap();
