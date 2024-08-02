@@ -149,8 +149,11 @@ impl SecretKey {
 }
 
 impl PublicKey {
-    pub fn from_bytes(x_bytes: [u8; 32]) -> Result<Self> {
-        let x = k256::FieldBytes::from(x_bytes);
+    pub fn from_bytes(x_bytes: &[u8]) -> Result<Self> {
+        let x_array: [u8; 32] = x_bytes
+            .try_into()
+            .map_err(|_| Error::InvalidInputLength(x_bytes.len()))?;
+        let x = k256::FieldBytes::from(x_array);
 
         // Attempt to derive the corresponding y-coordinate
         let ap_option = AffinePoint::decompress(&x, Choice::from(0));
@@ -164,13 +167,8 @@ impl PublicKey {
     }
 
     pub fn from_hex(p_hex: &str) -> Result<Self> {
-        let p_slice = hex::decode(p_hex)?;
-        let p: [u8; 32] = p_slice
-            .clone()
-            .try_into()
-            .map_err(|_| Error::InvalidInputLength(p_slice.len()))?;
-
-        PublicKey::from_bytes(p)
+        let p = hex::decode(p_hex)?;
+        PublicKey::from_bytes(&p)
     }
 
     /// to_bytes converts the public key into bytes
@@ -180,7 +178,10 @@ impl PublicKey {
 
     /// verify verifies whether the given signature w.r.t. the
     /// public key, public randomness and message hash
-    pub fn verify(&self, pub_rand: &PubRand, msg_hash: &[u8; 32], sig: &Signature) -> bool {
+    pub fn verify(&self, pub_rand: &PubRand, msg_hash: &[u8], sig: &Signature) -> Result<bool> {
+        let msg_hash: [u8; 32] = msg_hash
+            .try_into()
+            .map_err(|_| Error::InvalidInputLength(msg_hash.len()))?;
         let p = self.inner.to_projective();
         let p_bytes = point_to_bytes(&p);
         let r = *pub_rand;
@@ -195,7 +196,8 @@ impl PublicKey {
 
         let s = sig;
         let recovered_r = ProjectivePoint::mul_by_generator(s) - p.mul(c);
-        recovered_r.eq(&r)
+
+        Ok(recovered_r.eq(&r))
     }
 }
 
@@ -281,7 +283,7 @@ mod tests {
         let (sec_rand, pub_rand) = rand_gen();
         let msg_hash = [1u8; 32];
         let sig = sk.sign(&sec_rand.to_bytes(), &msg_hash);
-        assert!(pk.verify(&pub_rand, &msg_hash, &sig.unwrap()));
+        assert!(pk.verify(&pub_rand, &msg_hash, &sig.unwrap()).unwrap());
     }
 
     #[test]
@@ -333,8 +335,8 @@ mod tests {
         let sig2 = new_sig(&sig2_slice).unwrap();
 
         // verify signatures
-        assert!(pk.verify(&pr, &msg1_hash, &sig1));
-        assert!(pk.verify(&pr, &msg2_hash, &sig2));
+        assert!(pk.verify(&pr, &msg1_hash, &sig1).unwrap());
+        assert!(pk.verify(&pr, &msg2_hash, &sig2).unwrap());
 
         // extract SK
         let extracted_sk = extract(&pk, &pr, &msg1_hash, &sig1, &msg2_hash, &sig2).unwrap();
