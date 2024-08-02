@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::error::EotsError;
+use crate::error::Error;
 use crate::Result;
 
 use k256::elliptic_curve::sec1::ToEncodedPoint;
@@ -37,8 +37,8 @@ pub type SecRand = Scalar;
 pub fn new_sec_rand(r: &[u8]) -> Result<SecRand> {
     let array: [u8; 32] = r
         .try_into()
-        .map_err(|_| EotsError::InvalidInputLength(r.len()))?;
-    SecRand::from_repr_vartime(array.into()).ok_or(EotsError::SecretRandomnessParseFailed {})
+        .map_err(|_| Error::InvalidInputLength(r.len()))?;
+    SecRand::from_repr_vartime(array.into()).ok_or(Error::SecretRandomnessParseFailed {})
 }
 
 /// PubRand is the type for a public randomness
@@ -51,7 +51,7 @@ pub type PubRand = ProjectivePoint;
 pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand> {
     let array: [u8; 32] = x_bytes
         .try_into()
-        .map_err(|_| EotsError::InvalidInputLength(x_bytes.len()))?;
+        .map_err(|_| Error::InvalidInputLength(x_bytes.len()))?;
 
     // Convert x_bytes to a FieldElement
     let x = k256::FieldBytes::from(array);
@@ -61,7 +61,7 @@ pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand> {
     if ap_option.is_some().into() {
         Ok(ProjectivePoint::from(ap_option.unwrap()))
     } else {
-        Err(EotsError::PublicRandomnessParseFailed {})
+        Err(Error::PublicRandomnessParseFailed {})
     }
 }
 
@@ -72,8 +72,8 @@ pub type Signature = Scalar;
 pub fn new_sig(r: &[u8]) -> Result<Signature> {
     let array: [u8; 32] = r
         .try_into()
-        .map_err(|_| EotsError::InvalidInputLength(r.len()))?;
-    Signature::from_repr_vartime(array.into()).ok_or(EotsError::SignatureParseFailed {})
+        .map_err(|_| Error::InvalidInputLength(r.len()))?;
+    Signature::from_repr_vartime(array.into()).ok_or(Error::SignatureParseFailed {})
 }
 
 /// SecretKey is a secret key, formed as a 32-byte scalar
@@ -100,8 +100,7 @@ fn point_to_bytes(P: &ProjectivePoint) -> [u8; 32] {
 #[allow(clippy::new_without_default)]
 impl SecretKey {
     pub fn from_bytes(x: [u8; 32]) -> Result<Self> {
-        let inner =
-            Scalar::from_repr_vartime(x.into()).ok_or(EotsError::SecretKeyParseFailed {})?;
+        let inner = Scalar::from_repr_vartime(x.into()).ok_or(Error::SecretKeyParseFailed {})?;
 
         let sk = k256::SecretKey::new(inner.into());
         Ok(SecretKey { inner: sk })
@@ -112,7 +111,7 @@ impl SecretKey {
         let x: [u8; 32] = x_slice
             .clone()
             .try_into()
-            .map_err(|_| EotsError::InvalidInputLength(x_slice.len()))?;
+            .map_err(|_| Error::InvalidInputLength(x_slice.len()))?;
 
         SecretKey::from_bytes(x)
     }
@@ -157,10 +156,10 @@ impl PublicKey {
         let ap_option = AffinePoint::decompress(&x, Choice::from(0));
         if ap_option.is_some().into() {
             let pk = k256::PublicKey::from_affine(ap_option.unwrap())
-                .map_err(|e| EotsError::EllipticCurveError(e.to_string()))?;
+                .map_err(|e| Error::EllipticCurveError(e.to_string()))?;
             Ok(PublicKey { inner: pk })
         } else {
-            Err(EotsError::PublicKeyParseFailed {})
+            Err(Error::PublicKeyParseFailed {})
         }
     }
 
@@ -169,7 +168,7 @@ impl PublicKey {
         let P: [u8; 32] = P_slice
             .clone()
             .try_into()
-            .map_err(|_| EotsError::InvalidInputLength(P_slice.len()))?;
+            .map_err(|_| Error::InvalidInputLength(P_slice.len()))?;
 
         PublicKey::from_bytes(P)
     }

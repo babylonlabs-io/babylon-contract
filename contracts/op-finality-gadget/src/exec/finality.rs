@@ -15,7 +15,6 @@ use cosmwasm_std::{Deps, DepsMut, Env, Event, Response};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
-use eots::EotsError;
 
 // Most logic copied from contracts/btc-staking/src/finality.rs
 pub fn handle_public_randomness_commit(
@@ -303,8 +302,9 @@ pub(crate) fn verify_finality_signature(
 
     if !pubkey.verify(
         &pub_rand,
-        msg_hash.as_slice().try_into()
-            .map_err(|_| ContractError::EotsError(EotsError::InvalidInputLength(msg_hash.len())))?,
+        msg_hash.as_slice().try_into().map_err(|_| {
+            ContractError::EotsError(eots::Error::InvalidInputLength(msg_hash.len()))
+        })?,
         &signature,
     ) {
         return Err(ContractError::FailedSignatureVerification("EOTS".into()));

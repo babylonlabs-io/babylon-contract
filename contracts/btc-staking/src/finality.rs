@@ -19,7 +19,6 @@ use crate::state::staking::{fps, FPS, FP_SET};
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
-use eots::EotsError;
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -346,10 +345,9 @@ fn verify_finality_signature(
 
     if !pubkey.verify(
         &pub_rand,
-        msg_hash
-            .as_slice()
-            .try_into()
-            .map_err(|_| ContractError::EotsError(EotsError::InvalidInputLength(msg_hash.len())))?,
+        msg_hash.as_slice().try_into().map_err(|_| {
+            ContractError::EotsError(eots::Error::InvalidInputLength(msg_hash.len()))
+        })?,
         &signature,
     ) {
         return Err(ContractError::FailedSignatureVerification("EOTS".into()));

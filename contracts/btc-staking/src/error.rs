@@ -33,7 +33,7 @@ pub enum ContractError {
     #[error("{0}")]
     HexError(#[from] FromHexError),
     #[error("EOTS error: {0}")]
-    EotsError(#[from] eots::EotsError),
+    EotsError(#[from] eots::Error),
     #[error("{0}")]
     SecP256K1Error(String), // TODO: inherit errors from k256
     #[error("Unauthorized")]
