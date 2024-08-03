@@ -273,7 +273,7 @@ fn slash_finality_provider(
         .map_err(|err| ContractError::FailedToSlashFinalityProvider(err.to_string()))?;
 
     // Extract BTC SK using the evidence
-    let pk = eots::PublicKey::from_hex(fp_btc_pk_hex).map_err(ContractError::EotsError)?;
+    let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
     let btc_sk = eots::extract(
         &pk,
         &evidence.pub_rand,
