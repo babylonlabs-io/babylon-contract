@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::Result;
 
+use k256::elliptic_curve::rand_core::RngCore;
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::{
     elliptic_curve::{
@@ -12,106 +13,172 @@ use k256::{
     AffinePoint, ProjectivePoint, Scalar, U256,
 };
 use sha2::{Digest, Sha256};
-use std::ops::Mul;
+use std::ops::{Deref, Mul};
 
 const CHALLENGE_TAG: &[u8] = b"BIP0340/challenge";
 
-// adapted from https://github.com/RustCrypto/elliptic-curves/blob/520f67d26be1773bd600d05796cc26d797dd7182/k256/src/schnorr.rs#L181-L187
+// Adapted from https://github.com/RustCrypto/elliptic-curves/blob/520f67d26be1773bd600d05796cc26d797dd7182/k256/src/schnorr.rs#L181-L187
 fn tagged_hash(tag: &[u8]) -> Sha256 {
     let tag_hash = Sha256::digest(tag);
     let mut digest = Sha256::new();
-    // the hash is in sha256d so we need to hash twice
+    // The hash is in sha256d, so we need to hash twice
     digest.update(tag_hash);
     digest.update(tag_hash);
     digest
 }
 
-/// SecRand is the type for a secret randomness
-/// It is formed as a scalar on the Secp256k1 curve
-pub type SecRand = Scalar;
+/// `SecRand` is the type for a secret randomness.
+/// It is formed as a scalar on the secp256k1 curve
+pub struct SecRand {
+    inner: Scalar,
+}
 
-/// new_sec_rand parses the given bytes into a new secret randomness
-/// the given byte slice has to be a 32-byte scalar
-/// NOTE: we enforce the secret randomness to correspond to a point
-/// with even y-coordinate
-pub fn new_sec_rand(r: &[u8]) -> Result<SecRand> {
-    let array: [u8; 32] = r
-        .try_into()
-        .map_err(|_| Error::InvalidInputLength(r.len()))?;
-    let scalar =
-        SecRand::from_repr_vartime(array.into()).ok_or(Error::SecretRandomnessParseFailed {})?;
-    if ProjectivePoint::mul_by_generator(&scalar)
-        .to_affine()
-        .y_is_odd()
-        .into()
-    {
-        Ok(-scalar)
-    } else {
-        Ok(scalar)
+impl SecRand {
+    /// `new` parses the given bytes into a new secret randomness.
+    /// The given byte slice has to be a 32-byte scalar.
+    /// NOTE: we enforce the secret randomness to correspond to a point
+    /// with even y-coordinate
+    pub fn new(r: &[u8]) -> Result<SecRand> {
+        let array: [u8; 32] = r
+            .try_into()
+            .map_err(|_| Error::InvalidInputLength(r.len()))?;
+        let scalar =
+            Scalar::from_repr_vartime(array.into()).ok_or(Error::SecretRandomnessParseFailed {})?;
+        if ProjectivePoint::mul_by_generator(&scalar)
+            .to_affine()
+            .y_is_odd()
+            .into()
+        {
+            Ok(Self { inner: -scalar })
+        } else {
+            Ok(Self { inner: scalar })
+        }
+    }
+
+    pub fn generate_vartime(rng: &mut impl RngCore) -> Self {
+        let x = Scalar::generate_vartime(rng);
+        Self { inner: x }
     }
 }
 
-/// PubRand is the type for a public randomness
-/// It is formed as a point with even y coord on the Secp256k1 curve
-pub type PubRand = ProjectivePoint;
+impl Deref for SecRand {
+    type Target = Scalar;
 
-/// new_pub_rand parses the given bytes into a new public randomness value on the secp256k1 curve.
-/// The given byte slice can be:
-///   - A 32-byte representation of an x coordinate (the y-coordinate is derived as even).
-///   - A 33-byte compressed representation of an x coordinate (the y-coordinate is derived).
-///   - A 65-byte uncompressed representation of an x-y coordinate pair (the y-coordinate is _also_
-///     derived).
-/// See https://crypto.stackexchange.com/a/108092/119110 for format / prefix details
-pub fn new_pub_rand(pr_bytes: &[u8]) -> Result<PubRand> {
-    // Reject if the input is not 32 (naked), 33 (compressed) or 65 (uncompressed) bytes
-    let (x_bytes, y_is_odd) = match pr_bytes.len() {
-        32 => (pr_bytes, false), // Assume even y-coordinate as even
-        33 => {
-            if pr_bytes[0] != 0x02 && pr_bytes[0] != 0x03 {
-                return Err(Error::InvalidInputLength(pr_bytes.len()));
-            }
-            (&pr_bytes[1..], pr_bytes[0] == 0x03) // y-coordinate parity
-        }
-        65 => {
-            if pr_bytes[0] != 0x04 {
-                return Err(Error::InvalidInputLength(pr_bytes.len()));
-            }
-            // FIXME: Deserialize y-coordinate directly, instead of deriving it below
-            (&pr_bytes[1..33], pr_bytes[64] & 0x01 == 0x01) // y-coordinate parity
-        }
-        _ => return Err(Error::InvalidInputLength(pr_bytes.len())),
-    };
-    // Convert x_array to a FieldElement
-    let x = k256::FieldBytes::from_slice(x_bytes);
-
-    // Attempt to derive the corresponding y-coordinate
-    let ap_option = AffinePoint::decompress(x, Choice::from(y_is_odd as u8));
-    if ap_option.is_some().into() {
-        Ok(ProjectivePoint::from(ap_option.unwrap()))
-    } else {
-        Err(Error::PublicRandomnessParseFailed {})
+    fn deref(&self) -> &<Self as Deref>::Target {
+        &self.inner
     }
 }
 
-/// Signature is an extractable one-time signature (EOTS)
-/// i.e., s in a Schnorr signature (R, s)
-pub type Signature = Scalar;
-
-pub fn new_sig(r: &[u8]) -> Result<Signature> {
-    let array: [u8; 32] = r
-        .try_into()
-        .map_err(|_| Error::InvalidInputLength(r.len()))?;
-    Signature::from_repr_vartime(array.into()).ok_or(Error::SignatureParseFailed {})
+/// `PubRand` is the type for a public randomness.
+/// It is formed as a point on the secp256k1 curve
+pub struct PubRand {
+    inner: ProjectivePoint,
 }
 
-/// SecretKey is a secret key, formed as a 32-byte scalar
+impl PubRand {
+    /// `new` parses the given bytes into a new public randomness value on the secp256k1 curve.
+    /// The given byte slice can be:
+    ///   - A 32-byte representation of an x coordinate (the y-coordinate is derived as even).
+    ///   - A 33-byte compressed representation of an x coordinate (the y-coordinate is derived).
+    ///   - A 65-byte uncompressed representation of an x-y coordinate pair (the y-coordinate is _also_
+    ///     derived).
+    /// See https://crypto.stackexchange.com/a/108092/119110 for format / prefix details
+    pub fn new(pr_bytes: &[u8]) -> Result<PubRand> {
+        // Reject if the input is not 32 (naked), 33 (compressed) or 65 (uncompressed) bytes
+        let (x_bytes, y_is_odd) = match pr_bytes.len() {
+            32 => (pr_bytes, false), // Assume even y-coordinate
+            33 => {
+                if pr_bytes[0] != 0x02 && pr_bytes[0] != 0x03 {
+                    return Err(Error::InvalidInputLength(pr_bytes.len()));
+                }
+                (&pr_bytes[1..], pr_bytes[0] == 0x03) // y-coordinate parity
+            }
+            65 => {
+                if pr_bytes[0] != 0x04 {
+                    return Err(Error::InvalidInputLength(pr_bytes.len()));
+                }
+                // FIXME: Deserialize y-coordinate directly, instead of deriving it below
+                (&pr_bytes[1..33], pr_bytes[64] & 0x01 == 0x01) // y-coordinate parity
+            }
+            _ => return Err(Error::InvalidInputLength(pr_bytes.len())),
+        };
+        // Convert x_array to a FieldElement
+        let x = k256::FieldBytes::from_slice(x_bytes);
+
+        // Attempt to derive the corresponding y-coordinate
+        let ap_option = AffinePoint::decompress(x, Choice::from(y_is_odd as u8));
+        if ap_option.is_some().into() {
+            Ok(Self {
+                inner: ProjectivePoint::from(ap_option.unwrap()),
+            })
+        } else {
+            Err(Error::PublicRandomnessParseFailed {})
+        }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        // self.inner.to_bytes().to_vec()
+        point_to_bytes(&self.inner).to_vec()
+    }
+}
+
+impl Deref for PubRand {
+    type Target = ProjectivePoint;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
+        &self.inner
+    }
+}
+
+impl From<ProjectivePoint> for PubRand {
+    fn from(p: ProjectivePoint) -> Self {
+        Self { inner: p }
+    }
+}
+
+/// `Signature` is an extractable one-time signature (EOTS), i.e., `s` in a Schnorr signature `(R, s)`
+pub struct Signature {
+    inner: Scalar,
+}
+
+impl Signature {
+    /// `new` parses the given bytes into a new signature.
+    /// The given byte slice has to be a 32-byte scalar
+    pub fn new(r: &[u8]) -> Result<Signature> {
+        let array: [u8; 32] = r
+            .try_into()
+            .map_err(|_| Error::InvalidInputLength(r.len()))?;
+        Ok(Self {
+            inner: Scalar::from_repr_vartime(array.into()).ok_or(Error::SignatureParseFailed {})?,
+        })
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.inner.to_bytes().to_vec()
+    }
+}
+
+impl Deref for Signature {
+    type Target = Scalar;
+
+    fn deref(&self) -> &<Self as Deref>::Target {
+        &self.inner
+    }
+}
+
+impl From<Scalar> for Signature {
+    fn from(s: Scalar) -> Self {
+        Self { inner: s }
+    }
+}
+
+/// `SecretKey` is a secret key, formed as a 32-byte scalar
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecretKey {
     inner: k256::SecretKey,
 }
 
-/// PublicKey is a public key, formed as a point with even coordinate
-/// on the Secp256k1 curve
+/// `PublicKey` is a public key, formed as a point on the secp256k1 curve
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey {
     inner: k256::PublicKey,
@@ -125,7 +192,6 @@ fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
     x_array
 }
 
-#[allow(clippy::new_without_default)]
 impl SecretKey {
     pub fn from_bytes(x: &[u8]) -> Result<Self> {
         let x_array: [u8; 32] = x
@@ -158,7 +224,7 @@ impl SecretKey {
         let x = self.inner.to_nonzero_scalar();
         let p = ProjectivePoint::mul_by_generator(&x);
         let p_bytes = point_to_bytes(&p);
-        let r = new_sec_rand(sec_rand)?;
+        let r = SecRand::new(sec_rand)?;
         let r_point = ProjectivePoint::mul_by_generator(&r);
         let r_bytes = point_to_bytes(&r_point);
         let c = <Scalar as Reduce<U256>>::reduce_bytes(
@@ -169,7 +235,7 @@ impl SecretKey {
                 .finalize(),
         );
 
-        Ok(r + c * *x)
+        Ok(Signature::from(*r + c * *x))
     }
 
     /// to_bytes converts the secret key into bytes
@@ -201,7 +267,7 @@ impl PublicKey {
         let x = k256::FieldBytes::from_slice(x_bytes);
 
         // Attempt to derive the corresponding y-coordinate
-        let ap_option = AffinePoint::decompress(&x, Choice::from(y_is_odd as u8));
+        let ap_option = AffinePoint::decompress(x, Choice::from(y_is_odd as u8));
         if ap_option.is_some().into() {
             let pk = k256::PublicKey::from_affine(ap_option.unwrap())
                 .map_err(|e| Error::EllipticCurveError(e.to_string()))?;
@@ -229,8 +295,8 @@ impl PublicKey {
             .map_err(|_| Error::InvalidInputLength(msg_hash.len()))?;
         let p = self.inner.to_projective();
         let p_bytes = point_to_bytes(&p);
-        let r = new_pub_rand(pub_rand)?;
-        let r_bytes = point_to_bytes(&r);
+        let r = PubRand::new(pub_rand)?;
+        let r_bytes = r.to_bytes();
         let c = <Scalar as Reduce<U256>>::reduce_bytes(
             &tagged_hash(CHALLENGE_TAG)
                 .chain_update(r_bytes)
@@ -239,10 +305,10 @@ impl PublicKey {
                 .finalize(),
         );
 
-        let s = new_sig(sig)?;
-        let recovered_r = ProjectivePoint::mul_by_generator(&s) - p.mul(c);
+        let s = Signature::new(sig)?;
+        let recovered_r = ProjectivePoint::mul_by_generator(&*s) - p.mul(c);
 
-        Ok(recovered_r.eq(&r))
+        Ok(recovered_r.eq(&*r))
     }
 }
 
@@ -264,7 +330,7 @@ pub fn extract(
     }
     let p = pk.inner.to_projective();
     let p_bytes = point_to_bytes(&p);
-    let r = new_pub_rand(pub_rand)?;
+    let r = PubRand::new(pub_rand)?;
     let r_bytes = point_to_bytes(&r);
 
     // calculate e1 - e2
@@ -285,9 +351,9 @@ pub fn extract(
     let e_delta = e1 - e2;
 
     // calculate s1 - s2
-    let s1 = new_sig(sig1)?;
-    let s2 = new_sig(sig2)?;
-    let s_delta = s1 - s2;
+    let s1 = Signature::new(sig1)?;
+    let s2 = Signature::new(sig2)?;
+    let s_delta = *s1 - *s2;
 
     // calculate (s1-s2) / (e1 - e2)
     let inverted_e_delta = e_delta.invert().unwrap();
@@ -303,12 +369,11 @@ mod tests {
     use sha2::{Digest, Sha256};
     use test_utils::get_eots_testdata;
 
-    use k256::elliptic_curve::group::GroupEncoding;
     use k256::{ProjectivePoint, Scalar};
 
     pub fn rand_gen() -> (SecRand, PubRand) {
-        let x = new_sec_rand(&Scalar::generate_vartime(&mut thread_rng()).to_bytes()).unwrap();
-        let p = ProjectivePoint::mul_by_generator(&x);
+        let x = SecRand::new(&Scalar::generate_vartime(&mut thread_rng()).to_bytes()).unwrap();
+        let p = PubRand::from(ProjectivePoint::mul_by_generator(&*x));
         (x, p)
     }
 
@@ -334,9 +399,9 @@ mod tests {
         let pk = sk.pubkey();
         let (sec_rand, pub_rand) = rand_gen();
         let msg_hash = [1u8; 32];
-        let sig = sk.sign(&sec_rand.to_bytes(), &msg_hash);
+        let sig = sk.sign(&sec_rand.to_bytes(), &msg_hash).unwrap();
         assert!(pk
-            .verify(&pub_rand.to_bytes(), &msg_hash, &sig.unwrap().to_bytes())
+            .verify(&pub_rand.to_bytes(), &msg_hash, &sig.to_bytes())
             .unwrap());
     }
 
@@ -373,11 +438,11 @@ mod tests {
 
         // convert secret/public randomness to Rust types
         let sr_slice = hex::decode(testdata.sr).unwrap();
-        let sr = new_sec_rand(&sr_slice).unwrap();
+        let sr = SecRand::new(&sr_slice).unwrap();
         let pr_slice = hex::decode(testdata.pr).unwrap();
         let pr_bytes: [u8; 32] = pr_slice.try_into().unwrap();
-        let pr = new_pub_rand(&pr_bytes).unwrap();
-        assert_eq!(ProjectivePoint::mul_by_generator(&sr), pr);
+        let pr = PubRand::new(&pr_bytes).unwrap();
+        assert_eq!(ProjectivePoint::mul_by_generator(&*sr), *pr);
 
         // convert messages
         let mut hasher = Sha256::new();
@@ -392,9 +457,9 @@ mod tests {
 
         // convert signatures
         let sig1_slice = hex::decode(testdata.sig1).unwrap();
-        let sig1 = new_sig(&sig1_slice).unwrap();
+        let sig1 = Signature::new(&sig1_slice).unwrap();
         let sig2_slice = hex::decode(testdata.sig2).unwrap();
-        let sig2 = new_sig(&sig2_slice).unwrap();
+        let sig2 = Signature::new(&sig2_slice).unwrap();
 
         // verify signatures
         assert!(pk
