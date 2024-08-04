@@ -180,13 +180,28 @@ impl SecretKey {
 
 impl PublicKey {
     pub fn from_bytes(x_bytes: &[u8]) -> Result<Self> {
-        let x_array: [u8; 32] = x_bytes
-            .try_into()
-            .map_err(|_| Error::InvalidInputLength(x_bytes.len()))?;
-        let x = k256::FieldBytes::from(x_array);
+        // Reject if the input is not 32 (naked), 33 (compressed) or 65 (uncompressed) bytes
+        let (x_bytes, y_is_odd) = match x_bytes.len() {
+            32 => (x_bytes, false), // Assume even y-coordinate as even
+            33 => {
+                if x_bytes[0] != 0x02 && x_bytes[0] != 0x03 {
+                    return Err(Error::InvalidInputLength(x_bytes.len()));
+                }
+                (&x_bytes[1..], x_bytes[0] == 0x03) // y-coordinate parity
+            }
+            65 => {
+                if x_bytes[0] != 0x04 {
+                    return Err(Error::InvalidInputLength(x_bytes.len()));
+                }
+                // FIXME: Deserialize y-coordinate directly, instead of deriving it below
+                (&x_bytes[1..33], x_bytes[64] & 0x01 == 0x01) // y-coordinate parity
+            }
+            _ => return Err(Error::InvalidInputLength(x_bytes.len())),
+        };
+        let x = k256::FieldBytes::from_slice(x_bytes);
 
         // Attempt to derive the corresponding y-coordinate
-        let ap_option = AffinePoint::decompress(&x, Choice::from(0));
+        let ap_option = AffinePoint::decompress(&x, Choice::from(y_is_odd as u8));
         if ap_option.is_some().into() {
             let pk = k256::PublicKey::from_affine(ap_option.unwrap())
                 .map_err(|e| Error::EllipticCurveError(e.to_string()))?;
