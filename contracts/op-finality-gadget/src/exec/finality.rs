@@ -293,22 +293,11 @@ pub(crate) fn verify_finality_signature(
     proof.verify(&pr_commit.commitment, pub_rand)?;
 
     // Public randomness is good, verify finality signature
-    let pubkey = eots::PublicKey::from_hex(fp_btc_pk_hex)
-        .map_err(|err| ContractError::EotsError(err.to_string()))?;
-    let pub_rand = eots::new_pub_rand(pub_rand)
-        .map_err(|_| ContractError::EotsError("Failed to parse public randomness".to_string()))?;
+    let pubkey = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
     let msg = msg_to_sign(block_height, app_hash);
     let msg_hash = Sha256::digest(msg);
 
-    let signature = eots::new_sig(signature).map_err(ContractError::InvalidSignature)?;
-
-    if !pubkey.verify(
-        &pub_rand,
-        msg_hash.as_slice().try_into().map_err(|_| {
-            ContractError::EotsError("Failed to convert message to array".to_string())
-        })?,
-        &signature,
-    ) {
+    if !pubkey.verify(pub_rand, &msg_hash, signature)? {
         return Err(ContractError::FailedSignatureVerification("EOTS".into()));
     }
     Ok(())

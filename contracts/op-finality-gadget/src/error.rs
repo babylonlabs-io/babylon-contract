@@ -9,7 +9,7 @@ pub enum ContractError {
     #[error("Empty signature from the delegator")]
     EmptySignature,
     #[error("EOTS error: {0}")]
-    EotsError(String),
+    EotsError(#[from] eots::Error),
     #[error("Failed to verify signature: {0}")]
     FailedSignatureVerification(String),
     #[error("The chain has not reached the given height yet")]
