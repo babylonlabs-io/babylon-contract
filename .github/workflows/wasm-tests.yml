@@ -1,14 +1,13 @@
 name: babylonchain/babylon-contract/wasm-tests
 on:
   push:
-    branches:
-    - main
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 env:
   AWS_ACCESS_KEY_ID: xxxxYKF5
   AWS_REGION: xxxxst-1
   AWS_SECRET_ACCESS_KEY: xxxxmvcn
-  DEPLOY_KEY_NAME: xxxxc068
-  GITHUB_TOKEN: xxxxFyIu
   S3_BUCKET_PREFIX: xxxxract
 jobs:
   wasm-build-check-integration:
@@ -17,7 +16,6 @@ jobs:
       image: rust:1.78.0
     steps:
     - uses: actions/checkout@v4.1.0
-#     # 'setup_remote_docker' was not transformed because there is no suitable equivalent in GitHub Actions
     - name: Build optimised Wasm binaries
       run: "./scripts/build-optimizer-ci.sh"
     - name: Install cosmwasm-check
@@ -29,8 +27,8 @@ jobs:
     - uses: actions/upload-artifact@v4.1.0
       with:
         path: |-
-          /home/circleci/project/artifacts/babylon_contract.wasm
-          /home/circleci/project/artifacts/btc_staking.wasm
+          ./artifacts/babylon_contract.wasm
+          ./artifacts/btc_staking.wasm
   benchmarking:
     if: # GitHub does not currently support regular expressions inside if conditions
 #         github.ref == 'refs/heads/main-disable' || github.ref == 'refs/heads//^[0-9]+\.[0-9]+-disable$/'
@@ -41,7 +39,6 @@ jobs:
     - wasm-build-check-integration
     steps:
     - uses: actions/checkout@v4.1.0
-#     # 'setup_remote_docker' was not transformed because there is no suitable equivalent in GitHub Actions
     - name: Build optimised Wasm binaries
       run: "./scripts/build-optimizer-ci.sh"
     - name: Version information (default; stable)
