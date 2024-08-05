@@ -1,0 +1,29 @@
+name: babylonchain/babylon-contract/local-tests
+on:
+  push:
+    branches:
+    - main
+env:
+  AWS_ACCESS_KEY_ID: xxxxYKF5
+  AWS_REGION: xxxxst-1
+  AWS_SECRET_ACCESS_KEY: xxxxmvcn
+  DEPLOY_KEY_NAME: xxxxc068
+  GITHUB_TOKEN: xxxxFyIu
+  S3_BUCKET_PREFIX: xxxxract
+jobs:
+  local-build-test:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.78.0
+    steps:
+    - uses: actions/checkout@v4.1.0
+    - name: Set up Rust environment
+      run: rustup component add rustfmt clippy
+    - name: Build Babylon contracts
+      run: cargo build
+    - name: Test generating schema
+      run: |-
+        (cd ./contracts/babylon && cargo run --bin schema)
+        (cd ./contracts/btc-staking && cargo run --bin btcstaking-schema)
+    - name: Check formats and run unit tests
+      run: cargo test --lib

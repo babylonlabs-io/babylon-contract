@@ -1,0 +1,72 @@
+name: babylonchain/babylon-contract/wasm-tests
+on:
+  push:
+    branches:
+    - main
+env:
+  AWS_ACCESS_KEY_ID: xxxxYKF5
+  AWS_REGION: xxxxst-1
+  AWS_SECRET_ACCESS_KEY: xxxxmvcn
+  DEPLOY_KEY_NAME: xxxxc068
+  GITHUB_TOKEN: xxxxFyIu
+  S3_BUCKET_PREFIX: xxxxract
+jobs:
+  wasm-build-check-integration:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.78.0
+    steps:
+    - uses: actions/checkout@v4.1.0
+#     # 'setup_remote_docker' was not transformed because there is no suitable equivalent in GitHub Actions
+    - name: Build optimised Wasm binaries
+      run: "./scripts/build-optimizer-ci.sh"
+    - name: Install cosmwasm-check
+      run: cargo install --locked --debug --version ^2.0 cosmwasm-check
+    - name: Check the Wasm binaries' validity
+      run: cosmwasm-check /home/circleci/project/artifacts/*.wasm
+    - name: Integration tests based on CosmWasm
+      run: cargo test --test integration
+    - uses: actions/upload-artifact@v4.1.0
+      with:
+        path: |-
+          /home/circleci/project/artifacts/babylon_contract.wasm
+          /home/circleci/project/artifacts/btc_staking.wasm
+  benchmarking:
+    if: # GitHub does not currently support regular expressions inside if conditions
+#         github.ref == 'refs/heads/main-disable' || github.ref == 'refs/heads//^[0-9]+\.[0-9]+-disable$/'
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.78.0
+    needs:
+    - wasm-build-check-integration
+    steps:
+    - uses: actions/checkout@v4.1.0
+#     # 'setup_remote_docker' was not transformed because there is no suitable equivalent in GitHub Actions
+    - name: Build optimised Wasm binaries
+      run: "./scripts/build-optimizer-ci.sh"
+    - name: Version information (default; stable)
+      run: rustc --version && cargo --version
+    - name: Run babylon contract benchmarks
+      run: |-
+        cargo clean
+        cargo bench --locked -p babylon-contract -- --color never --save-baseline btc_light_client
+      working-directory: "~/project/contracts/babylon"
+  push-to-s3:
+    runs-on: ubuntu-latest
+    needs:
+    - wasm-build-check-integration
+    steps:
+    - uses: actions/download-artifact@v4.1.0
+      with:
+        path: "/tmp"
+    - uses: aws-actions/configure-aws-credentials@v4.0.1
+      with:
+        aws-region: "${{ env.$AWS_REGION }}"
+        aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+        aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+    - uses: aws-actions/configure-aws-credentials@v4.0.1
+      with:
+        aws-region: "${{ env.AWS_DEFAULT_REGION }}"
+        aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+        aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+    - run: aws s3 cp /tmp/babylon_contract.wasm $S3_BUCKET_PREFIX/${{ github.repository }}-${{ github.sha }}.wasm
