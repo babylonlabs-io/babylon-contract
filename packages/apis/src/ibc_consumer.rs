@@ -1,6 +1,5 @@
 use cosmwasm_schema::cw_serde;
-
-use crate::finality_api::Evidence;
+use crate::Bytes;
 
 /// ConsumerPacketData is the message that defines the IBC packets a Consumer can send to Babylon's
 /// ZoneConcierge module.
@@ -26,6 +25,10 @@ pub mod consumer_packet_data {
 /// Babylon's ZoneConcierge upon a Consumer slashing event
 #[cw_serde]
 pub struct Slashing {
-    /// `evidence` is the slashing evidence
-    pub evidence: Evidence,
+    /// `fp_btc_pk` is the BTC PK of the slashed finality provider
+    pub fp_btc_pk: Bytes,
+    /// `block_height` is the Consumer blockchain slashing height
+    pub block_height: u64,
+    /// `secret_key` is the secret key extracted from the slashing evidence
+    pub secret_key: Bytes,
 }

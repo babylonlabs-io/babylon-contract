@@ -7,6 +7,10 @@ use std::collections::HashSet;
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{to_json_binary, DepsMut, Env, Event, Response, StdResult, Storage, WasmMsg};
 
+use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_bindings::BabylonMsg;
+use babylon_merkle::Proof;
+
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
 use crate::staking;
@@ -16,9 +20,6 @@ use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
 use crate::state::staking::{fps, FPS, FP_SET};
-use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
-use babylon_bindings::BabylonMsg;
-use babylon_merkle::Proof;
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -271,10 +272,25 @@ fn slash_finality_provider(
     staking::slash_finality_provider(store, env, fp_btc_pk_hex, evidence.block_height)
         .map_err(|err| ContractError::FailedToSlashFinalityProvider(err.to_string()))?;
 
-    // Emit slashing event
-    // Raise slashing event to babylon over IBC. Send to babylon-contract for forwarding
+    // Extract BTC SK using the evidence
+    let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
+    let btc_sk = eots::extract(
+        &pk,
+        &evidence.pub_rand,
+        &evidence.canonical_app_hash,
+        &evidence.canonical_finality_sig,
+        &evidence.fork_app_hash,
+        &evidence.fork_finality_sig,
+    )
+    .map_err(|err| ContractError::SecretKeyExtractionError(err.to_string()))?;
+
+    // Emit slashing event.
+    // Raises slashing event to babylon over IBC.
+    // Send to babylon-contract for forwarding
     let msg = babylon_contract::ExecuteMsg::Slashing {
-        evidence: evidence.clone(),
+        fp_btc_pk: evidence.fp_btc_pk.clone(),
+        block_height: evidence.block_height,
+        secret_key: btc_sk.to_bytes(),
     };
 
     let babylon_addr = CONFIG.load(store)?.babylon;
@@ -301,7 +317,8 @@ fn slash_finality_provider(
         .add_attribute(
             "fork_finality_sig",
             hex::encode(&evidence.fork_finality_sig),
-        );
+        )
+        .add_attribute("secret_key", hex::encode(btc_sk.to_bytes()));
     Ok((wasm_msg, ev))
 }
 
@@ -1008,7 +1025,7 @@ pub(crate) mod tests {
         let msg = ExecuteMsg::SubmitFinalitySignature {
             fp_pubkey_hex: pk_hex.clone(),
             height: submit_height,
-            pub_rand: pub_rand_one.into(),
+            pub_rand: pub_rand_one.clone().into(),
             proof: proof.into(),
             block_hash: add_finality_signature_2.block_app_hash.to_vec().into(),
             signature: Binary::new(add_finality_signature_2.finality_sig.to_vec()),
@@ -1028,18 +1045,33 @@ pub(crate) mod tests {
         assert_eq!(1, res.messages.len());
         // Assert the slashing propagation msg is proper
         let babylon_addr = crate::queries::config(deps.as_ref()).unwrap().babylon;
-        assert_eq!(
-            res.messages[0],
-            SubMsg::new(WasmMsg::Execute {
-                contract_addr: babylon_addr.to_string(),
-                msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing { evidence }).unwrap(),
-                funds: vec![]
-            })
-        );
         // Assert the slashing event is there
         assert_eq!(1, res.events.len());
         // Assert the slashing event is proper
         assert_eq!(res.events[0].ty, "slashed_finality_provider".to_string());
+        // Extract the secret key to compare it
+        let btc_sk = eots::extract(
+            &eots::PublicKey::from_hex(&pk_hex).unwrap(),
+            &pub_rand_one,
+            &add_finality_signature.block_app_hash,
+            &finality_signature,
+            &add_finality_signature_2.block_app_hash,
+            &add_finality_signature_2.finality_sig,
+        )
+        .unwrap();
+        assert_eq!(
+            res.messages[0],
+            SubMsg::new(WasmMsg::Execute {
+                contract_addr: babylon_addr.to_string(),
+                msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing {
+                    fp_btc_pk: btc_pk.clone(),
+                    block_height: submit_height,
+                    secret_key: btc_sk.to_bytes()
+                })
+                .unwrap(),
+                funds: vec![]
+            })
+        );
 
         // Call the end-block sudo handler for completeness / realism
         call_end_block(&mut deps, "deadbeef01".as_bytes(), next_height).unwrap();
