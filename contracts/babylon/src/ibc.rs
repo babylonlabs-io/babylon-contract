@@ -20,7 +20,7 @@ pub const IBC_CHANNEL: Item<IbcChannel> = Item::new("ibc_channel");
 
 /// This is executed during the ChannelOpenInit and ChannelOpenTry
 /// of the IBC 4-step channel protocol
-/// (see https://gpub pub ithub.com/cosmos/ibc/tree/main/spec/core/ics-004-channel-and-packet-semantics#channel-lifecycle-management)
+/// (see https://github.com/cosmos/ibc/tree/main/spec/core/ics-004-channel-and-packet-semantics#channel-lifecycle-management)
 /// In the case of ChannelOpenTry there's a counterparty_version attribute in the message.
 /// Here we ensure the ordering and version constraints.
 pub fn ibc_channel_open(
