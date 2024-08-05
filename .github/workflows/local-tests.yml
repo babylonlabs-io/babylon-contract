@@ -1,15 +1,11 @@
 name: babylonchain/babylon-contract/local-tests
 on:
   push:
-    branches:
-    - main
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 env:
-  AWS_ACCESS_KEY_ID: xxxxYKF5
-  AWS_REGION: xxxxst-1
-  AWS_SECRET_ACCESS_KEY: xxxxmvcn
-  DEPLOY_KEY_NAME: xxxxc068
-  GITHUB_TOKEN: xxxxFyIu
-  S3_BUCKET_PREFIX: xxxxract
+  CARGO_TERM_COLOR: always
 jobs:
   local-build-test:
     runs-on: ubuntu-latest
