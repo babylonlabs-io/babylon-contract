@@ -1,0 +1,19 @@
+name: babylonchain/babylon-contract/benchmarking-WIP
+on:
+  push:
+    branches: [ "disabled" ]
+  pull_request:
+    branches: [ "disabled" ]
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  benchmarking:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.78.0
+    steps:
+    - uses: actions/checkout@v4.1.0
+    - name: Run babylon contract benchmarks
+      run: |-
+        cargo bench --locked -p babylon-contract -- --color never --save-baseline btc_light_client
+      working-directory: "./contracts/babylon"
