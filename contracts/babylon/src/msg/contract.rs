@@ -1,10 +1,10 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, StdError, StdResult};
-use babylon_apis::Bytes;
 use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
 use crate::msg::cz_header::CzHeaderResponse;
 use crate::msg::epoch::EpochResponse;
 use crate::state::config::Config;
+use babylon_apis::Bytes;
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Binary, StdError, StdResult};
 
 const BABYLON_TAG_BYTES: usize = 4;
 
