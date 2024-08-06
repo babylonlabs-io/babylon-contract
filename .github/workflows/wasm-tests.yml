@@ -22,7 +22,7 @@ jobs:
     - name: Install cosmwasm-check
       run: cargo install --locked --debug --version ^2.0 cosmwasm-check
     - name: Check the Wasm binaries' validity
-      run: cosmwasm-check /__w/artifacts/*.wasm
+      run: cosmwasm-check /__w/babylon-contract/babylon-contract/artifacts/*.wasm
     - name: Integration tests based on CosmWasm
       run: cargo test --test integration
     - uses: actions/upload-artifact@v4.1.0
