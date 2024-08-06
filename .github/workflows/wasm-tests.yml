@@ -1,9 +1,4 @@
 name: babylonchain/babylon-contract/wasm-tests
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 env:
   CARGO_TERM_COLOR: always
   AWS_ACCESS_KEY_ID: xxxxYKF5
