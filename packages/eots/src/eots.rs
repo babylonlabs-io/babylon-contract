@@ -50,24 +50,24 @@ pub type PubRand = ProjectivePoint;
 ///   - A 65-byte uncompressed representation of an x-y coordinate pair (the y-coordinate is _also_
 ///     derived).
 /// See https://crypto.stackexchange.com/a/108092/119110 for format / prefix details
-pub fn new_pub_rand(x_bytes: &[u8]) -> Result<PubRand> {
+pub fn new_pub_rand(pr_bytes: &[u8]) -> Result<PubRand> {
     // Reject if the input is not 32 (naked), 33 (compressed) or 65 (uncompressed) bytes
-    let (x_bytes, y_is_odd) = match x_bytes.len() {
-        32 => (x_bytes, false), // Assume even y-coordinate as even
+    let (x_bytes, y_is_odd) = match pr_bytes.len() {
+        32 => (pr_bytes, false), // Assume even y-coordinate as even
         33 => {
-            if x_bytes[0] != 0x02 && x_bytes[0] != 0x03 {
-                return Err(Error::InvalidInputLength(x_bytes.len()));
+            if pr_bytes[0] != 0x02 && pr_bytes[0] != 0x03 {
+                return Err(Error::InvalidInputLength(pr_bytes.len()));
             }
-            (&x_bytes[1..], x_bytes[0] == 0x03) // y-coordinate parity
+            (&pr_bytes[1..], pr_bytes[0] == 0x03) // y-coordinate parity
         }
         65 => {
-            if x_bytes[0] != 0x04 {
-                return Err(Error::InvalidInputLength(x_bytes.len()));
+            if pr_bytes[0] != 0x04 {
+                return Err(Error::InvalidInputLength(pr_bytes.len()));
             }
             // FIXME: Deserialize y-coordinate directly, instead of deriving it below
-            (&x_bytes[1..33], x_bytes[64] & 0x01 == 0x01) // y-coordinate parity
+            (&pr_bytes[1..33], pr_bytes[64] & 0x01 == 0x01) // y-coordinate parity
         }
-        _ => return Err(Error::InvalidInputLength(x_bytes.len())),
+        _ => return Err(Error::InvalidInputLength(pr_bytes.len())),
     };
     // Convert x_array to a FieldElement
     let x = k256::FieldBytes::from_slice(x_bytes);
