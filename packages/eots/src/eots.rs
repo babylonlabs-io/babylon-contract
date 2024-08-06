@@ -178,20 +178,6 @@ pub struct SecretKey {
     inner: k256::SecretKey,
 }
 
-/// `PublicKey` is a public key, formed as a point on the secp256k1 curve
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PublicKey {
-    inner: k256::PublicKey,
-}
-
-fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
-    let encoded_p = p.to_encoded_point(false);
-    // Extract the x-coordinate as bytes
-    let x_bytes = encoded_p.x().unwrap();
-    let x_array: [u8; 32] = x_bytes.as_slice().try_into().unwrap(); // cannot fail
-    x_array
-}
-
 impl SecretKey {
     pub fn from_bytes(x: &[u8]) -> Result<Self> {
         let x_array: [u8; 32] = x
@@ -242,6 +228,12 @@ impl SecretKey {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.inner.to_bytes().to_vec()
     }
+}
+
+/// `PublicKey` is a public key, formed as a point on the secp256k1 curve
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicKey {
+    inner: k256::PublicKey,
 }
 
 impl PublicKey {
@@ -310,6 +302,14 @@ impl PublicKey {
 
         Ok(recovered_r.eq(&*r))
     }
+}
+
+fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
+    let encoded_p = p.to_encoded_point(false);
+    // Extract the x-coordinate as bytes
+    let x_bytes = encoded_p.x().unwrap();
+    let x_array: [u8; 32] = x_bytes.as_slice().try_into().unwrap(); // cannot fail
+    x_array
 }
 
 /// extract extracts the secret key from the public key, public
