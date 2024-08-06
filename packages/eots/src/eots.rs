@@ -345,12 +345,22 @@ mod tests {
         assert_eq!(sk.pubkey().to_bytes(), pk.to_bytes());
 
         // convert secret/public randomness to Rust types
+        // NOTE: Go implementation might allow the secret randomness to
+        // correspond to a point with odd y-coordinate.
+        // This is not allowed in the Rust implementation, and the Rust implementation
+        // has ensured that the verification works even such secret randomness is used.
         let sr_slice = hex::decode(testdata.sr).unwrap();
         let sr = new_sec_rand(&sr_slice).unwrap();
         let pr_slice = hex::decode(testdata.pr).unwrap();
         let pr_bytes: [u8; 32] = pr_slice.try_into().unwrap();
         let pr = new_pub_rand(&pr_bytes).unwrap();
-        assert_eq!(ProjectivePoint::mul_by_generator(&sr), pr);
+        // Ensure the secret randomness corresponds to the public randomness
+        // Here the secret randomness might correspond to a point with odd y-coordinate,
+        // so we need to check both cases.
+        assert!(
+            ProjectivePoint::mul_by_generator(&sr) == pr
+                || ProjectivePoint::mul_by_generator(&-sr) == pr
+        );
 
         // convert messages
         let mut hasher = Sha256::new();
