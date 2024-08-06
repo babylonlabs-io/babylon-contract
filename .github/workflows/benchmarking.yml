@@ -1,4 +1,9 @@
-name: babylonchain/babylon-contract/benchmarking
+name: babylonchain/babylon-contract/benchmarking-WIP
+on:
+  push:
+    branches: [ "disabled" ]
+  pull_request:
+    branches: [ "disabled" ]
 env:
   CARGO_TERM_COLOR: always
 jobs:

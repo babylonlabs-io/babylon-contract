@@ -1,7 +1,10 @@
-name: babylonchain/babylon-contract/deploy
+name: babylonchain/babylon-contract/deploy-WIP
 on:
   push:
-    tags: [ "^v[0-9]+\.[0-9]+\.[0-9]+.*"]
+    branches: [ "disabled" ]
+    tags: [ "^v[0-9]+\.[0-9]+\.[0-9]+.*" ]
+  pull_request:
+    branches: [ "disabled" ]
 env:
   AWS_ACCESS_KEY_ID: xxxxYKF5
   AWS_REGION: xxxxst-1
