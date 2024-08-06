@@ -1,5 +1,5 @@
-use cosmwasm_schema::cw_serde;
 use crate::Bytes;
+use cosmwasm_schema::cw_serde;
 
 /// ConsumerPacketData is the message that defines the IBC packets a Consumer can send to Babylon's
 /// ZoneConcierge module.

@@ -274,15 +274,15 @@ fn slash_finality_provider(
 
     // Extract BTC SK using the evidence
     let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
-    let btc_sk = eots::extract(
-        &pk,
-        &evidence.pub_rand,
-        &evidence.canonical_app_hash,
-        &evidence.canonical_finality_sig,
-        &evidence.fork_app_hash,
-        &evidence.fork_finality_sig,
-    )
-    .map_err(|err| ContractError::SecretKeyExtractionError(err.to_string()))?;
+    let btc_sk = pk
+        .extract_secret_key(
+            &evidence.pub_rand,
+            &evidence.canonical_app_hash,
+            &evidence.canonical_finality_sig,
+            &evidence.fork_app_hash,
+            &evidence.fork_finality_sig,
+        )
+        .map_err(|err| ContractError::SecretKeyExtractionError(err.to_string()))?;
 
     // Emit slashing event.
     // Raises slashing event to babylon over IBC.
@@ -1050,15 +1050,16 @@ pub(crate) mod tests {
         // Assert the slashing event is proper
         assert_eq!(res.events[0].ty, "slashed_finality_provider".to_string());
         // Extract the secret key to compare it
-        let btc_sk = eots::extract(
-            &eots::PublicKey::from_hex(&pk_hex).unwrap(),
-            &pub_rand_one,
-            &add_finality_signature.block_app_hash,
-            &finality_signature,
-            &add_finality_signature_2.block_app_hash,
-            &add_finality_signature_2.finality_sig,
-        )
-        .unwrap();
+        let pk = eots::PublicKey::from_hex(&pk_hex).unwrap();
+        let btc_sk = pk
+            .extract_secret_key(
+                &pub_rand_one,
+                &add_finality_signature.block_app_hash,
+                &finality_signature,
+                &add_finality_signature_2.block_app_hash,
+                &add_finality_signature_2.finality_sig,
+            )
+            .unwrap();
         assert_eq!(
             res.messages[0],
             SubMsg::new(WasmMsg::Execute {
