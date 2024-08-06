@@ -296,9 +296,9 @@ impl PublicKey {
         Ok(recovered_r.eq(&*r))
     }
 
-    /// extract extracts the secret key from the public key, public
-    /// randomness, and two pairs of message hashes and signatures
-    pub fn extract(
+    /// `extract_secret_key` extracts the secret key from the public key, public randomness,
+    /// and two pairs of message hashes and signatures.
+    pub fn extract_secret_key(
         &self,
         pub_rand: &[u8],
         msg1_hash: &[u8],
@@ -407,7 +407,7 @@ mod tests {
         let sig2 = sk.sign(&sec_rand.to_bytes(), &msg_hash2).unwrap();
 
         let extracted_sk = pk
-            .extract(
+            .extract_secret_key(
                 &pub_rand.to_bytes(),
                 &msg_hash1,
                 &sig1.to_bytes(),
@@ -462,7 +462,7 @@ mod tests {
 
         // extract SK
         let extracted_sk = pk
-            .extract(
+            .extract_secret_key(
                 &pr.to_bytes(),
                 &msg1_hash,
                 &sig1.to_bytes(),

@@ -275,7 +275,7 @@ fn slash_finality_provider(
     // Extract BTC SK using the evidence
     let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
     let btc_sk = pk
-        .extract(
+        .extract_secret_key(
             &evidence.pub_rand,
             &evidence.canonical_app_hash,
             &evidence.canonical_finality_sig,
@@ -1052,7 +1052,7 @@ pub(crate) mod tests {
         // Extract the secret key to compare it
         let pk = eots::PublicKey::from_hex(&pk_hex).unwrap();
         let btc_sk = pk
-            .extract(
+            .extract_secret_key(
                 &pub_rand_one,
                 &add_finality_signature.block_app_hash,
                 &finality_signature,
