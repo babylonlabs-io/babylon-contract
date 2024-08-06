@@ -1,8 +1,7 @@
 name: babylonchain/babylon-contract/deploy
 on:
   push:
-    branches:
-    - main
+    tags: [ "^v[0-9]+\.[0-9]+\.[0-9]+.*"]
 env:
   AWS_ACCESS_KEY_ID: xxxxYKF5
   AWS_REGION: xxxxst-1
@@ -12,8 +11,6 @@ env:
   S3_BUCKET_PREFIX: xxxxract
 jobs:
   build_and_upload_contracts:
-    if: # GitHub does not currently support regular expressions inside if conditions
-#         (github.ref == 'refs/tags//^v[0-9]+\.[0-9]+\.[0-9]+.*/') && (github.ref != 'refs/heads//.*/')
     defaults:
       run:
         working-directory: "/home/circleci/project"
@@ -53,8 +50,6 @@ jobs:
           -replace \
           "$TAG" ./artifacts/
   build_and_upload_schemas:
-    if: # GitHub does not currently support regular expressions inside if conditions
-#         (github.ref == 'refs/tags//^v[0-9]+\.[0-9]+\.[0-9]+.*/') && (github.ref != 'refs/heads//.*/')
     defaults:
       run:
         working-directory: "/home/circleci/project"
