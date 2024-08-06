@@ -1,7 +1,6 @@
 use crate::error::Error;
 use crate::Result;
 
-use k256::elliptic_curve::rand_core::RngCore;
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::{
     elliptic_curve::{
@@ -53,11 +52,6 @@ impl SecRand {
         } else {
             Ok(Self { inner: scalar })
         }
-    }
-
-    pub fn generate_vartime(rng: &mut impl RngCore) -> Self {
-        let x = Scalar::generate_vartime(rng);
-        Self { inner: x }
     }
 }
 
@@ -117,7 +111,6 @@ impl PubRand {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        // self.inner.to_bytes().to_vec()
         point_to_bytes(&self.inner).to_vec()
     }
 }
@@ -285,8 +278,7 @@ impl PublicKey {
         let msg_hash: [u8; 32] = msg_hash
             .try_into()
             .map_err(|_| Error::InvalidInputLength(msg_hash.len()))?;
-        let p = self.inner.to_projective();
-        let p_bytes = point_to_bytes(&p);
+        let p_bytes = self.to_bytes();
         let r = PubRand::new(pub_rand)?;
         let r_bytes = r.to_bytes();
         let c = <Scalar as Reduce<U256>>::reduce_bytes(
@@ -298,7 +290,8 @@ impl PublicKey {
         );
 
         let s = Signature::new(sig)?;
-        let recovered_r = ProjectivePoint::mul_by_generator(&*s) - p.mul(c);
+        let recovered_r =
+            ProjectivePoint::mul_by_generator(&*s) - self.inner.to_projective().mul(c);
 
         Ok(recovered_r.eq(&*r))
     }
@@ -308,8 +301,7 @@ fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
     let encoded_p = p.to_encoded_point(false);
     // Extract the x-coordinate as bytes
     let x_bytes = encoded_p.x().unwrap();
-    let x_array: [u8; 32] = x_bytes.as_slice().try_into().unwrap(); // cannot fail
-    x_array
+    x_bytes.as_slice().try_into().unwrap() // cannot fail
 }
 
 /// extract extracts the secret key from the public key, public
@@ -328,16 +320,15 @@ pub fn extract(
     if msg2_hash.len() != 32 {
         return Err(Error::InvalidInputLength(msg2_hash.len()));
     }
-    let p = pk.inner.to_projective();
-    let p_bytes = point_to_bytes(&p);
+    let p_bytes = pk.to_bytes();
     let r = PubRand::new(pub_rand)?;
-    let r_bytes = point_to_bytes(&r);
+    let r_bytes = r.to_bytes();
 
     // calculate e1 - e2
     let e1 = <Scalar as Reduce<U256>>::reduce_bytes(
         &tagged_hash(CHALLENGE_TAG)
-            .chain_update(r_bytes)
-            .chain_update(p_bytes)
+            .chain_update(r_bytes.clone())
+            .chain_update(p_bytes.clone())
             .chain_update(msg1_hash)
             .finalize(),
     );
