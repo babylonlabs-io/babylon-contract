@@ -295,6 +295,55 @@ impl PublicKey {
 
         Ok(recovered_r.eq(&*r))
     }
+
+    /// extract extracts the secret key from the public key, public
+    /// randomness, and two pairs of message hashes and signatures
+    pub fn extract(
+        &self,
+        pub_rand: &[u8],
+        msg1_hash: &[u8],
+        sig1: &[u8],
+        msg2_hash: &[u8],
+        sig2: &[u8],
+    ) -> Result<SecretKey> {
+        if msg1_hash.len() != 32 {
+            return Err(Error::InvalidInputLength(msg1_hash.len()));
+        }
+        if msg2_hash.len() != 32 {
+            return Err(Error::InvalidInputLength(msg2_hash.len()));
+        }
+        let p_bytes = self.to_bytes();
+        let r = PubRand::new(pub_rand)?;
+        let r_bytes = r.to_bytes();
+
+        // calculate e1 - e2
+        let e1 = <Scalar as Reduce<U256>>::reduce_bytes(
+            &tagged_hash(CHALLENGE_TAG)
+                .chain_update(r_bytes.clone())
+                .chain_update(p_bytes.clone())
+                .chain_update(msg1_hash)
+                .finalize(),
+        );
+        let e2 = <Scalar as Reduce<U256>>::reduce_bytes(
+            &tagged_hash(CHALLENGE_TAG)
+                .chain_update(r_bytes)
+                .chain_update(p_bytes)
+                .chain_update(msg2_hash)
+                .finalize(),
+        );
+        let e_delta = e1 - e2;
+
+        // calculate s1 - s2
+        let s1 = Signature::new(sig1)?;
+        let s2 = Signature::new(sig2)?;
+        let s_delta = *s1 - *s2;
+
+        // calculate (s1-s2) / (e1 - e2)
+        let inverted_e_delta = e_delta.invert().unwrap();
+        let sk = s_delta * inverted_e_delta;
+        let sk = k256::SecretKey::new(sk.into());
+        Ok(SecretKey { inner: sk })
+    }
 }
 
 fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
@@ -302,55 +351,6 @@ fn point_to_bytes(p: &ProjectivePoint) -> [u8; 32] {
     // Extract the x-coordinate as bytes
     let x_bytes = encoded_p.x().unwrap();
     x_bytes.as_slice().try_into().unwrap() // cannot fail
-}
-
-/// extract extracts the secret key from the public key, public
-/// randomness, and two pairs of message hashes and signatures
-pub fn extract(
-    pk: &PublicKey,
-    pub_rand: &[u8],
-    msg1_hash: &[u8],
-    sig1: &[u8],
-    msg2_hash: &[u8],
-    sig2: &[u8],
-) -> Result<SecretKey> {
-    if msg1_hash.len() != 32 {
-        return Err(Error::InvalidInputLength(msg1_hash.len()));
-    }
-    if msg2_hash.len() != 32 {
-        return Err(Error::InvalidInputLength(msg2_hash.len()));
-    }
-    let p_bytes = pk.to_bytes();
-    let r = PubRand::new(pub_rand)?;
-    let r_bytes = r.to_bytes();
-
-    // calculate e1 - e2
-    let e1 = <Scalar as Reduce<U256>>::reduce_bytes(
-        &tagged_hash(CHALLENGE_TAG)
-            .chain_update(r_bytes.clone())
-            .chain_update(p_bytes.clone())
-            .chain_update(msg1_hash)
-            .finalize(),
-    );
-    let e2 = <Scalar as Reduce<U256>>::reduce_bytes(
-        &tagged_hash(CHALLENGE_TAG)
-            .chain_update(r_bytes)
-            .chain_update(p_bytes)
-            .chain_update(msg2_hash)
-            .finalize(),
-    );
-    let e_delta = e1 - e2;
-
-    // calculate s1 - s2
-    let s1 = Signature::new(sig1)?;
-    let s2 = Signature::new(sig2)?;
-    let s_delta = *s1 - *s2;
-
-    // calculate (s1-s2) / (e1 - e2)
-    let inverted_e_delta = e_delta.invert().unwrap();
-    let sk = s_delta * inverted_e_delta;
-    let sk = k256::SecretKey::new(sk.into());
-    Ok(SecretKey { inner: sk })
 }
 
 #[cfg(test)]
@@ -406,15 +406,15 @@ mod tests {
         let sig1 = sk.sign(&sec_rand.to_bytes(), &msg_hash1).unwrap();
         let sig2 = sk.sign(&sec_rand.to_bytes(), &msg_hash2).unwrap();
 
-        let extracted_sk = extract(
-            &pk,
-            &pub_rand.to_bytes(),
-            &msg_hash1,
-            &sig1.to_bytes(),
-            &msg_hash2,
-            &sig2.to_bytes(),
-        )
-        .unwrap();
+        let extracted_sk = pk
+            .extract(
+                &pub_rand.to_bytes(),
+                &msg_hash1,
+                &sig1.to_bytes(),
+                &msg_hash2,
+                &sig2.to_bytes(),
+            )
+            .unwrap();
         assert_eq!(sk.pubkey().to_bytes(), extracted_sk.pubkey().to_bytes());
     }
 
@@ -461,15 +461,15 @@ mod tests {
             .unwrap());
 
         // extract SK
-        let extracted_sk = extract(
-            &pk,
-            &pr.to_bytes(),
-            &msg1_hash,
-            &sig1.to_bytes(),
-            &msg2_hash,
-            &sig2.to_bytes(),
-        )
-        .unwrap();
+        let extracted_sk = pk
+            .extract(
+                &pr.to_bytes(),
+                &msg1_hash,
+                &sig1.to_bytes(),
+                &msg2_hash,
+                &sig2.to_bytes(),
+            )
+            .unwrap();
         assert_eq!(sk.pubkey().to_bytes(), extracted_sk.pubkey().to_bytes());
     }
 }
