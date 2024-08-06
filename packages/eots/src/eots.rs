@@ -5,7 +5,7 @@ use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::{
     elliptic_curve::{
         ops::{MulByGenerator, Reduce},
-        point::DecompressPoint,
+        point::{AffineCoordinates, DecompressPoint},
         subtle::Choice,
         PrimeField,
     },
@@ -32,11 +32,23 @@ pub type SecRand = Scalar;
 
 /// new_sec_rand parses the given bytes into a new secret randomness
 /// the given byte slice has to be a 32-byte scalar
+/// NOTE: we enforce the secret randomness to correspond to a point
+/// with even y-coordinate
 pub fn new_sec_rand(r: &[u8]) -> Result<SecRand> {
     let array: [u8; 32] = r
         .try_into()
         .map_err(|_| Error::InvalidInputLength(r.len()))?;
-    SecRand::from_repr_vartime(array.into()).ok_or(Error::SecretRandomnessParseFailed {})
+    let scalar =
+        SecRand::from_repr_vartime(array.into()).ok_or(Error::SecretRandomnessParseFailed {})?;
+    if ProjectivePoint::mul_by_generator(&scalar)
+        .to_affine()
+        .y_is_odd()
+        .into()
+    {
+        Ok(-scalar)
+    } else {
+        Ok(scalar)
+    }
 }
 
 /// PubRand is the type for a public randomness
@@ -280,7 +292,7 @@ mod tests {
     use k256::{ProjectivePoint, Scalar};
 
     pub fn rand_gen() -> (SecRand, PubRand) {
-        let x = Scalar::generate_vartime(&mut thread_rng());
+        let x = new_sec_rand(&Scalar::generate_vartime(&mut thread_rng()).to_bytes()).unwrap();
         let p = ProjectivePoint::mul_by_generator(&x);
         (x, p)
     }
@@ -345,22 +357,12 @@ mod tests {
         assert_eq!(sk.pubkey().to_bytes(), pk.to_bytes());
 
         // convert secret/public randomness to Rust types
-        // NOTE: Go implementation might allow the secret randomness to
-        // correspond to a point with odd y-coordinate.
-        // This is not allowed in the Rust implementation, and the Rust implementation
-        // has ensured that the verification works even such secret randomness is used.
         let sr_slice = hex::decode(testdata.sr).unwrap();
         let sr = new_sec_rand(&sr_slice).unwrap();
         let pr_slice = hex::decode(testdata.pr).unwrap();
         let pr_bytes: [u8; 32] = pr_slice.try_into().unwrap();
         let pr = new_pub_rand(&pr_bytes).unwrap();
-        // Ensure the secret randomness corresponds to the public randomness
-        // Here the secret randomness might correspond to a point with odd y-coordinate,
-        // so we need to check both cases.
-        assert!(
-            ProjectivePoint::mul_by_generator(&sr) == pr
-                || ProjectivePoint::mul_by_generator(&-sr) == pr
-        );
+        assert_eq!(ProjectivePoint::mul_by_generator(&sr), pr);
 
         // convert messages
         let mut hasher = Sha256::new();
