@@ -2,7 +2,6 @@ name: babylonchain/babylon-contract/deploy-WIP
 on:
   push:
     branches: [ "disabled" ]
-    tags: [ "^v[0-9]+\.[0-9]+\.[0-9]+.*" ]
   pull_request:
     branches: [ "disabled" ]
 env:
@@ -16,15 +15,14 @@ jobs:
   build_and_upload_contracts:
     defaults:
       run:
-        working-directory: "/home/circleci/project"
+        working-directory: "/__w"
     runs-on: ubuntu-latest
     container:
       image: rust:1.78.0
     steps:
     - uses: actions/checkout@v4.1.0
       with:
-        path: "/home/circleci/project"
-#     # 'setup_remote_docker' was not transformed because there is no suitable equivalent in GitHub Actions
+        path: "/__w"
     - name: Make temporary bin
       run: mkdir -p /tmp/bin
     - name: Install ghr
@@ -34,9 +32,9 @@ jobs:
     - uses: actions/upload-artifact@v4.1.0
       with:
         path: |-
-          /home/circleci/project/artifacts/babylon_contract.wasm
-          /home/circleci/project/artifacts/btc_staking.wasm
-          /home/circleci/project/artifacts/checksums.txt
+          /__w/artifacts/babylon_contract.wasm
+          /__w/artifacts/btc_staking.wasm
+          /__w/artifacts/checksums.txt
     - name: Show data
       run: |-
         ls -l artifacts
@@ -55,14 +53,14 @@ jobs:
   build_and_upload_schemas:
     defaults:
       run:
-        working-directory: "/home/circleci/project"
+        working-directory: "/__w"
     runs-on: ubuntu-latest
     container:
       image: rust:1.78.0
     steps:
     - uses: actions/checkout@v4.1.0
       with:
-        path: "/home/circleci/project"
+        path: "/__w"
     - name: Make temporary bin
       run: mkdir -p /tmp/bin
     - name: Install ghr
