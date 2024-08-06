@@ -1,34 +1,13 @@
-name: babylonchain/babylon-contract/wasm-tests
-on:
-  push:
-    branches: [ "main" ]
+name: babylonchain/babylon-contract/benchmarking
 env:
   CARGO_TERM_COLOR: always
-  AWS_ACCESS_KEY_ID: xxxxYKF5
-  AWS_REGION: xxxxst-1
-  AWS_SECRET_ACCESS_KEY: xxxxmvcn
-  S3_BUCKET_PREFIX: xxxxract
 jobs:
-  wasm-build-check-integration:
-    runs-on: ubuntu-latest
-    container:
-      image: rust:1.78.0
-    steps:
-    - uses: actions/checkout@v4.1.0
-    - name: Build optimised Wasm binaries
-      run: "./scripts/build-optimizer-ci.sh"
   benchmarking:
     runs-on: ubuntu-latest
     container:
       image: rust:1.78.0
-    needs:
-    - wasm-build-check-integration
     steps:
     - uses: actions/checkout@v4.1.0
-    - name: Build optimised Wasm binaries
-      run: "./scripts/build-optimizer-ci.sh"
-    - name: Version information (default; stable)
-      run: rustc --version && cargo --version
     - name: Run babylon contract benchmarks
       run: |-
         cargo bench --locked -p babylon-contract -- --color never --save-baseline btc_light_client
