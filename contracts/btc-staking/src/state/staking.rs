@@ -59,7 +59,8 @@ impl BtcDelegation {
     }
 
     fn is_slashed(&self) -> bool {
-        self.undelegation_info.delegator_unbonding_sig == self.delegator_slashing_sig
+        !self.undelegation_info.delegator_unbonding_sig.is_empty()
+            && self.undelegation_info.delegator_unbonding_sig == self.delegator_slashing_sig
     }
 
     pub fn get_status(&self, btc_height: u64, w: u64) -> BTCDelegationStatus {
