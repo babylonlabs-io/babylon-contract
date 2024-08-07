@@ -69,6 +69,8 @@ pub fn ibc_channel_connect(
     // Store the channel
     IBC_CHANNEL.save(deps.storage, channel)?;
 
+    // TODO: send IBC packet to Babylon to register the consumer
+
     let chan_id = &channel.endpoint.channel_id;
     Ok(IbcBasicResponse::new()
         .add_attribute("action", "ibc_connect")
