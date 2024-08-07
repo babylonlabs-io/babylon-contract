@@ -30,7 +30,7 @@ pub fn handle_btc_staking(
     info: &MessageInfo,
     new_fps: &[NewFinalityProvider],
     active_delegations: &[ActiveBtcDelegation],
-    _slashed_delegations: &[SlashedBtcDelegation],
+    slashed_delegations: &[SlashedBtcDelegation],
     unbonded_delegations: &[UnbondedBtcDelegation],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
@@ -47,9 +47,10 @@ pub fn handle_btc_staking(
         handle_active_delegation(deps.storage, env.block.height, del)?;
     }
 
-    // TODO: Process FPs slashing
-
-    // TODO?: Process slashed delegations (needs routing from `babylon-contract`)
+    // Process slashed delegations
+    for del in slashed_delegations {
+        handle_slashed_delegation(deps.storage, env.block.height, del)?;
+    }
 
     // Process undelegations
     for undel in unbonded_delegations {
@@ -262,7 +263,7 @@ pub fn handle_active_delegation(
     Ok(())
 }
 
-/// handle_undelegation handles undelegation from an active delegation.
+/// handle_undelegation handles undelegation from an active delegation
 ///
 fn handle_undelegation(
     storage: &mut dyn Storage,
@@ -305,6 +306,44 @@ fn handle_undelegation(
     Ok(())
 }
 
+/// handle_slashed_delegation handles undelegation due to slashing from an active delegation
+///
+fn handle_slashed_delegation(
+    storage: &mut dyn Storage,
+    height: u64,
+    delegation: &SlashedBtcDelegation,
+) -> Result<(), ContractError> {
+    // Basic stateless checks
+    delegation.validate()?;
+
+    let staking_tx_hash = Txid::from_str(&delegation.staking_tx_hash)?;
+    let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
+
+    // TODO: Ensure the BTC delegation is active
+
+    let delegator_slashing_sig = btc_del.delegator_slashing_sig.clone();
+    btc_undelegate_slashed(
+        storage,
+        &staking_tx_hash,
+        &mut btc_del,
+        delegator_slashing_sig.as_slice(),
+    )?;
+
+    // Discount the voting power from the affected finality providers
+    let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
+    let fps = fps();
+    for fp in affected_fps {
+        fps.update(storage, &fp, height, |fp_state| {
+            let mut fp_state =
+                fp_state.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
+            fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+            Ok::<_, ContractError>(fp_state)
+        })?;
+    }
+
+    Ok(())
+}
+
 /// btc_undelegate adds the signature of the unbonding tx signed by the staker to the given BTC
 /// delegation
 fn btc_undelegate(
@@ -323,6 +362,35 @@ fn btc_undelegate(
     //  - How to notify them? Emit event?
 
     // TODO? Record event that the BTC delegation becomes unbonded at this height
+
+    Ok(())
+}
+
+/// btc_undelegate_slashed adds the signature of the slashing tx signed by the staker to the given
+/// BTC delegation
+fn btc_undelegate_slashed(
+    storage: &mut dyn Storage,
+    staking_tx_hash: &Txid,
+    btc_del: &mut ActiveBtcDelegation,
+    slashing_tx_sig: &[u8],
+) -> Result<(), ContractError> {
+    match &mut btc_del.undelegation_info {
+        Some(undelegation_info) => {
+            undelegation_info.delegator_slashing_sig = slashing_tx_sig.to_vec().into();
+        }
+        None => {
+            return Err(ContractError::MissingUnbondingInfo);
+        }
+    }
+
+    // Set BTC delegation back to KV store
+    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
+
+    // TODO? Notify subscriber about this slashed BTC delegation
+    //  - Who are subscribers in this context?
+    //  - How to notify them? Emit event?
+
+    // TODO? Record event that the BTC delegation becomes unbonded due to slashing at this height
 
     Ok(())
 }
