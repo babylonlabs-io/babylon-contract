@@ -409,7 +409,7 @@ pub fn compute_active_finality_providers(
         .unzip();
 
     // TODO: Online FPs verification
-    // TODO: Filter out offline / jailed FPs
+    // TODO: Filter out slashed / offline / jailed FPs
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
     FP_SET.save(storage, env.block.height, &finality_providers)?;
