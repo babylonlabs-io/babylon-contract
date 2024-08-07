@@ -33,6 +33,10 @@ pub struct InstantiateMsg {
     pub btc_staking_msg: Option<Binary>,
     /// If set, this will be the Wasm migration / upgrade admin of the BTC staking contract
     pub admin: Option<String>,
+    /// Name of the consumer
+    pub consumer_name: String,
+    /// Description of the consumer
+    pub consumer_description: String,
 }
 
 impl ContractMsg for InstantiateMsg {

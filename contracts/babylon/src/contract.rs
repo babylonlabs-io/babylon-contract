@@ -34,6 +34,8 @@ pub fn instantiate(
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
         notify_cosmos_zone: msg.notify_cosmos_zone,
         btc_staking: None, // Will be set in `reply` if `btc_staking_code_id` is provided
+        consumer_name: msg.consumer_name,
+        consumer_description: msg.consumer_description,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -214,6 +216,8 @@ mod tests {
             btc_staking_code_id: None,
             btc_staking_msg: None,
             admin: None,
+            consumer_name: "MyConsumer".to_string(),
+            consumer_description: "This is a description of my consumer".to_string(),
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();

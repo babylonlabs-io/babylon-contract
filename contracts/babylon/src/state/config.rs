@@ -16,4 +16,6 @@ pub struct Config {
     pub notify_cosmos_zone: bool,
     /// If set, this stores a BTC staking contract used for BTC re-staking
     pub btc_staking: Option<Addr>,
+    pub consumer_name: String,
+    pub consumer_description: String,
 }
