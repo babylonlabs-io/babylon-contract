@@ -382,7 +382,8 @@ fn btc_undelegate_slashed(
 ) -> Result<Event, ContractError> {
     match &mut btc_del.undelegation_info {
         Some(undelegation_info) => {
-            undelegation_info.delegator_slashing_sig = slashing_tx_sig.to_vec().into();
+            // FIXME? Use another field for signaling unbonding due to slashing
+            undelegation_info.delegator_unbonding_sig = slashing_tx_sig.to_vec().into();
         }
         None => {
             return Err(ContractError::MissingUnbondingInfo);
