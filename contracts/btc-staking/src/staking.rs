@@ -59,8 +59,8 @@ pub fn handle_btc_staking(
 
     // Process undelegations
     for undel in unbonded_delegations {
-        handle_undelegation(deps.storage, env.block.height, undel)?;
-        // TODO: Add event
+        let ev = handle_undelegation(deps.storage, env.block.height, undel)?;
+        res = res.add_event(ev);
     }
 
     Ok(res)
@@ -273,7 +273,7 @@ fn handle_undelegation(
     storage: &mut dyn Storage,
     height: u64,
     undelegation: &UnbondedBtcDelegation,
-) -> Result<(), ContractError> {
+) -> Result<Event, ContractError> {
     // Basic stateless checks
     undelegation.validate()?;
 
@@ -306,8 +306,12 @@ fn handle_undelegation(
             Ok::<_, ContractError>(fp_state)
         })?;
     }
+    // Record event that the BTC delegation becomes unbonded
+    let unbonding_event = Event::new("btc_undelegation")
+        .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
+        .add_attribute("height", height.to_string());
 
-    Ok(())
+    Ok(unbonding_event)
 }
 
 /// handle_slashed_delegation handles undelegation due to slashing from an active delegation
@@ -325,11 +329,11 @@ fn handle_slashed_delegation(
 
     // TODO: Ensure the BTC delegation is active
 
+    // Mark the delegation as undelegated due to slashing
     let delegator_slashing_sig = btc_del.delegator_slashing_sig.clone();
-    let slashing_event = btc_undelegate_slashed(
+    btc_undelegate(
         storage,
         &staking_tx_hash,
-        height,
         &mut btc_del,
         delegator_slashing_sig.as_slice(),
     )?;
@@ -345,6 +349,10 @@ fn handle_slashed_delegation(
             Ok::<_, ContractError>(fp_state)
         })?;
     }
+    // Record event that the BTC delegation becomes unbonded due to slashing at this height
+    let slashing_event = Event::new("btc_undelegation_slashed")
+        .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
+        .add_attribute("height", height.to_string());
 
     Ok(slashing_event)
 }
@@ -369,40 +377,6 @@ fn btc_undelegate(
     // TODO? Record event that the BTC delegation becomes unbonded at this height
 
     Ok(())
-}
-
-/// btc_undelegate_slashed adds the signature of the slashing tx signed by the staker to the given
-/// BTC delegation
-fn btc_undelegate_slashed(
-    storage: &mut dyn Storage,
-    staking_tx_hash: &Txid,
-    height: u64,
-    btc_del: &mut ActiveBtcDelegation,
-    slashing_tx_sig: &[u8],
-) -> Result<Event, ContractError> {
-    match &mut btc_del.undelegation_info {
-        Some(undelegation_info) => {
-            // FIXME? Use another field for signaling unbonding due to slashing
-            undelegation_info.delegator_unbonding_sig = slashing_tx_sig.to_vec().into();
-        }
-        None => {
-            return Err(ContractError::MissingUnbondingInfo);
-        }
-    }
-
-    // Set BTC delegation back to KV store
-    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
-
-    // TODO? Notify subscriber about this slashed BTC delegation
-    //  - Who are subscribers in this context?
-    //  - How to notify them? Emit event?
-
-    // Record event that the BTC delegation becomes unbonded due to slashing at this height
-    let ev = Event::new("btc_undelegation_slashed")
-        .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
-        .add_attribute("height", height.to_string());
-
-    Ok(ev)
 }
 
 /// `compute_active_finality_providers` sorts all finality providers, counts the total voting

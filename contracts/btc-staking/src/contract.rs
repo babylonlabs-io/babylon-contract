@@ -334,7 +334,9 @@ pub(crate) mod tests {
             undelegation_info: BtcUndelegationInfo {
                 unbonding_tx: Binary::new(btc_undelegation.unbonding_tx.to_vec()),
                 slashing_tx: Binary::new(btc_undelegation.slashing_tx.to_vec()),
-                delegator_unbonding_sig: Binary::new(btc_undelegation.delegator_unbonding_sig.to_vec()),
+                delegator_unbonding_sig: Binary::new(
+                    btc_undelegation.delegator_unbonding_sig.to_vec(),
+                ),
                 delegator_slashing_sig: Binary::new(
                     btc_undelegation.delegator_slashing_sig.to_vec(),
                 ),
