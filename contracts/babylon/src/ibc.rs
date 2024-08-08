@@ -3,14 +3,17 @@ use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
+use babylon_proto::babylon::btcstkconsumer::v1::ConsumerRegisterIbcPacket;
+
 use cosmwasm_std::{
     DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, Never, StdAck,
-    StdError, StdResult,
+    StdError, StdResult, IbcMsg, to_json_binary,
 };
 use cw_storage_plus::Item;
 use prost::Message;
+use crate::state::config::{Config, CONFIG};
 
 pub const IBC_VERSION: &str = "zoneconcierge-1";
 pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
@@ -69,7 +72,28 @@ pub fn ibc_channel_connect(
     // Store the channel
     IBC_CHANNEL.save(deps.storage, channel)?;
 
-    // TODO: send IBC packet to Babylon to register the consumer
+       // Load the config
+    let cfg = CONFIG.load(deps.storage)?;
+
+    // Create the ConsumerRegisterIBCPacket
+    let consumer_register_packet = ConsumerRegisterIbcPacket {
+        consumer_name: cfg.consumer_name,
+        consumer_description: cfg.consumer_description,
+    };
+
+    // Create the ZoneconciergePacketData
+    let packet_data = ZoneconciergePacketData {
+        packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
+    };
+
+    let packet_data_bytes = packet_data.encode_to_vec();
+
+    // Create the IBC packet message
+    let ibc_msg = IbcMsg::SendPacket {
+        channel_id: channel.endpoint.channel_id.clone(),
+        data: to_json_binary(&packet_data_bytes)?,
+        timeout: packet_timeout(&env),
+    };
 
     let chan_id = &channel.endpoint.channel_id;
     Ok(IbcBasicResponse::new()
@@ -125,7 +149,10 @@ pub fn ibc_packet_receive(
             Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
             Packet::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
-            }
+            },
+            Packet::ConsumerRegister(_) => {
+                return Err(StdError::generic_err("ConsumerRegister packet should not be received").into())
+            },
         }
     })()
     .or_else(|e| {

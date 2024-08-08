@@ -49,6 +49,13 @@ pub mod babylon {
             // @@protoc_insertion_point(babylon.finality.v1)
         }
     }
+    pub mod btcstkconsumer {
+        // @@protoc_insertion_point(attribute:babylon.btcstkconsumer.v1)
+        pub mod v1 {
+            include!("gen/babylon.btcstkconsumer.v1.rs");
+            // @@protoc_insertion_point(babylon.btcstkconsumer.v1)
+        }
+    }
 }
 
 #[cfg(test)]
