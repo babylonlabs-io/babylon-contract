@@ -140,6 +140,7 @@ pub fn ibc_packet_receive(
 pub(crate) mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
+    use babylon_apis::btc_staking_api::SlashedBtcDelegation;
     use babylon_apis::ibc_consumer::{consumer_packet_data, ConsumerPacketData};
     use babylon_apis::{
         btc_staking_api::{
@@ -285,7 +286,14 @@ pub(crate) mod ibc_packet {
                     })
                 })
                 .collect::<StdResult<_>>()?,
-            slashed_del: vec![], // FIXME: Route this
+            slashed_del: btc_staking
+                .slashed_del
+                .iter()
+                .map(|d| SlashedBtcDelegation {
+                    staking_tx_hash: d.staking_tx_hash.clone(),
+                    recovered_fp_btc_sk: d.recovered_fp_btc_sk.clone(),
+                })
+                .collect(),
             unbonded_del: btc_staking
                 .unbonded_del
                 .iter()
