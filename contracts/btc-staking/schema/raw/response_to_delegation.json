@@ -118,7 +118,7 @@
       "type": "string"
     },
     "BtcUndelegationInfo": {
-      "description": "BTCUndelegationInfo provides all necessary info about the undeleagation",
+      "description": "BTCUndelegationInfo provides all necessary info about the undelegation",
       "type": "object",
       "required": [
         "covenant_slashing_sigs",
