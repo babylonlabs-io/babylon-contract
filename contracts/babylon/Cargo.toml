@@ -13,11 +13,13 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 # See https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
 bench = false
+doctest = false
 
 [[bin]]
 name = "schema"
 path = "src/bin/schema.rs"
 bench = false
+test = false
 
 [features]
 # Add feature "cranelift" to default if you need 32 bit or ARM support
