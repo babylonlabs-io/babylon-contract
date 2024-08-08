@@ -484,7 +484,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_btc_staking_add_fp_unauthorized() {
+    fn test_add_fp_unauthorized() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let init_admin = deps.api.addr_make(INIT_ADMIN);
@@ -516,7 +516,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_btc_staking_add_fp_admin() {
+    fn test_add_fp_admin() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let init_admin = deps.api.addr_make(INIT_ADMIN);
@@ -562,7 +562,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn btc_staking_active_delegation_happy_path() {
+    fn active_delegation_happy_path() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
@@ -624,7 +624,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn btc_staking_undelegation_works() {
+    fn undelegation_works() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
@@ -709,6 +709,108 @@ pub(crate) mod tests {
                 delegator_slashing_sig: active_delegation_undelegation
                     .delegator_slashing_sig
                     .into(),
+                covenant_unbonding_sig_list: vec![],
+                covenant_slashing_sigs: vec![],
+            }
+        );
+
+        // Check the finality provider power has been updated
+        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+            .unwrap();
+        assert_eq!(fp.power, 0);
+    }
+
+    #[test]
+    fn slashed_delegation_works() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
+        )
+        .unwrap();
+
+        // Build valid active delegation
+        let active_delegation = get_active_btc_delegation();
+
+        // Register one FP first
+        let mut new_fp = create_new_finality_provider(1);
+        new_fp
+            .btc_pk_hex
+            .clone_from(&active_delegation.fp_btc_pk_list[0]);
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![new_fp.clone()],
+            active_del: vec![active_delegation.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // Check the delegation is active (it has no unbonding or slashing tx signature)
+        let active_delegation_undelegation = active_delegation.undelegation_info.clone().unwrap();
+        // Compute the staking tx hash
+        let staking_tx_hash_hex = staking_tx_hash(&active_delegation).to_string();
+
+        let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex.clone()).unwrap();
+        let btc_undelegation = btc_del.undelegation_info.unwrap();
+        assert_eq!(
+            btc_undelegation,
+            BtcUndelegationInfo {
+                unbonding_tx: active_delegation_undelegation.unbonding_tx,
+                slashing_tx: active_delegation_undelegation.slashing_tx,
+                delegator_unbonding_sig: Binary::new(vec![]),
+                delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
+                covenant_unbonding_sig_list: vec![],
+                covenant_slashing_sigs: vec![],
+            }
+        );
+
+        // Now send the slashed delegation message
+        let slashed = SlashedBtcDelegation {
+            staking_tx_hash: staking_tx_hash_hex.clone(),
+            recovered_fp_btc_sk: "deadbeef".to_string(), // Currently unused
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![],
+            unbonded_del: vec![],
+            slashed_del: vec![slashed.clone()],
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        // Check events
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty.as_str(), "btc_undelegation_slashed");
+        assert_eq!(res.events[0].attributes.len(), 2);
+        assert_eq!(res.events[0].attributes[0].key.as_str(), "staking_tx_hash");
+        assert_eq!(
+            res.events[0].attributes[0].value.as_str(),
+            staking_tx_hash_hex
+        );
+        assert_eq!(res.events[0].attributes[1].key.as_str(), "height");
+
+        // Check the delegation is not active any more (updated with the unbonding tx signature)
+        let active_delegation_undelegation = active_delegation.undelegation_info.unwrap();
+        let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
+        let btc_undelegation = btc_del.undelegation_info.unwrap();
+        assert_eq!(
+            btc_undelegation,
+            BtcUndelegationInfo {
+                unbonding_tx: active_delegation_undelegation.unbonding_tx,
+                slashing_tx: active_delegation_undelegation.slashing_tx,
+                delegator_unbonding_sig: active_delegation.delegator_slashing_sig, // The slashing sig is now the unbonding sig
+                delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
             }
