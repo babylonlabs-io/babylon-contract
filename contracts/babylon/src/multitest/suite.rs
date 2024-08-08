@@ -67,6 +67,8 @@ impl SuiteBuilder {
                     btc_staking_code_id: Some(btc_staking_code_id),
                     btc_staking_msg: None,
                     admin: Some(owner.to_string()),
+                    consumer_name: "TestConsumer".to_string(),
+                    consumer_description: "Test Consumer Description".to_string(),
                 },
                 &[],
                 "babylon",
