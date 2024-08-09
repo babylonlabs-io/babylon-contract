@@ -852,6 +852,9 @@ github.com/aws/smithy-go v1.15.0/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible/go.mod h1:osfaiScAUVup+UC9Nfq76eWqDhXlp+4UYaA8uhTBO6g=
+github.com/babylonchain/babylon v0.8.0/go.mod h1:jR1b+5mA7BkRrXfd/PMHwk7W/RpoeQtunvjal+tKeHY=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a h1:IwntCUOlcsczQfl4P72ckqGf09coMdM42LvAG1aM+mg=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a/go.mod h1:dnUVCa5yHq2giiSpBpXx7W3CbJuuMabvQi3hG81AAtM=
 github.com/babylonlabs-io/babylon v0.9.0-rc.2.0.20240703134344-1c4a32e16e95/go.mod h1:QTjpnEAEReQofIpZikCQXUZxSkdK0TrWAUbgxOSF9yA=
 github.com/babylonlabs-io/babylon v0.9.0/go.mod h1:t7B4e+ooD2oYvAxkegtNKDL9bXe+vU29a8xnCQh+UKo=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
