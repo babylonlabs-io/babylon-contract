@@ -10,6 +10,8 @@
 
 **Closed issues:**
 
+- Update babylon-private to latest base/consumer-chain-support (2024-08-09)
+
 **Merged pull requests:**
 
 - F/babylon private rebase (#211)
