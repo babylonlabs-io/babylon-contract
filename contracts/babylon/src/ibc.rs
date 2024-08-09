@@ -77,6 +77,13 @@ pub fn ibc_channel_connect(
     // Load the config
     let cfg = CONFIG.load(deps.storage)?;
 
+    // Check if consumer name or description is empty
+    if cfg.consumer_name.is_empty() || cfg.consumer_description.is_empty() {
+        return Err(ContractError::InvalidConfig {
+            msg: "Consumer name and description must not be empty".to_string(),
+        });
+    }
+
     // Create the ConsumerRegisterIBCPacket
     let consumer_register_packet = ConsumerRegisterIbcPacket {
         consumer_name: cfg.consumer_name,
