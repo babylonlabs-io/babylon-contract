@@ -7,10 +7,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   WORKSPACE: "/home/runner/work/babylon-contract/babylon-contract"
-  AWS_ACCESS_KEY_ID: xxxxYKF5
-  AWS_REGION: xxxxst-1
-  AWS_SECRET_ACCESS_KEY: xxxxmvcn
-  S3_BUCKET_PREFIX: xxxxract
 jobs:
   wasm-build-check-integration:
     runs-on: ubuntu-latest
@@ -31,17 +27,3 @@ jobs:
         path: |-
           artifacts/babylon_contract.wasm
           artifacts/btc_staking.wasm
-  push-to-s3:
-    runs-on: ubuntu-latest
-    needs:
-    - wasm-build-check-integration
-    steps:
-    - uses: actions/download-artifact@v4.1.0
-      with:
-        path: "/tmp"
-    - uses: aws-actions/configure-aws-credentials@v4.0.1
-      with:
-        aws-region: "${{ env.AWS_REGION }}"
-        aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY_ID }}"
-        aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-    - run: aws s3 cp /tmp/babylon_contract.wasm $S3_BUCKET_PREFIX/${{ github.repository }}-${{ github.sha }}.wasm
