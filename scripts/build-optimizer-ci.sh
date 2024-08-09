@@ -3,6 +3,7 @@
 DOCKER=$(which docker)
 CUR_DIR=$(pwd)
 CUR_BASENAME=$(basename $CUR_DIR)
+WORKSPACE="/home/runner/work/babylon-contract/babylon-contract"
 
 # Native arch
 BUILDARCH=$(uname -m)
@@ -17,4 +18,5 @@ $DOCKER run --name rust-optimizer-container \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   $OPTIMIZER_IMAGE_NAME:$OPTIMIZER_IMAGE_TAG
 
-$DOCKER cp rust-optimizer-container:/code/artifacts /home/circleci/project/artifacts
+echo $DOCKER cp rust-optimizer-container:/code/artifacts $WORKSPACE/artifacts
+$DOCKER cp rust-optimizer-container:/code/artifacts $WORKSPACE/artifacts
