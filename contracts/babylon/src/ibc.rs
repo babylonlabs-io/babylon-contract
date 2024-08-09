@@ -13,7 +13,7 @@ use cosmwasm_std::{
 };
 use cw_storage_plus::Item;
 use prost::Message;
-use crate::state::config::{Config, CONFIG};
+use crate::state::config::CONFIG;
 
 pub const IBC_VERSION: &str = "zoneconcierge-1";
 pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
