@@ -437,6 +437,34 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "`Evidence` returns the evidence for a given FP and block height",
+      "type": "object",
+      "required": [
+        "evidence"
+      ],
+      "properties": {
+        "evidence": {
+          "type": "object",
+          "required": [
+            "btc_pk_hex",
+            "height"
+          ],
+          "properties": {
+            "btc_pk_hex": {
+              "type": "string"
+            },
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
