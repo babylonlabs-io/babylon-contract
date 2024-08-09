@@ -18,6 +18,8 @@ jobs:
     - uses: actions/checkout@v4.1.0
     - name: Build optimised Wasm binaries
       run: "./scripts/build-optimizer-ci.sh"
+    - name: List optimised Wasm binaries
+      run: ls "$WORKSPACE/artifacts"
     - name: Install cosmwasm-check
       run: cargo install --locked --debug --version ^2.0 cosmwasm-check
     - name: Check the Wasm binaries' validity

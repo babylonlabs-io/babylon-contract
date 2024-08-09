@@ -18,4 +18,5 @@ $DOCKER run --name rust-optimizer-container \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   $OPTIMIZER_IMAGE_NAME:$OPTIMIZER_IMAGE_TAG
 
+echo $DOCKER cp rust-optimizer-container:/code/artifacts $WORKSPACE/artifacts
 $DOCKER cp rust-optimizer-container:/code/artifacts $WORKSPACE/artifacts
