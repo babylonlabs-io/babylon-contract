@@ -74,6 +74,8 @@ pub fn ibc_channel_connect(
     // Store the channel
     IBC_CHANNEL.save(deps.storage, channel)?;
 
+    // TODO: send IBC packet only on ChannelOpenConfirm?
+
     // Load the config
     let cfg = CONFIG.load(deps.storage)?;
 
