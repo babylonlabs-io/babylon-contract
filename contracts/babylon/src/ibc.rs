@@ -92,6 +92,8 @@ pub fn ibc_channel_connect(
         consumer_description: cfg.consumer_description,
     };
 
+    deps.api.debug(&format!("ConsumerRegisterIBCPacket: {:?}", consumer_register_packet.clone()));
+
     // Create the ZoneconciergePacketData
     let packet_data = ZoneconciergePacketData {
         packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
