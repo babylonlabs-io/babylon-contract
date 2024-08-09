@@ -4,7 +4,6 @@ use ics23::ProofSpec as Ics23ProofSpec;
 ///
 /// This type encapsulates different types of proof specifications, mostly predefined, e.g., for
 /// Cosmos-SDK.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProofSpecs(Vec<Ics23ProofSpec>);
 
