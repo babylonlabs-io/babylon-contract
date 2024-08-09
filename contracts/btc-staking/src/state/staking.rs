@@ -6,7 +6,7 @@ use crate::msg::FinalityProviderInfo;
 use crate::state::fp_index::FinalityProviderIndexes;
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, BTCDelegationStatus, BtcUndelegationInfo, CovenantAdaptorSignatures,
-    FinalityProvider, HASH_SIZE,
+    FinalityProvider, SignatureInfo, HASH_SIZE,
 };
 use babylon_apis::Bytes;
 
@@ -46,7 +46,7 @@ pub struct BtcDelegation {
     /// change outputs
     pub unbonding_time: u32,
     /// undelegation_info is the undelegation info of this delegation.
-    pub undelegation_info: BtcUndelegationInfo,
+    pub undelegation_info: UndelegationInfo,
     /// params version used to validate the delegation
     pub params_version: u32,
 }
@@ -82,7 +82,7 @@ impl TryFrom<ActiveBtcDelegation> for BtcDelegation {
     type Error = ContractError;
 
     fn try_from(delegation: ActiveBtcDelegation) -> Result<Self, Self::Error> {
-        let undelegation_info = match delegation.undelegation_info {
+        let btc_undelegation_info = match delegation.undelegation_info {
             Some(info) => info,
             None => return Err(ContractError::MissingUnbondingInfo {}),
         };
@@ -99,7 +99,7 @@ impl TryFrom<ActiveBtcDelegation> for BtcDelegation {
             covenant_sigs: delegation.covenant_sigs,
             staking_output_idx: delegation.staking_output_idx,
             unbonding_time: delegation.unbonding_time,
-            undelegation_info,
+            undelegation_info: btc_undelegation_info.into(),
             params_version: delegation.params_version,
         })
     }
@@ -110,6 +110,46 @@ impl TryFrom<&ActiveBtcDelegation> for BtcDelegation {
 
     fn try_from(delegation: &ActiveBtcDelegation) -> Result<Self, Self::Error> {
         BtcDelegation::try_from(delegation.clone())
+    }
+}
+
+#[cw_serde]
+pub struct UndelegationInfo {
+    /// unbonding_tx is the transaction which will transfer the funds from staking
+    /// output to unbonding output. Unbonding output will usually have lower timelock
+    /// than staking output.
+    pub unbonding_tx: Bytes,
+    /// delegator_unbonding_sig is the signature on the unbonding tx
+    /// by the delegator (i.e. SK corresponding to btc_pk).
+    /// It effectively proves that the delegator wants to unbond and thus
+    /// Babylon will consider this BTC delegation unbonded. Delegator's BTC
+    /// on Bitcoin will be unbonded after time-lock.
+    pub delegator_unbonding_sig: Bytes,
+    /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
+    /// by covenant members
+    pub covenant_unbonding_sig_list: Vec<SignatureInfo>,
+    /// slashing_tx is the unbonding slashing tx
+    pub slashing_tx: Bytes,
+    /// delegator_slashing_sig is the signature on the slashing tx
+    /// by the delegator (i.e. SK corresponding to btc_pk).
+    /// It will be a part of the witness for the unbonding tx output.
+    pub delegator_slashing_sig: Bytes,
+    /// covenant_slashing_sigs is a list of adaptor signatures on the
+    /// unbonding slashing tx by each covenant member
+    /// It will be a part of the witness for the staking tx output.
+    pub covenant_slashing_sigs: Vec<CovenantAdaptorSignatures>,
+}
+
+impl From<BtcUndelegationInfo> for UndelegationInfo {
+    fn from(info: BtcUndelegationInfo) -> Self {
+        UndelegationInfo {
+            unbonding_tx: info.unbonding_tx.to_vec(),
+            delegator_unbonding_sig: info.delegator_unbonding_sig.to_vec(),
+            covenant_unbonding_sig_list: info.covenant_unbonding_sig_list,
+            slashing_tx: info.slashing_tx.to_vec(),
+            delegator_slashing_sig: info.delegator_slashing_sig.to_vec(),
+            covenant_slashing_sigs: info.covenant_slashing_sigs,
+        }
     }
 }
 

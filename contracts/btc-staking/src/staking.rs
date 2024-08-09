@@ -423,14 +423,13 @@ pub(crate) mod tests {
 
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
-    use babylon_apis::btc_staking_api::BtcUndelegationInfo;
-
     use crate::contract::tests::{
         create_new_finality_provider, get_active_btc_delegation, CREATOR, INIT_ADMIN,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::queries;
+    use crate::state::staking::UndelegationInfo;
 
     // Compute staking tx hash of an active delegation
     pub(crate) fn staking_tx_hash(del: &BtcDelegation) -> Txid {
@@ -623,11 +622,13 @@ pub(crate) mod tests {
         let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
             btc_undelegation,
-            BtcUndelegationInfo {
-                unbonding_tx: active_delegation_undelegation.unbonding_tx,
-                slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: Binary::new(vec![]),
-                delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
+            UndelegationInfo {
+                unbonding_tx: active_delegation_undelegation.unbonding_tx.to_vec(),
+                slashing_tx: active_delegation_undelegation.slashing_tx.to_vec(),
+                delegator_unbonding_sig: vec![],
+                delegator_slashing_sig: active_delegation_undelegation
+                    .delegator_slashing_sig
+                    .to_vec(),
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
             }
@@ -655,11 +656,13 @@ pub(crate) mod tests {
         let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
             btc_undelegation,
-            BtcUndelegationInfo {
-                unbonding_tx: active_delegation_undelegation.unbonding_tx,
-                slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: Binary::new(vec![0x01, 0x02, 0x03]),
-                delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
+            UndelegationInfo {
+                unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
+                slashing_tx: active_delegation_undelegation.slashing_tx.into(),
+                delegator_unbonding_sig: vec![0x01, 0x02, 0x03],
+                delegator_slashing_sig: active_delegation_undelegation
+                    .delegator_slashing_sig
+                    .into(),
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
             }
