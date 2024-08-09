@@ -19,11 +19,11 @@ jobs:
     - name: Build optimised Wasm binaries
       run: "./scripts/build-optimizer-ci.sh"
     - name: List optimised Wasm binaries
-      run: ls "$WORKSPACE/artifacts"
+      run: bash -c "ls $WORKSPACE/artifacts/*.wasm"
     - name: Install cosmwasm-check
       run: cargo install --locked --debug --version ^2.0 cosmwasm-check
     - name: Check the Wasm binaries' validity
-      run: cosmwasm-check "$WORKSPACE/artifacts/*.wasm"
+      run: bash -c "cosmwasm-check $WORKSPACE/artifacts/*.wasm"
     - name: Integration tests based on CosmWasm
       run: cargo test --test integration
     - uses: actions/upload-artifact@v4.1.0
