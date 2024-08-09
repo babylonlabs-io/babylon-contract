@@ -2,7 +2,27 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.8.0...HEAD)
+
+## [v0.8.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-07-09)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...v0.8.0)
+
+**Closed issues:**
+
+**Merged pull requests:**
+
+- F/babylon private rebase (#211)
+- fix: allow query_block_voters() to return `None` if the block doesn't exist (#204)
+- chore: refactor pub rand commit (#200)
+- feat: add the query msg `FirstPubRandCommit ` and `Event` (#198)
+- feat: add query msg `HasPubRandCommit` (#196)
+- fix: decode hex hash (#195)
+- feat: set `isEnabled` at instantiation (#193)
+- feat: update admin (#192)
+- fix: cannot compare babylon chain height with consumer chain height (#190)
+- test: add finality gadget tests (#188)
+- chore: clean up scripts/optimizer.sh (#187)
 
 ## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-24)
 
