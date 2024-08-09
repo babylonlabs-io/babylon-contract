@@ -2,15 +2,45 @@
 
 ## [Unreleased](https://github.com/babylonchain/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...HEAD)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.8.0...HEAD)
+
+## [v0.8.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-07-09)
+
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...v0.8.0)
+
+**Closed issues:**
+
+- Update babylon-private to latest base/consumer-chain-support (2024-08-09)
+
+**Merged pull requests:**
+
+- F/babylon private rebase (#211)
+- fix: allow query_block_voters() to return `None` if the block doesn't exist (#204)
+- chore: refactor pub rand commit (#200)
+- feat: add the query msg `FirstPubRandCommit ` and `Event` (#198)
+- feat: add query msg `HasPubRandCommit` (#196)
+- fix: decode hex hash (#195)
+- feat: set `isEnabled` at instantiation (#193)
+- feat: update admin (#192)
+- fix: cannot compare babylon chain height with consumer chain height (#190)
+- test: add finality gadget tests (#188)
+- chore: clean up scripts/optimizer.sh (#187)
 
 ## [v0.7.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-06-24)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0-rc.1...v0.7.0)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0...v0.7.0)
 
 **Closed issues:**
 
 - add a killswitch to disable finality gadget [\#181](https://github.com/babylonchain/babylon-contract/issues/181)
+- Simplify packages/apis/src/queries.rs [\#172](https://github.com/babylonchain/babylon-contract/issues/172)
+- Set an activated height when deploying the op-finality-gadget contract [\#167](https://github.com/babylonchain/babylon-contract/issues/167)
+- Store block hash in the op-finality-gadget contract [\#159](https://github.com/babylonchain/babylon-contract/issues/159)
+- Finality round [\#153](https://github.com/babylonchain/babylon-contract/issues/153)
+- Upgrade to CosmWasm 2.x [\#140](https://github.com/babylonchain/babylon-contract/issues/140)
+- Refactor btc-staking contract into modules [\#130](https://github.com/babylonchain/babylon-contract/issues/130)
+- Active finality provider set [\#118](https://github.com/babylonchain/babylon-contract/issues/118)
+- Finality signatures submission [\#109](https://github.com/babylonchain/babylon-contract/issues/109)
 
 **Merged pull requests:**
 
@@ -19,18 +49,6 @@
 - fix: pub rand and finality sig query [\#183](https://github.com/babylonchain/babylon-contract/pull/183) ([gusin13](https://github.com/gusin13))
 - feat: implement killswitch [\#182](https://github.com/babylonchain/babylon-contract/pull/182) ([parketh](https://github.com/parketh))
 - fix: comment out unused code [\#146](https://github.com/babylonchain/babylon-contract/pull/146) ([bap2pecs](https://github.com/bap2pecs))
-
-## [v0.7.0-rc.1](https://github.com/babylonchain/babylon-contract/tree/v0.7.0-rc.1) (2024-06-21)
-
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0-rc.0...v0.7.0-rc.1)
-
-**Closed issues:**
-
-- Simplify packages/apis/src/queries.rs [\#172](https://github.com/babylonchain/babylon-contract/issues/172)
-- Set an activated height when deploying the op-finality-gadget contract [\#167](https://github.com/babylonchain/babylon-contract/issues/167)
-- Store block hash in the op-finality-gadget contract [\#159](https://github.com/babylonchain/babylon-contract/issues/159)
-
-**Merged pull requests:**
 
 - Fix: Set initial FP power to zero [\#180](https://github.com/babylonchain/babylon-contract/pull/180) ([maurolacy](https://github.com/maurolacy))
 - chore: change to query block votes [\#178](https://github.com/babylonchain/babylon-contract/pull/178) ([lesterli](https://github.com/lesterli))
@@ -42,21 +60,6 @@
 - fix: typo [\#169](https://github.com/babylonchain/babylon-contract/pull/169) ([lesterli](https://github.com/lesterli))
 - feat: set activated height [\#168](https://github.com/babylonchain/babylon-contract/pull/168) ([lesterli](https://github.com/lesterli))
 - feat: Use gRPC to query the Babylon Chain [\#158](https://github.com/babylonchain/babylon-contract/pull/158) ([lesterli](https://github.com/lesterli))
-
-## [v0.7.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0-rc.0) (2024-06-19)
-
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.6.0-rc.0...v0.7.0-rc.0)
-
-**Closed issues:**
-
-- Finality round [\#153](https://github.com/babylonchain/babylon-contract/issues/153)
-- Upgrade to CosmWasm 2.x [\#140](https://github.com/babylonchain/babylon-contract/issues/140)
-- Refactor btc-staking contract into modules [\#130](https://github.com/babylonchain/babylon-contract/issues/130)
-- Active finality provider set [\#118](https://github.com/babylonchain/babylon-contract/issues/118)
-- Finality signatures submission [\#109](https://github.com/babylonchain/babylon-contract/issues/109)
-
-**Merged pull requests:**
-
 - Active finality provider set [\#163](https://github.com/babylonchain/babylon-contract/pull/163) ([maurolacy](https://github.com/maurolacy))
 - R/sudo msgs [\#162](https://github.com/babylonchain/babylon-contract/pull/162) ([maurolacy](https://github.com/maurolacy))
 - F/finality queries tests [\#161](https://github.com/babylonchain/babylon-contract/pull/161) ([maurolacy](https://github.com/maurolacy))
@@ -73,9 +76,9 @@
 - crypto: error/option handling in EOTS implementation [\#139](https://github.com/babylonchain/babylon-contract/pull/139) ([SebastianElvis](https://github.com/SebastianElvis))
 - R/btc staking modules [\#138](https://github.com/babylonchain/babylon-contract/pull/138) ([maurolacy](https://github.com/maurolacy))
 
-## [v0.6.0-rc.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0-rc.0) (2024-06-07)
+## [v0.6.0](https://github.com/babylonchain/babylon-contract/tree/v0.6.0) (2024-06-07)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0-rc.0)
+[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.5.3...v0.6.0)
 
 **Closed issues:**
 

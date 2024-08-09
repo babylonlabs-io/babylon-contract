@@ -3,7 +3,7 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "0.8.x" ]
 env:
   CARGO_TERM_COLOR: always
 jobs:
