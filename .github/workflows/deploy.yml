@@ -1,0 +1,88 @@
+name: babylonchain/babylon-contract/deploy-WIP
+on:
+  push:
+    branches: [ "disabled" ]
+  pull_request:
+    branches: [ "disabled" ]
+env:
+  AWS_ACCESS_KEY_ID: xxxxYKF5
+  AWS_REGION: xxxxst-1
+  AWS_SECRET_ACCESS_KEY: xxxxmvcn
+  DEPLOY_KEY_NAME: xxxxc068
+  GITHUB_TOKEN: xxxxFyIu
+  S3_BUCKET_PREFIX: xxxxract
+jobs:
+  build_and_upload_contracts:
+    defaults:
+      run:
+        working-directory: "/__w/babylon-contract/babylon-contract"
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.78.0
+    steps:
+    - uses: actions/checkout@v4.1.0
+      with:
+        path: "/__w/babylon-contract/babylon-contract"
+    - name: Make temporary bin
+      run: mkdir -p /tmp/bin
+    - name: Install ghr
+      run: wget https://github.com/tcnksm/ghr/releases/download/v0.14.0/ghr_v0.14.0_linux_amd64.tar.gz -O - | tar -zxvf - -C /tmp/bin --wildcards --strip-components 1 */ghr
+    - name: Build optimised Wasm binaries
+      run: "./scripts/build-optimizer-ci.sh"
+    - uses: actions/upload-artifact@v4.1.0
+      with:
+        path: |-
+          /__w/babylon-contract/babylon-contract/artifacts/babylon_contract.wasm
+          /__w/babylon-contract/babylon-contract/artifacts/btc_staking.wasm
+          /__w/babylon-contract/babylon-contract/artifacts/checksums.txt
+    - name: Show data
+      run: |-
+        ls -l artifacts
+        cat artifacts/checksums.txt
+    - name: Publish artifacts on GitHub
+      run: |-
+        TAG="${{ github.ref }}"
+        TITLE="$TAG"
+        BODY="Attached there are some build artifacts generated at this tag. Those are for development purposes only! Please use crates.io to find the packages of this release."
+        /tmp/bin/ghr -t "$GITHUB_TOKEN" \
+          -u "$CIRCLE_PROJECT_USERNAME" -r "${{ github.repository }}" \
+          -c "${{ github.sha }}" \
+          -n "$TITLE" -b "$BODY" \
+          -replace \
+          "$TAG" ./artifacts/
+  build_and_upload_schemas:
+    defaults:
+      run:
+        working-directory: "/__w/babylon-contract/babylon-contract"
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.78.0
+    steps:
+    - uses: actions/checkout@v4.1.0
+      with:
+        path: "/__w/babylon-contract/babylon-contract"
+    - name: Make temporary bin
+      run: mkdir -p /tmp/bin
+    - name: Install ghr
+      run: wget https://github.com/tcnksm/ghr/releases/download/v0.14.0/ghr_v0.14.0_linux_amd64.tar.gz -O - | tar -zxvf - -C /tmp/bin --wildcards --strip-components 1 */ghr
+    - name: Build and run schema generator
+      run: |-
+        (cd ./contracts/babylon && cargo run --bin schema)
+        (cd ./contracts/btc-staking && cargo run --bin btcstaking-schema)
+    - name: Consolidate schemas
+      run: |-
+        mkdir -p ./schemas
+        cp -a ./contracts/*/schema/* ./schemas
+    - name: Show data
+      run: ls -l ./schemas
+    - name: Publish schemas on GitHub
+      run: |-
+        TAG="${{ github.ref }}"
+        TITLE="$TAG"
+        BODY="Attached there are some schemas and build artifacts generated at this tag. Those are for development purposes only! Please use crates.io to find the packages of this release."
+        /tmp/bin/ghr -t "$GITHUB_TOKEN" \
+          -u "$CIRCLE_PROJECT_USERNAME" -r "${{ github.repository }}" \
+          -c "${{ github.sha }}" \
+          -n "$TITLE" -b "$BODY" \
+          -replace \
+          "$TAG" ./schemas/
