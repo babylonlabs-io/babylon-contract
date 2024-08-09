@@ -7,7 +7,7 @@ use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{Deps, Order, StdResult};
 use cw_storage_plus::Bound;
 
-use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
+use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::IndexedBlock;
 
 use crate::error::ContractError;
@@ -20,7 +20,7 @@ use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
 use crate::state::finality::{BLOCKS, EVIDENCES};
 use crate::state::staking::{
-    fps, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, FPS, FP_DELEGATIONS,
+    fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, FPS, FP_DELEGATIONS,
 };
 
 pub fn config(deps: Deps) -> StdResult<Config> {
@@ -56,10 +56,7 @@ pub fn finality_providers(
 
 /// Get the delegation info by staking tx hash.
 /// `staking_tx_hash_hex`: The (reversed) staking tx hash, in hex
-pub fn delegation(
-    deps: Deps,
-    staking_tx_hash_hex: String,
-) -> Result<ActiveBtcDelegation, ContractError> {
+pub fn delegation(deps: Deps, staking_tx_hash_hex: String) -> Result<BtcDelegation, ContractError> {
     let staking_tx_hash = Txid::from_str(&staking_tx_hash_hex)?;
     Ok(DELEGATIONS.load(deps.storage, staking_tx_hash.as_ref())?)
 }
@@ -92,7 +89,7 @@ pub fn delegations(
         })
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
-        .collect::<Result<Vec<ActiveBtcDelegation>, _>>()?;
+        .collect::<Result<Vec<BtcDelegation>, _>>()?;
     Ok(BtcDelegationsResponse { delegations })
 }
 
@@ -247,9 +244,7 @@ mod tests {
     use cosmwasm_std::StdError::NotFound;
     use cosmwasm_std::{from_json, Binary, Storage};
 
-    use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, FinalityProvider, UnbondedBtcDelegation,
-    };
+    use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
 
     use crate::contract::tests::create_new_finality_provider;
     use crate::contract::{execute, instantiate};
@@ -257,12 +252,12 @@ mod tests {
     use crate::finality::tests::mock_env_height;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
     use crate::staking::tests::staking_tx_hash;
-    use crate::state::staking::{FinalityProviderState, FP_STATE_KEY};
+    use crate::state::staking::{BtcDelegation, FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
 
     // Sort delegations by staking tx hash
-    fn sort_delegations(dels: &[ActiveBtcDelegation]) -> Vec<ActiveBtcDelegation> {
+    fn sort_delegations(dels: &[BtcDelegation]) -> Vec<BtcDelegation> {
         let mut dels = dels.to_vec();
         dels.sort_by_key(staking_tx_hash);
         dels
@@ -371,7 +366,7 @@ mod tests {
 
         assert_eq!(dels.len(), 2);
         // Sort original delegations by staking tx hash (to compare with the query result)
-        let sorted_dels = sort_delegations(&[del1.clone(), del2.clone()]);
+        let sorted_dels = sort_delegations(&[del1.try_into().unwrap(), del2.try_into().unwrap()]);
         assert_eq!(dels[0], sorted_dels[0]);
         assert_eq!(dels[1], sorted_dels[1]);
 
@@ -441,13 +436,16 @@ mod tests {
             .delegations;
         assert_eq!(dels.len(), 2);
         // Sort original delegations by staking tx hash (to compare with the query result)
-        let sorted_dels = sort_delegations(&[del1.clone(), del2.clone()]);
+        let sorted_dels = sort_delegations(&[
+            del1.clone().try_into().unwrap(),
+            del2.clone().try_into().unwrap(),
+        ]);
         assert_eq!(dels[0], sorted_dels[0]);
         assert_eq!(dels[1], sorted_dels[1]);
 
         // Unbond the second delegation
         // Compute staking tx hash
-        let staking_tx_hash_hex = staking_tx_hash(&del2).to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&del2.try_into().unwrap()).to_string();
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],
@@ -464,7 +462,7 @@ mod tests {
             .unwrap()
             .delegations;
         assert_eq!(dels.len(), 1);
-        assert_eq!(dels[0], del1);
+        assert_eq!(dels[0], del1.try_into().unwrap());
 
         // Query all delegations (with active set to false)
         let dels = crate::queries::delegations(deps.as_ref(), None, None, Some(false))
@@ -595,7 +593,7 @@ mod tests {
 
         // Unbond the first delegation
         // Compute staking tx hash
-        let staking_tx_hash_hex = staking_tx_hash(&del1).to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&del1.try_into().unwrap()).to_string();
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],

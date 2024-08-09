@@ -235,39 +235,6 @@ pub struct ActiveBtcDelegation {
     pub params_version: u32,
 }
 
-impl ActiveBtcDelegation {
-    pub fn is_active(&self) -> bool {
-        // TODO: Implement full delegation status checks (needs BTC height)
-        // self.get_status(btc_height, w) == BTCDelegationStatus::ACTIVE
-        !self.is_unbonded_early()
-    }
-
-    fn is_unbonded_early(&self) -> bool {
-        if let Some(undelegation_info) = &self.undelegation_info {
-            !undelegation_info.delegator_unbonding_sig.is_empty()
-        } else {
-            // Can only happen if the state is corrupted.
-            // Every BTC delegation has to have undelegation info
-            true // Consider broken delegations as unbonded
-        }
-    }
-
-    pub fn get_status(&self, btc_height: u64, w: u64) -> BTCDelegationStatus {
-        // Manually unbonded, staking tx time-lock has not begun, is less than w BTC blocks left, or
-        // has expired
-        if self.is_unbonded_early()
-            || btc_height < self.start_height
-            || btc_height + w > self.end_height
-        {
-            BTCDelegationStatus::UNBONDED
-        } else {
-            // At this point, the BTC delegation has an active time-lock, and Babylon is not aware of
-            // an unbonding tx with the delegator's signature
-            BTCDelegationStatus::ACTIVE
-        }
-    }
-}
-
 /// CovenantAdaptorSignatures is a list adaptor signatures signed by the
 /// covenant with different finality provider's public keys as encryption keys
 #[cw_serde]

@@ -5,6 +5,7 @@ use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 
 use crate::state::config::{Config, Params};
+use crate::state::staking::BtcDelegation;
 
 #[cw_serde]
 #[derive(Default)]
@@ -150,7 +151,7 @@ pub struct FinalityProvidersResponse {
 
 #[cw_serde]
 pub struct BtcDelegationsResponse {
-    pub delegations: Vec<ActiveBtcDelegation>,
+    pub delegations: Vec<BtcDelegation>,
 }
 
 #[cw_serde]
