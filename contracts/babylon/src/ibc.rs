@@ -60,9 +60,11 @@ pub fn ibc_channel_open(
 /// Second part of the 4-step handshake, i.e. ChannelOpenAck and ChannelOpenConfirm.
 pub fn ibc_channel_connect(
     deps: DepsMut,
-    _env: Env,
+    env: &Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
+    deps.api.debug("Entered function: ibc_channel_connect");
+
     // Ensure we have no channel yet
     if IBC_CHANNEL.may_load(deps.storage)?.is_some() {
         return Err(ContractError::IbcChannelAlreadyOpen {});
@@ -72,7 +74,7 @@ pub fn ibc_channel_connect(
     // Store the channel
     IBC_CHANNEL.save(deps.storage, channel)?;
 
-       // Load the config
+    // Load the config
     let cfg = CONFIG.load(deps.storage)?;
 
     // Create the ConsumerRegisterIBCPacket
@@ -92,8 +94,10 @@ pub fn ibc_channel_connect(
     let ibc_msg = IbcMsg::SendPacket {
         channel_id: channel.endpoint.channel_id.clone(),
         data: to_json_binary(&packet_data_bytes)?,
-        timeout: packet_timeout(&env),
+        timeout: packet_timeout(env),
     };
+
+    deps.api.debug(&format!("Sending IBC message from ibc_channel_connect: {:?}", ibc_msg));
 
     let chan_id = &channel.endpoint.channel_id;
     Ok(IbcBasicResponse::new()
