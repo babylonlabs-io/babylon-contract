@@ -150,17 +150,6 @@ impl FinalityProviderDescription {
     pub const MAX_DETAILS_LENGTH: usize = 280;
 }
 
-/// PubKey defines a secp256k1 public key.
-/// Key is the compressed form of the pubkey. The first byte is a 0x02 byte
-/// if the y-coordinate is the lexicographically largest of the two associated with
-/// the x-coordinate. Otherwise, the first byte is a 0x03.
-/// This prefix is followed with the x-coordinate.
-#[cw_serde]
-pub struct PubKey {
-    /// key is the compressed public key of the finality provider
-    pub key: Binary,
-}
-
 /// ProofOfPossessionBtc is the proof of possession that a Babylon secp256k1
 /// secret key and a Bitcoin secp256k1 secret key are held by the same
 /// person
