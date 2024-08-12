@@ -28,7 +28,6 @@ pub fn ibc_channel_open(
     _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
-    deps.api.debug("CONTRACT: Entered function: ibc_channel_open");
     // Ensure we have no channel yet
     if IBC_CHANNEL.may_load(deps.storage)?.is_some() {
         return Err(ContractError::IbcChannelAlreadyOpen {});
@@ -61,8 +60,6 @@ pub fn ibc_channel_connect(
     env: &Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    deps.api.debug("CONTRACT: Entered function: ibc_channel_connect");
-
     // Ensure we have no channel yet
     if IBC_CHANNEL.may_load(deps.storage)?.is_some() {
         return Err(ContractError::IbcChannelAlreadyOpen {});
@@ -90,8 +87,6 @@ pub fn ibc_channel_connect(
         consumer_description: cfg.consumer_description,
     };
 
-    deps.api.debug(&format!("ConsumerRegisterIBCPacket:\n{:#?}", consumer_register_packet));
-
     // Create the ZoneconciergePacketData
     let packet_data = ZoneconciergePacketData {
         packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
@@ -105,8 +100,6 @@ pub fn ibc_channel_connect(
         data: Binary::new(packet_data_bytes),
         timeout: packet_timeout(env),
     };
-
-    deps.api.debug(&format!("Sending IBC message from ibc_channel_connect: {:?}", ibc_msg));
 
     let chan_id = &channel.endpoint.channel_id;
     Ok(IbcBasicResponse::new()
@@ -382,29 +375,11 @@ pub fn packet_timeout(env: &Env) -> IbcTimeout {
 }
 
 pub fn ibc_packet_ack(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
-    msg: IbcPacketAckMsg,
+    _msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    deps.api.debug(&format!("Received acknowledgement: {:?}", msg.acknowledgement));
-    
-    // Parse the acknowledgement and handle success/error
-    let ack: StdAck = from_json(&msg.acknowledgement.data)?;
-    match ack {
-        StdAck::Success(data) => {
-            // Handle successful acknowledgement
-            deps.api.debug(&format!("Packet successfully processed by receiver: {:?}", data));
-            // Add any necessary state updates or further actions
-        }
-        StdAck::Error(error) => {
-            // Handle error acknowledgement
-            deps.api.debug(&format!("Packet processing error: {}", error));
-            // Add any necessary error handling or recovery logic
-        }
-    }
-
-    Ok(IbcBasicResponse::new()
-        .add_attribute("action", "acknowledge_packet"))
+    Ok(IbcBasicResponse::default())
 }
 
 pub fn ibc_packet_timeout(
