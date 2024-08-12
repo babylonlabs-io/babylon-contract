@@ -14,6 +14,7 @@ use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
+use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 
 use crate::error::ContractError;
@@ -246,9 +247,12 @@ fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError
 fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
     // Get the BTC tip from the babylon contract through a raw query
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
-    let query = babylon_apis::encode_raw_query(&babylon_addr, BTC_TIP_KEY.as_bytes());
+    // Construct the query message
+    let query_msg = BabylonQueryMsg::BtcTipHeader {};
 
-    let tip_bytes: Bytes = deps.querier.query(&query)?;
+    // Query the Babylon contract
+    let tip_bytes: Bytes = deps.querier.query_wasm_smart(&babylon_addr, &query_msg)?;
+
     Ok(BtcHeaderInfo::decode(tip_bytes)?)
 }
 
