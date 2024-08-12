@@ -4,8 +4,7 @@ use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 use crate::msg::FinalityProviderInfo;
 use crate::state::fp_index::FinalityProviderIndexes;
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, BTCDelegationStatus, BtcUndelegationInfo, FinalityProvider, SignatureInfo,
-    HASH_SIZE,
+    BTCDelegationStatus, FinalityProvider, SignatureInfo, HASH_SIZE,
 };
 use babylon_apis::{btc_staking_api, Bytes};
 
@@ -45,7 +44,7 @@ pub struct BtcDelegation {
     /// change outputs
     pub unbonding_time: u32,
     /// undelegation_info is the undelegation info of this delegation.
-    pub undelegation_info: UndelegationInfo,
+    pub undelegation_info: BtcUndelegationInfo,
     /// params version used to validate the delegation
     pub params_version: u32,
 }
@@ -77,34 +76,34 @@ impl BtcDelegation {
     }
 }
 
-impl From<ActiveBtcDelegation> for BtcDelegation {
-    fn from(delegation: ActiveBtcDelegation) -> Self {
+impl From<btc_staking_api::ActiveBtcDelegation> for BtcDelegation {
+    fn from(active_delegation: btc_staking_api::ActiveBtcDelegation) -> Self {
         BtcDelegation {
-            staker_addr: delegation.staker_addr,
-            btc_pk_hex: delegation.btc_pk_hex,
-            fp_btc_pk_list: delegation.fp_btc_pk_list,
-            start_height: delegation.start_height,
-            end_height: delegation.end_height,
-            total_sat: delegation.total_sat,
-            staking_tx: delegation.staking_tx.to_vec(),
-            slashing_tx: delegation.slashing_tx.to_vec(),
-            delegator_slashing_sig: delegation.delegator_slashing_sig.to_vec(),
-            covenant_sigs: delegation
+            staker_addr: active_delegation.staker_addr,
+            btc_pk_hex: active_delegation.btc_pk_hex,
+            fp_btc_pk_list: active_delegation.fp_btc_pk_list,
+            start_height: active_delegation.start_height,
+            end_height: active_delegation.end_height,
+            total_sat: active_delegation.total_sat,
+            staking_tx: active_delegation.staking_tx.to_vec(),
+            slashing_tx: active_delegation.slashing_tx.to_vec(),
+            delegator_slashing_sig: active_delegation.delegator_slashing_sig.to_vec(),
+            covenant_sigs: active_delegation
                 .covenant_sigs
                 .into_iter()
                 .map(|sig| sig.into())
                 .collect(),
-            staking_output_idx: delegation.staking_output_idx,
-            unbonding_time: delegation.unbonding_time,
-            undelegation_info: delegation.undelegation_info.into(),
-            params_version: delegation.params_version,
+            staking_output_idx: active_delegation.staking_output_idx,
+            unbonding_time: active_delegation.unbonding_time,
+            undelegation_info: active_delegation.undelegation_info.into(),
+            params_version: active_delegation.params_version,
         }
     }
 }
 
-impl From<&ActiveBtcDelegation> for BtcDelegation {
-    fn from(delegation: &ActiveBtcDelegation) -> Self {
-        BtcDelegation::from(delegation.clone())
+impl From<&btc_staking_api::ActiveBtcDelegation> for BtcDelegation {
+    fn from(active_delegation: &btc_staking_api::ActiveBtcDelegation) -> Self {
+        BtcDelegation::from(active_delegation.clone())
     }
 }
 
@@ -117,10 +116,10 @@ pub struct CovenantAdaptorSignatures {
 }
 
 impl From<btc_staking_api::CovenantAdaptorSignatures> for CovenantAdaptorSignatures {
-    fn from(info: btc_staking_api::CovenantAdaptorSignatures) -> Self {
+    fn from(cov_adaptor_sigs: btc_staking_api::CovenantAdaptorSignatures) -> Self {
         CovenantAdaptorSignatures {
-            cov_pk: info.cov_pk.to_vec(),
-            adaptor_sigs: info
+            cov_pk: cov_adaptor_sigs.cov_pk.to_vec(),
+            adaptor_sigs: cov_adaptor_sigs
                 .adaptor_sigs
                 .into_iter()
                 .map(|sig| sig.to_vec())
@@ -130,7 +129,7 @@ impl From<btc_staking_api::CovenantAdaptorSignatures> for CovenantAdaptorSignatu
 }
 
 #[cw_serde]
-pub struct UndelegationInfo {
+pub struct BtcUndelegationInfo {
     /// unbonding_tx is the transaction which will transfer the funds from staking
     /// output to unbonding output. Unbonding output will usually have lower timelock
     /// than staking output.
@@ -156,15 +155,15 @@ pub struct UndelegationInfo {
     pub covenant_slashing_sigs: Vec<CovenantAdaptorSignatures>,
 }
 
-impl From<BtcUndelegationInfo> for UndelegationInfo {
-    fn from(info: BtcUndelegationInfo) -> Self {
-        UndelegationInfo {
-            unbonding_tx: info.unbonding_tx.to_vec(),
-            delegator_unbonding_sig: info.delegator_unbonding_sig.to_vec(),
-            covenant_unbonding_sig_list: info.covenant_unbonding_sig_list,
-            slashing_tx: info.slashing_tx.to_vec(),
-            delegator_slashing_sig: info.delegator_slashing_sig.to_vec(),
-            covenant_slashing_sigs: info
+impl From<btc_staking_api::BtcUndelegationInfo> for BtcUndelegationInfo {
+    fn from(undelegation_info: btc_staking_api::BtcUndelegationInfo) -> Self {
+        BtcUndelegationInfo {
+            unbonding_tx: undelegation_info.unbonding_tx.to_vec(),
+            delegator_unbonding_sig: undelegation_info.delegator_unbonding_sig.to_vec(),
+            covenant_unbonding_sig_list: undelegation_info.covenant_unbonding_sig_list,
+            slashing_tx: undelegation_info.slashing_tx.to_vec(),
+            delegator_slashing_sig: undelegation_info.delegator_slashing_sig.to_vec(),
+            covenant_slashing_sigs: undelegation_info
                 .covenant_slashing_sigs
                 .into_iter()
                 .map(|sig| sig.into())

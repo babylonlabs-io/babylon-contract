@@ -423,7 +423,7 @@ pub(crate) mod tests {
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::queries;
-    use crate::state::staking::UndelegationInfo;
+    use crate::state::staking::BtcUndelegationInfo;
 
     // Compute staking tx hash of an active delegation
     pub(crate) fn staking_tx_hash(del: &BtcDelegation) -> Txid {
@@ -616,7 +616,7 @@ pub(crate) mod tests {
         let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
             btc_undelegation,
-            UndelegationInfo {
+            BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx.to_vec(),
                 slashing_tx: active_delegation_undelegation.slashing_tx.to_vec(),
                 delegator_unbonding_sig: vec![],
@@ -650,7 +650,7 @@ pub(crate) mod tests {
         let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
             btc_undelegation,
-            UndelegationInfo {
+            BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
                 slashing_tx: active_delegation_undelegation.slashing_tx.into(),
                 delegator_unbonding_sig: vec![0x01, 0x02, 0x03],
