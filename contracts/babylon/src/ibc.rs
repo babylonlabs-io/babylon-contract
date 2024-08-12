@@ -6,10 +6,7 @@ use babylon_proto::babylon::zoneconcierge::v1::{
 use babylon_proto::babylon::btcstkconsumer::v1::ConsumerRegisterIbcPacket;
 
 use cosmwasm_std::{
-    DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
-    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, Never, StdAck,
-    StdError, StdResult, IbcMsg, to_json_binary,
+    from_json, Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, Never, StdAck, StdError, StdResult
 };
 use cw_storage_plus::Item;
 use prost::Message;
@@ -31,6 +28,7 @@ pub fn ibc_channel_open(
     _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
+    deps.api.debug("CONTRACT: Entered function: ibc_channel_open");
     // Ensure we have no channel yet
     if IBC_CHANNEL.may_load(deps.storage)?.is_some() {
         return Err(ContractError::IbcChannelAlreadyOpen {});
@@ -63,7 +61,7 @@ pub fn ibc_channel_connect(
     env: &Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    deps.api.debug("Entered function: ibc_channel_connect");
+    deps.api.debug("CONTRACT: Entered function: ibc_channel_connect");
 
     // Ensure we have no channel yet
     if IBC_CHANNEL.may_load(deps.storage)?.is_some() {
@@ -92,7 +90,7 @@ pub fn ibc_channel_connect(
         consumer_description: cfg.consumer_description,
     };
 
-    deps.api.debug(&format!("ConsumerRegisterIBCPacket: {:?}", consumer_register_packet.clone()));
+    deps.api.debug(&format!("ConsumerRegisterIBCPacket:\n{:#?}", consumer_register_packet));
 
     // Create the ZoneconciergePacketData
     let packet_data = ZoneconciergePacketData {
@@ -104,7 +102,7 @@ pub fn ibc_channel_connect(
     // Create the IBC packet message
     let ibc_msg = IbcMsg::SendPacket {
         channel_id: channel.endpoint.channel_id.clone(),
-        data: to_json_binary(&packet_data_bytes)?,
+        data: Binary::new(packet_data_bytes),
         timeout: packet_timeout(env),
     };
 
@@ -112,9 +110,11 @@ pub fn ibc_channel_connect(
 
     let chan_id = &channel.endpoint.channel_id;
     Ok(IbcBasicResponse::new()
+        .add_message(ibc_msg)
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
-        .add_event(Event::new("ibc").add_attribute("channel", "connect")))
+        .add_event(Event::new("ibc").add_attribute("channel", "connect"))
+    )
 }
 
 /// This is invoked on the IBC Channel Close message
@@ -382,11 +382,29 @@ pub fn packet_timeout(env: &Env) -> IbcTimeout {
 }
 
 pub fn ibc_packet_ack(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
-    _msg: IbcPacketAckMsg,
+    msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    Ok(IbcBasicResponse::default())
+    deps.api.debug(&format!("Received acknowledgement: {:?}", msg.acknowledgement));
+    
+    // Parse the acknowledgement and handle success/error
+    let ack: StdAck = from_json(&msg.acknowledgement.data)?;
+    match ack {
+        StdAck::Success(data) => {
+            // Handle successful acknowledgement
+            deps.api.debug(&format!("Packet successfully processed by receiver: {:?}", data));
+            // Add any necessary state updates or further actions
+        }
+        StdAck::Error(error) => {
+            // Handle error acknowledgement
+            deps.api.debug(&format!("Packet processing error: {}", error));
+            // Add any necessary error handling or recovery logic
+        }
+    }
+
+    Ok(IbcBasicResponse::new()
+        .add_attribute("action", "acknowledge_packet"))
 }
 
 pub fn ibc_packet_timeout(

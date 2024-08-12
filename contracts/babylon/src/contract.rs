@@ -24,6 +24,11 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
+    deps.api.debug("CONTRACT: Entering instantiate function");
+    deps.api.debug(&format!("CONTRACT: Consumer Name: {}", msg.consumer_name));
+    deps.api.debug(&format!("CONTRACT: Consumer Description: {}", msg.consumer_description));
+
+
     msg.validate()?;
 
     // initialise config

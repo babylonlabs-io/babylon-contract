@@ -48,6 +48,17 @@ impl ContractMsg for InstantiateMsg {
             ));
         }
         let _ = self.babylon_tag_to_bytes()?;
+
+        // Check if consumer name is empty
+        if self.consumer_name.trim().is_empty() {
+            return Err(StdError::generic_err("Consumer name cannot be empty"));
+        }
+
+        // Check if consumer description is empty
+        if self.consumer_description.trim().is_empty() {
+            return Err(StdError::generic_err("Consumer description cannot be empty"));
+        }
+
         Ok(())
     }
 
