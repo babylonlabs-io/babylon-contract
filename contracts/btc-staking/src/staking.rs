@@ -477,9 +477,9 @@ pub(crate) mod tests {
     use crate::queries;
     use crate::state::staking::BtcUndelegationInfo;
 
-    // Compute staking tx hash of an active delegation
+    // Compute staking tx hash of a delegation
     pub(crate) fn staking_tx_hash(del: &BtcDelegation) -> Txid {
-        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del.staking_tx).unwrap();
+        let staking_tx: Transaction = deserialize(&del.staking_tx).unwrap();
         staking_tx.txid()
     }
 
@@ -756,19 +756,22 @@ pub(crate) mod tests {
         assert_eq!(0, res.messages.len());
 
         // Check the delegation is active (it has no unbonding or slashing tx signature)
-        let active_delegation_undelegation = active_delegation.undelegation_info.clone().unwrap();
+        let active_delegation_undelegation = active_delegation.undelegation_info.clone();
         // Compute the staking tx hash
-        let staking_tx_hash_hex = staking_tx_hash(&active_delegation).to_string();
+        let delegation = BtcDelegation::from(&active_delegation);
+        let staking_tx_hash_hex = staking_tx_hash(&delegation).to_string();
 
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex.clone()).unwrap();
-        let btc_undelegation = btc_del.undelegation_info.unwrap();
+        let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
             btc_undelegation,
             BtcUndelegationInfo {
-                unbonding_tx: active_delegation_undelegation.unbonding_tx,
-                slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: Binary::new(vec![]),
-                delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
+                unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
+                slashing_tx: active_delegation_undelegation.slashing_tx.into(),
+                delegator_unbonding_sig: vec![],
+                delegator_slashing_sig: active_delegation_undelegation
+                    .delegator_slashing_sig
+                    .into(),
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
             }
@@ -801,16 +804,18 @@ pub(crate) mod tests {
         assert_eq!(res.events[0].attributes[1].key.as_str(), "height");
 
         // Check the delegation is not active any more (updated with the unbonding tx signature)
-        let active_delegation_undelegation = active_delegation.undelegation_info.unwrap();
+        let active_delegation_undelegation = active_delegation.undelegation_info;
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
-        let btc_undelegation = btc_del.undelegation_info.unwrap();
+        let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
             btc_undelegation,
             BtcUndelegationInfo {
-                unbonding_tx: active_delegation_undelegation.unbonding_tx,
-                slashing_tx: active_delegation_undelegation.slashing_tx,
-                delegator_unbonding_sig: active_delegation.delegator_slashing_sig, // The slashing sig is now the unbonding sig
-                delegator_slashing_sig: active_delegation_undelegation.delegator_slashing_sig,
+                unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
+                slashing_tx: active_delegation_undelegation.slashing_tx.into(),
+                delegator_unbonding_sig: active_delegation.delegator_slashing_sig.into(), // The slashing sig is now the unbonding sig
+                delegator_slashing_sig: active_delegation_undelegation
+                    .delegator_slashing_sig
+                    .into(),
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
             }
