@@ -3,9 +3,7 @@ use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 
 use crate::msg::FinalityProviderInfo;
 use crate::state::fp_index::FinalityProviderIndexes;
-use babylon_apis::btc_staking_api::{
-    BTCDelegationStatus, FinalityProvider, SignatureInfo, HASH_SIZE,
-};
+use babylon_apis::btc_staking_api::{BTCDelegationStatus, FinalityProvider, HASH_SIZE};
 use babylon_apis::{btc_staking_api, Bytes};
 
 #[cw_serde]
@@ -160,7 +158,11 @@ impl From<btc_staking_api::BtcUndelegationInfo> for BtcUndelegationInfo {
         BtcUndelegationInfo {
             unbonding_tx: undelegation_info.unbonding_tx.to_vec(),
             delegator_unbonding_sig: undelegation_info.delegator_unbonding_sig.to_vec(),
-            covenant_unbonding_sig_list: undelegation_info.covenant_unbonding_sig_list,
+            covenant_unbonding_sig_list: undelegation_info
+                .covenant_unbonding_sig_list
+                .into_iter()
+                .map(|sig| sig.into())
+                .collect(),
             slashing_tx: undelegation_info.slashing_tx.to_vec(),
             delegator_slashing_sig: undelegation_info.delegator_slashing_sig.to_vec(),
             covenant_slashing_sigs: undelegation_info
@@ -168,6 +170,21 @@ impl From<btc_staking_api::BtcUndelegationInfo> for BtcUndelegationInfo {
                 .into_iter()
                 .map(|sig| sig.into())
                 .collect(),
+        }
+    }
+}
+
+#[cw_serde]
+pub struct SignatureInfo {
+    pub pk: Bytes,
+    pub sig: Bytes,
+}
+
+impl From<btc_staking_api::SignatureInfo> for SignatureInfo {
+    fn from(sig_info: btc_staking_api::SignatureInfo) -> Self {
+        SignatureInfo {
+            pk: sig_info.pk.to_vec(),
+            sig: sig_info.sig.to_vec(),
         }
     }
 }
