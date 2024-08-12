@@ -45,6 +45,8 @@ pub struct BtcDelegation {
     pub undelegation_info: BtcUndelegationInfo,
     /// params version used to validate the delegation
     pub params_version: u32,
+    /// slashed is used to indicate whether a given delegation is related to a slashed FP
+    pub slashed: bool,
 }
 
 impl BtcDelegation {
@@ -59,8 +61,7 @@ impl BtcDelegation {
     }
 
     fn is_slashed(&self) -> bool {
-        !self.undelegation_info.delegator_unbonding_sig.is_empty()
-            && self.undelegation_info.delegator_unbonding_sig == self.delegator_slashing_sig
+        self.slashed
     }
 
     pub fn get_status(&self, btc_height: u64, w: u64) -> BTCDelegationStatus {
@@ -101,6 +102,7 @@ impl From<btc_staking_api::ActiveBtcDelegation> for BtcDelegation {
             unbonding_time: active_delegation.unbonding_time,
             undelegation_info: active_delegation.undelegation_info.into(),
             params_version: active_delegation.params_version,
+            slashed: false,
         }
     }
 }

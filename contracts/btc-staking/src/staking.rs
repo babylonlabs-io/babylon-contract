@@ -329,15 +329,6 @@ fn handle_slashed_delegation(
 
     // TODO: Ensure the BTC delegation is active
 
-    // Mark the delegation as undelegated due to slashing
-    let delegator_slashing_sig = btc_del.delegator_slashing_sig.clone();
-    btc_undelegate(
-        storage,
-        &staking_tx_hash,
-        &mut btc_del,
-        delegator_slashing_sig.as_slice(),
-    )?;
-
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
@@ -349,6 +340,11 @@ fn handle_slashed_delegation(
             Ok::<_, ContractError>(fp_state)
         })?;
     }
+
+    // Mark the delegation as slashed
+    btc_del.slashed = true;
+    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &btc_del)?;
+
     // Record event that the BTC delegation becomes unbonded due to slashing at this height
     let slashing_event = Event::new("btc_undelegation_slashed")
         .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
@@ -803,16 +799,19 @@ pub(crate) mod tests {
         );
         assert_eq!(res.events[0].attributes[1].key.as_str(), "height");
 
-        // Check the delegation is not active any more (updated with the unbonding tx signature)
+        // Check the delegation is not active any more (slashed)
         let active_delegation_undelegation = active_delegation.undelegation_info;
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
+        assert!(btc_del.slashed);
+
+        // Check the undelegation info in passing
         let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
             btc_undelegation,
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
                 slashing_tx: active_delegation_undelegation.slashing_tx.into(),
-                delegator_unbonding_sig: active_delegation.delegator_slashing_sig.into(), // The slashing sig is now the unbonding sig
+                delegator_unbonding_sig: vec![],
                 delegator_slashing_sig: active_delegation_undelegation
                     .delegator_slashing_sig
                     .into(),
