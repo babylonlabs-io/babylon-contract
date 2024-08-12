@@ -4,10 +4,10 @@ use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 use crate::msg::FinalityProviderInfo;
 use crate::state::fp_index::FinalityProviderIndexes;
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, BTCDelegationStatus, BtcUndelegationInfo, CovenantAdaptorSignatures,
-    FinalityProvider, SignatureInfo, HASH_SIZE,
+    ActiveBtcDelegation, BTCDelegationStatus, BtcUndelegationInfo, FinalityProvider, SignatureInfo,
+    HASH_SIZE,
 };
-use babylon_apis::Bytes;
+use babylon_apis::{btc_staking_api, Bytes};
 
 #[cw_serde]
 pub struct BtcDelegation {
@@ -89,7 +89,11 @@ impl From<ActiveBtcDelegation> for BtcDelegation {
             staking_tx: delegation.staking_tx.to_vec(),
             slashing_tx: delegation.slashing_tx.to_vec(),
             delegator_slashing_sig: delegation.delegator_slashing_sig.to_vec(),
-            covenant_sigs: delegation.covenant_sigs,
+            covenant_sigs: delegation
+                .covenant_sigs
+                .into_iter()
+                .map(|sig| sig.into())
+                .collect(),
             staking_output_idx: delegation.staking_output_idx,
             unbonding_time: delegation.unbonding_time,
             undelegation_info: delegation.undelegation_info.into(),
@@ -101,6 +105,27 @@ impl From<ActiveBtcDelegation> for BtcDelegation {
 impl From<&ActiveBtcDelegation> for BtcDelegation {
     fn from(delegation: &ActiveBtcDelegation) -> Self {
         BtcDelegation::from(delegation.clone())
+    }
+}
+
+#[cw_serde]
+pub struct CovenantAdaptorSignatures {
+    /// cov_pk is the public key of the covenant emulator, used as the public key of the adaptor signature
+    pub cov_pk: Bytes,
+    /// adaptor_sigs is a list of adaptor signatures, each encrypted by a restaked BTC finality provider's public key
+    pub adaptor_sigs: Vec<Bytes>,
+}
+
+impl From<btc_staking_api::CovenantAdaptorSignatures> for CovenantAdaptorSignatures {
+    fn from(info: btc_staking_api::CovenantAdaptorSignatures) -> Self {
+        CovenantAdaptorSignatures {
+            cov_pk: info.cov_pk.to_vec(),
+            adaptor_sigs: info
+                .adaptor_sigs
+                .into_iter()
+                .map(|sig| sig.to_vec())
+                .collect(),
+        }
     }
 }
 
@@ -139,7 +164,11 @@ impl From<BtcUndelegationInfo> for UndelegationInfo {
             covenant_unbonding_sig_list: info.covenant_unbonding_sig_list,
             slashing_tx: info.slashing_tx.to_vec(),
             delegator_slashing_sig: info.delegator_slashing_sig.to_vec(),
-            covenant_slashing_sigs: info.covenant_slashing_sigs,
+            covenant_slashing_sigs: info
+                .covenant_slashing_sigs
+                .into_iter()
+                .map(|sig| sig.into())
+                .collect(),
         }
     }
 }
