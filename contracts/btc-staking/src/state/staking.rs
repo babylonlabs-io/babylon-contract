@@ -51,11 +51,15 @@ impl BtcDelegation {
     pub fn is_active(&self) -> bool {
         // TODO: Implement full delegation status checks (needs BTC height)
         // self.get_status(btc_height, w) == BTCDelegationStatus::ACTIVE
-        !self.is_unbonded_early()
+        !self.is_unbonded_early() && !self.is_slashed()
     }
 
     fn is_unbonded_early(&self) -> bool {
         !self.undelegation_info.delegator_unbonding_sig.is_empty()
+    }
+
+    fn is_slashed(&self) -> bool {
+        self.undelegation_info.delegator_unbonding_sig == self.delegator_slashing_sig
     }
 
     pub fn get_status(&self, btc_height: u64, w: u64) -> BTCDelegationStatus {
@@ -64,6 +68,7 @@ impl BtcDelegation {
         if self.is_unbonded_early()
             || btc_height < self.start_height
             || btc_height + w > self.end_height
+            || self.is_slashed()
         {
             BTCDelegationStatus::UNBONDED
         } else {
