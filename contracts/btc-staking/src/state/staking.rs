@@ -1,7 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 
-use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
 use crate::state::fp_index::FinalityProviderIndexes;
 use babylon_apis::btc_staking_api::{
@@ -78,15 +77,9 @@ impl BtcDelegation {
     }
 }
 
-impl TryFrom<ActiveBtcDelegation> for BtcDelegation {
-    type Error = ContractError;
-
-    fn try_from(delegation: ActiveBtcDelegation) -> Result<Self, Self::Error> {
-        let btc_undelegation_info = match delegation.undelegation_info {
-            Some(info) => info,
-            None => return Err(ContractError::MissingUnbondingInfo {}),
-        };
-        Ok(BtcDelegation {
+impl From<ActiveBtcDelegation> for BtcDelegation {
+    fn from(delegation: ActiveBtcDelegation) -> Self {
+        BtcDelegation {
             staker_addr: delegation.staker_addr,
             btc_pk_hex: delegation.btc_pk_hex,
             fp_btc_pk_list: delegation.fp_btc_pk_list,
@@ -99,17 +92,15 @@ impl TryFrom<ActiveBtcDelegation> for BtcDelegation {
             covenant_sigs: delegation.covenant_sigs,
             staking_output_idx: delegation.staking_output_idx,
             unbonding_time: delegation.unbonding_time,
-            undelegation_info: btc_undelegation_info.into(),
+            undelegation_info: delegation.undelegation_info.into(),
             params_version: delegation.params_version,
-        })
+        }
     }
 }
 
-impl TryFrom<&ActiveBtcDelegation> for BtcDelegation {
-    type Error = ContractError;
-
-    fn try_from(delegation: &ActiveBtcDelegation) -> Result<Self, Self::Error> {
-        BtcDelegation::try_from(delegation.clone())
+impl From<&ActiveBtcDelegation> for BtcDelegation {
+    fn from(delegation: &ActiveBtcDelegation) -> Self {
+        BtcDelegation::from(delegation.clone())
     }
 }
 

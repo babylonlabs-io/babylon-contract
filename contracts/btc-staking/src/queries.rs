@@ -366,7 +366,7 @@ mod tests {
 
         assert_eq!(dels.len(), 2);
         // Sort original delegations by staking tx hash (to compare with the query result)
-        let sorted_dels = sort_delegations(&[del1.try_into().unwrap(), del2.try_into().unwrap()]);
+        let sorted_dels = sort_delegations(&[del1.into(), del2.into()]);
         assert_eq!(dels[0], sorted_dels[0]);
         assert_eq!(dels[1], sorted_dels[1]);
 
@@ -436,16 +436,13 @@ mod tests {
             .delegations;
         assert_eq!(dels.len(), 2);
         // Sort original delegations by staking tx hash (to compare with the query result)
-        let sorted_dels = sort_delegations(&[
-            del1.clone().try_into().unwrap(),
-            del2.clone().try_into().unwrap(),
-        ]);
+        let sorted_dels = sort_delegations(&[del1.clone().into(), del2.clone().into()]);
         assert_eq!(dels[0], sorted_dels[0]);
         assert_eq!(dels[1], sorted_dels[1]);
 
         // Unbond the second delegation
         // Compute staking tx hash
-        let staking_tx_hash_hex = staking_tx_hash(&del2.try_into().unwrap()).to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&del2.into()).to_string();
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],
@@ -462,7 +459,7 @@ mod tests {
             .unwrap()
             .delegations;
         assert_eq!(dels.len(), 1);
-        assert_eq!(dels[0], del1.try_into().unwrap());
+        assert_eq!(dels[0], del1.into());
 
         // Query all delegations (with active set to false)
         let dels = crate::queries::delegations(deps.as_ref(), None, None, Some(false))
@@ -593,7 +590,7 @@ mod tests {
 
         // Unbond the first delegation
         // Compute staking tx hash
-        let staking_tx_hash_hex = staking_tx_hash(&del1.try_into().unwrap()).to_string();
+        let staking_tx_hash_hex = staking_tx_hash(&del1.into()).to_string();
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],

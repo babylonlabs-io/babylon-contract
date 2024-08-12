@@ -330,7 +330,7 @@ pub(crate) mod tests {
                 .collect(),
             staking_output_idx: del.staking_output_idx,
             unbonding_time: del.unbonding_time,
-            undelegation_info: Some(BtcUndelegationInfo {
+            undelegation_info: BtcUndelegationInfo {
                 unbonding_tx: Binary::new(btc_undelegation.unbonding_tx.to_vec()),
                 slashing_tx: Binary::new(btc_undelegation.slashing_tx.to_vec()),
                 delegator_unbonding_sig: Binary::new(vec![]),
@@ -339,7 +339,7 @@ pub(crate) mod tests {
                 ),
                 covenant_unbonding_sig_list: vec![],
                 covenant_slashing_sigs: vec![],
-            }),
+            },
             params_version: del.params_version,
         }
     }

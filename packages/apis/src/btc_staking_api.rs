@@ -230,7 +230,7 @@ pub struct ActiveBtcDelegation {
     /// change outputs
     pub unbonding_time: u32,
     /// undelegation_info is the undelegation info of this delegation.
-    pub undelegation_info: Option<BtcUndelegationInfo>,
+    pub undelegation_info: BtcUndelegationInfo,
     /// params version used to validate the delegation
     pub params_version: u32,
 }

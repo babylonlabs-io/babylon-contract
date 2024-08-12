@@ -48,8 +48,6 @@ pub enum ContractError {
     DelegationAlreadyExists(String),
     #[error("Invalid Btc tx: {0}")]
     InvalidBtcTx(String),
-    #[error("Missing unbonding info")]
-    MissingUnbondingInfo,
     #[error("Empty unbonding tx")]
     EmptyUnbondingTx,
     #[error("Empty Slashing tx")]

@@ -181,26 +181,20 @@ pub fn handle_active_delegation(
 
     // All good, check initial BTC undelegation information is present
     // TODO: Check that the sent undelegation info is valid
-    match active_delegation.undelegation_info {
-        Some(ref undelegation_info) => {
-            // Check that the unbonding tx is there
-            if undelegation_info.unbonding_tx.is_empty() {
-                return Err(ContractError::EmptyUnbondingTx);
-            }
+    let undelegation_info = active_delegation.clone().undelegation_info;
+    // Check that the unbonding tx is there
+    if undelegation_info.unbonding_tx.is_empty() {
+        return Err(ContractError::EmptyUnbondingTx);
+    }
 
-            // Check that the unbonding slashing tx is there
-            if undelegation_info.slashing_tx.is_empty() {
-                return Err(ContractError::EmptySlashingTx);
-            }
+    // Check that the unbonding slashing tx is there
+    if undelegation_info.slashing_tx.is_empty() {
+        return Err(ContractError::EmptySlashingTx);
+    }
 
-            // Check that the delegator slashing signature is there
-            if undelegation_info.delegator_slashing_sig.is_empty() {
-                return Err(ContractError::EmptySignature);
-            }
-        }
-        None => {
-            return Err(ContractError::MissingUnbondingInfo);
-        }
+    // Check that the delegator slashing signature is there
+    if undelegation_info.delegator_slashing_sig.is_empty() {
+        return Err(ContractError::EmptySignature);
     }
 
     // Check staking tx is not duplicated
@@ -255,7 +249,7 @@ pub fn handle_active_delegation(
         return Err(ContractError::FinalityProviderNotRegistered);
     }
     // Add this BTC delegation
-    let delegation = BtcDelegation::try_from(active_delegation)?;
+    let delegation = BtcDelegation::from(active_delegation);
     DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &delegation)?;
 
     // Store activated height, if first delegation
@@ -319,7 +313,7 @@ fn btc_undelegate(
     btc_del: &mut BtcDelegation,
     unbonding_tx_sig: &[u8],
 ) -> Result<(), ContractError> {
-    btc_del.undelegation_info.delegator_unbonding_sig = unbonding_tx_sig.to_vec().into();
+    btc_del.undelegation_info.delegator_unbonding_sig = unbonding_tx_sig.to_vec();
 
     // Set BTC delegation back to KV store
     DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
@@ -566,7 +560,7 @@ pub(crate) mod tests {
         assert_eq!(0, res.messages.len());
 
         // Check the active delegation is being stored
-        let delegation = BtcDelegation::try_from(&active_delegation).unwrap();
+        let delegation = BtcDelegation::from(&active_delegation);
         let staking_tx_hash_hex = staking_tx_hash(&delegation).to_string();
         let query_res = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
         assert_eq!(query_res, delegation);
@@ -613,9 +607,9 @@ pub(crate) mod tests {
         assert_eq!(0, res.messages.len());
 
         // Check the delegation is active (it has no unbonding or slashing tx signature)
-        let active_delegation_undelegation = active_delegation.undelegation_info.clone().unwrap();
+        let active_delegation_undelegation = active_delegation.undelegation_info.clone();
         // Compute the staking tx hash
-        let delegation = BtcDelegation::try_from(&active_delegation).unwrap();
+        let delegation = BtcDelegation::from(&active_delegation);
         let staking_tx_hash_hex = staking_tx_hash(&delegation).to_string();
 
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex.clone()).unwrap();
@@ -651,7 +645,7 @@ pub(crate) mod tests {
         assert_eq!(0, res.messages.len());
 
         // Check the delegation is not active any more (updated with the unbonding tx signature)
-        let active_delegation_undelegation = active_delegation.undelegation_info.unwrap();
+        let active_delegation_undelegation = active_delegation.undelegation_info;
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
         let btc_undelegation = btc_del.undelegation_info;
         assert_eq!(
