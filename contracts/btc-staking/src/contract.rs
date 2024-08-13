@@ -1,11 +1,12 @@
+use babylon_contract::msg::btc_header::BtcHeaderResponse;
 use prost::bytes::Bytes;
 use prost::Message;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
-    StdResult,
+    from_json, to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
+    Response, StdResult,
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
@@ -236,15 +237,15 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
     // FIXME: Turn this into a hard error. Requires `babylon-contract` instance, and up and running
     // BTC light client loop (which requires a running BTC node / simulator)
-    let btc_tip = get_btc_tip(deps) //?;
+    let btc_tip_height = get_btc_tip(deps) //?;
         .ok()
         .unwrap_or_default();
 
-    Ok(BTC_HEIGHT.save(deps.storage, height, &btc_tip.height)?)
+    Ok(BTC_HEIGHT.save(deps.storage, height, &btc_tip_height)?)
 }
 
 /// get_btc_tip queries the Babylon contract for the latest BTC tip
-fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
+fn get_btc_tip(deps: &DepsMut) -> Result<u64, ContractError> {
     // Get the BTC tip from the babylon contract through a raw query
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
     // Construct the query message
@@ -252,8 +253,9 @@ fn get_btc_tip(deps: &DepsMut) -> Result<BtcHeaderInfo, ContractError> {
 
     // Query the Babylon contract
     let tip_bytes: Bytes = deps.querier.query_wasm_smart(&babylon_addr, &query_msg)?;
+    let tip: BtcHeaderResponse = from_json(&tip_bytes)?;
 
-    Ok(BtcHeaderInfo::decode(tip_bytes)?)
+    Ok(tip.height)
 }
 
 fn handle_end_block(
