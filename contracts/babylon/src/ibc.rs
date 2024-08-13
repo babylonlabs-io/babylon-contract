@@ -57,7 +57,7 @@ pub fn ibc_channel_open(
 /// Second part of the 4-step handshake, i.e. ChannelOpenAck and ChannelOpenConfirm.
 pub fn ibc_channel_connect(
     deps: DepsMut,
-    env: &Env,
+    env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     // Ensure we have no channel yet
@@ -74,35 +74,38 @@ pub fn ibc_channel_connect(
     // Load the config
     let cfg = CONFIG.load(deps.storage)?;
 
-    // Create the ConsumerRegisterIBCPacket
-    let consumer_register_packet = ConsumerRegisterIbcPacket {
-        consumer_name: cfg.consumer_name.clone(),
-        consumer_description: cfg.consumer_description.clone(),
-    };
-
-    // Create the ZoneconciergePacketData
-    let packet_data = ZoneconciergePacketData {
-        packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
-    };
-
-    let packet_data_bytes = packet_data.encode_to_vec();
-
-    // Create the IBC packet message
-    let ibc_msg = IbcMsg::SendPacket {
-        channel_id: channel.endpoint.channel_id.clone(),
-        data: Binary::new(packet_data_bytes),
-        timeout: packet_timeout(env),
-    };
-
     let chan_id = &channel.endpoint.channel_id;
-    Ok(IbcBasicResponse::new()
-        .add_message(ibc_msg)
+    let response = IbcBasicResponse::new()
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
-        .add_attribute("consumer_name", cfg.consumer_name.clone())
-        .add_attribute("consumer_description", cfg.consumer_description.clone())
-        .add_event(Event::new("ibc").add_attribute("channel", "connect"))
-    )
+        .add_event(Event::new("ibc").add_attribute("channel", "connect"));
+
+    // Only create and send the consumer register packet if both name and description exist
+    if let (Some(name), Some(description)) = (&cfg.consumer_name, &cfg.consumer_description) {
+        let consumer_register_packet = ConsumerRegisterIbcPacket {
+            consumer_name: name.clone(),
+            consumer_description: description.clone(),
+        };
+
+        let packet_data = ZoneconciergePacketData {
+            packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
+        };
+
+        let packet_data_bytes = packet_data.encode_to_vec();
+
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel.endpoint.channel_id.clone(),
+            data: Binary::new(packet_data_bytes),
+            timeout: packet_timeout(&env),
+        };
+
+        Ok(response
+            .add_message(ibc_msg)
+            .add_attribute("consumer_name", name)
+            .add_attribute("consumer_description", description))
+    } else {
+        Ok(response)
+    }
 }
 
 /// This is invoked on the IBC Channel Close message
@@ -413,8 +416,8 @@ mod tests {
             btc_staking_code_id: None,
             btc_staking_msg: None,
             admin: None,
-            consumer_name: "TestConsumer".to_string(),
-            consumer_description: "Test Consumer Description".to_string(),
+            consumer_name: None,
+            consumer_description: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();

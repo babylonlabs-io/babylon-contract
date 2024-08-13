@@ -34,9 +34,9 @@ pub struct InstantiateMsg {
     /// If set, this will be the Wasm migration / upgrade admin of the BTC staking contract
     pub admin: Option<String>,
     /// Name of the consumer
-    pub consumer_name: String,
+    pub consumer_name: Option<String>,
     /// Description of the consumer
-    pub consumer_description: String,
+    pub consumer_description: Option<String>,
 }
 
 impl ContractMsg for InstantiateMsg {
@@ -49,14 +49,17 @@ impl ContractMsg for InstantiateMsg {
         }
         let _ = self.babylon_tag_to_bytes()?;
 
-        // Check if consumer name is empty
-        if self.consumer_name.trim().is_empty() {
-            return Err(StdError::generic_err("Consumer name cannot be empty"));
-        }
-
-        // Check if consumer description is empty
-        if self.consumer_description.trim().is_empty() {
-            return Err(StdError::generic_err("Consumer description cannot be empty"));
+        if self.btc_staking_code_id.is_some() {
+            if let (Some(consumer_name), Some(consumer_description)) = (&self.consumer_name, &self.consumer_description) {
+                if consumer_name.trim().is_empty() {
+                    return Err(StdError::generic_err("Consumer name cannot be empty"));
+                }
+                if consumer_description.trim().is_empty() {
+                    return Err(StdError::generic_err("Consumer description cannot be empty"));
+                }
+            } else {
+                return Err(StdError::generic_err("Consumer name and description are required when btc_staking_code_id is set"));
+            }
         }
 
         Ok(())

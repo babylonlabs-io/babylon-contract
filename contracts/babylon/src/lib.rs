@@ -73,7 +73,7 @@ pub fn ibc_channel_connect(
     env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    ibc::ibc_channel_connect(deps, &env, msg)
+    ibc::ibc_channel_connect(deps, env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
