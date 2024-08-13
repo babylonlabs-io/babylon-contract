@@ -76,8 +76,8 @@ pub fn ibc_channel_connect(
 
     // Create the ConsumerRegisterIBCPacket
     let consumer_register_packet = ConsumerRegisterIbcPacket {
-        consumer_name: cfg.consumer_name,
-        consumer_description: cfg.consumer_description,
+        consumer_name: cfg.consumer_name.clone(),
+        consumer_description: cfg.consumer_description.clone(),
     };
 
     // Create the ZoneconciergePacketData
@@ -99,6 +99,8 @@ pub fn ibc_channel_connect(
         .add_message(ibc_msg)
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
+        .add_attribute("consumer_name", cfg.consumer_name.clone())
+        .add_attribute("consumer_description", cfg.consumer_description.clone())
         .add_event(Event::new("ibc").add_attribute("channel", "connect"))
     )
 }
