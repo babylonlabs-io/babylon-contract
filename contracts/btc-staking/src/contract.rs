@@ -1,22 +1,18 @@
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
-use prost::bytes::Bytes;
-use prost::Message;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
-    Response, StdResult,
+    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
+    StdResult,
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
 
 use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
-use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
-use babylon_contract::state::btc_light_client::BTC_TIP_KEY;
 
 use crate::error::ContractError;
 use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
@@ -237,22 +233,21 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
     // FIXME: Turn this into a hard error. Requires `babylon-contract` instance, and up and running
     // BTC light client loop (which requires a running BTC node / simulator)
-    let btc_tip_height = get_btc_tip(deps) //?;
+    let btc_tip_height = get_btc_tip_height(deps) //?;
         .ok()
         .unwrap_or_default();
 
     Ok(BTC_HEIGHT.save(deps.storage, height, &btc_tip_height)?)
 }
 
-/// get_btc_tip queries the Babylon contract for the latest BTC tip
-fn get_btc_tip(deps: &DepsMut) -> Result<u64, ContractError> {
+/// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
+fn get_btc_tip_height(deps: &DepsMut) -> Result<u64, ContractError> {
     // Get the BTC tip from the babylon contract through a raw query
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
-    // Construct the query message
-    let query_msg = BabylonQueryMsg::BtcTipHeader {};
 
     // Query the Babylon contract
     // TODO: use raw query
+    let query_msg = BabylonQueryMsg::BtcTipHeader {};
     let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(&babylon_addr, &query_msg)?;
 
     Ok(tip.height)
