@@ -226,45 +226,19 @@ pub(crate) mod ibc_packet {
             active_del: btc_staking
                 .active_del
                 .iter()
-                .map(|d| ActiveBtcDelegation {
-                    staker_addr: d.staker_addr.clone(),
-                    btc_pk_hex: d.btc_pk_hex.clone(),
-                    fp_btc_pk_list: d.fp_btc_pk_list.clone(),
-                    start_height: d.start_height,
-                    end_height: d.end_height,
-                    total_sat: d.total_sat,
-                    staking_tx: d.staking_tx.to_vec().into(),
-                    slashing_tx: d.slashing_tx.to_vec().into(),
-                    delegator_slashing_sig: d.delegator_slashing_sig.to_vec().into(),
-                    covenant_sigs: d
-                        .covenant_sigs
-                        .iter()
-                        .map(|s| CovenantAdaptorSignatures {
-                            cov_pk: s.cov_pk.to_vec().into(),
-                            adaptor_sigs: s
-                                .adaptor_sigs
-                                .iter()
-                                .map(|a| a.to_vec().into())
-                                .collect(),
-                        })
-                        .collect(),
-                    staking_output_idx: d.staking_output_idx,
-                    unbonding_time: d.unbonding_time,
-                    undelegation_info: d.undelegation_info.as_ref().map(|ui| BtcUndelegationInfo {
-                        unbonding_tx: ui.unbonding_tx.to_vec().into(),
-                        delegator_unbonding_sig: ui.delegator_unbonding_sig.to_vec().into(),
-                        covenant_unbonding_sig_list: ui
-                            .covenant_unbonding_sig_list
-                            .iter()
-                            .map(|s| SignatureInfo {
-                                pk: s.pk.to_vec().into(),
-                                sig: s.sig.to_vec().into(),
-                            })
-                            .collect(),
-                        slashing_tx: ui.slashing_tx.to_vec().into(),
-                        delegator_slashing_sig: ui.delegator_slashing_sig.to_vec().into(),
-                        covenant_slashing_sigs: ui
-                            .covenant_slashing_sigs
+                .map(|d| {
+                    Ok(ActiveBtcDelegation {
+                        staker_addr: d.staker_addr.clone(),
+                        btc_pk_hex: d.btc_pk_hex.clone(),
+                        fp_btc_pk_list: d.fp_btc_pk_list.clone(),
+                        start_height: d.start_height,
+                        end_height: d.end_height,
+                        total_sat: d.total_sat,
+                        staking_tx: d.staking_tx.to_vec().into(),
+                        slashing_tx: d.slashing_tx.to_vec().into(),
+                        delegator_slashing_sig: d.delegator_slashing_sig.to_vec().into(),
+                        covenant_sigs: d
+                            .covenant_sigs
                             .iter()
                             .map(|s| CovenantAdaptorSignatures {
                                 cov_pk: s.cov_pk.to_vec().into(),
@@ -275,10 +249,42 @@ pub(crate) mod ibc_packet {
                                     .collect(),
                             })
                             .collect(),
-                    }),
-                    params_version: d.params_version,
+                        staking_output_idx: d.staking_output_idx,
+                        unbonding_time: d.unbonding_time,
+                        undelegation_info: d
+                            .undelegation_info
+                            .as_ref()
+                            .map(|ui| BtcUndelegationInfo {
+                                unbonding_tx: ui.unbonding_tx.to_vec().into(),
+                                delegator_unbonding_sig: ui.delegator_unbonding_sig.to_vec().into(),
+                                covenant_unbonding_sig_list: ui
+                                    .covenant_unbonding_sig_list
+                                    .iter()
+                                    .map(|s| SignatureInfo {
+                                        pk: s.pk.to_vec().into(),
+                                        sig: s.sig.to_vec().into(),
+                                    })
+                                    .collect(),
+                                slashing_tx: ui.slashing_tx.to_vec().into(),
+                                delegator_slashing_sig: ui.delegator_slashing_sig.to_vec().into(),
+                                covenant_slashing_sigs: ui
+                                    .covenant_slashing_sigs
+                                    .iter()
+                                    .map(|s| CovenantAdaptorSignatures {
+                                        cov_pk: s.cov_pk.to_vec().into(),
+                                        adaptor_sigs: s
+                                            .adaptor_sigs
+                                            .iter()
+                                            .map(|a| a.to_vec().into())
+                                            .collect(),
+                                    })
+                                    .collect(),
+                            })
+                            .ok_or(StdError::generic_err("undelegation info not set"))?,
+                        params_version: d.params_version,
+                    })
                 })
-                .collect(),
+                .collect::<StdResult<_>>()?,
             slashed_del: vec![], // FIXME: Route this
             unbonded_del: btc_staking
                 .unbonded_del

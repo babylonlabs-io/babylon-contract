@@ -188,7 +188,8 @@
         "staking_tx",
         "start_height",
         "total_sat",
-        "unbonding_time"
+        "unbonding_time",
+        "undelegation_info"
       ],
       "properties": {
         "btc_pk_hex": {
@@ -275,12 +276,9 @@
         },
         "undelegation_info": {
           "description": "undelegation_info is the undelegation info of this delegation.",
-          "anyOf": [
+          "allOf": [
             {
               "$ref": "#/definitions/BtcUndelegationInfo"
-            },
-            {
-              "type": "null"
             }
           ]
         }
