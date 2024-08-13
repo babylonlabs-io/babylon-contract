@@ -4,7 +4,7 @@
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.8.0...HEAD)
 
-## [v0.8.0](https://github.com/babylonchain/babylon-contract/tree/v0.7.0) (2024-07-09)
+## [v0.8.0](https://github.com/babylonchain/babylon-contract/tree/v0.8.0) (2024-07-13)
 
 [Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.7.0...v0.8.0)
 
@@ -14,6 +14,8 @@
 
 **Merged pull requests:**
 
+- Fix/cross contract query (#40)
+- Try and enable wasm tests (#38)
 - F/babylon private rebase (#211)
 - fix: allow query_block_voters() to return `None` if the block doesn't exist (#204)
 - chore: refactor pub rand commit (#200)
