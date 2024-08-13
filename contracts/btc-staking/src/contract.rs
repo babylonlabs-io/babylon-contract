@@ -246,9 +246,9 @@ fn get_btc_tip_height(deps: &DepsMut) -> Result<u64, ContractError> {
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
     // Query the Babylon contract
-    // TODO: use raw query
+    // TODO: use a raw query for performance / efficiency
     let query_msg = BabylonQueryMsg::BtcTipHeader {};
-    let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(&babylon_addr, &query_msg)?;
+    let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(babylon_addr, &query_msg)?;
 
     Ok(tip.height)
 }
@@ -316,7 +316,7 @@ pub(crate) mod tests {
             total_sat: del.total_sat,
             staking_tx: Binary::new(del.staking_tx.to_vec()),
             slashing_tx: Binary::new(del.slashing_tx.to_vec()),
-            delegator_slashing_sig: Binary::new(vec![]),
+            delegator_slashing_sig: Binary::new(del.delegator_sig.to_vec()),
             covenant_sigs: del
                 .covenant_sigs
                 .iter()
@@ -334,7 +334,9 @@ pub(crate) mod tests {
             undelegation_info: BtcUndelegationInfo {
                 unbonding_tx: Binary::new(btc_undelegation.unbonding_tx.to_vec()),
                 slashing_tx: Binary::new(btc_undelegation.slashing_tx.to_vec()),
-                delegator_unbonding_sig: Binary::new(vec![]),
+                delegator_unbonding_sig: Binary::new(
+                    btc_undelegation.delegator_unbonding_sig.to_vec(),
+                ),
                 delegator_slashing_sig: Binary::new(
                     btc_undelegation.delegator_slashing_sig.to_vec(),
                 ),

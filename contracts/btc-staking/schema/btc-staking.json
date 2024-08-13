@@ -343,7 +343,7 @@
         "type": "string"
       },
       "BtcUndelegationInfo": {
-        "description": "BTCUndelegationInfo provides all necessary info about the undeleagation",
+        "description": "BTCUndelegationInfo provides all necessary info about the undelegation",
         "type": "object",
         "required": [
           "covenant_slashing_sigs",
@@ -1396,7 +1396,7 @@
           "type": "string"
         },
         "BtcUndelegationInfo": {
-          "description": "BTCUndelegationInfo provides all necessary info about the undeleagation",
+          "description": "BTCUndelegationInfo provides all necessary info about the undelegation",
           "type": "object",
           "required": [
             "covenant_slashing_sigs",
@@ -1527,6 +1527,7 @@
             "end_height",
             "fp_btc_pk_list",
             "params_version",
+            "slashed",
             "slashing_tx",
             "staker_addr",
             "staking_output_idx",
@@ -1575,6 +1576,10 @@
               "type": "integer",
               "format": "uint32",
               "minimum": 0.0
+            },
+            "slashed": {
+              "description": "slashed is used to indicate whether a given delegation is related to a slashed FP",
+              "type": "boolean"
             },
             "slashing_tx": {
               "description": "slashing_tx is the slashing tx",

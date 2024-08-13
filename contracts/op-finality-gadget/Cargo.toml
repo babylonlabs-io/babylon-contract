@@ -11,10 +11,12 @@ publish.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+doctest = false
 
 [[bin]]
 name = "op-finality-gadget-schema"
 path = "src/bin/schema.rs"
+test = false
 
 [features]
 library = []

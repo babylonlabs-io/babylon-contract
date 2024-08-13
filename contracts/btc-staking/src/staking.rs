@@ -6,7 +6,7 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
@@ -30,7 +30,7 @@ pub fn handle_btc_staking(
     info: &MessageInfo,
     new_fps: &[NewFinalityProvider],
     active_delegations: &[ActiveBtcDelegation],
-    _slashed_delegations: &[SlashedBtcDelegation],
+    slashed_delegations: &[SlashedBtcDelegation],
     unbonded_delegations: &[UnbondedBtcDelegation],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
@@ -38,27 +38,32 @@ pub fn handle_btc_staking(
         return Err(ContractError::Unauthorized);
     }
 
+    let mut res = Response::new();
+
     for fp in new_fps {
         handle_new_fp(deps.storage, fp, env.block.height)?;
+        // TODO: Add event
     }
 
     // Process active delegations
     for del in active_delegations {
         handle_active_delegation(deps.storage, env.block.height, del)?;
+        // TODO: Add event
     }
 
-    // TODO: Process FPs slashing
-
-    // TODO?: Process slashed delegations (needs routing from `babylon-contract`)
+    // Process slashed delegations
+    for del in slashed_delegations {
+        let ev = handle_slashed_delegation(deps.storage, env.block.height, del)?;
+        res = res.add_event(ev);
+    }
 
     // Process undelegations
     for undel in unbonded_delegations {
-        handle_undelegation(deps.storage, env.block.height, undel)?;
+        let ev = handle_undelegation(deps.storage, env.block.height, undel)?;
+        res = res.add_event(ev);
     }
 
-    // TODO: Add events
-
-    Ok(Response::new())
+    Ok(res)
 }
 
 /// handle_bew_fp handles registering a new finality provider
@@ -262,13 +267,13 @@ pub fn handle_active_delegation(
     Ok(())
 }
 
-/// handle_undelegation handles undelegation from an active delegation.
+/// handle_undelegation handles undelegation from an active delegation
 ///
 fn handle_undelegation(
     storage: &mut dyn Storage,
     height: u64,
     undelegation: &UnbondedBtcDelegation,
-) -> Result<(), ContractError> {
+) -> Result<Event, ContractError> {
     // Basic stateless checks
     undelegation.validate()?;
 
@@ -301,8 +306,51 @@ fn handle_undelegation(
             Ok::<_, ContractError>(fp_state)
         })?;
     }
+    // Record event that the BTC delegation becomes unbonded
+    let unbonding_event = Event::new("btc_undelegation")
+        .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
+        .add_attribute("height", height.to_string());
 
-    Ok(())
+    Ok(unbonding_event)
+}
+
+/// handle_slashed_delegation handles undelegation due to slashing from an active delegation
+///
+fn handle_slashed_delegation(
+    storage: &mut dyn Storage,
+    height: u64,
+    delegation: &SlashedBtcDelegation,
+) -> Result<Event, ContractError> {
+    // Basic stateless checks
+    delegation.validate()?;
+
+    let staking_tx_hash = Txid::from_str(&delegation.staking_tx_hash)?;
+    let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
+
+    // TODO: Ensure the BTC delegation is active
+
+    // Discount the voting power from the affected finality providers
+    let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
+    let fps = fps();
+    for fp in affected_fps {
+        fps.update(storage, &fp, height, |fp_state| {
+            let mut fp_state =
+                fp_state.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
+            fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+            Ok::<_, ContractError>(fp_state)
+        })?;
+    }
+
+    // Mark the delegation as slashed
+    btc_del.slashed = true;
+    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &btc_del)?;
+
+    // Record event that the BTC delegation becomes unbonded due to slashing at this height
+    let slashing_event = Event::new("btc_undelegation_slashed")
+        .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
+        .add_attribute("height", height.to_string());
+
+    Ok(slashing_event)
 }
 
 /// btc_undelegate adds the signature of the unbonding tx signed by the staker to the given BTC
@@ -357,7 +405,7 @@ pub fn compute_active_finality_providers(
         .unzip();
 
     // TODO: Online FPs verification
-    // TODO: Filter out offline / jailed FPs
+    // TODO: Filter out slashed / offline / jailed FPs
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
     FP_SET.save(storage, env.block.height, &finality_providers)?;
@@ -425,14 +473,14 @@ pub(crate) mod tests {
     use crate::queries;
     use crate::state::staking::BtcUndelegationInfo;
 
-    // Compute staking tx hash of an active delegation
+    // Compute staking tx hash of a delegation
     pub(crate) fn staking_tx_hash(del: &BtcDelegation) -> Txid {
-        let staking_tx: Transaction = bitcoin::consensus::deserialize(&del.staking_tx).unwrap();
+        let staking_tx: Transaction = deserialize(&del.staking_tx).unwrap();
         staking_tx.txid()
     }
 
     #[test]
-    fn test_btc_staking_add_fp_unauthorized() {
+    fn test_add_fp_unauthorized() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let init_admin = deps.api.addr_make(INIT_ADMIN);
@@ -464,7 +512,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_btc_staking_add_fp_admin() {
+    fn test_add_fp_admin() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let init_admin = deps.api.addr_make(INIT_ADMIN);
@@ -510,7 +558,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn btc_staking_active_delegation_happy_path() {
+    fn active_delegation_happy_path() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
@@ -572,7 +620,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn btc_staking_undelegation_works() {
+    fn undelegation_works() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
@@ -663,6 +711,94 @@ pub(crate) mod tests {
         );
 
         // Check the finality provider power has been updated
+        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+            .unwrap();
+        assert_eq!(fp.power, 0);
+    }
+
+    #[test]
+    fn slashed_delegation_works() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg {
+                params: None,
+                admin: None,
+            },
+        )
+        .unwrap();
+
+        // Build valid active delegation
+        let active_delegation = get_active_btc_delegation();
+
+        // Register one FP first
+        let mut new_fp = create_new_finality_provider(1);
+        new_fp
+            .btc_pk_hex
+            .clone_from(&active_delegation.fp_btc_pk_list[0]);
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![new_fp.clone()],
+            active_del: vec![active_delegation.clone()],
+            slashed_del: vec![],
+            unbonded_del: vec![],
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // Check the delegation is active (it has no unbonding sig or is slashed)
+        // Compute the staking tx hash
+        let delegation = BtcDelegation::from(&active_delegation);
+        let staking_tx_hash_hex = staking_tx_hash(&delegation).to_string();
+        // Query the delegation
+        let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex.clone()).unwrap();
+        assert!(&btc_del.undelegation_info.delegator_unbonding_sig.is_empty());
+        assert!(!btc_del.slashed);
+
+        // Check the finality provider has power
+        let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+            .unwrap();
+        assert_eq!(fp.power, btc_del.total_sat);
+
+        // Now send the slashed delegation message
+        let slashed = SlashedBtcDelegation {
+            staking_tx_hash: staking_tx_hash_hex.clone(),
+            recovered_fp_btc_sk: "deadbeef".to_string(), // Currently unused
+        };
+
+        let msg = ExecuteMsg::BtcStaking {
+            new_fp: vec![],
+            active_del: vec![],
+            unbonded_del: vec![],
+            slashed_del: vec![slashed.clone()],
+        };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        // Check events
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty.as_str(), "btc_undelegation_slashed");
+        assert_eq!(res.events[0].attributes.len(), 2);
+        assert_eq!(res.events[0].attributes[0].key.as_str(), "staking_tx_hash");
+        assert_eq!(
+            res.events[0].attributes[0].value.as_str(),
+            staking_tx_hash_hex
+        );
+        assert_eq!(res.events[0].attributes[1].key.as_str(), "height");
+
+        // Check the delegation is not active any more (slashed)
+        let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
+        assert!(btc_del.slashed);
+        // Check the unbonding sig is still empty
+        assert!(btc_del.undelegation_info.delegator_unbonding_sig.is_empty());
+
+        // Check the finality provider power has been zeroed (it has only this delegation that was
+        // slashed)
         let fp = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
             .unwrap();
         assert_eq!(fp.power, 0);

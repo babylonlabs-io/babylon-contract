@@ -234,7 +234,7 @@ pub struct CovenantAdaptorSignatures {
     pub adaptor_sigs: Vec<Binary>,
 }
 
-/// BTCUndelegationInfo provides all necessary info about the undeleagation
+/// BTCUndelegationInfo provides all necessary info about the undelegation
 #[cw_serde]
 pub struct BtcUndelegationInfo {
     /// unbonding_tx is the transaction which will transfer the funds from staking

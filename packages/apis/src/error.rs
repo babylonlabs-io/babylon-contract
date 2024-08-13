@@ -15,6 +15,8 @@ pub enum StakingApiError {
     InvalidBtcTx(String),
     #[error("Empty Btc public key")]
     EmptyBtcPk,
+    #[error("Empty Btc private key")]
+    EmptyBtcSk,
     #[error("Empty proof of possession")]
     MissingPop,
     #[error("Empty chain id")]
