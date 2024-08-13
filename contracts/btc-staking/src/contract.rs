@@ -252,8 +252,8 @@ fn get_btc_tip(deps: &DepsMut) -> Result<u64, ContractError> {
     let query_msg = BabylonQueryMsg::BtcTipHeader {};
 
     // Query the Babylon contract
-    let tip_bytes: Bytes = deps.querier.query_wasm_smart(&babylon_addr, &query_msg)?;
-    let tip: BtcHeaderResponse = from_json(&tip_bytes)?;
+    // TODO: use raw query
+    let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(&babylon_addr, &query_msg)?;
 
     Ok(tip.height)
 }
