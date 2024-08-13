@@ -216,8 +216,8 @@ mod tests {
             btc_staking_code_id: None,
             btc_staking_msg: None,
             admin: None,
-            consumer_name: "MyConsumer".to_string(),
-            consumer_description: "This is a description of my consumer".to_string(),
+            consumer_name: "TestConsumer".to_string(),
+            consumer_description: "Test Consumer Description".to_string(),
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
