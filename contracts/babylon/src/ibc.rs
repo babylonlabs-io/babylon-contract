@@ -3,14 +3,14 @@ use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
+use babylon_proto::babylon::btcstkconsumer::v1::ConsumerRegisterIbcPacket;
+
 use cosmwasm_std::{
-    DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg,
-    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg,
-    IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, Never, StdAck,
-    StdError, StdResult,
+    Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, Never, StdAck, StdError, StdResult
 };
 use cw_storage_plus::Item;
 use prost::Message;
+use crate::state::config::CONFIG;
 
 pub const IBC_VERSION: &str = "zoneconcierge-1";
 pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
@@ -57,7 +57,7 @@ pub fn ibc_channel_open(
 /// Second part of the 4-step handshake, i.e. ChannelOpenAck and ChannelOpenConfirm.
 pub fn ibc_channel_connect(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     // Ensure we have no channel yet
@@ -69,11 +69,39 @@ pub fn ibc_channel_connect(
     // Store the channel
     IBC_CHANNEL.save(deps.storage, channel)?;
 
+    // Load the config
+    let cfg = CONFIG.load(deps.storage)?;
+
     let chan_id = &channel.endpoint.channel_id;
-    Ok(IbcBasicResponse::new()
+    let mut response = IbcBasicResponse::new()
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
-        .add_event(Event::new("ibc").add_attribute("channel", "connect")))
+        .add_event(Event::new("ibc").add_attribute("channel", "connect"));
+
+    // If the consumer name and description are set, create and send a ConsumerRegister packet
+    if let (Some(name), Some(description)) = (&cfg.consumer_name, &cfg.consumer_description) {
+        let consumer_register_packet = ConsumerRegisterIbcPacket {
+            consumer_name: name.clone(),
+            consumer_description: description.clone(),
+        };
+
+        let packet_data = ZoneconciergePacketData {
+            packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
+        };
+
+        let ibc_msg = IbcMsg::SendPacket {
+            channel_id: channel.endpoint.channel_id.clone(),
+            data: Binary::new(packet_data.encode_to_vec()),
+            timeout: packet_timeout(&env),
+        };
+
+        response = response
+            .add_message(ibc_msg)
+            .add_attribute("consumer_name", name)
+            .add_attribute("consumer_description", description);
+    }
+
+    Ok(response)
 }
 
 /// This is invoked on the IBC Channel Close message
@@ -123,7 +151,10 @@ pub fn ibc_packet_receive(
             Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
             Packet::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
-            }
+            },
+            Packet::ConsumerRegister(_) => {
+                return Err(StdError::generic_err("ConsumerRegister packet should not be received").into())
+            },
         }
     })()
     .or_else(|e| {
@@ -395,6 +426,8 @@ mod tests {
             btc_staking_code_id: None,
             btc_staking_msg: None,
             admin: None,
+            consumer_name: None,
+            consumer_description: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();

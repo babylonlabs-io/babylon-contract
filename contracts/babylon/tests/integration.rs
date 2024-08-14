@@ -41,6 +41,8 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
         babylon_tag: "01020304".to_string(),
+        consumer_name: None,
+        consumer_description: None,
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 99,
         notify_cosmos_zone: false,
@@ -90,6 +92,8 @@ fn instantiate_works() {
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
         babylon_tag: "01020304".to_string(),
+        consumer_name: None,
+        consumer_description: None,
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 100,
         notify_cosmos_zone: false,
