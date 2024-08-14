@@ -26,8 +26,8 @@ pub fn instantiate(
 ) -> Result<Response<BabylonMsg>, ContractError> {
     msg.validate()?;
 
-    // initialise config
-    let cfg = Config {
+    // Initialize config with None values for consumer fields
+    let mut cfg = Config {
         network: msg.network.clone(),
         babylon_tag: msg.babylon_tag_to_bytes()?,
         btc_confirmation_depth: msg.btc_confirmation_depth,
@@ -37,11 +37,13 @@ pub fn instantiate(
         consumer_name: None,
         consumer_description: None,
     };
-    CONFIG.save(deps.storage, &cfg)?;
 
     let mut res = Response::new().add_attribute("action", "instantiate");
 
     if let Some(btc_staking_code_id) = msg.btc_staking_code_id {
+        // Update config with consumer information
+        cfg.consumer_name = msg.consumer_name;
+        cfg.consumer_description = msg.consumer_description;
         // Instantiate BTC staking contract
         let init_msg = WasmMsg::Instantiate {
             admin: msg.admin,
@@ -54,6 +56,10 @@ pub fn instantiate(
 
         res = res.add_submessage(init_msg);
     }
+
+    // Save the config after potentially updating it
+    CONFIG.save(deps.storage, &cfg)?;
+
     Ok(res)
 }
 

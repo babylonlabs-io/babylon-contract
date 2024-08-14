@@ -69,18 +69,16 @@ pub fn ibc_channel_connect(
     // Store the channel
     IBC_CHANNEL.save(deps.storage, channel)?;
 
-    // TODO: send IBC packet only on ChannelOpenConfirm?
-
     // Load the config
     let cfg = CONFIG.load(deps.storage)?;
 
     let chan_id = &channel.endpoint.channel_id;
-    let response = IbcBasicResponse::new()
+    let mut response = IbcBasicResponse::new()
         .add_attribute("action", "ibc_connect")
         .add_attribute("channel_id", chan_id)
         .add_event(Event::new("ibc").add_attribute("channel", "connect"));
 
-    // Only create and send the consumer register packet if both name and description exist
+    // If the consumer name and description are set, create and send a ConsumerRegister packet
     if let (Some(name), Some(description)) = (&cfg.consumer_name, &cfg.consumer_description) {
         let consumer_register_packet = ConsumerRegisterIbcPacket {
             consumer_name: name.clone(),
@@ -91,21 +89,19 @@ pub fn ibc_channel_connect(
             packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
         };
 
-        let packet_data_bytes = packet_data.encode_to_vec();
-
         let ibc_msg = IbcMsg::SendPacket {
             channel_id: channel.endpoint.channel_id.clone(),
-            data: Binary::new(packet_data_bytes),
+            data: Binary::new(packet_data.encode_to_vec()),
             timeout: packet_timeout(&env),
         };
 
-        Ok(response
+        response = response
             .add_message(ibc_msg)
             .add_attribute("consumer_name", name)
-            .add_attribute("consumer_description", description))
-    } else {
-        Ok(response)
+            .add_attribute("consumer_description", description);
     }
+
+    Ok(response)
 }
 
 /// This is invoked on the IBC Channel Close message
