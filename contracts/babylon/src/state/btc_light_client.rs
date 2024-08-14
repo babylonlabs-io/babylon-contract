@@ -357,8 +357,8 @@ pub(crate) mod tests {
             checkpoint_finalization_timeout: w as u64,
             notify_cosmos_zone: false,
             btc_staking: None,
-            consumer_name: "TestConsumer".to_string(),
-            consumer_description: "Test Consumer Description".to_string(),
+            consumer_name: None,
+            consumer_description: None,
         };
         CONFIG.save(storage, &cfg).unwrap();
         w

@@ -44,8 +44,8 @@ pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
         babylon_tag: "01020304".to_string(),
-        consumer_name: "TestConsumer".to_string(),
-        consumer_description: "Test Consumer Description".to_string(),
+        consumer_name: None,
+        consumer_description: None,
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 1,
         notify_cosmos_zone: false,
