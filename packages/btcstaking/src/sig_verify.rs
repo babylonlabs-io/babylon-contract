@@ -77,6 +77,7 @@ pub fn verify_transaction_sig_with_output(
         .map_err(|e| e.to_string())
 }
 
+#[allow(non_snake_case)]
 pub struct AdaptorSignature {
     R: ProjectivePoint,
     s_hat: Scalar,
@@ -133,9 +134,9 @@ fn verify_adaptor_sig(
     // Convert R' to affine coordinates
     let R_hat = R_hat.to_affine();
 
-    // Calculate e = tagged_hash("BIP0340/challenge", bytes(R') || bytes(P) || m)
+    // Calculate e = tagged_hash("BIP0340/challenge", bytes(R) || bytes(P) || m)
     // mod n
-    let R_bytes = R_hat.x();
+    let R_bytes = asig.R.to_affine().x();
     let p_bytes = pub_key.serialize();
     let e = <Scalar as Reduce<U256>>::reduce_bytes(
         &tagged_hash(CHALLENGE_TAG)
