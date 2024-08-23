@@ -14,7 +14,7 @@ use sha2::{Digest, Sha256};
 /// MODNSCALAR_SIZE is the size of a scalar on the secp256k1 curve
 const MODNSCALAR_SIZE: usize = 32;
 
-/// MODNSCALAR_SIZE is the size of a point on the secp256k1 curve in
+/// JACOBIAN_POINT_SIZE is the size of a point on the secp256k1 curve in
 /// compressed form
 const JACOBIAN_POINT_SIZE: usize = 33;
 
