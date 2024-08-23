@@ -7,6 +7,7 @@ use bitcoin::secp256k1::PublicKey;
 use bitcoin::sighash::{Prevouts, SighashCache};
 use bitcoin::Transaction;
 use bitcoin::{Script, TxOut, XOnlyPublicKey};
+use k256::elliptic_curve::group::prime::PrimeCurveAffine;
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::pkcs8::der::Choice;
 use k256::{
@@ -95,6 +96,22 @@ fn tagged_hash(tag: &[u8]) -> Sha256 {
 }
 
 #[allow(non_snake_case)]
+fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint, String> {
+    let is_y_odd = bytes[0] == 0x03;
+    let R_option = AffinePoint::decompress(
+        k256::FieldBytes::from_slice(&bytes[1..]),
+        k256::elliptic_curve::subtle::Choice::from(is_y_odd as u8),
+    );
+    let R = if R_option.is_some().into() {
+        R_option.unwrap()
+    } else {
+        return Err("Failed to decompress R point".to_string());
+    };
+    // Convert AffinePoint to ProjectivePoint
+    Ok(ProjectivePoint::from(R))
+}
+
+#[allow(non_snake_case)]
 fn verify_adaptor_sig(
     pub_key: &XOnlyPublicKey,
     enc_key: &XOnlyPublicKey,
@@ -102,22 +119,21 @@ fn verify_adaptor_sig(
     asig: &AdaptorSignature,
 ) -> Result<(), String> {
     // Convert public keys to points
-    let pk = k256::PublicKey::from_sec1_bytes(&pub_key.serialize()).map_err(|e| e.to_string())?;
-    let P = pk.to_projective();
-    let ek = k256::PublicKey::from_sec1_bytes(&enc_key.serialize()).map_err(|e| e.to_string())?;
-    let T = ek.to_projective();
+    let pk = pub_key.public_key(Parity::Even);
+    let P = bytes_to_point(&pk.serialize())?;
+    let ek = enc_key.public_key(Parity::Even);
+    let T = bytes_to_point(&ek.serialize())?;
 
     // Calculate R' = R - T (or R + T if negation is needed)
-    let mut R_hat = asig.R;
-    if asig.needs_negation {
-        R_hat = R_hat + T;
+    let R_hat = if asig.needs_negation {
+        asig.R + T
     } else {
-        R_hat = R_hat - T;
-    }
+        asig.R - T
+    };
     // Convert R' to affine coordinates
     let R_hat = R_hat.to_affine();
 
-    // Calculate e = tagged_hash("BIP0340/challenge", bytes(R) || bytes(P) || m)
+    // Calculate e = tagged_hash("BIP0340/challenge", bytes(R') || bytes(P) || m)
     // mod n
     let R_bytes = R_hat.x();
     let p_bytes = pub_key.serialize();
@@ -134,19 +150,21 @@ fn verify_adaptor_sig(
     let e_p = P * e;
     let expected_R_hat = s_hat_g - e_p;
 
-    // // Ensure expected R' is not the point at infinity
-    // if expected_R_hat.is_identity() {
-    //     return Err("Expected R' is the point at infinity".to_string());
-    // }
+    // Convert expected R' to affine coordinates
+    let expected_R_hat = expected_R_hat.to_affine();
+
+    // Ensure expected R' is not the point at infinity
+    if expected_R_hat.is_identity().into() {
+        return Err("Expected R' is the point at infinity".to_string());
+    }
 
     // Ensure expected R'.y is even
-    let expected_R_hat = expected_R_hat.to_affine();
     if expected_R_hat.y_is_odd().into() {
         return Err("Expected R'.y is odd".to_string());
     }
 
     // Ensure R' == expected R'
-    if R_hat != expected_R_hat {
+    if !R_hat.eq(&expected_R_hat) {
         return Err("R' does not match expected R'".to_string());
     }
 
