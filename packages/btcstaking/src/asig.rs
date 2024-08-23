@@ -128,6 +128,9 @@ pub fn new_adaptor_sig(asig_bytes: &[u8]) -> Result<AdaptorSignature, String> {
         ));
     }
     // get R
+    if asig_bytes[0] != 0x02 && asig_bytes[0] != 0x03 {
+        return Err("Invalid first byte of adaptor signature".to_string());
+    }
     let is_y_odd = asig_bytes[0] == 0x03;
     let R_option = AffinePoint::decompress(
         k256::FieldBytes::from_slice(&asig_bytes[1..JACOBIAN_POINT_SIZE]),
@@ -147,7 +150,7 @@ pub fn new_adaptor_sig(asig_bytes: &[u8]) -> Result<AdaptorSignature, String> {
 
     let needs_negation = asig_bytes[JACOBIAN_POINT_SIZE + MODNSCALAR_SIZE] == 0x01;
     Ok(AdaptorSignature {
-        R: R,
+        R,
         s_hat,
         needs_negation,
     })

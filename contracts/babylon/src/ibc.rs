@@ -1,16 +1,19 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
+use babylon_proto::babylon::btcstkconsumer::v1::ConsumerRegisterIbcPacket;
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
-use babylon_proto::babylon::btcstkconsumer::v1::ConsumerRegisterIbcPacket;
 
+use crate::state::config::CONFIG;
 use cosmwasm_std::{
-    Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout, Never, StdAck, StdError, StdResult
+    Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcMsg,
+    IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
+    IbcTimeout, Never, StdAck, StdError, StdResult,
 };
 use cw_storage_plus::Item;
 use prost::Message;
-use crate::state::config::CONFIG;
 
 pub const IBC_VERSION: &str = "zoneconcierge-1";
 pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
@@ -151,10 +154,12 @@ pub fn ibc_packet_receive(
             Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
             Packet::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
-            },
+            }
             Packet::ConsumerRegister(_) => {
-                return Err(StdError::generic_err("ConsumerRegister packet should not be received").into())
-            },
+                Err(
+                    StdError::generic_err("ConsumerRegister packet should not be received"),
+                )
+            }
         }
     })()
     .or_else(|e| {
