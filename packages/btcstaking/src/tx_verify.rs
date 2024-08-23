@@ -202,8 +202,9 @@ pub fn check_transactions(
 mod tests {
     use self::scripts_utils::BabylonScriptPaths;
     use super::*;
+    use crate::asig::new_adaptor_sig;
     use crate::sig_verify::{
-        enc_verify_transaction_sig_with_output, new_adaptor_sig, verify_transaction_sig_with_output,
+        enc_verify_transaction_sig_with_output, verify_transaction_sig_with_output,
     };
     use bitcoin::address::Address;
     use bitcoin::consensus::deserialize;
