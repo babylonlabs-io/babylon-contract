@@ -1,3 +1,5 @@
+use crate::error::Error;
+use crate::Result;
 use bitcoin::blockdata::opcodes::all::*;
 use bitcoin::blockdata::script::Builder;
 use bitcoin::key::Secp256k1;
@@ -27,11 +29,9 @@ pub fn sort_keys(keys: &mut [XOnlyPublicKey]) {
 }
 
 /// prepare_keys_for_multisig_script prepares keys for multisig, ensuring there are no duplicates
-pub fn prepare_keys_for_multisig_script(
-    keys: &[XOnlyPublicKey],
-) -> Result<Vec<XOnlyPublicKey>, String> {
+pub fn prepare_keys_for_multisig_script(keys: &[XOnlyPublicKey]) -> Result<Vec<XOnlyPublicKey>> {
     if keys.len() < 2 {
-        return Err("Cannot create multisig script with less than 2 keys".to_string());
+        return Err(Error::InsufficientMultisigKeys {});
     }
 
     let mut sorted_keys = keys.to_vec();
@@ -40,7 +40,7 @@ pub fn prepare_keys_for_multisig_script(
     // Check for duplicates
     for window in sorted_keys.windows(2) {
         if window[0] == window[1] {
-            return Err("Duplicate key in list of keys".to_string());
+            return Err(Error::DuplicateKeys {});
         }
     }
 
@@ -52,9 +52,9 @@ fn assemble_multisig_script(
     pubkeys: &[XOnlyPublicKey],
     quorum: usize,
     with_verify: bool,
-) -> Result<ScriptBuf, String> {
+) -> Result<ScriptBuf> {
     if quorum > pubkeys.len() {
-        return Err("Quorum cannot be greater than the number of keys".to_string());
+        return Err(Error::QuorumExceedsKeyCount {});
     }
 
     let mut builder = Builder::new();
@@ -82,16 +82,13 @@ pub fn build_multisig_script(
     keys: &[XOnlyPublicKey],
     quorum: usize,
     with_verify: bool,
-) -> Result<ScriptBuf, String> {
+) -> Result<ScriptBuf> {
     let prepared_keys = prepare_keys_for_multisig_script(keys)?;
     assemble_multisig_script(&prepared_keys, quorum, with_verify)
 }
 
 /// build_time_lock_script creates a timelock script
-pub fn build_time_lock_script(
-    pub_key: &XOnlyPublicKey,
-    lock_time: u16,
-) -> Result<ScriptBuf, String> {
+pub fn build_time_lock_script(pub_key: &XOnlyPublicKey, lock_time: u16) -> Result<ScriptBuf> {
     let builder = Builder::new()
         .push_slice(pub_key.serialize())
         .push_opcode(OP_CHECKSIGVERIFY)
@@ -105,7 +102,7 @@ pub fn build_time_lock_script(
 pub fn build_single_key_sig_script(
     pub_key: &XOnlyPublicKey,
     with_verify: bool,
-) -> Result<ScriptBuf, String> {
+) -> Result<ScriptBuf> {
     let mut builder = Builder::new().push_slice(pub_key.serialize());
 
     if with_verify {
@@ -121,7 +118,7 @@ pub fn build_relative_time_lock_pk_script(
     pk: &XOnlyPublicKey,
     lock_time: u16,
     network: Network,
-) -> Result<ScriptBuf, String> {
+) -> Result<ScriptBuf> {
     let secp = Secp256k1::new();
 
     // Assuming the unspendableKeyPathInternalPubKey function exists and is imported
@@ -132,10 +129,10 @@ pub fn build_relative_time_lock_pk_script(
     let mut builder = TaprootBuilder::new();
     builder = builder
         .add_leaf(0, script.clone())
-        .map_err(|_| "failed to add leaf")?;
+        .map_err(|_| Error::AddLeafFailed {})?;
     let taproot_spend_info = builder
         .finalize(&secp, unspendable_key_path_key)
-        .map_err(|_| "failed to finalize taproot")?;
+        .map_err(|_| Error::FinalizeTaprootFailed {})?;
 
     let secp = Secp256k1::verification_only();
     let taproot_address = Address::p2tr(
@@ -184,7 +181,7 @@ impl BabylonScriptPaths {
         covenant_keys: &[XOnlyPublicKey],
         covenant_quorum: usize,
         lock_time: u16,
-    ) -> Result<Self, String> {
+    ) -> Result<Self> {
         let time_lock_path_script = build_time_lock_script(staker_key, lock_time)?;
         let covenant_multisig_script =
             build_multisig_script(covenant_keys, covenant_quorum, false)?;

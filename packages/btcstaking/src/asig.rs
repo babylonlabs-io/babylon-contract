@@ -1,3 +1,5 @@
+use crate::error::Error;
+use crate::Result;
 use bitcoin::secp256k1::Parity;
 use bitcoin::XOnlyPublicKey;
 use k256::elliptic_curve::group::prime::PrimeCurveAffine;
@@ -43,7 +45,7 @@ fn tagged_hash(tag: &[u8]) -> Sha256 {
 }
 
 #[allow(non_snake_case)]
-fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint, String> {
+fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint> {
     let is_y_odd = bytes[0] == 0x03;
     let R_option = AffinePoint::decompress(
         k256::FieldBytes::from_slice(&bytes[1..]),
@@ -52,7 +54,7 @@ fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint, String> {
     let R = if R_option.is_some().into() {
         R_option.unwrap()
     } else {
-        return Err("Failed to decompress R point".to_string());
+        return Err(Error::DecompressPointFailed {});
     };
     // Convert AffinePoint to ProjectivePoint
     Ok(ProjectivePoint::from(R))
@@ -64,7 +66,7 @@ pub fn verify_adaptor_sig(
     enc_key: &XOnlyPublicKey,
     msg: [u8; 32],
     asig: &AdaptorSignature,
-) -> Result<(), String> {
+) -> Result<()> {
     // Convert public keys to points
     let pk = pub_key.public_key(Parity::Even);
     let P = bytes_to_point(&pk.serialize())?;
@@ -102,34 +104,33 @@ pub fn verify_adaptor_sig(
 
     // Ensure expected R' is not the point at infinity
     if expected_R_hat.is_identity().into() {
-        return Err("Expected R' is the point at infinity".to_string());
+        return Err(Error::PointAtInfinity("expected R'".to_string()));
     }
 
     // Ensure expected R'.y is even
     if expected_R_hat.y_is_odd().into() {
-        return Err("Expected R'.y is odd".to_string());
+        return Err(Error::PointWithOddY("expected R'".to_string()));
     }
 
     // Ensure R' == expected R'
     if !R_hat.eq(&expected_R_hat) {
-        return Err("R' does not match expected R'".to_string());
+        return Err(Error::VerifyAdaptorSigFailed {});
     }
 
     Ok(())
 }
 
 #[allow(non_snake_case)]
-pub fn new_adaptor_sig(asig_bytes: &[u8]) -> Result<AdaptorSignature, String> {
+pub fn new_adaptor_sig(asig_bytes: &[u8]) -> Result<AdaptorSignature> {
     if asig_bytes.len() != ADAPTOR_SIGNATURE_SIZE {
-        return Err(format!(
-            "malformed bytes for an adaptor signature: expected: {}, actual: {}",
+        return Err(Error::MalformedAdaptorSignature(
             ADAPTOR_SIGNATURE_SIZE,
-            asig_bytes.len()
+            asig_bytes.len(),
         ));
     }
     // get R
     if asig_bytes[0] != 0x02 && asig_bytes[0] != 0x03 {
-        return Err("Invalid first byte of adaptor signature".to_string());
+        return Err(Error::InvalidAdaptorSignatureFirstByte(asig_bytes[0]));
     }
     let is_y_odd = asig_bytes[0] == 0x03;
     let R_option = AffinePoint::decompress(
@@ -139,14 +140,14 @@ pub fn new_adaptor_sig(asig_bytes: &[u8]) -> Result<AdaptorSignature, String> {
     let R = if R_option.is_some().into() {
         R_option.unwrap().into()
     } else {
-        return Err("Failed to decompress R point".to_string());
+        return Err(Error::DecompressPointFailed {});
     };
 
     // get s_hat
     let s_hat_bytes = &asig_bytes[JACOBIAN_POINT_SIZE..JACOBIAN_POINT_SIZE + MODNSCALAR_SIZE];
     let s_hat_field_bytes = *k256::FieldBytes::from_slice(s_hat_bytes);
-    let s_hat = Scalar::from_repr_vartime(s_hat_field_bytes)
-        .ok_or("failed to get s_hat in an adaptor signature")?;
+    let s_hat =
+        Scalar::from_repr_vartime(s_hat_field_bytes).ok_or(Error::FailedToParseScalar {})?;
 
     let needs_negation = asig_bytes[JACOBIAN_POINT_SIZE + MODNSCALAR_SIZE] == 0x01;
     Ok(AdaptorSignature {
