@@ -1,9 +1,6 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
-use babylon_proto::babylon::btcstkconsumer::v1::ConsumerRegisterIbcPacket;
-use babylon_proto::babylon::zoneconcierge::v1::{
-    zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
-};
+use babylon_proto::babylon::zoneconcierge::v1::{zoneconcierge_packet_data::Packet, BtcTimestamp, ConsumerRegisterIbcPacket, ZoneconciergePacketData};
 
 use crate::state::config::CONFIG;
 use cosmwasm_std::{
