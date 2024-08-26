@@ -154,7 +154,7 @@ pub struct ProofFinalizedChainInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ZoneconciergePacketData {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3")]
+    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3, 4")]
     pub packet: ::core::option::Option<zoneconcierge_packet_data::Packet>,
 }
 /// Nested message and enum types in `ZoneconciergePacketData`.
@@ -169,6 +169,8 @@ pub mod zoneconcierge_packet_data {
         BtcStaking(super::super::super::btcstaking::v1::BtcStakingIbcPacket),
         #[prost(message, tag="3")]
         ConsumerRegister(super::ConsumerRegisterIbcPacket),
+        #[prost(message, tag="4")]
+        ConsumerSlashing(super::ConsumerSlashingIbcPacket),
     }
 }
 /// BTCTimestamp is a BTC timestamp that carries information of a BTC-finalised epoch
@@ -208,7 +210,7 @@ pub struct BtcTimestamp {
     #[prost(message, optional, tag="6")]
     pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
 }
-/// ConsumerRegisterPacketData defines the packet data for consumer registration
+/// ConsumerRegisterIBCPacket defines the packet data for Consumer registration
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ConsumerRegisterIbcPacket {
@@ -218,6 +220,21 @@ pub struct ConsumerRegisterIbcPacket {
     /// consumer_description is a brief explanation of the consumer chain's purpose
     #[prost(string, tag="2")]
     pub consumer_description: ::prost::alloc::string::String,
+}
+/// ConsumerSlashingIBCPacket defines the slashing information that a Consumer sends to Babylon's ZoneConcierge upon a
+/// Consumer slashing event
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ConsumerSlashingIbcPacket {
+    /// / fp_btc_pk is the BTC Public key of the slashed finality provider
+    #[prost(bytes="bytes", tag="1")]
+    pub fp_btc_pk: ::prost::bytes::Bytes,
+    /// / block_height is the Consumer blockchain slashing height
+    #[prost(uint64, tag="2")]
+    pub block_height: u64,
+    /// / secret_key is the BTC private key extracted from the slashing evidence
+    #[prost(bytes="bytes", tag="3")]
+    pub secret_key: ::prost::bytes::Bytes,
 }
 /// QueryFinalizedChainsInfoResponse is response type for the
 /// Query/FinalizedChainsInfo RPC method.
