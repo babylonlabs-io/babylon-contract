@@ -1,4 +1,4 @@
-use crate::asig::{verify_adaptor_sig, AdaptorSignature};
+use crate::adaptor_sig::AdaptorSignature;
 use bitcoin::hashes::Hash;
 use bitcoin::key::Secp256k1;
 use bitcoin::secp256k1::schnorr::Signature as SchnorrSignature;
@@ -65,5 +65,5 @@ pub fn enc_verify_transaction_sig_with_output(
     let sighash_msg = calc_sighash(transaction, funding_output, path_script)?;
 
     // verify the signature w.r.t. the signature, the sig hash, and the public key
-    verify_adaptor_sig(pub_key, enc_key, sighash_msg, signature)
+    signature.verify(pub_key, enc_key, sighash_msg)
 }

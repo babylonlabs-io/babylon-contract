@@ -10,6 +10,7 @@ rust_decimal = { workspace = true }
 hex          = { workspace = true }
 sha2         = { workspace = true }
 k256         = { workspace = true }
+eots         = { path = "../eots" }
 
 [dev-dependencies]
 test-utils    = { path = "../test-utils" }

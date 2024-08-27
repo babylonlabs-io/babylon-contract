@@ -14,10 +14,10 @@ use k256::{
 use sha2::{Digest, Sha256};
 use std::ops::{Deref, Mul};
 
-const CHALLENGE_TAG: &[u8] = b"BIP0340/challenge";
+pub const CHALLENGE_TAG: &[u8] = b"BIP0340/challenge";
 
 // Adapted from https://github.com/RustCrypto/elliptic-curves/blob/520f67d26be1773bd600d05796cc26d797dd7182/k256/src/schnorr.rs#L181-L187
-fn tagged_hash(tag: &[u8]) -> Sha256 {
+pub fn tagged_hash(tag: &[u8]) -> Sha256 {
     let tag_hash = Sha256::digest(tag);
     let mut digest = Sha256::new();
     // The hash is in sha256d, so we need to hash twice

@@ -202,7 +202,7 @@ pub fn check_transactions(
 mod tests {
     use self::scripts_utils::BabylonScriptPaths;
     use super::*;
-    use crate::asig::new_adaptor_sig;
+    use crate::adaptor_sig::AdaptorSignature;
     use crate::sig_verify::{
         enc_verify_transaction_sig_with_output, verify_transaction_sig_with_output,
     };
@@ -324,7 +324,7 @@ mod tests {
         for cov_slashing_tx_info in btc_del.covenant_sigs {
             let cov_pk = XOnlyPublicKey::from_slice(&cov_slashing_tx_info.cov_pk).unwrap();
             for (idx, cov_asig_bytes) in cov_slashing_tx_info.adaptor_sigs.iter().enumerate() {
-                let cov_asig = new_adaptor_sig(cov_asig_bytes).unwrap();
+                let cov_asig = AdaptorSignature::new(cov_asig_bytes).unwrap();
                 enc_verify_transaction_sig_with_output(
                     &slashing_tx,
                     staking_out,
@@ -379,7 +379,7 @@ mod tests {
                 .iter()
                 .enumerate()
             {
-                let cov_asig = new_adaptor_sig(cov_asig_bytes).unwrap();
+                let cov_asig = AdaptorSignature::new(cov_asig_bytes).unwrap();
                 enc_verify_transaction_sig_with_output(
                     &unbonding_slashing_tx,
                     unbonding_out,
