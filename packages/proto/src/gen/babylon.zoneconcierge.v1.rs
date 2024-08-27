@@ -226,14 +226,11 @@ pub struct ConsumerRegisterIbcPacket {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ConsumerSlashingIbcPacket {
-    /// / fp_btc_pk is the BTC Public key of the slashed finality provider
-    #[prost(bytes="bytes", tag="1")]
-    pub fp_btc_pk: ::prost::bytes::Bytes,
-    /// / block_height is the Consumer blockchain slashing height
-    #[prost(uint64, tag="2")]
-    pub block_height: u64,
+    /// / evidence is the slashing evidence that the Consumer sends to Babylon
+    #[prost(message, optional, tag="1")]
+    pub evidence: ::core::option::Option<super::super::finality::v1::Evidence>,
     /// / secret_key is the BTC private key extracted from the slashing evidence
-    #[prost(bytes="bytes", tag="3")]
+    #[prost(bytes="bytes", tag="2")]
     pub secret_key: ::prost::bytes::Bytes,
 }
 /// QueryFinalizedChainsInfoResponse is response type for the
