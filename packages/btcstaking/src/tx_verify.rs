@@ -1,17 +1,18 @@
+use crate::error::Error;
+use crate::scripts_utils;
+use crate::Result;
 use bitcoin::XOnlyPublicKey;
 use bitcoin::{address::Address, network::Network, Transaction};
 use rust_decimal::{prelude::*, Decimal};
 
-use crate::scripts_utils;
-
 /// Checks if a transaction has exactly one input and one output.
-fn is_transfer_tx(tx: &Transaction) -> Result<(), String> {
+fn is_transfer_tx(tx: &Transaction) -> Result<()> {
     if tx.input.len() != 1 {
-        return Err("Transfer transaction must have exactly one input.".into());
+        return Err(Error::TxInputCountMismatch(1, tx.input.len()));
     }
 
     if tx.output.len() != 1 {
-        return Err("Transfer transaction must have exactly one output.".into());
+        return Err(Error::TxOutputCountMismatch(1, tx.output.len()));
     }
 
     Ok(())
@@ -20,15 +21,15 @@ fn is_transfer_tx(tx: &Transaction) -> Result<(), String> {
 /// Checks if a transaction is a simple transfer, meaning it has exactly one input and one output,
 /// is not replaceable (sequence number is max), and has no locktime.
 #[allow(dead_code)]
-fn is_simple_transfer(tx: &Transaction) -> Result<(), String> {
+fn is_simple_transfer(tx: &Transaction) -> Result<()> {
     is_transfer_tx(tx)?; // Reuse the is_transfer_tx check and propagate error if any
 
     if !tx.input[0].sequence.is_rbf() {
-        return Err("Simple transfer transaction must not be replaceable.".into());
+        return Err(Error::TxIsReplaceable {});
     }
 
     if tx.lock_time.to_consensus_u32() > 0 {
-        return Err("Simple transfer transaction must not have locktime.".into());
+        return Err(Error::TxHasLocktime {});
     }
 
     Ok(())
@@ -45,35 +46,32 @@ fn validate_slashing_tx(
     staker_pk: &XOnlyPublicKey,
     slashing_change_lock_time: u16,
     network: Network,
-) -> Result<(), String> {
+) -> Result<()> {
     if slashing_tx.input.len() != 1 {
-        return Err("Slashing transaction must have exactly one input".into());
+        return Err(Error::TxInputCountMismatch(1, slashing_tx.input.len()));
     }
 
     if slashing_tx.input[0].sequence.is_rbf() {
-        return Err("Simple transfer transaction must not be replaceable.".into());
+        return Err(Error::TxIsReplaceable {});
     }
 
     if slashing_tx.lock_time.to_consensus_u32() > 0 {
-        return Err("Simple transfer transaction must not have locktime.".into());
+        return Err(Error::TxHasLocktime {});
     }
 
     if slashing_tx.output.len() != 2 {
-        return Err("Slashing transaction must have exactly 2 outputs".into());
+        return Err(Error::TxOutputCountMismatch(2, slashing_tx.output.len()));
     }
 
     let expected_slashing_amount = (staking_output_value as f64 * slashing_rate).round() as u64;
     if slashing_tx.output[0].value.to_sat() < expected_slashing_amount {
-        return Err(format!(
-            "Slashing transaction must slash at least {} satoshis",
-            expected_slashing_amount
-        ));
+        return Err(Error::InsufficientSlashingAmount(expected_slashing_amount));
     }
 
     // Verify that the first output pays to the provided slashing address.
     let slashing_pk_script = slashing_address.script_pubkey();
     if slashing_tx.output[0].script_pubkey != slashing_pk_script {
-        return Err("Slashing transaction must pay to the provided slashing address".into());
+        return Err(Error::InvalidSlashingAddress {});
     }
 
     // Verify that the second output pays to the taproot address which locks funds for
@@ -85,7 +83,7 @@ fn validate_slashing_tx(
         network,
     )?;
     if slashing_tx.output[1].script_pubkey.ne(&expected_pk_script) {
-        return Err("Invalid slashing tx change output script".into());
+        return Err(Error::InvalidSlashingTxChangeOutputScript {});
     }
 
     // Check for dust outputs
@@ -94,7 +92,7 @@ fn validate_slashing_tx(
         .iter()
         .any(|out| out.value.to_sat() <= 546)
     {
-        return Err("Transaction contains dust outputs".into());
+        return Err(Error::TxContainsDustOutputs {});
     }
 
     // Check fees
@@ -104,15 +102,12 @@ fn validate_slashing_tx(
         .map(|out| out.value.to_sat())
         .sum();
     if staking_output_value <= total_output_value {
-        return Err("Slashing transaction must not spend more than the staking transaction".into());
+        return Err(Error::SlashingTxOverspend {});
     }
 
     let calculated_fee = staking_output_value - total_output_value;
     if calculated_fee < slashing_tx_min_fee {
-        return Err(format!(
-            "Slashing transaction fee must be larger than {}",
-            slashing_tx_min_fee
-        ));
+        return Err(Error::InsufficientSlashingFee(slashing_tx_min_fee));
     }
 
     Ok(())
@@ -147,22 +142,21 @@ pub fn check_transactions(
     staker_pk: &XOnlyPublicKey,
     slashing_change_lock_time: u16,
     network: Network,
-) -> Result<(), String> {
+) -> Result<()> {
     // Check if slashing tx min fee is valid
     if slashing_tx_min_fee == 0 {
-        return Err("Slashing transaction min fee must be larger than 0".into());
+        return Err(Error::InsufficientSlashingFee(0));
     }
 
     // Check if slashing rate is in the valid range (0,1)
     if !is_rate_valid(slashing_rate) {
-        return Err("Invalid slashing rate".into());
+        return Err(Error::InvalidSlashingRate {});
     }
 
     if funding_output_idx >= funding_transaction.output.len() as u32 {
-        return Err(format!(
-            "Invalid funding output index {}, tx has {} outputs",
+        return Err(Error::InvalidFundingOutputIndex(
             funding_output_idx,
-            funding_transaction.output.len()
+            funding_transaction.output.len(),
         ));
     }
 
@@ -187,12 +181,12 @@ pub fn check_transactions(
         .txid
         .ne(&staking_tx_hash)
     {
-        return Err("Slashing transaction must spend staking output".into());
+        return Err(Error::StakingOutputNotSpentBySlashingTx {});
     }
 
     // Check that index of the funding output matches index of the input in slashing transaction
     if slashing_tx.input[0].previous_output.vout != funding_output_idx {
-        return Err("Slashing transaction input must spend staking output".into());
+        return Err(Error::StakingOutputNotSpentBySlashingTx {});
     }
 
     Ok(())

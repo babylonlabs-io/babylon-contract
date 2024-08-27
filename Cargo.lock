@@ -138,6 +138,7 @@ dependencies = [
  "rust_decimal",
  "sha2 0.10.8",
  "test-utils",
+ "thiserror",
 ]
 
 [[package]]
