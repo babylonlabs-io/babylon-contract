@@ -183,6 +183,7 @@ pub(crate) mod ibc_packet {
         FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
         UnbondedBtcDelegation,
     };
+    use babylon_apis::finality_api::Evidence;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
     use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
@@ -359,14 +360,20 @@ pub(crate) mod ibc_packet {
     pub fn slashing_msg(
         env: &Env,
         channel: &IbcChannel,
-        fp_btc_pk: &[u8],
-        block_height: u64,
+        evidence: &Evidence,
         secret_key: &[u8],
     ) -> Result<IbcMsg, ContractError> {
         let packet = ZoneconciergePacketData {
             packet: Some(ConsumerSlashing(ConsumerSlashingIbcPacket {
-                fp_btc_pk: fp_btc_pk.to_vec().into(),
-                block_height,
+                evidence: Some(babylon_proto::babylon::finality::v1::Evidence {
+                    fp_btc_pk: evidence.fp_btc_pk.to_vec().into(),
+                    block_height: evidence.block_height,
+                    pub_rand: evidence.pub_rand.to_vec().into(),
+                    canonical_app_hash: evidence.canonical_app_hash.to_vec().into(),
+                    fork_app_hash: evidence.fork_app_hash.to_vec().into(),
+                    canonical_finality_sig: evidence.canonical_finality_sig.to_vec().into(),
+                    fork_finality_sig: evidence.fork_finality_sig.to_vec().into(),
+                }),
                 secret_key: secret_key.to_vec().into(),
             })),
         };

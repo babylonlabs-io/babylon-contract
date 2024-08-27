@@ -288,8 +288,7 @@ fn slash_finality_provider(
     // Raises slashing event to babylon over IBC.
     // Send to babylon-contract for forwarding
     let msg = babylon_contract::ExecuteMsg::Slashing {
-        fp_btc_pk: evidence.fp_btc_pk.clone(),
-        block_height: evidence.block_height,
+        evidence: evidence.clone(),
         secret_key: btc_sk.to_bytes(),
     };
 
@@ -1065,8 +1064,7 @@ pub(crate) mod tests {
             SubMsg::new(WasmMsg::Execute {
                 contract_addr: babylon_addr.to_string(),
                 msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing {
-                    fp_btc_pk: btc_pk.clone(),
-                    block_height: submit_height,
+                    evidence,
                     secret_key: btc_sk.to_bytes()
                 })
                 .unwrap(),
