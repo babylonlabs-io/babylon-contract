@@ -50,15 +50,21 @@ impl ContractMsg for InstantiateMsg {
         let _ = self.babylon_tag_to_bytes()?;
 
         if self.btc_staking_code_id.is_some() {
-            if let (Some(consumer_name), Some(consumer_description)) = (&self.consumer_name, &self.consumer_description) {
+            if let (Some(consumer_name), Some(consumer_description)) =
+                (&self.consumer_name, &self.consumer_description)
+            {
                 if consumer_name.trim().is_empty() {
                     return Err(StdError::generic_err("Consumer name cannot be empty"));
                 }
                 if consumer_description.trim().is_empty() {
-                    return Err(StdError::generic_err("Consumer description cannot be empty"));
+                    return Err(StdError::generic_err(
+                        "Consumer description cannot be empty",
+                    ));
                 }
             } else {
-                return Err(StdError::generic_err("Consumer name and description are required when btc_staking_code_id is set"));
+                return Err(StdError::generic_err(
+                    "Consumer name and description are required when btc_staking_code_id is set",
+                ));
             }
         }
 

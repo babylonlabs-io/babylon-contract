@@ -44,7 +44,7 @@ pub fn instantiate(
         // Update config with consumer information
         cfg.consumer_name = msg.consumer_name;
         cfg.consumer_description = msg.consumer_description;
-        
+
         // Instantiate BTC staking contract
         let init_msg = WasmMsg::Instantiate {
             admin: msg.admin,
