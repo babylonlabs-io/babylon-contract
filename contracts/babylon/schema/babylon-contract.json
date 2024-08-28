@@ -132,21 +132,11 @@
           "slashing": {
             "type": "object",
             "required": [
-              "evidence",
-              "secret_key"
+              "evidence"
             ],
             "properties": {
               "evidence": {
                 "$ref": "#/definitions/Evidence"
-              },
-              "secret_key": {
-                "description": "`secret_key` is the secret key extracted from the slashing evidence",
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "format": "uint8",
-                  "minimum": 0.0
-                }
               }
             },
             "additionalProperties": false
