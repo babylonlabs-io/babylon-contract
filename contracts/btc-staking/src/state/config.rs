@@ -15,11 +15,6 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 pub struct Config {
     pub denom: String,
     pub babylon: Addr,
-    // covenant_pks is the list of public keys held by the covenant committee each PK
-    // follows encoding in BIP-340 spec on Bitcoin
-    // pub covenant_pks: Vec<BIP340PubKey>,
-    // covenant_quorum is the minimum number of signatures needed for the covenant multi-signature
-    // pub covenant_quorum: u32,
 }
 
 /// Params define Consumer-selectable BTC staking parameters
@@ -28,6 +23,11 @@ pub struct Config {
 #[derive(Derivative)]
 #[derivative(Default)]
 pub struct Params {
+    // covenant_pks is the list of public keys held by the covenant committee each PK
+    // follows encoding in BIP-340 spec on Bitcoin
+    pub covenant_pks: Vec<String>,
+    // covenant_quorum is the minimum number of signatures needed for the covenant multi-signature
+    pub covenant_quorum: u32,
     // `min_commission_rate` is the chain-wide minimum commission rate that a finality provider
     // can charge their delegators
     // pub min_commission_rate: Decimal,
