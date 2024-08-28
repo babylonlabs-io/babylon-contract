@@ -361,7 +361,6 @@ pub(crate) mod ibc_packet {
         env: &Env,
         channel: &IbcChannel,
         evidence: &Evidence,
-        secret_key: &[u8],
     ) -> Result<IbcMsg, ContractError> {
         let packet = ZoneconciergePacketData {
             packet: Some(ConsumerSlashing(ConsumerSlashingIbcPacket {
@@ -374,7 +373,6 @@ pub(crate) mod ibc_packet {
                     canonical_finality_sig: evidence.canonical_finality_sig.to_vec().into(),
                     fork_finality_sig: evidence.fork_finality_sig.to_vec().into(),
                 }),
-                secret_key: secret_key.to_vec().into(),
             })),
         };
         let msg = IbcMsg::SendPacket {
