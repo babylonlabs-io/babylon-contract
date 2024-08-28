@@ -31,7 +31,8 @@ use babylon_contract::msg::btc_header::{BtcHeader, BtcHeadersResponse};
 use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 
 static WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
-const MAX_WASM_LEN: usize = 800 * 1000; // 800 kibi
+/// Wasm size limit: https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/validation.go#L24-L25
+const MAX_WASM_SIZE: usize = 800 * 1024; // 800 KB
 
 const CREATOR: &str = "creator";
 
@@ -79,7 +80,7 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
 #[test]
 fn wasm_size_limit_check() {
     assert!(
-        WASM.len() < MAX_WASM_LEN,
+        WASM.len() < MAX_WASM_SIZE,
         "Wasm file too large: {}",
         WASM.len()
     );
