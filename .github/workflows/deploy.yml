@@ -32,6 +32,11 @@ jobs:
       run: |-
         ls -l artifacts
         cat artifacts/checksums.txt
+    - name: Zip artefacts
+      run: |-
+        zip artifacts/babylon_contract.wasm.zip artifacts/babylon_contract.wasm
+        zip artifacts/btc_staking.wasm.zip artifacts/btc_staking.wasm
+        zip artifacts/op_finality_gadget.wasm.zip artifacts/op_finality_gadget.wasm
     - name: Create a Release
       id: create-release
       uses: actions/create-release@v1
@@ -51,8 +56,19 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./artifacts/babylon_contract.wasm
-        asset_name: babylon_contract.wasm
+        asset_path: ./artifacts/babylon_contract.wasm.zip
+        asset_name: babylon_contract.wasm.zip
+        asset_content_type: application/zip
+    - name: Upload btc_staking
+      id: upload-btc_staking
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./artifacts/btc_staking.wasm.zip
+        asset_name: btc_staking.wasm.zip
+        asset_content_type: application/zip
   build_and_upload_schemas:
     runs-on: ubuntu-latest
     steps:
