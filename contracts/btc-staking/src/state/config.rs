@@ -1,3 +1,4 @@
+use babylon_bitcoin::chain_params::Network;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Decimal;
@@ -29,6 +30,8 @@ pub struct Config {
 #[derive(Derivative)]
 #[derivative(Default)]
 pub struct Params {
+    #[derivative(Default(value = "Network::Regtest"))]
+    pub btc_network: Network,
     // `min_commission_rate` is the chain-wide minimum commission rate that a finality provider
     // can charge their delegators
     // pub min_commission_rate: Decimal,
@@ -42,7 +45,7 @@ pub struct Params {
     pub min_pub_rand: u64,
     /// `slashing_address` is the address that the slashed BTC goes to.
     /// The address is in string format on Bitcoin.
-    #[derivative(Default(value = "String::from(\"SMPJunctnV4LunQRk37CuFeWeU9iBDoZwx\")"))]
+    #[derivative(Default(value = "String::from(\"n4cV57jePmAAue2WTTBQzH3k3R2rgWBQwY\")"))]
     pub slashing_address: String,
     /// `min_slashing_tx_fee_sat` is the minimum amount of tx fee (quantified in Satoshi) needed for
     /// the pre-signed slashing tx

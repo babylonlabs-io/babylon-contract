@@ -300,7 +300,7 @@ pub(crate) mod tests {
 
     /// Build an active BTC delegation from a BTC delegation
     pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
-        let (del, _) = get_btc_delegation_and_params();
+        let (del, params) = get_btc_delegation_and_params();
         let btc_undelegation = del.btc_undelegation.unwrap();
 
         ActiveBtcDelegation {
