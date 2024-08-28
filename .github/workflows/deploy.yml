@@ -10,12 +10,16 @@ env:
 jobs:
   build_and_upload_contracts:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      pull-requests: read
+      contents: write
+      deployments: write
+      pages: write
+      repository-projects: write
+      statuses: write
     steps:
     - uses: actions/checkout@v4.1.0
-    - name: Make temporary bin
-      run: mkdir -p /tmp/bin
-    - name: Install ghr
-      run: wget https://github.com/tcnksm/ghr/releases/download/v0.14.0/ghr_v0.14.0_linux_amd64.tar.gz -O - | tar -zxvf - -C /tmp/bin --wildcards --strip-components 1 */ghr
     - name: Build optimised Wasm binaries
       run: "./scripts/build-optimizer-ci.sh"
     - uses: actions/upload-artifact@v4.1.0
@@ -37,7 +41,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
           body: |
-            Attached there are some build artifacts generated at this tag. Those are for development purposes only! Please use crates.io to find the packages of this release.
+            Attached there are some build artifacts generated at this tag.
           draft: false
           prerelease: false
     - name: Upload babylon_contract
@@ -55,8 +59,6 @@ jobs:
     - uses: actions/checkout@v4.1.0
     - name: Make temporary bin
       run: mkdir -p /tmp/bin
-    - name: Install ghr
-      run: wget https://github.com/tcnksm/ghr/releases/download/v0.14.0/ghr_v0.14.0_linux_amd64.tar.gz -O - | tar -zxvf - -C /tmp/bin --wildcards --strip-components 1 */ghr
     - name: Build and run schema generator
       run: |-
         (cd ./contracts/babylon && cargo run --bin schema)
@@ -67,15 +69,12 @@ jobs:
         cp -a ./contracts/*/schema/* ./schemas
     - name: Show data
       run: ls -l ./schemas
-    - name: Publish schemas on GitHub
-      run: |-
-        GITHUB_TOKEN="${{ github.token }}"
-        TAG="${{ github.ref }}"
-        TITLE="$TAG"
-        BODY="Attached there are some schemas and build artifacts generated at this tag. Those are for development purposes only! Please use crates.io to find the packages of this release."
-        /tmp/bin/ghr -t "$GITHUB_TOKEN" \
-          -u "$CIRCLE_PROJECT_USERNAME" -r "${{ github.repository }}" \
-          -c "${{ github.sha }}" \
-          -n "$TITLE" -b "$BODY" \
-          -replace \
-          "$TAG" ./schemas/
+    - name: Upload schemas
+      id: upload-schemas
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./schemas
+        asset_name: schemas
