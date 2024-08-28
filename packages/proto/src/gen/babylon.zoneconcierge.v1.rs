@@ -222,16 +222,14 @@ pub struct ConsumerRegisterIbcPacket {
     pub consumer_description: ::prost::alloc::string::String,
 }
 /// ConsumerSlashingIBCPacket defines the slashing information that a Consumer sends to Babylon's ZoneConcierge upon a
-/// Consumer slashing event
+/// Consumer slashing event.
+/// It includes the FP public key, the Consumer block height at the slashing event, and the double sign evidence.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ConsumerSlashingIbcPacket {
-    /// / evidence is the slashing evidence that the Consumer sends to Babylon
+    /// / evidence is the FP slashing evidence that the Consumer sends to Babylon
     #[prost(message, optional, tag="1")]
     pub evidence: ::core::option::Option<super::super::finality::v1::Evidence>,
-    /// / secret_key is the BTC private key extracted from the slashing evidence
-    #[prost(bytes="bytes", tag="2")]
-    pub secret_key: ::prost::bytes::Bytes,
 }
 /// QueryFinalizedChainsInfoResponse is response type for the
 /// Query/FinalizedChainsInfo RPC method.
