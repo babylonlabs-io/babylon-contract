@@ -288,9 +288,7 @@ fn slash_finality_provider(
     // Raises slashing event to babylon over IBC.
     // Send to babylon-contract for forwarding
     let msg = babylon_contract::ExecuteMsg::Slashing {
-        fp_btc_pk: evidence.fp_btc_pk.clone(),
-        block_height: evidence.block_height,
-        secret_key: btc_sk.to_bytes(),
+        evidence: evidence.clone(),
     };
 
     let babylon_addr = CONFIG.load(store)?.babylon;
@@ -1049,27 +1047,11 @@ pub(crate) mod tests {
         assert_eq!(1, res.events.len());
         // Assert the slashing event is proper
         assert_eq!(res.events[0].ty, "slashed_finality_provider".to_string());
-        // Extract the secret key to compare it
-        let pk = eots::PublicKey::from_hex(&pk_hex).unwrap();
-        let btc_sk = pk
-            .extract_secret_key(
-                &pub_rand_one,
-                &add_finality_signature.block_app_hash,
-                &finality_signature,
-                &add_finality_signature_2.block_app_hash,
-                &add_finality_signature_2.finality_sig,
-            )
-            .unwrap();
         assert_eq!(
             res.messages[0],
             SubMsg::new(WasmMsg::Execute {
                 contract_addr: babylon_addr.to_string(),
-                msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing {
-                    fp_btc_pk: btc_pk.clone(),
-                    block_height: submit_height,
-                    secret_key: btc_sk.to_bytes()
-                })
-                .unwrap(),
+                msg: to_json_binary(&babylon_contract::ExecuteMsg::Slashing { evidence }).unwrap(),
                 funds: vec![]
             })
         );
