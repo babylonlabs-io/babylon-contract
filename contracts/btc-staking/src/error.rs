@@ -20,6 +20,8 @@ pub enum ContractError {
     Std(#[from] StdError),
     #[error("{0}")]
     Payment(#[from] PaymentError),
+    #[error("{0}")]
+    BTCStaking(#[from] babylon_btcstaking::error::Error),
     #[error("error converting from hex to array: {0}")]
     HexArrayError(#[from] HexToArrayError),
     #[error("{0}")]

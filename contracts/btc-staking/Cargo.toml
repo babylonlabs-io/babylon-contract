@@ -27,12 +27,13 @@ cranelift = ["cosmwasm-vm/cranelift"]
 library = []
 
 [dependencies]
-babylon-apis     = { path = "../../packages/apis" }
-babylon-bindings = { path = "../../packages/bindings" }
-babylon-contract = { path = "../babylon", features = [ "library" ] }
-babylon-merkle   = { path = "../../packages/merkle" }
-babylon-proto    = { path = "../../packages/proto" }
-eots             = { path = "../../packages/eots" }
+babylon-apis          = { path = "../../packages/apis" }
+babylon-bindings      = { path = "../../packages/bindings" }
+babylon-contract      = { path = "../babylon", features = [ "library" ] }
+babylon-merkle        = { path = "../../packages/merkle" }
+babylon-proto         = { path = "../../packages/proto" }
+babylon-btcstaking    = { path = "../../packages/btcstaking" }
+eots                  = { path = "../../packages/eots" }
 
 bitcoin          = { workspace = true }
 cosmwasm-schema  = { workspace = true }

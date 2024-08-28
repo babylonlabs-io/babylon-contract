@@ -2,15 +2,17 @@ use hex::ToHex;
 use std::str::FromStr;
 
 use bitcoin::absolute::LockTime;
+use bitcoin::address::Address;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
+use bitcoin::secp256k1::XOnlyPublicKey;
 use bitcoin::{Transaction, Txid};
 
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
-use crate::state::config::{ADMIN, CONFIG};
+use crate::state::config::{ADMIN, CONFIG, PARAMS};
 use crate::state::staking::{
     fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS,
     FP_DELEGATIONS, FP_SET, TOTAL_POWER,
@@ -98,15 +100,18 @@ pub fn handle_active_delegation(
     height: u64,
     active_delegation: &ActiveBtcDelegation,
 ) -> Result<(), ContractError> {
+    let config = CONFIG.load(storage)?;
+    let params = PARAMS.load(storage)?;
+
     // Basic stateless checks
     active_delegation.validate()?;
 
-    // Get params
+    // TODO: Get params
     // btc_confirmation_depth
     // checkpoint_finalization_timeout
     // minimum_unbonding_time
 
-    // Check unbonding time (staking time from unbonding tx) is larger than min unbonding time
+    // TODO: Check unbonding time (staking time from unbonding tx) is larger than min unbonding time
     // which is larger value from:
     // - MinUnbondingTime
     // - CheckpointFinalizationTimeout
@@ -116,6 +121,15 @@ pub fn handle_active_delegation(
     // - is smaller than math.MaxUint16 (due to check in req.ValidateBasic())
 
     // TODO: Verify proof of possession
+
+    // TODO: Ensure all finality providers
+    // - are known to Babylon,
+    // - at least 1 one of them is a Babylon finality provider,
+    // - are not slashed, and
+    // - their registered epochs are finalised
+    // and then check whether the BTC stake is restaked to FPs of consumers
+    // TODO: ensure the BTC delegation does not restake to too many finality providers
+    // (pending concrete design)
 
     // Parse staking tx
     let staking_tx: Transaction = deserialize(&active_delegation.staking_tx)
@@ -133,11 +147,38 @@ pub fn handle_active_delegation(
             return Err(ContractError::ErrInvalidLockType);
         }
     }
-
     // Get staking tx hash
     let staking_tx_hash = staking_tx.txid();
 
-    // Check if data provided in request, matches data to which staking tx is committed
+    // Check staking tx is not duplicated
+    if DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
+        return Err(ContractError::DelegationAlreadyExists(
+            staking_tx_hash.to_string(),
+        ));
+    }
+
+    // Check if data provided in request, matches data to which staking tx is
+    // committed
+    let slashing_tx_min_fee: u64 = params.min_slashing_tx_fee_sat;
+    let slashing_rate: f64 = params.slashing_rate.into();
+    let slashing_address: Address = Address::from_str(&params.slashing_address)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?
+        .assume_checked();
+    let staker_btc_pk = XOnlyPublicKey::from_str(&active_delegation.btc_pk_hex)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    let slashing_tx: Transaction = deserialize(&active_delegation.slashing_tx)
+        .map_err(|_| ContractError::InvalidBtcTx(active_delegation.slashing_tx.encode_hex()))?;
+    babylon_btcstaking::tx_verify::check_transactions(
+        &slashing_tx,
+        &staking_tx,
+        active_delegation.staking_output_idx,
+        slashing_tx_min_fee,
+        slashing_rate,
+        &slashing_address,
+        &staker_btc_pk,
+        active_delegation.unbonding_time as u16,
+        bitcoin::Network::Regtest, // TODO: add to parameter
+    )?;
 
     // Check staking tx time-lock has correct values
     // get start_height and end_height of the time-lock
@@ -200,13 +241,6 @@ pub fn handle_active_delegation(
     // Check that the delegator slashing signature is there
     if undelegation_info.delegator_slashing_sig.is_empty() {
         return Err(ContractError::EmptySignature);
-    }
-
-    // Check staking tx is not duplicated
-    if DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
-        return Err(ContractError::DelegationAlreadyExists(
-            staking_tx_hash.to_string(),
-        ));
     }
 
     // Update delegations by registered finality provider
