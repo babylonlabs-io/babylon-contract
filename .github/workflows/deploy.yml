@@ -38,8 +38,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
       with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
           body: |
             Attached there are some build artifacts generated at this tag.
           draft: false
@@ -57,8 +57,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4.1.0
-    - name: Make temporary bin
-      run: mkdir -p /tmp/bin
     - name: Build and run schema generator
       run: |-
         (cd ./contracts/babylon && cargo run --bin schema)
