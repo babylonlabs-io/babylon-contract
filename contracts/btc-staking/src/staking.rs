@@ -196,7 +196,7 @@ pub fn handle_active_delegation(
         &staking_tx,
         active_delegation.staking_output_idx,
         params.min_slashing_tx_fee_sat,
-        params.slashing_rate,
+        params.slashing_rate.to_string().parse::<f64>().unwrap(),
         &slashing_address,
         &staker_btc_pk,
         active_delegation.unbonding_time as u16,
