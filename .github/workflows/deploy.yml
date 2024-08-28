@@ -69,10 +69,16 @@ jobs:
         asset_path: ./artifacts/btc_staking.wasm.zip
         asset_name: btc_staking.wasm.zip
         asset_content_type: application/zip
-  build_and_upload_schemas:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4.1.0
+    - name: Upload op_finality_gadget
+      id: upload-op_finality_gadget
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./artifacts/op_finality_gadget.wasm.zip
+        asset_name: op_finality_gadget.wasm.zip
+        asset_content_type: application/zip
     - name: Build and run schema generator
       run: |-
         (cd ./contracts/babylon && cargo run --bin schema)
@@ -83,6 +89,9 @@ jobs:
         cp -a ./contracts/*/schema/* ./schemas
     - name: Show data
       run: ls -l ./schemas
+    - name: Zip schemas
+      run: |-
+        zip -r ./schemas.zip schemas/
     - name: Upload schemas
       id: upload-schemas
       uses: actions/upload-release-asset@v1
@@ -90,5 +99,6 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./schemas
-        asset_name: schemas
+        asset_path: ./schemas.zip
+        asset_name: schemas.zip
+        asset_content_type: application/zip
