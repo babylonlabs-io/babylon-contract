@@ -8,7 +8,9 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::XOnlyPublicKey;
 use bitcoin::{Transaction, Txid};
 
-use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{
+    DepsMut, Env, Event, MessageInfo, Order, Querier, QuerierWrapper, Response, Storage,
+};
 
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
@@ -24,6 +26,7 @@ use babylon_apis::btc_staking_api::{
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
+use babylon_bitcoin::chain_params::get_bitcoin_network;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -49,7 +52,7 @@ pub fn handle_btc_staking(
 
     // Process active delegations
     for del in active_delegations {
-        handle_active_delegation(deps.storage, env.block.height, del)?;
+        handle_active_delegation(deps.storage, deps.querier, env.block.height, del)?;
         // TODO: Add event
     }
 
@@ -97,11 +100,18 @@ pub fn handle_new_fp(
 ///
 pub fn handle_active_delegation(
     storage: &mut dyn Storage,
+    querier: QuerierWrapper,
     height: u64,
     active_delegation: &ActiveBtcDelegation,
 ) -> Result<(), ContractError> {
     let config = CONFIG.load(storage)?;
     let params = PARAMS.load(storage)?;
+
+    // Query Babylon contract's config
+    let babylon_config: babylon_contract::state::config::Config = querier.query_wasm_smart(
+        config.babylon.clone(),
+        &babylon_contract::msg::contract::QueryMsg::Config {},
+    )?;
 
     // Basic stateless checks
     active_delegation.validate()?;
@@ -177,7 +187,7 @@ pub fn handle_active_delegation(
         &slashing_address,
         &staker_btc_pk,
         active_delegation.unbonding_time as u16,
-        bitcoin::Network::Regtest, // TODO: add to parameter
+        get_bitcoin_network(babylon_config.network),
     )?;
 
     // Check staking tx time-lock has correct values

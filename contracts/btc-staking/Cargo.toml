@@ -33,6 +33,7 @@ babylon-contract      = { path = "../babylon", features = [ "library" ] }
 babylon-merkle        = { path = "../../packages/merkle" }
 babylon-proto         = { path = "../../packages/proto" }
 babylon-btcstaking    = { path = "../../packages/btcstaking" }
+babylon-bitcoin       = { path = "../../packages/bitcoin" }
 eots                  = { path = "../../packages/eots" }
 
 bitcoin          = { workspace = true }
