@@ -30,6 +30,7 @@ jobs:
         cat artifacts/checksums.txt
     - name: Publish artifacts on GitHub
       run: |-
+        GITHUB_TOKEN="${{ github.token }}"
         TAG="${{ github.ref }}"
         TITLE="$TAG"
         BODY="Attached there are some build artifacts generated at this tag. Those are for development purposes only! Please use crates.io to find the packages of this release."
@@ -59,6 +60,7 @@ jobs:
       run: ls -l ./schemas
     - name: Publish schemas on GitHub
       run: |-
+        GITHUB_TOKEN="${{ github.token }}"
         TAG="${{ github.ref }}"
         TITLE="$TAG"
         BODY="Attached there are some schemas and build artifacts generated at this tag. Those are for development purposes only! Please use crates.io to find the packages of this release."
