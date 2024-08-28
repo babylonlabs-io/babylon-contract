@@ -1,28 +1,22 @@
-name: babylonchain/babylon-contract/deploy-WIP
+name: babylonchain/babylon-contract/deploy
 on:
   push:
-    branches: [ "disabled" ]
-  pull_request:
-    branches: [ "disabled" ]
+    branches:
+      - '^v[0-9]+\.[0-9]+\.[0-9]+.*'
+      - 'fix/ci-github-actions-3'
 env:
-  AWS_ACCESS_KEY_ID: xxxxYKF5
-  AWS_REGION: xxxxst-1
-  AWS_SECRET_ACCESS_KEY: xxxxmvcn
-  DEPLOY_KEY_NAME: xxxxc068
-  GITHUB_TOKEN: xxxxFyIu
-  S3_BUCKET_PREFIX: xxxxract
+  CARGO_TERM_COLOR: always
+  WORKSPACE: "/home/runner/work/babylon-contract/babylon-contract"
 jobs:
   build_and_upload_contracts:
     defaults:
       run:
-        working-directory: "/__w/babylon-contract/babylon-contract"
+        working-directory: "$WORKSPACE"
     runs-on: ubuntu-latest
-    container:
-      image: rust:1.78.0
     steps:
     - uses: actions/checkout@v4.1.0
       with:
-        path: "/__w/babylon-contract/babylon-contract"
+        path: "$WORKSPACE"
     - name: Make temporary bin
       run: mkdir -p /tmp/bin
     - name: Install ghr
@@ -32,9 +26,9 @@ jobs:
     - uses: actions/upload-artifact@v4.1.0
       with:
         path: |-
-          /__w/babylon-contract/babylon-contract/artifacts/babylon_contract.wasm
-          /__w/babylon-contract/babylon-contract/artifacts/btc_staking.wasm
-          /__w/babylon-contract/babylon-contract/artifacts/checksums.txt
+          artifacts/babylon_contract.wasm
+          artifacts/btc_staking.wasm
+          artifacts/checksums.txt
     - name: Show data
       run: |-
         ls -l artifacts
@@ -53,14 +47,12 @@ jobs:
   build_and_upload_schemas:
     defaults:
       run:
-        working-directory: "/__w/babylon-contract/babylon-contract"
+        working-directory: "$WORKSPACE"
     runs-on: ubuntu-latest
-    container:
-      image: rust:1.78.0
     steps:
     - uses: actions/checkout@v4.1.0
       with:
-        path: "/__w/babylon-contract/babylon-contract"
+        path: "$WORKSPACE"
     - name: Make temporary bin
       run: mkdir -p /tmp/bin
     - name: Install ghr
