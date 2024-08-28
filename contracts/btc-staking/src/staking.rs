@@ -169,41 +169,39 @@ pub fn handle_active_delegation(
 
     // Check if data provided in request, matches data to which staking tx is
     // committed
-    let slashing_tx_min_fee: u64 = params.min_slashing_tx_fee_sat;
-    let slashing_rate: f64 = params.slashing_rate.into();
+
+    // TODO: Check staking tx time-lock has correct values
+    // get start_height and end_height of the time-lock
+
+    // TODO: Ensure staking tx is k-deep
+
+    // TODO: Ensure staking tx time-lock has more than w BTC blocks left
+
+    // TODO: Verify staking tx info, i.e. inclusion proof
+
+    // Check slashing tx and its consistency with staking tx
+    let slashing_tx: Transaction = deserialize(&active_delegation.slashing_tx)
+        .map_err(|_| ContractError::InvalidBtcTx(active_delegation.slashing_tx.encode_hex()))?;
+
+    // decode slashing address
     let slashing_address: Address = Address::from_str(&params.slashing_address)
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?
         .assume_checked();
+
+    // Check slashing tx and staking tx are valid and consistent
     let staker_btc_pk = XOnlyPublicKey::from_str(&active_delegation.btc_pk_hex)
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-    let slashing_tx: Transaction = deserialize(&active_delegation.slashing_tx)
-        .map_err(|_| ContractError::InvalidBtcTx(active_delegation.slashing_tx.encode_hex()))?;
     babylon_btcstaking::tx_verify::check_transactions(
         &slashing_tx,
         &staking_tx,
         active_delegation.staking_output_idx,
-        slashing_tx_min_fee,
-        slashing_rate,
+        params.min_slashing_tx_fee_sat,
+        params.slashing_rate,
         &slashing_address,
         &staker_btc_pk,
         active_delegation.unbonding_time as u16,
         get_bitcoin_network(babylon_config.network),
     )?;
-
-    // Check staking tx time-lock has correct values
-    // get start_height and end_height of the time-lock
-
-    // Ensure staking tx is k-deep
-
-    // Ensure staking tx time-lock has more than w BTC blocks left
-
-    // Verify staking tx info, i.e. inclusion proof
-
-    // Check slashing tx and its consistency with staking tx
-
-    // Decode slashing address
-
-    // Check slashing tx and staking tx are valid and consistent
 
     // Verify staker signature against slashing path of the staking tx script
 
