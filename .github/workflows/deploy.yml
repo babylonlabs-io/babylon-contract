@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - '^v[0-9]+\.[0-9]+\.[0-9]+.*'
-      - 'fix/ci-github-actions-3'
 env:
   CARGO_TERM_COLOR: always
   WORKSPACE: "/home/runner/work/babylon-contract/babylon-contract"
