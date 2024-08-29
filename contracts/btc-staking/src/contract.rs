@@ -348,22 +348,16 @@ pub(crate) mod tests {
     }
 
     // Build a derived active BTC delegation from the base (from testdata) BTC delegation
-    pub(crate) fn get_derived_btc_delegation(del_id: u8, fp_ids: &[u8]) -> ActiveBtcDelegation {
+    pub(crate) fn get_derived_btc_delegation(del_id: u8, fp_ids: &[String]) -> ActiveBtcDelegation {
         assert!(
             0 < del_id && del_id < 10,
             "Derived delegation id must be between 1 and 9"
         );
-        fp_ids.iter().for_each(|&fp_id| {
-            assert!(
-                0 < fp_id && fp_id < 10,
-                "Derived FP ids must be between 1 and 9"
-            )
-        });
         let mut del = get_active_btc_delegation();
 
         // Change the BTC public key and the finality provider public key list based on the id
         del.btc_pk_hex = format!("d{del_id}");
-        del.fp_btc_pk_list = fp_ids.iter().map(|fp_id| format!("f{fp_id}")).collect();
+        del.fp_btc_pk_list = fp_ids.to_vec();
 
         // Avoid repeated staking tx hash
         let mut staking_tx = del.staking_tx.to_vec();

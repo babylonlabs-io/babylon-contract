@@ -662,8 +662,7 @@ pub(crate) mod tests {
         assert_eq!(res.height, 0);
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[]);
-        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[pk_hex.clone()]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -796,8 +795,7 @@ pub(crate) mod tests {
         let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[]);
-        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[pk_hex.clone()]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -952,8 +950,7 @@ pub(crate) mod tests {
         let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[]);
-        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[pk_hex.clone()]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
