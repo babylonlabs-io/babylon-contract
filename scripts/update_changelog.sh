@@ -70,10 +70,11 @@ echo "Git version tag: $TAG"
 
 cp CHANGELOG.md /tmp/CHANGELOG.md.$$
 # Consolidate tag for matching changelog entries
-TAG=$(echo "$TAG" | sed -e 's/-\([A-Za-z]*\)[^A-Za-z]*/-\1/' -e 's/-$//')
+TAG=$(echo "$TAG" | sed -e 's/-[^-]*$//')
 echo "Consolidated tag: $TAG"
 sed -i -n "/^## \\[${TAG}[^]]*\\]/,\$p" CHANGELOG.md
 
+echo github_changelog_generator -u $GITHUB_USER -p $GITHUB_REPO --base CHANGELOG.md $ORIGINAL_OPTS
 github_changelog_generator -u $GITHUB_USER -p $GITHUB_REPO --base CHANGELOG.md $ORIGINAL_OPTS || cp /tmp/CHANGELOG.md.$$ CHANGELOG.md
 
 if [ -n "$UPCOMING_TAG" ]
