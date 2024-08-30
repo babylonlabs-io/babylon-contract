@@ -293,7 +293,7 @@ pub(crate) mod tests {
     };
     use babylon_apis::finality_api::PubRandCommit;
 
-    use test_utils::{get_btc_delegation, get_params, get_pub_rand_commit};
+    use test_utils::{get_btc_delegation, get_pub_rand_commit};
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
