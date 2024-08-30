@@ -277,30 +277,26 @@ fn handle_end_block(
 pub(crate) mod tests {
     use super::*;
 
-    use hex::ToHex;
-
+    use babylon_apis::btc_staking_api::{
+        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
+        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
+    };
+    use babylon_apis::finality_api::PubRandCommit;
+    use babylon_proto::babylon::btcstaking::v1::BtcDelegation;
     use cosmwasm_std::{
         from_json,
         testing::{message_info, mock_dependencies, mock_env},
         Binary, Decimal,
     };
     use cw_controllers::AdminResponse;
-
-    use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
-        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
-    };
-    use babylon_apis::finality_api::PubRandCommit;
-
-    use test_utils::{get_btc_delegation_and_params, get_pub_rand_commit};
+    use hex::ToHex;
+    use test_utils::{get_btc_delegation, get_pub_rand_commit};
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
 
-    /// Build an active BTC delegation from a BTC delegation
-    pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
-        let (del, _) = get_btc_delegation_and_params();
+    fn new_active_btc_delegation(del: BtcDelegation) -> ActiveBtcDelegation {
         let btc_undelegation = del.btc_undelegation.unwrap();
 
         ActiveBtcDelegation {
@@ -345,6 +341,12 @@ pub(crate) mod tests {
             },
             params_version: del.params_version,
         }
+    }
+
+    /// Build an active BTC delegation from a BTC delegation
+    pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
+        let del = get_btc_delegation();
+        new_active_btc_delegation(del)
     }
 
     // Build a derived active BTC delegation from the base (from testdata) BTC delegation

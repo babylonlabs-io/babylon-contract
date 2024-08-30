@@ -140,16 +140,16 @@ pub fn get_btc_timestamp_and_headers() -> (BtcTimestamp, HashMap<BlockHash, Bloc
     (btc_ts, header_map)
 }
 
-pub fn get_btc_delegation_and_params() -> (BtcDelegation, BtcStakingParams) {
-    let btc_del_path = find_testdata_path().join(BTC_DELEGATION_DATA);
-    let btc_del_data: &[u8] = &fs::read(btc_del_path).unwrap();
-    let btc_del = BtcDelegation::decode(btc_del_data).unwrap();
-
+pub fn get_params() -> BtcStakingParams {
     let params_path = find_testdata_path().join(PARAMS_DATA);
     let params_data: &[u8] = &fs::read(params_path).unwrap();
-    let params = BtcStakingParams::decode(params_data).unwrap();
+    BtcStakingParams::decode(params_data).unwrap()
+}
 
-    (btc_del, params)
+pub fn get_btc_delegation() -> BtcDelegation {
+    let btc_del_path = find_testdata_path().join(BTC_DELEGATION_DATA);
+    let btc_del_data: &[u8] = &fs::read(btc_del_path).unwrap();
+    BtcDelegation::decode(btc_del_data).unwrap()
 }
 
 pub fn get_pub_rand_commit() -> MsgCommitPubRandList {
