@@ -2,16 +2,13 @@ package utils
 
 import (
 	"encoding/json"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"time"
 
 	bbnapp "github.com/babylonlabs-io/babylon/app"
 	"github.com/babylonlabs-io/babylon/testutil/datagen"
 	"github.com/babylonlabs-io/babylon/types"
 	btclctypes "github.com/babylonlabs-io/babylon/x/btclightclient/types"
-	"github.com/btcsuite/btcd/chaincfg"
 )
 
 var (
@@ -52,12 +49,10 @@ type BtcHeaders struct {
 }
 
 func GenBTCLightClient(initialHeaderHeight uint64, mainHeadersLength uint64, dir string) []*btclctypes.BTCHeaderInfoResponse {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-
 	headers := datagen.NewBTCHeaderChainWithLength(
 		r,
 		initialHeaderHeight,
-		chaincfg.RegressionNetParams.PowLimit.Uint64(),
+		net.PowLimit.Uint64(),
 		uint32(mainHeadersLength)).GetChainInfoResponse()
 	resp := &btclctypes.QueryMainChainResponse{Headers: headers}
 	respBytes := cdc.MustMarshal(resp)
@@ -73,8 +68,6 @@ func GenBTCLightClientFork(
 	forkHeader *btclctypes.BTCHeaderInfoResponse,
 	dir string,
 ) {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-
 	height := forkHeader.Height
 	length := mainHeadersLength - height + 1 // For an accepted fork
 
@@ -92,8 +85,6 @@ func GenBTCLightClientForkMessages(
 	forkHeader *btclctypes.BTCHeaderInfoResponse,
 	dir string,
 ) {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-
 	height := forkHeader.Height
 	length := mainHeadersLength - height + 1 // For an accepted fork
 

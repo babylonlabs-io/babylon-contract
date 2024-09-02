@@ -296,6 +296,7 @@ mod tests {
         let fps = crate::queries::finality_providers(deps.as_ref(), None, None)
             .unwrap()
             .fps;
+
         let fp1 = FinalityProvider::from(&new_fp1);
         let fp1_pk = fp1.btc_pk_hex.clone();
         let fp2 = FinalityProvider::from(&new_fp2);
@@ -348,8 +349,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex]);
-        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[new_fp2.btc_pk_hex]);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -419,9 +420,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
-        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[new_fp1.btc_pk_hex]);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -508,8 +508,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex]);
-        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[new_fp2.btc_pk_hex]);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -564,9 +564,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let mut del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
-        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[new_fp1.btc_pk_hex]);
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
@@ -655,8 +654,8 @@ mod tests {
         let _res = execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[fp1_pk.clone()]);
-        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[fp1_pk.clone()]);
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
@@ -746,7 +745,7 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a delegation
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex]);
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
         // Adjust staking amount
         del1.total_sat = 100;
 
@@ -803,13 +802,9 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add some delegations
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(
-            1,
-            &[new_fp1.btc_pk_hex, new_fp3.btc_pk_hex],
-        );
-        let mut del2 =
-            crate::contract::tests::get_derived_btc_delegation(2, &[new_fp2.btc_pk_hex.clone()]);
-        let mut del3 = crate::contract::tests::get_derived_btc_delegation(3, &[new_fp2.btc_pk_hex]);
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1, 3]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
+        let mut del3 = crate::contract::tests::get_derived_btc_delegation(3, &[2]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
@@ -836,18 +831,19 @@ mod tests {
                 power: 225,
             }
         });
-        assert_eq!(fps[1], {
-            FinalityProviderInfo {
-                btc_pk_hex: fp3_pk.clone(),
-                power: 100,
-            }
-        });
-        assert_eq!(fps[2], {
-            FinalityProviderInfo {
-                btc_pk_hex: fp1_pk.clone(),
-                power: 100,
-            }
-        });
+        // fp1 and fp3 can be in arbitrary order
+        let fp1_info = FinalityProviderInfo {
+            btc_pk_hex: fp1_pk.clone(),
+            power: 100,
+        };
+        let fp3_info = FinalityProviderInfo {
+            btc_pk_hex: fp3_pk.clone(),
+            power: 100,
+        };
+        assert!(
+            (fps[1] == fp1_info && fps[2] == fp3_info)
+                || (fps[1] == fp3_info && fps[2] == fp1_info)
+        );
 
         // Query finality providers power with limit
         let fps = crate::queries::finality_providers_by_power(deps.as_ref(), None, Some(2))
@@ -860,12 +856,7 @@ mod tests {
                 power: 225,
             }
         });
-        assert_eq!(fps[1], {
-            FinalityProviderInfo {
-                btc_pk_hex: fp3_pk.clone(),
-                power: 100,
-            }
-        });
+        assert!(fps[1] == fp1_info || fps[1] == fp3_info);
 
         // Query finality providers power with start_after
         let fps =
@@ -873,11 +864,6 @@ mod tests {
                 .unwrap()
                 .fps;
         assert_eq!(fps.len(), 1);
-        assert_eq!(fps[0], {
-            FinalityProviderInfo {
-                btc_pk_hex: fp1_pk.clone(),
-                power: 100,
-            }
-        });
+        assert!(fps[0] == fp1_info || fps[0] == fp3_info);
     }
 }

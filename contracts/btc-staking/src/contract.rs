@@ -370,35 +370,14 @@ pub(crate) mod tests {
 
     /// Build an active BTC delegation from a BTC delegation
     pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
-        let del = get_btc_delegation();
+        let del = get_btc_delegation(1, vec![1]);
         new_active_btc_delegation(del)
     }
 
     // Build a derived active BTC delegation from the base (from testdata) BTC delegation
-    pub(crate) fn get_derived_btc_delegation(del_id: u8, fp_ids: &[String]) -> ActiveBtcDelegation {
-        assert!(
-            0 < del_id && del_id < 10,
-            "Derived delegation id must be between 1 and 9"
-        );
-        let mut del = get_active_btc_delegation();
-
-        // Change the BTC public key and the finality provider public key list based on the id
-        del.btc_pk_hex = format!("d{del_id}");
-        del.fp_btc_pk_list = fp_ids.to_vec();
-
-        // Avoid repeated staking tx hash
-        let mut staking_tx = del.staking_tx.to_vec();
-        // FIXME: First byte can be 0xff, just by chance
-        staking_tx[0] += del_id - 1;
-        // FIXME: Binary breaks lexicographical order.
-        del.staking_tx = Binary::new(staking_tx);
-
-        // Avoid repeated slashing tx hash
-        let mut slashing_tx = del.slashing_tx.to_vec();
-        slashing_tx[0] += del_id - 1;
-        del.slashing_tx = Binary::new(slashing_tx);
-
-        del
+    pub(crate) fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
+        let del = get_btc_delegation(del_id, fp_ids.to_vec());
+        new_active_btc_delegation(del)
     }
 
     /// Get public randomness public key, commitment, and signature information

@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -49,8 +48,6 @@ func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInf
 }
 
 func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, pubRandIndex uint64, dir string) (*datagen.RandListInfo, *btcec.PrivateKey) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	sk, _, err := datagen.GenRandomBTCKeyPair(r)
 	if err != nil {
 		panic(err)
@@ -129,8 +126,6 @@ func NewMsgAddFinalitySig(
 }
 
 func GenAddFinalitySig(startHeight uint64, index uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey, dir string, signatureIndex uint32) *ftypes.MsgAddFinalitySig {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	blockHeight := startHeight + index
 	blockHash := datagen.GenRandomByteArray(r, 32)
 

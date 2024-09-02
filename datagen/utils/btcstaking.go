@@ -2,30 +2,23 @@ package utils
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonlabs-io/babylon/testutil/datagen"
 	bbn "github.com/babylonlabs-io/babylon/types"
 	"github.com/babylonlabs-io/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/stretchr/testify/require"
 )
 
 const (
 	FP_FILENAME                = "finality_provider_%d.dat"
-	BTC_DEL_FILENAME           = "btc_delegation.dat"
+	BTC_DEL_FILENAME           = "btc_delegation_%d_{%s}.dat"
 	BTCSTAKING_PARAMS_FILENAME = "btcstaking_params.dat"
-)
-
-var (
-	net = &chaincfg.RegressionNetParams
-	r   = rand.New(rand.NewSource(time.Now().Unix()))
 )
 
 func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
@@ -54,6 +47,16 @@ func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
 	return covenantSKs, covenantQuorum
 }
 
+func getParams(dir string) (*types.Params, error) {
+	params, err := os.ReadFile(filepath.Join(dir, BTCSTAKING_PARAMS_FILENAME))
+	if err != nil {
+		return nil, err
+	}
+	bsParams := types.Params{}
+	err = bsParams.Unmarshal(params)
+	return &bsParams, err
+}
+
 func GenFinalityProviders(dir string, numFPs int) {
 	t := &testing.T{}
 
@@ -71,24 +74,52 @@ func GenFinalityProviders(dir string, numFPs int) {
 	}
 }
 
-func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuorum uint32) {
+func getFinalityProvider(dir string, i int) (*types.FinalityProvider, error) {
+	fileName := fmt.Sprintf(FP_FILENAME, i)
+	fpPath := filepath.Join(dir, fileName)
+	fpBytes, err := os.ReadFile(fpPath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading finality provider %d: %w", i, err)
+	}
+
+	fp := &types.FinalityProvider{}
+	err = fp.Unmarshal(fpBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling finality provider %d: %w", i, err)
+	}
+
+	return fp, nil
+}
+
+func getFinalityProviders(dir string, numFPs int) ([]*types.FinalityProvider, error) {
+	fps := make([]*types.FinalityProvider, numFPs)
+	for i := 1; i <= numFPs; i++ {
+		fp, err := getFinalityProvider(dir, i)
+		if err != nil {
+			return nil, err
+		}
+		fps[i-1] = fp
+	}
+	return fps, nil
+}
+
+func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuorum uint32, idx int, fpIdxList []int) {
 	t := &testing.T{}
 
 	// read params
-	params, err := os.ReadFile(filepath.Join(dir, BTCSTAKING_PARAMS_FILENAME))
+	bsParams, err := getParams(dir)
 	require.NoError(t, err)
-	bsParams := types.Params{}
-	err = bsParams.Unmarshal(params)
-	require.NoError(t, err)
+
+	// read finality providers' BTC PKs
+	fpBTCPKs := make([]bbn.BIP340PubKey, len(fpIdxList))
+	for i, idx := range fpIdxList {
+		fp, err := getFinalityProvider(dir, idx)
+		require.NoError(t, err)
+		fpBTCPKs[i] = *fp.BtcPk
+	}
 
 	delSK, _, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-
-	// restaked to a random number of finality providers
-	numRestakedFPs := int(datagen.RandomInt(r, 10) + 1)
-	_, fpPKs, err := datagen.GenRandomBTCKeyPairs(r, numRestakedFPs)
-	require.NoError(t, err)
-	fpBTCPKs := bbn.NewBIP340PKsFromBTCPKs(fpPKs)
 
 	stakingTimeBlocks := uint16(5)
 	stakingValue := int64(2 * 10e8)
@@ -124,13 +155,31 @@ func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuor
 
 	btcDelBytes, err := btcDel.Marshal()
 	require.NoError(t, err)
-	btcDelPath := filepath.Join(dir, BTC_DEL_FILENAME)
+
+	// filename
+	fpIdxListStr := make([]string, len(fpIdxList))
+	for i, idx := range fpIdxList {
+		fpIdxListStr[i] = fmt.Sprintf("%d", idx)
+	}
+	fileName := fmt.Sprintf(BTC_DEL_FILENAME, idx, strings.Join(fpIdxListStr, ","))
+
+	btcDelPath := filepath.Join(dir, fileName)
 	err = os.WriteFile(btcDelPath, btcDelBytes, 0644)
 	require.NoError(t, err)
 }
 
 func GenBTCDelegationsAndParams(dir string) {
 	covenantSKs, covenantQuorum := GenParams(dir)
+	// 3 FPs
 	GenFinalityProviders(dir, 3)
-	GenBTCDelegations(dir, covenantSKs, covenantQuorum)
+	// 2 BTC delegations under 1st FPs
+	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 1, []int{1})
+	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 2, []int{1})
+	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 3, []int{1})
+	// 2 BTC delegations under 2nd FPs
+	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 1, []int{2})
+	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 2, []int{2})
+	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 3, []int{2})
+	// a BTC delegation restaked to 1/3-th FPs
+	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 1, []int{1, 3})
 }
