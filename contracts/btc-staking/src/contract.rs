@@ -275,6 +275,8 @@ fn handle_end_block(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     use babylon_apis::btc_staking_api::{
@@ -282,7 +284,7 @@ pub(crate) mod tests {
         FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
     };
     use babylon_apis::finality_api::PubRandCommit;
-    use babylon_proto::babylon::btcstaking::v1::BtcDelegation;
+    use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, FinalityProvider};
     use cosmwasm_std::{
         from_json,
         testing::{message_info, mock_dependencies, mock_env},
@@ -290,11 +292,34 @@ pub(crate) mod tests {
     };
     use cw_controllers::AdminResponse;
     use hex::ToHex;
-    use test_utils::{get_btc_delegation, get_pub_rand_commit};
+    use test_utils::{get_btc_delegation, get_finality_provider, get_pub_rand_commit};
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
+
+    fn new_finality_provider(fp: FinalityProvider) -> NewFinalityProvider {
+        NewFinalityProvider {
+            addr: fp.addr,
+            description: fp.description.map(|desc| FinalityProviderDescription {
+                moniker: desc.moniker,
+                identity: desc.identity,
+                website: desc.website,
+                security_contact: desc.security_contact,
+                details: desc.details,
+            }),
+            commission: Decimal::from_str(&fp.commission).unwrap(),
+            btc_pk_hex: fp.btc_pk.encode_hex(),
+            pop: match fp.pop {
+                Some(pop) => Some(ProofOfPossessionBtc {
+                    btc_sig_type: pop.btc_sig_type,
+                    btc_sig: Binary::new(pop.btc_sig.to_vec()),
+                }),
+                None => None,
+            },
+            consumer_id: fp.consumer_id,
+        }
+    }
 
     fn new_active_btc_delegation(del: BtcDelegation) -> ActiveBtcDelegation {
         let btc_undelegation = del.btc_undelegation.unwrap();
@@ -350,22 +375,16 @@ pub(crate) mod tests {
     }
 
     // Build a derived active BTC delegation from the base (from testdata) BTC delegation
-    pub(crate) fn get_derived_btc_delegation(del_id: u8, fp_ids: &[u8]) -> ActiveBtcDelegation {
+    pub(crate) fn get_derived_btc_delegation(del_id: u8, fp_ids: &[String]) -> ActiveBtcDelegation {
         assert!(
             0 < del_id && del_id < 10,
             "Derived delegation id must be between 1 and 9"
         );
-        fp_ids.iter().for_each(|&fp_id| {
-            assert!(
-                0 < fp_id && fp_id < 10,
-                "Derived FP ids must be between 1 and 9"
-            )
-        });
         let mut del = get_active_btc_delegation();
 
         // Change the BTC public key and the finality provider public key list based on the id
         del.btc_pk_hex = format!("d{del_id}");
-        del.fp_btc_pk_list = fp_ids.iter().map(|fp_id| format!("f{fp_id}")).collect();
+        del.fp_btc_pk_list = fp_ids.to_vec();
 
         // Avoid repeated staking tx hash
         let mut staking_tx = del.staking_tx.to_vec();
@@ -399,23 +418,8 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
-        NewFinalityProvider {
-            addr: format!("a{}", id),
-            description: Some(FinalityProviderDescription {
-                moniker: format!("fp{}", id),
-                identity: format!("Finality Provider {}", id),
-                website: format!("https:://fp{}.com", id),
-                security_contact: "security_contact".to_string(),
-                details: format!("details fp{}", id),
-            }),
-            commission: Decimal::percent(5),
-            btc_pk_hex: format!("f{}", id),
-            pop: Some(ProofOfPossessionBtc {
-                btc_sig_type: 0,
-                btc_sig: Binary::new(vec![]),
-            }),
-            consumer_id: format!("osmosis-{}", id),
-        }
+        let fp = get_finality_provider(id);
+        new_finality_provider(fp)
     }
 
     #[test]

@@ -1,6 +1,8 @@
 use babylon_bitcoin::{deserialize, BlockHash, BlockHeader};
 use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
-use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, Params as BtcStakingParams};
+use babylon_proto::babylon::btcstaking::v1::{
+    BtcDelegation, FinalityProvider, Params as BtcStakingParams,
+};
 use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 use cargo_metadata::MetadataCommand;
 use prost::bytes::Bytes;
@@ -21,6 +23,7 @@ const BTC_TIMESTAMP_HEADER0: &str = "btc_timestamp_header0.dat";
 const BTC_TIMESTAMP_HEADER1: &str = "btc_timestamp_header1.dat";
 
 const PARAMS_DATA: &str = "btcstaking_params.dat";
+const FINALITY_PROVIDER_DATA: &str = "finality_provider_{}.dat";
 const BTC_DELEGATION_DATA: &str = "btc_delegation.dat";
 const COMMIT_PUB_RAND_DATA: &str = "commit_pub_rand_msg.dat";
 const PUB_RAND_VALUE: &str = "pub_rand_value.dat";
@@ -144,6 +147,12 @@ pub fn get_params() -> BtcStakingParams {
     let params_path = find_testdata_path().join(PARAMS_DATA);
     let params_data: &[u8] = &fs::read(params_path).unwrap();
     BtcStakingParams::decode(params_data).unwrap()
+}
+
+pub fn get_finality_provider(id: i32) -> FinalityProvider {
+    let fp_path = find_testdata_path().join(FINALITY_PROVIDER_DATA.replace("{}", &id.to_string()));
+    let fp_data: &[u8] = &fs::read(fp_path).unwrap();
+    FinalityProvider::decode(fp_data).unwrap()
 }
 
 pub fn get_btc_delegation() -> BtcDelegation {

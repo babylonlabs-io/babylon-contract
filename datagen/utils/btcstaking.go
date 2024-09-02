@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 )
 
 const (
+	FP_FILENAME                = "finality_provider_%d.dat"
 	BTC_DEL_FILENAME           = "btc_delegation.dat"
 	BTCSTAKING_PARAMS_FILENAME = "btcstaking_params.dat"
 )
@@ -50,6 +52,23 @@ func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
 	require.NoError(t, err)
 
 	return covenantSKs, covenantQuorum
+}
+
+func GenFinalityProviders(dir string, numFPs int) {
+	t := &testing.T{}
+
+	for i := 1; i <= numFPs; i++ {
+		fp, err := datagen.GenRandomFinalityProvider(r)
+		require.NoError(t, err)
+		fp.ConsumerId = fmt.Sprintf("consumer-%d", i)
+		fpBytes, err := fp.Marshal()
+		require.NoError(t, err)
+
+		fileName := fmt.Sprintf(FP_FILENAME, i)
+		fpPath := filepath.Join(dir, fileName)
+		err = os.WriteFile(fpPath, fpBytes, 0644)
+		require.NoError(t, err)
+	}
 }
 
 func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuorum uint32) {
@@ -112,5 +131,6 @@ func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuor
 
 func GenBTCDelegationsAndParams(dir string) {
 	covenantSKs, covenantQuorum := GenParams(dir)
+	GenFinalityProviders(dir, 3)
 	GenBTCDelegations(dir, covenantSKs, covenantQuorum)
 }
