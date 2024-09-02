@@ -21,10 +21,12 @@ const (
 	BTCSTAKING_PARAMS_FILENAME = "btcstaking_params.dat"
 )
 
-var net = &chaincfg.RegressionNetParams
+var (
+	net = &chaincfg.RegressionNetParams
+	r   = rand.New(rand.NewSource(time.Now().Unix()))
+)
 
 func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
 	t := &testing.T{}
 
 	// (3, 5) covenant committee
@@ -51,7 +53,6 @@ func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
 }
 
 func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuorum uint32) {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
 	t := &testing.T{}
 
 	// read params
