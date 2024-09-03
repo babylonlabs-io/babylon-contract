@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
-use babylon_proto::babylon::btcstkconsumer::v1::ConsumerRegisterIbcPacket;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
+    zoneconcierge_packet_data::Packet, BtcTimestamp, ConsumerRegisterIbcPacket,
+    ZoneconciergePacketData,
 };
 
 use crate::state::config::CONFIG;
@@ -155,11 +155,12 @@ pub fn ibc_packet_receive(
             Packet::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
             }
-            Packet::ConsumerRegister(_) => {
-                Err(
-                    StdError::generic_err("ConsumerRegister packet should not be received"),
-                )
-            }
+            Packet::ConsumerRegister(_) => Err(StdError::generic_err(
+                "ConsumerRegister packet should not be received",
+            )),
+            Packet::ConsumerSlashing(_) => Err(StdError::generic_err(
+                "ConsumerSlashing packet should not be received",
+            )),
         }
     })()
     .or_else(|e| {
@@ -177,16 +178,15 @@ pub(crate) mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
     use babylon_apis::btc_staking_api::SlashedBtcDelegation;
-    use babylon_apis::ibc_consumer::{consumer_packet_data, ConsumerPacketData};
-    use babylon_apis::{
-        btc_staking_api::{
-            ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
-            FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
-            UnbondedBtcDelegation,
-        },
-        ibc_consumer,
+    use babylon_apis::btc_staking_api::{
+        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
+        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
+        UnbondedBtcDelegation,
     };
+    use babylon_apis::finality_api::Evidence;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
+    use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
+    use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
     use cosmwasm_std::{to_json_binary, Decimal, IbcChannel, IbcMsg, WasmMsg};
     use std::str::FromStr;
 
@@ -360,20 +360,24 @@ pub(crate) mod ibc_packet {
     pub fn slashing_msg(
         env: &Env,
         channel: &IbcChannel,
-        fp_btc_pk: &[u8],
-        block_height: u64,
-        secret_key: &[u8],
+        evidence: &Evidence,
     ) -> Result<IbcMsg, ContractError> {
-        let packet = ConsumerPacketData {
-            packet: consumer_packet_data::Packet::Slashing(ibc_consumer::Slashing {
-                fp_btc_pk: fp_btc_pk.to_vec(),
-                block_height,
-                secret_key: secret_key.to_vec(),
-            }),
+        let packet = ZoneconciergePacketData {
+            packet: Some(ConsumerSlashing(ConsumerSlashingIbcPacket {
+                evidence: Some(babylon_proto::babylon::finality::v1::Evidence {
+                    fp_btc_pk: evidence.fp_btc_pk.to_vec().into(),
+                    block_height: evidence.block_height,
+                    pub_rand: evidence.pub_rand.to_vec().into(),
+                    canonical_app_hash: evidence.canonical_app_hash.to_vec().into(),
+                    fork_app_hash: evidence.fork_app_hash.to_vec().into(),
+                    canonical_finality_sig: evidence.canonical_finality_sig.to_vec().into(),
+                    fork_finality_sig: evidence.fork_finality_sig.to_vec().into(),
+                }),
+            })),
         };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.endpoint.channel_id.clone(),
-            data: to_json_binary(&packet)?,
+            data: Binary::new(packet.encode_to_vec()),
             timeout: packet_timeout(env),
         };
         Ok(msg)

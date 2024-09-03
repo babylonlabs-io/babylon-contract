@@ -16,6 +16,37 @@ pub struct PubRandCommit {
     #[prost(bytes="bytes", tag="3")]
     pub commitment: ::prost::bytes::Bytes,
 }
+/// Evidence is the evidence that a finality provider has signed finality
+/// signatures with correct public randomness on two conflicting Babylon headers
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Evidence {
+    /// fp_btc_pk is the BTC PK of the finality provider that casts this vote
+    #[prost(bytes="bytes", tag="1")]
+    pub fp_btc_pk: ::prost::bytes::Bytes,
+    /// block_height is the height of the conflicting blocks
+    #[prost(uint64, tag="2")]
+    pub block_height: u64,
+    /// pub_rand is the public randomness the finality provider has committed to
+    #[prost(bytes="bytes", tag="3")]
+    pub pub_rand: ::prost::bytes::Bytes,
+    /// canonical_app_hash is the AppHash of the canonical block
+    #[prost(bytes="bytes", tag="4")]
+    pub canonical_app_hash: ::prost::bytes::Bytes,
+    /// fork_app_hash is the AppHash of the fork block
+    #[prost(bytes="bytes", tag="5")]
+    pub fork_app_hash: ::prost::bytes::Bytes,
+    /// canonical_finality_sig is the finality signature to the canonical block
+    /// where finality signature is an EOTS signature, i.e.,
+    /// the `s` in a Schnorr signature `(r, s)`
+    /// `r` is the public randomness that is already committed by the finality provider
+    #[prost(bytes="bytes", tag="6")]
+    pub canonical_finality_sig: ::prost::bytes::Bytes,
+    /// fork_finality_sig is the finality signature to the fork block
+    /// where finality signature is an EOTS signature
+    #[prost(bytes="bytes", tag="7")]
+    pub fork_finality_sig: ::prost::bytes::Bytes,
+}
 /// MsgCommitPubRandList defines a message for committing a list of public randomness for EOTS
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

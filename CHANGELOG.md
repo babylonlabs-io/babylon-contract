@@ -2,7 +2,35 @@
 
 ## [Unreleased](https://github.com/babylonlabs-io/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonchain/babylon-contract/compare/v0.8.0...HEAD)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.9.0...HEAD)
+
+## [v0.9.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.9.0) (2024-08-29)
+
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.8.0-rc.1...v0.9.0)
+
+**Fixed bugs:**
+
+- crypto: implement adaptor signature using k256 [\#13](https://github.com/babylonlabs-io/babylon-contract/issues/13)
+
+**Merged pull requests:**
+
+- Try and enable CI release jobs [\#48](https://github.com/babylonlabs-io/babylon-contract/pull/48) ([maurolacy](https://github.com/maurolacy))
+- Fix: Wasm size limit [\#47](https://github.com/babylonlabs-io/babylon-contract/pull/47) ([maurolacy](https://github.com/maurolacy))
+- F/slashing propagation 2 [\#45](https://github.com/babylonlabs-io/babylon-contract/pull/45) ([maurolacy](https://github.com/maurolacy))
+- btcstaking: fix error types for BTC staking package [\#44](https://github.com/babylonlabs-io/babylon-contract/pull/44) ([SebastianElvis](https://github.com/SebastianElvis))
+- crypto: use k256 to implement adaptor sig [\#43](https://github.com/babylonlabs-io/babylon-contract/pull/43) ([SebastianElvis](https://github.com/SebastianElvis))
+- Fix/cross contract query [\#40](https://github.com/babylonlabs-io/babylon-contract/pull/40) ([SebastianElvis](https://github.com/SebastianElvis))
+- F/btc delegations [\#39](https://github.com/babylonlabs-io/babylon-contract/pull/39) ([maurolacy](https://github.com/maurolacy))
+- Try and enable wasm tests [\#38](https://github.com/babylonlabs-io/babylon-contract/pull/38) ([maurolacy](https://github.com/maurolacy))
+- 0.8.x integ [\#37](https://github.com/babylonlabs-io/babylon-contract/pull/37) ([maurolacy](https://github.com/maurolacy))
+- F/slashing undelegations [\#35](https://github.com/babylonlabs-io/babylon-contract/pull/35) ([maurolacy](https://github.com/maurolacy))
+- feat: Automatic consumer registration [\#34](https://github.com/babylonlabs-io/babylon-contract/pull/34) ([gusin13](https://github.com/gusin13))
+- Eots refactor 2 [\#33](https://github.com/babylonlabs-io/babylon-contract/pull/33) ([maurolacy](https://github.com/maurolacy))
+- eots: fix tests for verifying EOTS signatures from Go [\#32](https://github.com/babylonlabs-io/babylon-contract/pull/32) ([SebastianElvis](https://github.com/SebastianElvis))
+- Add GH actions workflow [\#30](https://github.com/babylonlabs-io/babylon-contract/pull/30) ([maurolacy](https://github.com/maurolacy))
+- f/FP SK extract [\#29](https://github.com/babylonlabs-io/babylon-contract/pull/29) ([maurolacy](https://github.com/maurolacy))
+- Eots refactor [\#27](https://github.com/babylonlabs-io/babylon-contract/pull/27) ([maurolacy](https://github.com/maurolacy))
+- Migrate repo [\#26](https://github.com/babylonlabs-io/babylon-contract/pull/26) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.8.0](https://github.com/babylonchain/babylon-contract/tree/v0.8.0) (2024-07-09)
 

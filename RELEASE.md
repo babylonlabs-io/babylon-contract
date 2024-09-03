@@ -7,7 +7,7 @@ This document describes the process for `babylon-contract` releases.
 * A release is initiated by creating a release branch `release-a.b` marking the major/minor release.
 * Before beginning a release branch, check that dependencies have been pulled up to date:
   * Protobuf references and generation
-    * `cd packages/proto/; cd babylon-private; git fetch; git pull --rebase; cd ../..; git add babylon-private; git commit -m "pull in latest babylon-private"`
+    * `cd packages/proto/; cd babylon; git fetch; git pull --rebase; cd ../..; git add babylon; git commit -m "pull in latest babylon"`
     * `cd ../..; cargo run-script gen-proto; git add packages/proto; git commit -m "update gen proto"`
     * Then build and run tests to ensure the new proto is working.
     * `cargo build; cargo test`

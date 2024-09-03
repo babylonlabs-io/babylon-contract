@@ -39,6 +39,20 @@
       "format": "uint64",
       "minimum": 0.0
     },
+    "consumer_description": {
+      "description": "Consumer description",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "consumer_name": {
+      "description": "Consumer name",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "network": {
       "$ref": "#/definitions/Network"
     },

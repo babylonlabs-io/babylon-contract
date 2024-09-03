@@ -170,11 +170,7 @@ pub fn execute(
             // TODO: Add events
             Ok(Response::new())
         }
-        ExecuteMsg::Slashing {
-            fp_btc_pk,
-            block_height,
-            secret_key,
-        } => {
+        ExecuteMsg::Slashing { evidence } => {
             // This is an internal routing message from the `btc-staking` contract
             // Check sender
             let btc_staking = CONFIG
@@ -186,8 +182,7 @@ pub fn execute(
             }
             // Send over IBC to the Provider (Babylon)
             let channel = IBC_CHANNEL.load(deps.storage)?;
-            let msg =
-                ibc_packet::slashing_msg(&env, &channel, &fp_btc_pk, block_height, &secret_key)?;
+            let msg = ibc_packet::slashing_msg(&env, &channel, &evidence)?;
             // TODO: Add events
             Ok(Response::new().add_message(msg))
         }

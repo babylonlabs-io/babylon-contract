@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_check_transactions() {
-        let btc_del = get_btc_delegation();
+        let btc_del = get_btc_delegation(1, vec![1]);
         let params = get_params();
 
         let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_verify_unbonding_tx_schnorr_sig() {
-        let btc_del = get_btc_delegation();
+        let btc_del = get_btc_delegation(1, vec![1]);
         let params = get_params();
 
         let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_verify_slashing_tx_adaptor_sig() {
-        let btc_del = get_btc_delegation();
+        let btc_del = get_btc_delegation(1, vec![1]);
         let params = get_params();
 
         let staking_tx: Transaction = deserialize(&btc_del.staking_tx).unwrap();
@@ -337,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_verify_unbonding_slashing_tx_adaptor_sig() {
-        let btc_del = get_btc_delegation();
+        let btc_del = get_btc_delegation(1, vec![1]);
         let params = get_params();
 
         let btc_undel = btc_del.btc_undelegation.unwrap();

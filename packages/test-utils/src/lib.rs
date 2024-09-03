@@ -1,6 +1,8 @@
 use babylon_bitcoin::{deserialize, BlockHash, BlockHeader};
 use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
-use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, Params as BtcStakingParams};
+use babylon_proto::babylon::btcstaking::v1::{
+    BtcDelegation, FinalityProvider, Params as BtcStakingParams,
+};
 use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 use cargo_metadata::MetadataCommand;
 use prost::bytes::Bytes;
@@ -21,7 +23,8 @@ const BTC_TIMESTAMP_HEADER0: &str = "btc_timestamp_header0.dat";
 const BTC_TIMESTAMP_HEADER1: &str = "btc_timestamp_header1.dat";
 
 const PARAMS_DATA: &str = "btcstaking_params.dat";
-const BTC_DELEGATION_DATA: &str = "btc_delegation.dat";
+const FINALITY_PROVIDER_DATA: &str = "finality_provider_{}.dat";
+const BTC_DELEGATION_DATA: &str = "btc_delegation_{idx}_{fp_idx_list}.dat";
 const COMMIT_PUB_RAND_DATA: &str = "commit_pub_rand_msg.dat";
 const PUB_RAND_VALUE: &str = "pub_rand_value.dat";
 const ADD_FINALITY_SIG_DATA: &str = "add_finality_sig_{}_msg.dat";
@@ -146,12 +149,28 @@ pub fn get_params() -> BtcStakingParams {
     BtcStakingParams::decode(params_data).unwrap()
 }
 
-pub fn get_btc_delegation() -> (BtcDelegation) {
-    let btc_del_path = find_testdata_path().join(BTC_DELEGATION_DATA);
-    let btc_del_data: &[u8] = &fs::read(btc_del_path).unwrap();
-    let btc_del = BtcDelegation::decode(btc_del_data).unwrap();
+pub fn get_finality_provider(id: i32) -> FinalityProvider {
+    let fp_path = find_testdata_path().join(FINALITY_PROVIDER_DATA.replace("{}", &id.to_string()));
+    let fp_data: &[u8] = &fs::read(fp_path).unwrap();
+    FinalityProvider::decode(fp_data).unwrap()
+}
 
-    btc_del
+pub fn get_btc_delegation(idx: i32, fp_idx_list: Vec<i32>) -> BtcDelegation {
+    let fp_idx_list_str = format!(
+        "{{{}}}",
+        fp_idx_list
+            .iter()
+            .map(|&x| x.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+    let btc_del_filename = BTC_DELEGATION_DATA
+        .replace("{idx}", &idx.to_string())
+        .replace("{fp_idx_list}", &fp_idx_list_str);
+    let btc_del_path = find_testdata_path().join(btc_del_filename);
+    println!("btc_del_path: {:?}", btc_del_path);
+    let btc_del_data: &[u8] = &fs::read(btc_del_path).unwrap();
+    BtcDelegation::decode(btc_del_data).unwrap()
 }
 
 pub fn get_pub_rand_commit() -> MsgCommitPubRandList {

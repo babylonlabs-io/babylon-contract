@@ -296,25 +296,29 @@ mod tests {
         let fps = crate::queries::finality_providers(deps.as_ref(), None, None)
             .unwrap()
             .fps;
+
         let fp1 = FinalityProvider::from(&new_fp1);
         let fp2 = FinalityProvider::from(&new_fp2);
-        assert_eq!(fps.len(), 2);
-        assert_eq!(fps[0], fp1);
-        assert_eq!(fps[1], fp2);
+        let expected_fps = vec![fp1.clone(), fp2.clone()];
+        assert_eq!(fps.len(), expected_fps.len());
+        for fp in fps {
+            assert!(expected_fps.contains(&fp));
+        }
 
         // Query finality providers with limit
         let fps = crate::queries::finality_providers(deps.as_ref(), None, Some(1))
             .unwrap()
             .fps;
         assert_eq!(fps.len(), 1);
-        assert_eq!(fps[0], fp1);
+        assert!(fps[0] == fp1 || fps[0] == fp2);
 
         // Query finality providers with start_after
-        let fps = crate::queries::finality_providers(deps.as_ref(), Some("f1".to_string()), None)
+        let fp_pk = fps[0].btc_pk_hex.clone();
+        let fps = crate::queries::finality_providers(deps.as_ref(), Some(fp_pk), None)
             .unwrap()
             .fps;
         assert_eq!(fps.len(), 1);
-        assert_eq!(fps[0], fp2);
+        assert!(fps[0] == fp1 || fps[0] == fp2);
     }
 
     #[test]
@@ -496,7 +500,9 @@ mod tests {
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
+        let fp1_pk = new_fp1.btc_pk_hex.clone();
         let new_fp2 = create_new_finality_provider(2);
+        let fp2_pk = new_fp2.btc_pk_hex.clone();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp1.clone(), new_fp2.clone()],
@@ -523,11 +529,11 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query delegations by finality provider
-        let dels1 = crate::queries::delegations_by_fp(deps.as_ref(), "f1".to_string())
+        let dels1 = crate::queries::delegations_by_fp(deps.as_ref(), fp1_pk.clone())
             .unwrap()
             .hashes;
         assert_eq!(dels1.len(), 1);
-        let dels2 = crate::queries::delegations_by_fp(deps.as_ref(), "f2".to_string())
+        let dels2 = crate::queries::delegations_by_fp(deps.as_ref(), fp2_pk.clone())
             .unwrap()
             .hashes;
         assert_eq!(dels2.len(), 1);
@@ -554,6 +560,7 @@ mod tests {
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
+        let fp1_pk = new_fp1.btc_pk_hex.clone();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp1.clone()],
@@ -584,14 +591,13 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query all delegations by finality provider
-        let dels1 =
-            crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), false)
-                .unwrap()
-                .delegations;
+        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), fp1_pk.clone(), false)
+            .unwrap()
+            .delegations;
         assert_eq!(dels1.len(), 2);
 
         // Query active delegations by finality provider
-        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), true)
+        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), fp1_pk.clone(), true)
             .unwrap()
             .delegations;
         assert_eq!(dels1.len(), 2);
@@ -611,14 +617,13 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Query all delegations by finality provider
-        let dels1 =
-            crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), false)
-                .unwrap()
-                .delegations;
+        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), fp1_pk.clone(), false)
+            .unwrap()
+            .delegations;
         assert_eq!(dels1.len(), 2);
 
         // Query active delegations by finality provider
-        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), "f1".to_string(), true)
+        let dels1 = crate::queries::active_delegations_by_fp(deps.as_ref(), fp1_pk.clone(), true)
             .unwrap()
             .delegations;
         assert_eq!(dels1.len(), 1);
@@ -647,6 +652,7 @@ mod tests {
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
+        let fp1_pk = new_fp1.btc_pk_hex.clone();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp1.clone()],
@@ -678,45 +684,44 @@ mod tests {
 
         // Query finality provider info
         let fp =
-            crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), None).unwrap();
+            crate::queries::finality_provider_info(deps.as_ref(), fp1_pk.clone(), None).unwrap();
         assert_eq!(
             fp,
             FinalityProviderInfo {
-                btc_pk_hex: "f1".to_string(),
+                btc_pk_hex: fp1_pk.clone(),
                 power: 250,
             }
         );
 
         // Query finality provider info with same height as execute call
-        let fp = crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), Some(11))
+        let fp = crate::queries::finality_provider_info(deps.as_ref(), fp1_pk.clone(), Some(11))
             .unwrap();
         assert_eq!(
             fp,
             FinalityProviderInfo {
-                btc_pk_hex: "f1".to_string(),
+                btc_pk_hex: fp1_pk.clone(),
                 power: 0, // Historical data is not checkpoint yet
             }
         );
 
         // Query finality provider info with past height as execute call
-        let fp = crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), Some(12))
+        let fp = crate::queries::finality_provider_info(deps.as_ref(), fp1_pk.clone(), Some(12))
             .unwrap();
         assert_eq!(
             fp,
             FinalityProviderInfo {
-                btc_pk_hex: "f1".to_string(),
+                btc_pk_hex: fp1_pk.clone(),
                 power: 250,
             }
         );
 
         // Query finality provider info with some larger height
-        let fp =
-            crate::queries::finality_provider_info(deps.as_ref(), "f1".to_string(), Some(1000))
-                .unwrap();
+        let fp = crate::queries::finality_provider_info(deps.as_ref(), fp1_pk.clone(), Some(1000))
+            .unwrap();
         assert_eq!(
             fp,
             FinalityProviderInfo {
-                btc_pk_hex: "f1".to_string(),
+                btc_pk_hex: fp1_pk.clone(),
                 power: 250,
             }
         );
@@ -740,6 +745,7 @@ mod tests {
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
+        let fp1_pk = new_fp1.btc_pk_hex.clone();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp1.clone()],
@@ -766,7 +772,7 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Build raw key
-        let prefixed_key = namespace_with_key(&[FP_STATE_KEY.as_bytes()], b"f1");
+        let prefixed_key = namespace_with_key(&[FP_STATE_KEY.as_bytes()], fp1_pk.as_bytes());
         // Read directly from storage
         let fp_state_raw = deps.storage.get(&prefixed_key).unwrap();
         // Deserialize result
@@ -793,8 +799,11 @@ mod tests {
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
+        let fp1_pk = new_fp1.btc_pk_hex.clone();
         let new_fp2 = create_new_finality_provider(2);
+        let fp2_pk = new_fp2.btc_pk_hex.clone();
         let new_fp3 = create_new_finality_provider(3);
+        let fp3_pk = new_fp3.btc_pk_hex.clone();
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp1.clone(), new_fp2.clone(), new_fp3.clone()],
@@ -838,22 +847,23 @@ mod tests {
         assert_eq!(fps.len(), 3);
         assert_eq!(fps[0], {
             FinalityProviderInfo {
-                btc_pk_hex: "f2".to_string(),
+                btc_pk_hex: fp2_pk.clone(),
                 power: 225,
             }
         });
-        assert_eq!(fps[1], {
-            FinalityProviderInfo {
-                btc_pk_hex: "f3".to_string(),
-                power: 100,
-            }
-        });
-        assert_eq!(fps[2], {
-            FinalityProviderInfo {
-                btc_pk_hex: "f1".to_string(),
-                power: 100,
-            }
-        });
+        // fp1 and fp3 can be in arbitrary order
+        let fp1_info = FinalityProviderInfo {
+            btc_pk_hex: fp1_pk.clone(),
+            power: 100,
+        };
+        let fp3_info = FinalityProviderInfo {
+            btc_pk_hex: fp3_pk.clone(),
+            power: 100,
+        };
+        assert!(
+            (fps[1] == fp1_info && fps[2] == fp3_info)
+                || (fps[1] == fp3_info && fps[2] == fp1_info)
+        );
 
         // Query finality providers power with limit
         let fps = crate::queries::finality_providers_by_power(deps.as_ref(), None, Some(2))
@@ -862,16 +872,11 @@ mod tests {
         assert_eq!(fps.len(), 2);
         assert_eq!(fps[0], {
             FinalityProviderInfo {
-                btc_pk_hex: "f2".to_string(),
+                btc_pk_hex: fp2_pk.clone(),
                 power: 225,
             }
         });
-        assert_eq!(fps[1], {
-            FinalityProviderInfo {
-                btc_pk_hex: "f3".to_string(),
-                power: 100,
-            }
-        });
+        assert!(fps[1] == fp1_info || fps[1] == fp3_info);
 
         // Query finality providers power with start_after
         let fps =
@@ -879,11 +884,6 @@ mod tests {
                 .unwrap()
                 .fps;
         assert_eq!(fps.len(), 1);
-        assert_eq!(fps[0], {
-            FinalityProviderInfo {
-                btc_pk_hex: "f1".to_string(),
-                power: 100,
-            }
-        });
+        assert!(fps[0] == fp1_info || fps[0] == fp3_info);
     }
 }

@@ -154,7 +154,7 @@ pub struct ProofFinalizedChainInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ZoneconciergePacketData {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3")]
+    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3, 4")]
     pub packet: ::core::option::Option<zoneconcierge_packet_data::Packet>,
 }
 /// Nested message and enum types in `ZoneconciergePacketData`.
@@ -168,11 +168,13 @@ pub mod zoneconcierge_packet_data {
         #[prost(message, tag="2")]
         BtcStaking(super::super::super::btcstaking::v1::BtcStakingIbcPacket),
         #[prost(message, tag="3")]
-        ConsumerRegister(super::super::super::btcstkconsumer::v1::ConsumerRegisterIbcPacket),
+        ConsumerRegister(super::ConsumerRegisterIbcPacket),
+        #[prost(message, tag="4")]
+        ConsumerSlashing(super::ConsumerSlashingIbcPacket),
     }
 }
 /// BTCTimestamp is a BTC timestamp that carries information of a BTC-finalised epoch
-/// It includes a number of BTC headers, a raw checkpoint, an epoch metadata, and 
+/// It includes a number of BTC headers, a raw checkpoint, an epoch metadata, and
 /// a CZ header if there exists CZ headers checkpointed to this epoch.
 /// Upon a newly finalised epoch in Babylon, Babylon will send a BTC timestamp to each
 /// Cosmos zone that has phase-2 integration with Babylon via IBC.
@@ -203,10 +205,31 @@ pub struct BtcTimestamp {
     /// btc_submission_key is position of two BTC txs that include the raw checkpoint of this epoch
     #[prost(message, optional, tag="5")]
     pub btc_submission_key: ::core::option::Option<super::super::btccheckpoint::v1::SubmissionKey>,
-    /// 
+    ///
     /// Proofs that the header is finalized
     #[prost(message, optional, tag="6")]
     pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
+}
+/// ConsumerRegisterIBCPacket defines the packet data for Consumer registration
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ConsumerRegisterIbcPacket {
+    /// consumer_name is a unique identifier for the consumer chain
+    #[prost(string, tag="1")]
+    pub consumer_name: ::prost::alloc::string::String,
+    /// consumer_description is a brief explanation of the consumer chain's purpose
+    #[prost(string, tag="2")]
+    pub consumer_description: ::prost::alloc::string::String,
+}
+/// ConsumerSlashingIBCPacket defines the slashing information that a Consumer sends to Babylon's ZoneConcierge upon a
+/// Consumer slashing event.
+/// It includes the FP public key, the Consumer block height at the slashing event, and the double sign evidence.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ConsumerSlashingIbcPacket {
+    /// / evidence is the FP slashing evidence that the Consumer sends to Babylon
+    #[prost(message, optional, tag="1")]
+    pub evidence: ::core::option::Option<super::super::finality::v1::Evidence>,
 }
 /// QueryFinalizedChainsInfoResponse is response type for the
 /// Query/FinalizedChainsInfo RPC method.

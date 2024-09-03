@@ -1,6 +1,6 @@
 {
   "contract_name": "babylon-contract",
-  "contract_version": "0.8.0",
+  "contract_version": "0.9.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -54,6 +54,20 @@
         "type": "integer",
         "format": "uint64",
         "minimum": 0.0
+      },
+      "consumer_description": {
+        "description": "Description of the consumer",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "consumer_name": {
+        "description": "Name of the consumer",
+        "type": [
+          "string",
+          "null"
+        ]
       },
       "network": {
         "$ref": "#/definitions/Network"
@@ -118,34 +132,11 @@
           "slashing": {
             "type": "object",
             "required": [
-              "block_height",
-              "fp_btc_pk",
-              "secret_key"
+              "evidence"
             ],
             "properties": {
-              "block_height": {
-                "description": "`block_height` is the Consumer blockchain slashing height",
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "fp_btc_pk": {
-                "description": "`fp_btc_pk` is the BTC PK of the slashed finality provider",
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "format": "uint8",
-                  "minimum": 0.0
-                }
-              },
-              "secret_key": {
-                "description": "`secret_key` is the secret key extracted from the slashing evidence",
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "format": "uint8",
-                  "minimum": 0.0
-                }
+              "evidence": {
+                "$ref": "#/definitions/Evidence"
               }
             },
             "additionalProperties": false
@@ -196,6 +187,82 @@
             "description": "Originally protocol version, but repurposed for soft-fork signaling.\n\n### Relevant BIPs\n\n* [BIP9 - Version bits with timeout and delay](https://github.com/bitcoin/bips/blob/master/bip-0009.mediawiki) (current usage) * [BIP34 - Block v2, Height in Coinbase](https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki)",
             "type": "integer",
             "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Evidence": {
+        "description": "Evidence is the evidence that a finality provider has signed finality signatures with correct public randomness on two conflicting Babylon headers",
+        "type": "object",
+        "required": [
+          "block_height",
+          "canonical_app_hash",
+          "canonical_finality_sig",
+          "fork_app_hash",
+          "fork_finality_sig",
+          "fp_btc_pk",
+          "pub_rand"
+        ],
+        "properties": {
+          "block_height": {
+            "description": "`block_height` is the height of the conflicting blocks",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "canonical_app_hash": {
+            "description": "`canonical_app_hash` is the AppHash of the canonical block",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "canonical_finality_sig": {
+            "description": "`canonical_finality_sig` is the finality signature to the canonical block, where finality signature is an EOTS signature, i.e., the `s` in a Schnorr signature `(r, s)`. `r` is the public randomness already committed by the finality provider. Deserializes to `SchnorrEOTSSig`",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "fork_app_hash": {
+            "description": "`fork_app_hash` is the AppHash of the fork block",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "fork_finality_sig": {
+            "description": "`fork_finality_sig` is the finality signature to the fork block, where finality signature is an EOTS signature. Deserializes to `SchnorrEOTSSig`",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "fp_btc_pk": {
+            "description": "`fp_btc_pk` is the BTC PK of the finality provider that casts this vote",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "pub_rand": {
+            "description": "`pub_rand is` the public randomness the finality provider has committed to. Deserializes to `SchnorrPubRand`",
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
           }
         },
         "additionalProperties": false
@@ -1229,6 +1296,20 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
+        },
+        "consumer_description": {
+          "description": "Consumer description",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "consumer_name": {
+          "description": "Consumer name",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "network": {
           "$ref": "#/definitions/Network"

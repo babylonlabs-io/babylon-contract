@@ -3,10 +3,8 @@ package utils
 import (
 	"encoding/hex"
 	"encoding/json"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/babylonlabs-io/babylon/crypto/eots"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -29,8 +27,6 @@ type EotsTestData struct {
 }
 
 func GenEOTSTestData(dir string) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	sk, err := eots.KeyGen(r)
 	if err != nil {
 		panic(err)
