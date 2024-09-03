@@ -161,7 +161,6 @@ fn compute_tweaked_key_bytes(internal_key: XOnlyPublicKey, merkle_root: TapNodeH
 pub fn build_relative_time_lock_pk_script(
     pk: &XOnlyPublicKey,
     lock_time: u16,
-    _network: Network,
 ) -> Result<ScriptBuf> {
     // Assuming the unspendableKeyPathInternalPubKey function exists and is imported
     let unspendable_key_path_key = unspendable_key_path_internal_pub_key();

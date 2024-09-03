@@ -192,7 +192,6 @@ pub fn handle_active_delegation(
         &slashing_address,
         &staker_btc_pk,
         active_delegation.unbonding_time as u16,
-        get_bitcoin_network(params.btc_network),
     )?;
 
     // Verify staker signature against slashing path of the staking tx script
