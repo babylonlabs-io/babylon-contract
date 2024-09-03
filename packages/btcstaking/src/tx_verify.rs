@@ -83,6 +83,11 @@ fn validate_slashing_tx(
         network,
     )?;
     if slashing_tx.output[1].script_pubkey.ne(&expected_pk_script) {
+        println!("expected_pk_script: {:?}", expected_pk_script);
+        println!(
+            "slashing_tx.output[1].script_pubkey: {:?}",
+            slashing_tx.output[1].script_pubkey
+        );
         return Err(Error::InvalidSlashingTxChangeOutputScript {});
     }
 
