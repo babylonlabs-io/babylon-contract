@@ -1,7 +1,7 @@
 use babylon_bitcoin::chain_params::Network;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
-use cosmwasm_std::Decimal;
+
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 use derivative::Derivative;
@@ -53,6 +53,6 @@ pub struct Params {
     pub min_slashing_tx_fee_sat: u64,
     /// `slashing_rate` determines the portion of the staked amount to be slashed,
     /// expressed as a decimal (e.g. 0.5 for 50%).
-    #[derivative(Default(value = "Decimal::percent(10)"))]
-    pub slashing_rate: Decimal,
+    #[derivative(Default(value = "String::from(\"0.1\")"))]
+    pub slashing_rate: String,
 }

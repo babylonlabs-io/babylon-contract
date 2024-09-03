@@ -180,12 +180,16 @@ pub fn handle_active_delegation(
     // Check slashing tx and staking tx are valid and consistent
     let staker_btc_pk = XOnlyPublicKey::from_str(&active_delegation.btc_pk_hex)
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    let slashing_rate = params
+        .slashing_rate
+        .parse::<f64>()
+        .map_err(|_| ContractError::InvalidBtcTx("invalid slashing rate".to_string()))?;
     babylon_btcstaking::tx_verify::check_transactions(
         &slashing_tx,
         &staking_tx,
         active_delegation.staking_output_idx,
         params.min_slashing_tx_fee_sat,
-        params.slashing_rate.to_string().parse::<f64>().unwrap(),
+        slashing_rate,
         &slashing_address,
         &staker_btc_pk,
         active_delegation.unbonding_time as u16,
@@ -496,7 +500,7 @@ pub(crate) mod tests {
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use crate::contract::tests::{
-        create_new_finality_provider, get_active_btc_delegation, CREATOR, INIT_ADMIN,
+        create_new_finality_provider, get_active_btc_delegation, get_params, CREATOR, INIT_ADMIN,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -603,6 +607,9 @@ pub(crate) mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();
 
@@ -664,6 +671,9 @@ pub(crate) mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();
@@ -761,6 +771,9 @@ pub(crate) mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();

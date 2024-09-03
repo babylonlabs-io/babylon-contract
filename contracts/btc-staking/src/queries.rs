@@ -280,6 +280,9 @@ mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
         let new_fp2 = create_new_finality_provider(2);
@@ -337,6 +340,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
@@ -498,6 +504,9 @@ mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
         let fp1_pk = new_fp1.btc_pk_hex.clone();
@@ -555,6 +564,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -645,6 +657,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -737,6 +752,9 @@ mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
         let fp1_pk = new_fp1.btc_pk_hex.clone();
@@ -790,6 +808,9 @@ mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
         let fp1_pk = new_fp1.btc_pk_hex.clone();
@@ -810,7 +831,7 @@ mod tests {
         // Add some delegations
         let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1, 3]);
         let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
-        let mut del3 = crate::contract::tests::get_derived_btc_delegation(3, &[1, 2]);
+        let mut del3 = crate::contract::tests::get_derived_btc_delegation(3, &[2]);
 
         // Adjust staking amounts
         del1.total_sat = 100;

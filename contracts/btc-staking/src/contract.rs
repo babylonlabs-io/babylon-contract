@@ -306,15 +306,16 @@ pub(crate) mod tests {
         Params {
             btc_network: Network::Regtest, // TODO: fix this
             max_active_finality_providers: params.max_active_finality_providers,
-            min_pub_rand: 1000, // TODO: fix this
+            min_pub_rand: 10, // TODO: fix this
             slashing_address: params.slashing_address,
             min_slashing_tx_fee_sat: params.min_slashing_tx_fee_sat as u64,
-            slashing_rate: Decimal::from_str(&params.slashing_rate).unwrap(),
+            slashing_rate: "0.01".to_string(), // TODO: fix this
         }
     }
 
     pub(crate) fn get_params() -> Params {
-        new_params(test_utils::get_params())
+        let proto_params = test_utils::get_params();
+        new_params(proto_params)
     }
 
     fn new_finality_provider(fp: FinalityProvider) -> NewFinalityProvider {

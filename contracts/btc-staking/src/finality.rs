@@ -515,10 +515,11 @@ pub(crate) mod tests {
     use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
 
     use crate::contract::tests::{
-        create_new_finality_provider, get_public_randomness_commitment, CREATOR,
+        create_new_finality_provider, get_params, get_public_randomness_commitment, CREATOR,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, FinalitySignatureResponse, InstantiateMsg};
+    
 
     pub(crate) fn mock_env_height(height: u64) -> Env {
         let mut env = mock_env();
@@ -636,7 +637,7 @@ pub(crate) mod tests {
             initial_env.clone(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(get_params()),
                 admin: None,
             },
         )
@@ -774,7 +775,7 @@ pub(crate) mod tests {
             initial_env.clone(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(get_params()),
                 admin: None,
             },
         )
@@ -930,7 +931,7 @@ pub(crate) mod tests {
             initial_env.clone(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(get_params()),
                 admin: None,
             },
         )
