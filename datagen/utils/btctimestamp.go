@@ -1,11 +1,9 @@
 package utils
 
 import (
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	txformat "github.com/babylonlabs-io/babylon/btctxformatter"
 	"github.com/babylonlabs-io/babylon/crypto/bls12381"
@@ -36,8 +34,6 @@ func signBLSWithBitmap(blsSKs []bls12381.PrivateKey, bm bitmap.Bitmap, msg []byt
 }
 
 func GenBTCTimestamp(dir string) {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-
 	t := &testing.T{}
 	valSet, privSigner, err := datagen.GenesisValidatorSetWithPrivSigner(10)
 	if err != nil {

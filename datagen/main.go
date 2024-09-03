@@ -21,7 +21,7 @@ func main() {
 	utils.GenBTCLightClientFork(mainHeadersLength, mainHeaders[forkHeaderHeight-initialHeaderHeight], testDataPath)
 	utils.GenBTCLightClientForkMessages(mainHeadersLength, mainHeaders[forkHeaderHeight-initialHeaderHeight], testDataPath)
 	utils.GenBTCTimestamp(testDataPath)
-	utils.GenBTCDelegation(testDataPath)
+	utils.GenBTCDelegationsAndParams(testDataPath)
 	utils.GenEOTSTestData(testDataPath)
 	randListInfo, privKey := utils.GenCommitPubRandListMsg(commitPubRandHeight, commitPubRandAmount, pubRandIndex, testDataPath)
 	utils.GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, privKey, testDataPath, 1)
