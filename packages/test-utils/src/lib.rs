@@ -166,7 +166,6 @@ pub fn get_btc_delegation(idx: i32, fp_idx_list: Vec<i32>) -> BtcDelegation {
         .replace("{idx}", &idx.to_string())
         .replace("{fp_idx_list}", &fp_idx_list_str);
     let btc_del_path = find_testdata_path().join(btc_del_filename);
-    println!("btc_del_path: {:?}", btc_del_path);
     let btc_del_data: &[u8] = &fs::read(btc_del_path).unwrap();
     BtcDelegation::decode(btc_del_data).unwrap()
 }

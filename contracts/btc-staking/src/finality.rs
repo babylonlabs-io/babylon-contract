@@ -519,7 +519,7 @@ pub(crate) mod tests {
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, FinalitySignatureResponse, InstantiateMsg};
-    
+    use crate::queries;
 
     pub(crate) fn mock_env_height(height: u64) -> Env {
         let mut env = mock_env();
@@ -556,7 +556,7 @@ pub(crate) mod tests {
         height: u64,
     ) -> Result<Response<BabylonMsg>, crate::error::ContractError> {
         let env = mock_env_height(height);
-        // Hash is not used in the begin-block handler
+        // Hash is not used in the end-block handler
         let hash_hex = "deadbeef".to_string();
         let app_hash_hex = app_hash.encode_hex();
 
@@ -792,7 +792,7 @@ pub(crate) mod tests {
             unbonded_del: vec![],
         };
 
-        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+        execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
 
         // Add a delegation, so that the finality provider has some power
         let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
@@ -804,8 +804,13 @@ pub(crate) mod tests {
             slashed_del: vec![],
             unbonded_del: vec![],
         };
-
         execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
+
+        // Check that the finality provider power has been updated
+        let fp_info =
+            queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+                .unwrap();
+        assert_eq!(fp_info.power, del1.total_sat);
 
         // Submit public randomness commitment for the FP and the involved heights
         let msg = ExecuteMsg::CommitPublicRandomness {
@@ -863,7 +868,7 @@ pub(crate) mod tests {
         // 2. The FP has consolidated power at such height
         // 3. There are no more pending / future blocks to process
         let submit_env = mock_env_height(submit_height);
-        let _res = execute(deps.as_mut(), submit_env.clone(), info.clone(), msg).unwrap();
+        execute(deps.as_mut(), submit_env.clone(), info.clone(), msg).unwrap();
 
         // Call the begin blocker, to compute the active FP set
         let res = call_begin_block(
@@ -962,6 +967,12 @@ pub(crate) mod tests {
         };
 
         execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+
+        // Check that the finality provider power has been updated
+        let fp_info =
+            queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
+                .unwrap();
+        assert_eq!(fp_info.power, del1.total_sat);
 
         // Submit public randomness commitment for the FP and the involved heights
         let msg = ExecuteMsg::CommitPublicRandomness {
