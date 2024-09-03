@@ -1,5 +1,5 @@
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
-use babylon_proto::babylon::btcstaking::v1::BtcDelegation;
+
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;

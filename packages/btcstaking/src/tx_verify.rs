@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::scripts_utils;
 use crate::Result;
 use bitcoin::XOnlyPublicKey;
-use bitcoin::{address::Address, network::Network, Transaction};
+use bitcoin::{address::Address, Transaction};
 use rust_decimal::{prelude::*, Decimal};
 
 /// Checks if a transaction has exactly one input and one output.
