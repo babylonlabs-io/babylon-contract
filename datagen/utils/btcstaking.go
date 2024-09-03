@@ -172,11 +172,11 @@ func GenBTCDelegationsAndParams(dir string) {
 	covenantSKs, covenantQuorum := GenParams(dir)
 	// 3 FPs
 	GenFinalityProviders(dir, 3)
-	// 2 BTC delegations under 1st FPs
+	// 3 BTC delegations under 1st FPs
 	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 1, []int{1})
 	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 2, []int{1})
 	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 3, []int{1})
-	// 2 BTC delegations under 2nd FPs
+	// 3 BTC delegations under 2nd FPs
 	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 1, []int{2})
 	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 2, []int{2})
 	GenBTCDelegations(dir, covenantSKs, covenantQuorum, 3, []int{2})
