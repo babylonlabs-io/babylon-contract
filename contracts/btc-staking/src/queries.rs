@@ -351,10 +351,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
-        let del2 =
-            crate::contract::tests::get_derived_btc_delegation(2, &[new_fp2.btc_pk_hex.clone()]);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -424,10 +422,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
-        let del2 =
-            crate::contract::tests::get_derived_btc_delegation(2, &[new_fp1.btc_pk_hex.clone()]);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -514,10 +510,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
-        let del2 =
-            crate::contract::tests::get_derived_btc_delegation(2, &[new_fp2.btc_pk_hex.clone()]);
+        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -572,10 +566,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let mut del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
-        let mut del2 =
-            crate::contract::tests::get_derived_btc_delegation(2, &[new_fp1.btc_pk_hex.clone()]);
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
@@ -664,10 +656,8 @@ mod tests {
         let _res = execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let mut del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
-        let mut del2 =
-            crate::contract::tests::get_derived_btc_delegation(2, &[new_fp1.btc_pk_hex.clone()]);
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
@@ -757,8 +747,7 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a delegation
-        let mut del1 =
-            crate::contract::tests::get_derived_btc_delegation(1, &[new_fp1.btc_pk_hex.clone()]);
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
         // Adjust staking amount
         del1.total_sat = 100;
 
@@ -815,16 +804,9 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add some delegations
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(
-            1,
-            &[new_fp1.btc_pk_hex.clone(), new_fp3.btc_pk_hex.clone()],
-        );
-        let mut del2 =
-            crate::contract::tests::get_derived_btc_delegation(2, &[new_fp2.btc_pk_hex.clone()]);
-        let mut del3 = crate::contract::tests::get_derived_btc_delegation(
-            3,
-            &[new_fp1.btc_pk_hex.clone(), new_fp2.btc_pk_hex.clone()],
-        );
+        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1, 3]);
+        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
+        let mut del3 = crate::contract::tests::get_derived_btc_delegation(3, &[1, 2]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
