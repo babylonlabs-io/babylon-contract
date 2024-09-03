@@ -1,8 +1,6 @@
 use babylon_bitcoin::{deserialize, BlockHash, BlockHeader};
 use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
-use babylon_proto::babylon::btcstaking::v1::{
-    BtcDelegation, FinalityProvider, Params as BtcStakingParams,
-};
+use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, FinalityProvider, Params};
 use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 use cargo_metadata::MetadataCommand;
 use prost::bytes::Bytes;
@@ -143,10 +141,10 @@ pub fn get_btc_timestamp_and_headers() -> (BtcTimestamp, HashMap<BlockHash, Bloc
     (btc_ts, header_map)
 }
 
-pub fn get_params() -> BtcStakingParams {
+pub fn get_params() -> Params {
     let params_path = find_testdata_path().join(PARAMS_DATA);
     let params_data: &[u8] = &fs::read(params_path).unwrap();
-    BtcStakingParams::decode(params_data).unwrap()
+    Params::decode(params_data).unwrap()
 }
 
 pub fn get_finality_provider(id: i32) -> FinalityProvider {

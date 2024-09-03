@@ -8,9 +8,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::XOnlyPublicKey;
 use bitcoin::{Transaction, Txid};
 
-use cosmwasm_std::{
-    DepsMut, Env, Event, MessageInfo, Order, Response, Storage,
-};
+use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
@@ -26,7 +24,6 @@ use babylon_apis::btc_staking_api::{
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
-
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
