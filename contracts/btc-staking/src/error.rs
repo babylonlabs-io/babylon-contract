@@ -50,16 +50,12 @@ pub enum ContractError {
     DelegationAlreadyExists(String),
     #[error("Invalid Btc tx: {0}")]
     InvalidBtcTx(String),
-    #[error("Empty unbonding tx")]
-    EmptyUnbondingTx,
-    #[error("Empty Slashing tx")]
-    EmptySlashingTx,
+    #[error("Empty signature from the delegator")]
+    EmptySignature,
     #[error("Invalid lock type: seconds")]
     ErrInvalidLockType,
     #[error("Invalid lock time blocks: {0}, max: {1}")]
     ErrInvalidLockTime(u32, u32),
-    #[error("Empty signature from the delegator")]
-    EmptySignature,
     #[error("The finality provider {0} does not have voting power at height {1}")]
     NoVotingPower(String, u64),
     #[error("The chain has not reached the given height yet")]
