@@ -5,7 +5,6 @@ use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
-
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 
 use crate::error::ContractError;
@@ -22,6 +21,11 @@ use babylon_apis::btc_staking_api::{
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
+
+#[cfg(feature = "full-validation")]
+use bitcoin::Address;
+#[cfg(feature = "full-validation")]
+use bitcoin::XOnlyPublicKey;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
