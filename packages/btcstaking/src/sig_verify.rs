@@ -5,10 +5,10 @@ use bitcoin::hashes::{sha256, Hash};
 use bitcoin::sighash::{Prevouts, SighashCache};
 use bitcoin::{Script, TxOut, XOnlyPublicKey};
 use bitcoin::{TapSighash, Transaction};
-use k256::schnorr::signature::DigestVerifier;
+use k256::elliptic_curve::FieldBytes;
+use k256::schnorr::signature::{DigestVerifier, Verifier};
 use k256::schnorr::Signature as SchnorrSignature;
 use k256::schnorr::VerifyingKey;
-use k256::FieldBytes;
 use sha2::digest::KeyInit;
 use sha2::{Digest, Sha256};
 
@@ -53,7 +53,7 @@ pub fn verify_transaction_sig_with_output(
     let verifying_key = VerifyingKey::from_bytes(&pub_key.serialize())
         .map_err(|e| Error::FailedToParsePublicKey(e.to_string()))?;
     verifying_key
-        .verify_digest(sighash, signature)
+        .verify(&sighash, signature)
         .map_err(|e| Error::InvalidSchnorrSignature(e.to_string()))
 }
 
