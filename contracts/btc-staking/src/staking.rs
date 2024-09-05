@@ -5,12 +5,11 @@ use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
-
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
-use crate::state::config::{ADMIN, CONFIG};
+use crate::state::config::{Params, ADMIN, CONFIG, PARAMS};
 use crate::state::staking::{
     fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS,
     FP_DELEGATIONS, FP_SET, TOTAL_POWER,
@@ -22,6 +21,11 @@ use babylon_apis::btc_staking_api::{
 };
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
+
+#[cfg(feature = "full-validation")]
+use bitcoin::Address;
+#[cfg(feature = "full-validation")]
+use bitcoin::XOnlyPublicKey;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -91,22 +95,57 @@ pub fn handle_new_fp(
     Ok(())
 }
 
-/// handle_active_delegations handles adding a new active delegation.
+/// verify_active_delegation is a placeholder for the full validation logic
 ///
-pub fn handle_active_delegation(
-    storage: &mut dyn Storage,
-    height: u64,
+/// It is marked with `#[cfg(feature = "full-validation")]` so that it
+/// is not included in the build if the `full-validation` feature is disabled.
+/// TODO: fix contract size when full-validation is enabled
+#[cfg(feature = "full-validation")]
+fn verify_active_delegation(
+    params: &Params,
     active_delegation: &ActiveBtcDelegation,
+    staking_tx: &Transaction,
 ) -> Result<(), ContractError> {
-    // Basic stateless checks
-    active_delegation.validate()?;
+    // Check if data provided in request, matches data to which staking tx is
+    // committed
 
-    // Get params
-    // btc_confirmation_depth
-    // checkpoint_finalization_timeout
-    // minimum_unbonding_time
+    // TODO: Check staking tx time-lock has correct values
+    // get start_height and end_height of the time-lock
 
-    // Check unbonding time (staking time from unbonding tx) is larger than min unbonding time
+    // TODO: Ensure staking tx is k-deep
+
+    // TODO: Ensure staking tx time-lock has more than w BTC blocks left
+
+    // TODO: Verify staking tx info, i.e. inclusion proof
+
+    // Check slashing tx and its consistency with staking tx
+    let slashing_tx: Transaction = deserialize(&active_delegation.slashing_tx)
+        .map_err(|_| ContractError::InvalidBtcTx(active_delegation.slashing_tx.encode_hex()))?;
+
+    // decode slashing address
+    let slashing_address: Address = Address::from_str(&params.slashing_address)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?
+        .assume_checked();
+
+    // Check slashing tx and staking tx are valid and consistent
+    let staker_btc_pk = XOnlyPublicKey::from_str(&active_delegation.btc_pk_hex)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    let slashing_rate = params
+        .slashing_rate
+        .parse::<f64>()
+        .map_err(|_| ContractError::InvalidBtcTx("invalid slashing rate".to_string()))?;
+    babylon_btcstaking::tx_verify::check_transactions(
+        &slashing_tx,
+        &staking_tx,
+        active_delegation.staking_output_idx,
+        params.min_slashing_tx_fee_sat,
+        slashing_rate,
+        &slashing_address,
+        &staker_btc_pk,
+        active_delegation.unbonding_time as u16,
+    )?;
+
+    // TODO: Check unbonding time (staking time from unbonding tx) is larger than min unbonding time
     // which is larger value from:
     // - MinUnbondingTime
     // - CheckpointFinalizationTimeout
@@ -116,6 +155,70 @@ pub fn handle_active_delegation(
     // - is smaller than math.MaxUint16 (due to check in req.ValidateBasic())
 
     // TODO: Verify proof of possession
+
+    // TODO: Verify staker signature against slashing path of the staking tx script
+
+    /*
+        TODO: Early unbonding logic
+    */
+
+    // TODO: Deserialize provided transactions
+
+    // TODO: Check that the unbonding tx input is pointing to staking tx
+
+    // TODO: Check that staking tx output index matches unbonding tx output index
+
+    // TODO: Build unbonding info
+
+    // TODO: Get unbonding output index
+
+    // TODO: Check that slashing tx and unbonding tx are valid and consistent
+
+    // TODO: Check staker signature against slashing path of the unbonding tx
+
+    // TODO: Check unbonding tx fees against staking tx
+    // - Fee is greater than 0.
+    // - Unbonding output value is at least `MinUnbondingValue` percentage of staking output value.
+
+    Ok(())
+}
+
+/// verify_active_delegation is a placeholder for the full validation logic
+///
+/// It is marked with `#[cfg(not(feature = "full-validation"))]` so that it
+/// is not included in the build if the `full-validation` feature is enabled.
+#[cfg(not(feature = "full-validation"))]
+fn verify_active_delegation(
+    _params: &Params,
+    _active_delegation: &ActiveBtcDelegation,
+    _staking_tx: &Transaction,
+) -> Result<(), ContractError> {
+    Ok(())
+}
+
+pub fn handle_active_delegation(
+    storage: &mut dyn Storage,
+    height: u64,
+    active_delegation: &ActiveBtcDelegation,
+) -> Result<(), ContractError> {
+    // TODO: Get params
+    // btc_confirmation_depth
+    // checkpoint_finalization_timeout
+    // minimum_unbonding_time
+
+    let params = PARAMS.load(storage)?;
+
+    // Basic stateless checks
+    active_delegation.validate()?;
+
+    // TODO: Ensure all finality providers
+    // - are known to Babylon,
+    // - at least 1 one of them is a Babylon finality provider,
+    // - are not slashed, and
+    // - their registered epochs are finalised
+    // and then check whether the BTC stake is restaked to FPs of consumers
+    // TODO: ensure the BTC delegation does not restake to too many finality providers
+    // (pending concrete design)
 
     // Parse staking tx
     let staking_tx: Transaction = deserialize(&active_delegation.staking_tx)
@@ -133,74 +236,8 @@ pub fn handle_active_delegation(
             return Err(ContractError::ErrInvalidLockType);
         }
     }
-
     // Get staking tx hash
     let staking_tx_hash = staking_tx.txid();
-
-    // Check if data provided in request, matches data to which staking tx is committed
-
-    // Check staking tx time-lock has correct values
-    // get start_height and end_height of the time-lock
-
-    // Ensure staking tx is k-deep
-
-    // Ensure staking tx time-lock has more than w BTC blocks left
-
-    // Verify staking tx info, i.e. inclusion proof
-
-    // Check slashing tx and its consistency with staking tx
-
-    // Decode slashing address
-
-    // Check slashing tx and staking tx are valid and consistent
-
-    // Verify staker signature against slashing path of the staking tx script
-
-    // All good, construct BTCDelegation and insert BTC delegation
-    // NOTE: the BTC delegation does not have voting power yet.
-    // It will have voting power only when
-    // 1) Its corresponding staking tx is k-deep.
-    // 2) It receives a covenant signature.
-
-    /*
-        TODO: Early unbonding logic
-    */
-
-    // Deserialize provided transactions
-
-    // Check that the unbonding tx input is pointing to staking tx
-
-    // Check that staking tx output index matches unbonding tx output index
-
-    // Build unbonding info
-
-    // Get unbonding output index
-
-    // Check that slashing tx and unbonding tx are valid and consistent
-
-    // Check staker signature against slashing path of the unbonding tx
-
-    // Check unbonding tx fees against staking tx
-    // - Fee is greater than 0.
-    // - Unbonding output value is at least `MinUnbondingValue` percentage of staking output value.
-
-    // All good, check initial BTC undelegation information is present
-    // TODO: Check that the sent undelegation info is valid
-    let undelegation_info = active_delegation.clone().undelegation_info;
-    // Check that the unbonding tx is there
-    if undelegation_info.unbonding_tx.is_empty() {
-        return Err(ContractError::EmptyUnbondingTx);
-    }
-
-    // Check that the unbonding slashing tx is there
-    if undelegation_info.slashing_tx.is_empty() {
-        return Err(ContractError::EmptySlashingTx);
-    }
-
-    // Check that the delegator slashing signature is there
-    if undelegation_info.delegator_slashing_sig.is_empty() {
-        return Err(ContractError::EmptySignature);
-    }
 
     // Check staking tx is not duplicated
     if DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
@@ -208,6 +245,15 @@ pub fn handle_active_delegation(
             staking_tx_hash.to_string(),
         ));
     }
+
+    // full validations on the active delegation
+    verify_active_delegation(&params, active_delegation, &staking_tx)?;
+
+    // All good, construct BTCDelegation and insert BTC delegation
+    // NOTE: the BTC delegation does not have voting power yet.
+    // It will have voting power only when
+    // 1) Its corresponding staking tx is k-deep.
+    // 2) It receives a covenant signature.
 
     // Update delegations by registered finality provider
     let fps = fps();
@@ -268,7 +314,6 @@ pub fn handle_active_delegation(
 }
 
 /// handle_undelegation handles undelegation from an active delegation
-///
 fn handle_undelegation(
     storage: &mut dyn Storage,
     height: u64,
@@ -282,9 +327,6 @@ fn handle_undelegation(
 
     // TODO: Ensure the BTC delegation is active
 
-    if undelegation.unbonding_tx_sig.is_empty() {
-        return Err(ContractError::EmptySignature);
-    }
     // TODO: Verify the signature on the unbonding tx is from the delegator
 
     // Add the signature to the BTC delegation's undelegation and set back
@@ -466,7 +508,7 @@ pub(crate) mod tests {
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use crate::contract::tests::{
-        create_new_finality_provider, get_active_btc_delegation, CREATOR, INIT_ADMIN,
+        create_new_finality_provider, get_active_btc_delegation, get_params, CREATOR, INIT_ADMIN,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -573,6 +615,9 @@ pub(crate) mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();
 
@@ -634,6 +679,9 @@ pub(crate) mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();
@@ -731,6 +779,9 @@ pub(crate) mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();

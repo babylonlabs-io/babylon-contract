@@ -29,6 +29,8 @@ pub enum StakingApiError {
     EmptyStakingTx,
     #[error("Empty Slashing tx")]
     EmptySlashingTx,
+    #[error("Empty unbonding tx")]
+    EmptyUnbondingTx,
     #[error("Invalid unbonding time blocks: {0}, max: {1}")]
     ErrInvalidUnbondingTime(u32, u32),
     #[error("Empty signature from the delegator")]

@@ -1,12 +1,21 @@
 use crate::error::Error;
 use crate::Result;
-use bitcoin::blockdata::opcodes::all::*;
 use bitcoin::blockdata::script::Builder;
-use bitcoin::key::Secp256k1;
+use bitcoin::opcodes::all::{
+    OP_CHECKSIG, OP_CHECKSIGADD, OP_CHECKSIGVERIFY, OP_CSV, OP_NUMEQUAL, OP_NUMEQUALVERIFY,
+    OP_PUSHNUM_1,
+};
 use bitcoin::secp256k1::PublicKey;
-use bitcoin::taproot::TaprootBuilder;
-use bitcoin::{Address, XOnlyPublicKey};
-use bitcoin::{Network, ScriptBuf};
+use bitcoin::taproot::LeafVersion;
+use bitcoin::ScriptBuf;
+use bitcoin::{TapNodeHash, TapTweakHash, XOnlyPublicKey};
+
+use k256::elliptic_curve::sec1::ToEncodedPoint;
+use k256::elliptic_curve::subtle::Choice;
+use k256::{
+    elliptic_curve::{ops::MulByGenerator, point::DecompressPoint, PrimeField},
+    AffinePoint, ProjectivePoint, Scalar,
+};
 
 const UNSPENDABLE_KEY: &str = "0250929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
 
@@ -114,35 +123,60 @@ pub fn build_single_key_sig_script(
     Ok(builder.into_script())
 }
 
+fn point_to_bytes(p: ProjectivePoint) -> [u8; 32] {
+    let encoded_p = p.to_encoded_point(false);
+    // Extract the x-coordinate as bytes
+    let x_bytes = encoded_p.x().unwrap();
+    x_bytes.as_slice().try_into().unwrap() // cannot fail
+}
+
+/// compute_tweaked_key_bytes computes the tweaked key bytes using k256 library
+/// NOTE: this is to avoid using add_tweak in rust-bitcoin
+/// as it uses secp256k1 FFI and will bloat the binary size
+fn compute_tweaked_key_bytes(merkle_root: TapNodeHash) -> [u8; 32] {
+    let internal_key = unspendable_key_path_internal_pub_key();
+
+    // compute tweak point
+    let tweak = TapTweakHash::from_key_and_tweak(internal_key, Some(merkle_root)).to_scalar();
+    let tweak_bytes = &tweak.to_be_bytes();
+    let tweak_bytes = k256::FieldBytes::from_slice(tweak_bytes);
+    let tweak_scalar = Scalar::from_repr_vartime(*tweak_bytes).unwrap();
+    let tweak_point = ProjectivePoint::mul_by_generator(&tweak_scalar);
+
+    // compute internal key point
+    let internal_key_bytes = internal_key.serialize();
+    let x = k256::FieldBytes::from_slice(internal_key_bytes.as_slice());
+    let ap_option = AffinePoint::decompress(x, Choice::from(false as u8));
+    let internal_key_point = ProjectivePoint::from(ap_option.unwrap());
+
+    // tweak internal key point with the tweak point
+    let tweaked_point = internal_key_point + tweak_point;
+
+    point_to_bytes(tweaked_point)
+}
+
+/// build_relative_time_lock_pk_script builds a relative timelocked taproot script
+/// NOTE: this function is heavily optimised by manually computing the tweaked key
+/// This is to avoid using any secp256k1 FFI that will bloat the binary size
 pub fn build_relative_time_lock_pk_script(
     pk: &XOnlyPublicKey,
     lock_time: u16,
-    network: Network,
 ) -> Result<ScriptBuf> {
-    let secp = Secp256k1::new();
-
-    // Assuming the unspendableKeyPathInternalPubKey function exists and is imported
-    let unspendable_key_path_key = unspendable_key_path_internal_pub_key();
-
+    // build timelock script
     let script = build_time_lock_script(pk, lock_time)?;
 
-    let mut builder = TaprootBuilder::new();
+    // compute Merkle root of the taproot script
+    // NOTE: avoid using TaprootBuilder as this bloats the binary size
+    let merkle_root = TapNodeHash::from_script(&script, LeafVersion::TapScript);
+
+    // compute the tweaked key in bytes
+    let tweaked_key_bytes = compute_tweaked_key_bytes(merkle_root);
+    // construct the Taproot output script
+    let mut builder = Builder::new();
     builder = builder
-        .add_leaf(0, script.clone())
-        .map_err(|_| Error::AddLeafFailed {})?;
-    let taproot_spend_info = builder
-        .finalize(&secp, unspendable_key_path_key)
-        .map_err(|_| Error::FinalizeTaprootFailed {})?;
-
-    let secp = Secp256k1::verification_only();
-    let taproot_address = Address::p2tr(
-        &secp,
-        taproot_spend_info.internal_key(),
-        taproot_spend_info.merkle_root(),
-        network,
-    );
-    let taproot_pk_script = taproot_address.script_pubkey();
-
+        .push_opcode(OP_PUSHNUM_1)
+        .push_slice(tweaked_key_bytes);
+    let taproot_pk_script = builder.into_script();
     Ok(taproot_pk_script)
 }
 

@@ -1,5 +1,7 @@
+use babylon_bitcoin::chain_params::Network;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
+
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 use derivative::Derivative;
@@ -20,12 +22,6 @@ pub struct Config {
     // pub covenant_pks: Vec<BIP340PubKey>,
     // covenant_quorum is the minimum number of signatures needed for the covenant multi-signature
     // pub covenant_quorum: u32,
-    // min_slashing_tx_fee_sat is the minimum amount of tx fee (quantified / in Satoshi) needed for
-    // the pre-signed slashing tx
-    // pub min_slashing_tx_fee_sat: i64,
-    // slashing_rate determines the portion of the staked amount to be slashed,
-    // expressed as a decimal (e.g. 0.5 for 50%).
-    // pub slashing_rate: Decimal,
 }
 
 /// Params define Consumer-selectable BTC staking parameters
@@ -34,6 +30,8 @@ pub struct Config {
 #[derive(Derivative)]
 #[derivative(Default)]
 pub struct Params {
+    #[derivative(Default(value = "Network::Regtest"))]
+    pub btc_network: Network,
     // `min_commission_rate` is the chain-wide minimum commission rate that a finality provider
     // can charge their delegators
     // pub min_commission_rate: Decimal,
@@ -45,4 +43,16 @@ pub struct Params {
     /// should commit
     #[derivative(Default(value = "1"))]
     pub min_pub_rand: u64,
+    /// `slashing_address` is the address that the slashed BTC goes to.
+    /// The address is in string format on Bitcoin.
+    #[derivative(Default(value = "String::from(\"n4cV57jePmAAue2WTTBQzH3k3R2rgWBQwY\")"))]
+    pub slashing_address: String,
+    /// `min_slashing_tx_fee_sat` is the minimum amount of tx fee (quantified in Satoshi) needed for
+    /// the pre-signed slashing tx
+    #[derivative(Default(value = "1000"))]
+    pub min_slashing_tx_fee_sat: u64,
+    /// `slashing_rate` determines the portion of the staked amount to be slashed,
+    /// expressed as a decimal (e.g. 0.5 for 50%).
+    #[derivative(Default(value = "String::from(\"0.1\")"))]
+    pub slashing_rate: String,
 }

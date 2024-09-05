@@ -21,3 +21,12 @@ pub fn get_chain_params(net: Network) -> Params {
         Network::Regtest => Params::new(bitcoin::Network::Regtest),
     }
 }
+
+pub fn get_bitcoin_network(net: Network) -> bitcoin::Network {
+    match net {
+        Network::Mainnet => bitcoin::Network::Bitcoin,
+        Network::Testnet => bitcoin::Network::Testnet,
+        Network::Signet => bitcoin::Network::Signet,
+        Network::Regtest => bitcoin::Network::Regtest,
+    }
+}

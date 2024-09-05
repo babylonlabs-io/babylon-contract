@@ -43,7 +43,7 @@ fn tagged_hash(tag: &[u8]) -> Sha256 {
     digest
 }
 
-fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint> {
+pub fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint> {
     let is_y_odd = bytes[0] == 0x03;
     let r_option = AffinePoint::decompress(
         k256::FieldBytes::from_slice(&bytes[1..]),

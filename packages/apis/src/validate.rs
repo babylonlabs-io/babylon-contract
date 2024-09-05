@@ -143,6 +143,22 @@ impl Validate for ActiveBtcDelegation {
             ));
         }
 
+        let undelegation_info = &self.undelegation_info;
+        // Check that the unbonding tx is there
+        if undelegation_info.unbonding_tx.is_empty() {
+            return Err(StakingApiError::EmptyUnbondingTx);
+        }
+
+        // Check that the unbonding slashing tx is there
+        if undelegation_info.slashing_tx.is_empty() {
+            return Err(StakingApiError::EmptySlashingTx);
+        }
+
+        // Check that the delegator slashing signature is there
+        if undelegation_info.delegator_slashing_sig.is_empty() {
+            return Err(StakingApiError::EmptySignature);
+        }
+
         Ok(())
     }
 }

@@ -376,6 +376,8 @@ version = "0.9.0"
 dependencies = [
  "babylon-apis",
  "babylon-bindings",
+ "babylon-bitcoin",
+ "babylon-btcstaking",
  "babylon-contract",
  "babylon-merkle",
  "babylon-proto",

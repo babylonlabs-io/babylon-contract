@@ -279,12 +279,16 @@ pub(crate) mod tests {
 
     use super::*;
 
+    use crate::state::config::Params;
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
         FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
     };
     use babylon_apis::finality_api::PubRandCommit;
-    use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, FinalityProvider};
+    use babylon_bitcoin::chain_params::Network;
+    use babylon_proto::babylon::btcstaking::v1::{
+        BtcDelegation, FinalityProvider, Params as ProtoParams,
+    };
     use cosmwasm_std::{
         from_json,
         testing::{message_info, mock_dependencies, mock_env},
@@ -297,6 +301,22 @@ pub(crate) mod tests {
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
+
+    fn new_params(params: ProtoParams) -> Params {
+        Params {
+            btc_network: Network::Regtest, // TODO: fix this
+            max_active_finality_providers: params.max_active_finality_providers,
+            min_pub_rand: 10, // TODO: fix this
+            slashing_address: params.slashing_address,
+            min_slashing_tx_fee_sat: params.min_slashing_tx_fee_sat as u64,
+            slashing_rate: "0.01".to_string(), // TODO: fix this
+        }
+    }
+
+    pub(crate) fn get_params() -> Params {
+        let proto_params = test_utils::get_params();
+        new_params(proto_params)
+    }
 
     fn new_finality_provider(fp: FinalityProvider) -> NewFinalityProvider {
         NewFinalityProvider {

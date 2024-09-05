@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::scripts_utils;
 use crate::Result;
 use bitcoin::XOnlyPublicKey;
-use bitcoin::{address::Address, network::Network, Transaction};
+use bitcoin::{address::Address, Transaction};
 use rust_decimal::{prelude::*, Decimal};
 
 /// Checks if a transaction has exactly one input and one output.
@@ -45,7 +45,6 @@ fn validate_slashing_tx(
     staking_output_value: u64,
     staker_pk: &XOnlyPublicKey,
     slashing_change_lock_time: u16,
-    network: Network,
 ) -> Result<()> {
     if slashing_tx.input.len() != 1 {
         return Err(Error::TxInputCountMismatch(1, slashing_tx.input.len()));
@@ -77,12 +76,14 @@ fn validate_slashing_tx(
     // Verify that the second output pays to the taproot address which locks funds for
     // slashingChangeLockTime
     // Build script based on the timelock details
-    let expected_pk_script = scripts_utils::build_relative_time_lock_pk_script(
-        staker_pk,
-        slashing_change_lock_time,
-        network,
-    )?;
+    let expected_pk_script =
+        scripts_utils::build_relative_time_lock_pk_script(staker_pk, slashing_change_lock_time)?;
     if slashing_tx.output[1].script_pubkey.ne(&expected_pk_script) {
+        println!("expected_pk_script: {:?}", expected_pk_script);
+        println!(
+            "slashing_tx.output[1].script_pubkey: {:?}",
+            slashing_tx.output[1].script_pubkey
+        );
         return Err(Error::InvalidSlashingTxChangeOutputScript {});
     }
 
@@ -141,7 +142,6 @@ pub fn check_transactions(
     slashing_address: &Address,
     staker_pk: &XOnlyPublicKey,
     slashing_change_lock_time: u16,
-    network: Network,
 ) -> Result<()> {
     // Check if slashing tx min fee is valid
     if slashing_tx_min_fee == 0 {
@@ -171,7 +171,6 @@ pub fn check_transactions(
         staking_output.value.to_sat(),
         staker_pk,
         slashing_change_lock_time,
-        network,
     )?;
 
     // Check that slashing transaction input is pointing to staking transaction
@@ -221,7 +220,6 @@ mod tests {
             .assume_checked();
         let staker_pk: XOnlyPublicKey = XOnlyPublicKey::from_slice(&btc_del.btc_pk).unwrap();
         let slashing_change_lock_time: u16 = 101;
-        let network: Network = Network::Regtest;
 
         // test check_transactions
         check_transactions(
@@ -233,7 +231,6 @@ mod tests {
             &slashing_address,
             &staker_pk,
             slashing_change_lock_time,
-            network,
         )
         .unwrap();
     }

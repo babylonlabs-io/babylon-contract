@@ -246,12 +246,13 @@ mod tests {
 
     use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
 
-    use crate::contract::tests::create_new_finality_provider;
+    use crate::contract::tests::{create_new_finality_provider, get_params};
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use crate::finality::tests::mock_env_height;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
     use crate::staking::tests::staking_tx_hash;
+    use crate::state::config::PARAMS;
     use crate::state::staking::{BtcDelegation, FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
@@ -278,6 +279,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
@@ -336,6 +340,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
@@ -408,6 +415,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -494,6 +504,9 @@ mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
         let fp1_pk = new_fp1.btc_pk_hex.clone();
@@ -551,6 +564,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -641,6 +657,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -733,6 +752,9 @@ mod tests {
         )
         .unwrap();
 
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
+
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
         let fp1_pk = new_fp1.btc_pk_hex.clone();
@@ -785,6 +807,9 @@ mod tests {
             },
         )
         .unwrap();
+
+        let params = get_params();
+        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);

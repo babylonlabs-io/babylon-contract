@@ -22,6 +22,12 @@ const (
 	MSG_ADD_FINALITY_SIG = "add_finality_sig_%d_msg.dat"
 )
 
+const (
+	commitPubRandHeight = 100
+	commitPubRandAmount = 10
+	pubRandIndex        = 1
+)
+
 func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
 	// generate a list of secret/public randomness
 	var srList []*eots.PrivateRand
@@ -47,12 +53,7 @@ func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInf
 	return &datagen.RandListInfo{SRList: srList, PRList: prList, Commitment: commitment, ProofList: proofList}, nil
 }
 
-func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, pubRandIndex uint64, dir string) (*datagen.RandListInfo, *btcec.PrivateKey) {
-	sk, _, err := datagen.GenRandomBTCKeyPair(r)
-	if err != nil {
-		panic(err)
-	}
-
+func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, pubRandIndex uint64, sk *btcec.PrivateKey, dir string) *datagen.RandListInfo {
 	randListInfo, err := GenRandomPubRandList(r, numPubRand)
 	if err != nil {
 		panic(err)
@@ -93,7 +94,7 @@ func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, pubRandIndex
 		panic(err)
 	}
 
-	return randListInfo, sk
+	return randListInfo
 }
 
 func NewMsgAddFinalitySig(
@@ -179,3 +180,12 @@ func GenRandomEvidence(r *rand.Rand, sk *btcec.PrivateKey, height uint64) (*ftyp
 	return evidence, nil
 }
 */
+
+func GenFinalityData(dir string) {
+	GenEOTSTestData(dir)
+	fpSK, _, _ := datagen.GenRandomBTCKeyPair(r)
+	randListInfo := GenCommitPubRandListMsg(commitPubRandHeight, commitPubRandAmount, pubRandIndex, fpSK, dir)
+	GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, fpSK, dir, 1)
+	// Conflicting signature / double signing
+	GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, fpSK, dir, 2)
+}

@@ -33,9 +33,11 @@ func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
 	require.NoError(t, err)
 
 	bsParams := &types.Params{
-		CovenantPks:     bbn.NewBIP340PKsFromBTCPKs(covenantPKs),
-		CovenantQuorum:  covenantQuorum,
-		SlashingAddress: slashingAddress.EncodeAddress(),
+		CovenantPks:                bbn.NewBIP340PKsFromBTCPKs(covenantPKs),
+		CovenantQuorum:             covenantQuorum,
+		SlashingAddress:            slashingAddress.EncodeAddress(),
+		MinSlashingTxFeeSat:        1000,
+		MaxActiveFinalityProviders: 100,
 	}
 
 	paramsBytes, err := bsParams.Marshal()
