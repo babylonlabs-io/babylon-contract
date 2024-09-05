@@ -201,7 +201,7 @@ mod tests {
     };
     use bitcoin::address::Address;
     use bitcoin::consensus::deserialize;
-    use bitcoin::secp256k1::schnorr::Signature;
+
     use bitcoin::{Transaction, XOnlyPublicKey};
     use test_utils::{get_btc_delegation, get_params};
 

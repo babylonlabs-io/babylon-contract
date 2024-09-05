@@ -1,16 +1,14 @@
 use crate::adaptor_sig::AdaptorSignature;
 use crate::error::Error;
+use crate::identity_digest::new_digest;
 use crate::Result;
-use bitcoin::hashes::{sha256, Hash};
+use bitcoin::hashes::Hash;
 use bitcoin::sighash::{Prevouts, SighashCache};
+use bitcoin::Transaction;
 use bitcoin::{Script, TxOut, XOnlyPublicKey};
-use bitcoin::{TapSighash, Transaction};
-use k256::elliptic_curve::FieldBytes;
-use k256::schnorr::signature::{DigestVerifier, Verifier};
+use k256::schnorr::signature::DigestVerifier;
 use k256::schnorr::Signature as SchnorrSignature;
 use k256::schnorr::VerifyingKey;
-use sha2::digest::KeyInit;
-use sha2::{Digest, Sha256};
 
 fn calc_sighash(
     transaction: &Transaction,
@@ -49,11 +47,14 @@ pub fn verify_transaction_sig_with_output(
 ) -> Result<()> {
     // calculate the sig hash of the tx for the given spending path
     let sighash = calc_sighash(transaction, funding_output, path_script)?;
+    let sighash_digest = new_digest(sighash);
+
     // verify the signature w.r.t. the signature, the sig hash, and the public key
     let verifying_key = VerifyingKey::from_bytes(&pub_key.serialize())
         .map_err(|e| Error::FailedToParsePublicKey(e.to_string()))?;
+
     verifying_key
-        .verify(&sighash, signature)
+        .verify_digest(sighash_digest, signature)
         .map_err(|e| Error::InvalidSchnorrSignature(e.to_string()))
 }
 

@@ -6,6 +6,7 @@ edition.workspace = true
 
 [dependencies]
 bitcoin       = { workspace = true }
+digest        = { workspace = true }
 rust_decimal  = { workspace = true }
 hex           = { workspace = true }
 sha2          = { workspace = true }

@@ -131,6 +131,7 @@ version = "0.9.0"
 dependencies = [
  "babylon-proto",
  "bitcoin",
+ "digest 0.10.7",
  "eots",
  "hex",
  "k256",
