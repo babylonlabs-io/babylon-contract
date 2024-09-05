@@ -183,7 +183,6 @@ func GenRandomEvidence(r *rand.Rand, sk *btcec.PrivateKey, height uint64) (*ftyp
 
 func GenFinalityData(dir string) {
 	GenEOTSTestData(dir)
-	fpSK, _, _ := datagen.GenRandomBTCKeyPair(r)
 	randListInfo := GenCommitPubRandListMsg(commitPubRandHeight, commitPubRandAmount, pubRandIndex, fpSK, dir)
 	GenAddFinalitySig(commitPubRandHeight, pubRandIndex, randListInfo, fpSK, dir, 1)
 	// Conflicting signature / double signing

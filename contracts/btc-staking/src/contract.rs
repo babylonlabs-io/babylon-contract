@@ -304,6 +304,12 @@ pub(crate) mod tests {
 
     fn new_params(params: ProtoParams) -> Params {
         Params {
+            covenant_pks: params
+                .covenant_pks
+                .iter()
+                .map(|pk| hex::encode(pk))
+                .collect(),
+            covenant_quorum: params.covenant_quorum,
             btc_network: Network::Regtest, // TODO: fix this
             max_active_finality_providers: params.max_active_finality_providers,
             min_pub_rand: 10, // TODO: fix this

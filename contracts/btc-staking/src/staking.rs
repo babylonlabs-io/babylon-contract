@@ -106,6 +106,28 @@ fn verify_active_delegation(
     active_delegation: &ActiveBtcDelegation,
     staking_tx: &Transaction,
 ) -> Result<(), ContractError> {
+    // get staker's public key
+    let staker_pk = XOnlyPublicKey::from_str(&active_delegation.btc_pk_hex)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    // get all FP's public keys
+    let fp_pks: Vec<XOnlyPublicKey> = active_delegation
+        .fp_btc_pk_list
+        .iter()
+        .map(|pk_hex| {
+            XOnlyPublicKey::from_str(pk_hex)
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
+        })
+        .collect::<Result<Vec<XOnlyPublicKey>, ContractError>>()?;
+    // get all covenant members' public keys
+    let cov_pks: Vec<XOnlyPublicKey> = params
+        .covenant_pks
+        .iter()
+        .map(|pk_hex| {
+            XOnlyPublicKey::from_str(pk_hex)
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
+        })
+        .collect::<Result<Vec<XOnlyPublicKey>, ContractError>>()?;
+
     // Check if data provided in request, matches data to which staking tx is
     // committed
 
@@ -128,8 +150,6 @@ fn verify_active_delegation(
         .assume_checked();
 
     // Check slashing tx and staking tx are valid and consistent
-    let staker_btc_pk = XOnlyPublicKey::from_str(&active_delegation.btc_pk_hex)
-        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
     let slashing_rate = params
         .slashing_rate
         .parse::<f64>()
@@ -141,9 +161,45 @@ fn verify_active_delegation(
         params.min_slashing_tx_fee_sat,
         slashing_rate,
         &slashing_address,
-        &staker_btc_pk,
+        &staker_pk,
         active_delegation.unbonding_time as u16,
     )?;
+
+    // TODO: Verify proof of possession
+
+    /*
+        verify staker signature against slashing path of the staking tx script
+    */
+
+    // get the slashing path script
+    let staking_output = &staking_tx.output[active_delegation.staking_output_idx as usize];
+    let staking_time = (active_delegation.end_height - active_delegation.start_height) as u16;
+    let babylon_script_paths = babylon_btcstaking::scripts_utils::BabylonScriptPaths::new(
+        &staker_pk,
+        &fp_pks,
+        &cov_pks,
+        params.covenant_quorum as usize,
+        staking_time,
+    )?;
+    let slashing_path_script = babylon_script_paths.slashing_path_script;
+
+    // get the staker's signature on the slashing tx
+    let staker_sig = bitcoin::secp256k1::schnorr::Signature::from_slice(
+        &active_delegation.delegator_slashing_sig,
+    )
+    .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
+    // Verify the signature
+    babylon_btcstaking::sig_verify::verify_transaction_sig_with_output(
+        &slashing_tx,
+        staking_output,
+        slashing_path_script.as_script(),
+        &staker_pk,
+        &staker_sig,
+    )
+    .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
+    // TODO: verify covenant signatures
 
     // TODO: Check unbonding time (staking time from unbonding tx) is larger than min unbonding time
     // which is larger value from:
@@ -153,10 +209,6 @@ fn verify_active_delegation(
     // At this point, we know that unbonding time in request:
     // - is larger than min unbonding time
     // - is smaller than math.MaxUint16 (due to check in req.ValidateBasic())
-
-    // TODO: Verify proof of possession
-
-    // TODO: Verify staker signature against slashing path of the staking tx script
 
     /*
         TODO: Early unbonding logic
