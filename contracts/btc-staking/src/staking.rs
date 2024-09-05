@@ -1,9 +1,11 @@
+use babylon_bitcoin::schnorr::verify_digest;
 use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
-use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 use hex::ToHex;
+use k256::sha2::{Digest, Sha256};
 
 use std::str::FromStr;
 
@@ -24,7 +26,7 @@ use babylon_bindings::BabylonMsg;
 
 #[cfg(feature = "full-validation")]
 use bitcoin::Address;
-use k256::schnorr::VerifyingKey;
+use k256::schnorr::{Signature, VerifyingKey};
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -87,6 +89,22 @@ pub fn handle_new_fp(
     let fp = FinalityProvider::from(new_fp);
 
     // TODO: Verify proof of possession
+    let fp_pk_bytes = hex::decode(&new_fp.btc_pk_hex)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    let fp_pk = VerifyingKey::from_bytes(&fp_pk_bytes)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
+    // decode address to bytes
+    let address = Addr::unchecked(new_fp.addr.clone());
+    let address_bytes = address.as_bytes();
+    let msg_hash: [u8; 32] = Sha256::new_with_prefix(address_bytes).finalize().into();
+
+    // verify PoP
+    let pop = new_fp.pop.clone().unwrap();
+    let pop_sig = Signature::try_from(pop.btc_sig.as_slice())
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    verify_digest(&fp_pk, &msg_hash, &pop_sig)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
     // save to DB
     FPS.save(storage, &fp.btc_pk_hex, &fp)?;
