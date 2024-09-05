@@ -5,8 +5,8 @@ use babylon_bitcoin::schnorr;
 use bitcoin::hashes::Hash;
 use bitcoin::sighash::{Prevouts, SighashCache};
 use bitcoin::Transaction;
-use bitcoin::{Script, TxOut, XOnlyPublicKey};
-use k256::schnorr::signature::DigestVerifier;
+use bitcoin::{Script, TxOut};
+
 use k256::schnorr::Signature as SchnorrSignature;
 use k256::schnorr::VerifyingKey;
 
@@ -42,13 +42,13 @@ pub fn verify_transaction_sig_with_output(
     transaction: &Transaction,
     funding_output: &TxOut,
     path_script: &Script,
-    pub_key: &XOnlyPublicKey,
+    pub_key: &VerifyingKey,
     signature: &SchnorrSignature,
 ) -> Result<()> {
     // calculate the sig hash of the tx for the given spending path
     let sighash = calc_sighash(transaction, funding_output, path_script)?;
 
-    schnorr::verify_digest(&pub_key.serialize(), &sighash, signature).map_err(Error::BitcoinError)
+    schnorr::verify_digest(pub_key, &sighash, signature).map_err(Error::BitcoinError)
 }
 
 /// enc_verify_transaction_sig_with_output verifies the validity of a Schnorr adaptor signature for a given transaction
@@ -56,8 +56,8 @@ pub fn enc_verify_transaction_sig_with_output(
     transaction: &Transaction,
     funding_output: &TxOut,
     path_script: &Script,
-    pub_key: &XOnlyPublicKey,
-    enc_key: &XOnlyPublicKey,
+    pub_key: &VerifyingKey,
+    enc_key: &VerifyingKey,
     signature: &AdaptorSignature,
 ) -> Result<()> {
     // calculate the sig hash of the tx for the given spending path

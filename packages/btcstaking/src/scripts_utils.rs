@@ -5,6 +5,7 @@ use bitcoin::opcodes::all::{
     OP_CHECKSIG, OP_CHECKSIGADD, OP_CHECKSIGVERIFY, OP_CSV, OP_NUMEQUAL, OP_NUMEQUALVERIFY,
     OP_PUSHNUM_1,
 };
+
 use bitcoin::secp256k1::PublicKey;
 use bitcoin::taproot::LeafVersion;
 use bitcoin::ScriptBuf;
@@ -12,6 +13,7 @@ use bitcoin::{TapNodeHash, TapTweakHash, XOnlyPublicKey};
 
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::elliptic_curve::subtle::Choice;
+use k256::schnorr::VerifyingKey;
 use k256::{
     elliptic_curve::{ops::MulByGenerator, point::DecompressPoint, PrimeField},
     AffinePoint, ProjectivePoint, Scalar,
@@ -29,16 +31,16 @@ fn unspendable_key_path_internal_pub_key() -> XOnlyPublicKey {
 }
 
 // sort_keys sorts public keys in lexicographical order
-pub fn sort_keys(keys: &mut [XOnlyPublicKey]) {
+pub fn sort_keys(keys: &mut [VerifyingKey]) {
     keys.sort_by(|a, b| {
-        let a_serialized = a.serialize();
-        let b_serialized = b.serialize();
+        let a_serialized = a.to_bytes();
+        let b_serialized = b.to_bytes();
         a_serialized.cmp(&b_serialized)
     });
 }
 
 /// prepare_keys_for_multisig_script prepares keys for multisig, ensuring there are no duplicates
-pub fn prepare_keys_for_multisig_script(keys: &[XOnlyPublicKey]) -> Result<Vec<XOnlyPublicKey>> {
+pub fn prepare_keys_for_multisig_script(keys: &[VerifyingKey]) -> Result<Vec<VerifyingKey>> {
     if keys.len() < 2 {
         return Err(Error::InsufficientMultisigKeys {});
     }
@@ -58,7 +60,7 @@ pub fn prepare_keys_for_multisig_script(keys: &[XOnlyPublicKey]) -> Result<Vec<X
 
 /// assemble_multisig_script assembles a multisig script
 fn assemble_multisig_script(
-    pubkeys: &[XOnlyPublicKey],
+    pubkeys: &[VerifyingKey],
     quorum: usize,
     with_verify: bool,
 ) -> Result<ScriptBuf> {
@@ -68,7 +70,10 @@ fn assemble_multisig_script(
 
     let mut builder = Builder::new();
     for (i, key) in pubkeys.iter().enumerate() {
-        builder = builder.push_slice(key.serialize());
+        let pk_bytes = key.to_bytes();
+        let pk = XOnlyPublicKey::from_slice(pk_bytes.as_slice()).unwrap();
+
+        builder = builder.push_x_only_key(&pk);
         if i == 0 {
             builder = builder.push_opcode(OP_CHECKSIG);
         } else {
@@ -88,7 +93,7 @@ fn assemble_multisig_script(
 
 /// build_multisig_script creates a multisig script
 pub fn build_multisig_script(
-    keys: &[XOnlyPublicKey],
+    keys: &[VerifyingKey],
     quorum: usize,
     with_verify: bool,
 ) -> Result<ScriptBuf> {
@@ -97,9 +102,11 @@ pub fn build_multisig_script(
 }
 
 /// build_time_lock_script creates a timelock script
-pub fn build_time_lock_script(pub_key: &XOnlyPublicKey, lock_time: u16) -> Result<ScriptBuf> {
+pub fn build_time_lock_script(pub_key: &VerifyingKey, lock_time: u16) -> Result<ScriptBuf> {
+    let pk_bytes = pub_key.to_bytes();
+    let pk = XOnlyPublicKey::from_slice(pk_bytes.as_slice()).unwrap();
     let builder = Builder::new()
-        .push_slice(pub_key.serialize())
+        .push_x_only_key(&pk)
         .push_opcode(OP_CHECKSIGVERIFY)
         .push_int(lock_time as i64)
         .push_opcode(OP_CSV);
@@ -108,11 +115,11 @@ pub fn build_time_lock_script(pub_key: &XOnlyPublicKey, lock_time: u16) -> Resul
 }
 
 /// build_single_key_sig_script builds a single key signature script
-pub fn build_single_key_sig_script(
-    pub_key: &XOnlyPublicKey,
-    with_verify: bool,
-) -> Result<ScriptBuf> {
-    let mut builder = Builder::new().push_slice(pub_key.serialize());
+pub fn build_single_key_sig_script(pub_key: &VerifyingKey, with_verify: bool) -> Result<ScriptBuf> {
+    let pk_bytes = pub_key.to_bytes();
+    let pk = XOnlyPublicKey::from_slice(pk_bytes.as_slice()).unwrap();
+
+    let mut builder = Builder::new().push_x_only_key(&pk);
 
     if with_verify {
         builder = builder.push_opcode(OP_CHECKSIGVERIFY);
@@ -158,10 +165,7 @@ fn compute_tweaked_key_bytes(merkle_root: TapNodeHash) -> [u8; 32] {
 /// build_relative_time_lock_pk_script builds a relative timelocked taproot script
 /// NOTE: this function is heavily optimised by manually computing the tweaked key
 /// This is to avoid using any secp256k1 FFI that will bloat the binary size
-pub fn build_relative_time_lock_pk_script(
-    pk: &XOnlyPublicKey,
-    lock_time: u16,
-) -> Result<ScriptBuf> {
+pub fn build_relative_time_lock_pk_script(pk: &VerifyingKey, lock_time: u16) -> Result<ScriptBuf> {
     // build timelock script
     let script = build_time_lock_script(pk, lock_time)?;
 
@@ -210,9 +214,9 @@ pub struct BabylonScriptPaths {
 
 impl BabylonScriptPaths {
     pub fn new(
-        staker_key: &XOnlyPublicKey,
-        fp_keys: &[XOnlyPublicKey],
-        covenant_keys: &[XOnlyPublicKey],
+        staker_key: &VerifyingKey,
+        fp_keys: &[VerifyingKey],
+        covenant_keys: &[VerifyingKey],
         covenant_quorum: usize,
         lock_time: u16,
     ) -> Result<Self> {
@@ -244,11 +248,12 @@ mod tests {
     use bitcoin::secp256k1::{PublicKey, Secp256k1, SecretKey};
 
     // Function to generate a public key from a secret key
-    fn generate_public_key(data: &[u8]) -> XOnlyPublicKey {
+    fn generate_public_key(data: &[u8]) -> VerifyingKey {
         let secp = Secp256k1::new();
         let secret_key = SecretKey::from_slice(data).expect("slice with correct length");
         let (pk_x, _) = PublicKey::from_secret_key(&secp, &secret_key).x_only_public_key();
-        pk_x
+
+        VerifyingKey::from_bytes(pk_x.serialize().as_slice()).unwrap()
     }
 
     #[test]
@@ -265,7 +270,7 @@ mod tests {
 
         // Serialize the keys to compare them easily
         let serialized_keys: Vec<Vec<u8>> =
-            keys.iter().map(|key| key.serialize().to_vec()).collect();
+            keys.iter().map(|key| key.to_bytes().to_vec()).collect();
 
         // Ensure they are sorted lexicographically
         assert!(

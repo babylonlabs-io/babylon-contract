@@ -50,17 +50,13 @@ pub fn new_digest(msg_hash: &[u8; 32]) -> Identity256 {
 }
 
 pub fn verify_digest(
-    pub_key: &[u8],
+    pub_key: &VerifyingKey,
     msg_hash: &[u8; 32],
     signature: &SchnorrSignature,
 ) -> Result<()> {
     let digest = new_digest(msg_hash);
 
-    // verify the signature w.r.t. the signature, the sig hash, and the public key
-    let verifying_key = VerifyingKey::from_bytes(pub_key)
-        .map_err(|e| Error::FailedToParsePublicKey(e.to_string()))?;
-
-    verifying_key
+    pub_key
         .verify_digest(digest, signature)
         .map_err(|e| Error::InvalidSchnorrSignature(e.to_string()))
 }

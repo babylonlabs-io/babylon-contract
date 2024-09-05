@@ -1,8 +1,8 @@
 use crate::error::Error;
 use crate::Result;
-use bitcoin::secp256k1::Parity;
-use bitcoin::XOnlyPublicKey;
+
 use k256::elliptic_curve::group::prime::PrimeCurveAffine;
+use k256::schnorr::VerifyingKey;
 use k256::{
     elliptic_curve::{
         ops::{MulByGenerator, Reduce},
@@ -44,10 +44,9 @@ fn tagged_hash(tag: &[u8]) -> Sha256 {
 }
 
 pub fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint> {
-    let is_y_odd = bytes[0] == 0x03;
     let r_option = AffinePoint::decompress(
-        k256::FieldBytes::from_slice(&bytes[1..]),
-        k256::elliptic_curve::subtle::Choice::from(is_y_odd as u8),
+        k256::FieldBytes::from_slice(bytes),
+        k256::elliptic_curve::subtle::Choice::from(false as u8),
     );
     let r = if r_option.is_some().into() {
         r_option.unwrap()
@@ -61,15 +60,15 @@ pub fn bytes_to_point(bytes: &[u8]) -> Result<ProjectivePoint> {
 impl AdaptorSignature {
     pub fn verify(
         &self,
-        pub_key: &XOnlyPublicKey,
-        enc_key: &XOnlyPublicKey,
+        pub_key: &VerifyingKey,
+        enc_key: &VerifyingKey,
         msg: [u8; 32],
     ) -> Result<()> {
         // Convert public keys to points
-        let pk = pub_key.public_key(Parity::Even);
-        let p = bytes_to_point(&pk.serialize())?;
-        let ek = enc_key.public_key(Parity::Even);
-        let t = bytes_to_point(&ek.serialize())?;
+        let pk = pub_key.to_bytes();
+        let p = bytes_to_point(pk.as_slice())?;
+        let ek = enc_key.to_bytes();
+        let t = bytes_to_point(ek.as_slice())?;
 
         // Calculate R' = R - T (or R + T if negation is needed)
         let r_hat = if self.needs_negation {
@@ -83,11 +82,11 @@ impl AdaptorSignature {
         // Calculate e = tagged_hash("BIP0340/challenge", bytes(R) || bytes(P) || m)
         // mod n
         let r_bytes = self.r.to_affine().x();
-        let p_bytes = pub_key.serialize();
+        let p_bytes = pub_key.to_bytes();
         let e = <Scalar as Reduce<U256>>::reduce_bytes(
             &tagged_hash(CHALLENGE_TAG)
                 .chain_update(r_bytes)
-                .chain_update(p_bytes)
+                .chain_update(p_bytes.as_slice())
                 .chain_update(msg)
                 .finalize(),
         );

@@ -1,11 +1,11 @@
-use hex::ToHex;
-use std::str::FromStr;
-
 use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
+use hex::ToHex;
+
+use std::str::FromStr;
 
 use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
@@ -24,8 +24,7 @@ use babylon_bindings::BabylonMsg;
 
 #[cfg(feature = "full-validation")]
 use bitcoin::Address;
-#[cfg(feature = "full-validation")]
-use bitcoin::XOnlyPublicKey;
+use k256::schnorr::VerifyingKey;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -110,26 +109,34 @@ fn verify_active_delegation(
     staking_tx: &Transaction,
 ) -> Result<(), ContractError> {
     // get staker's public key
-    let staker_pk = XOnlyPublicKey::from_str(&active_delegation.btc_pk_hex)
+
+    let staker_pk_bytes = hex::decode(&active_delegation.btc_pk_hex)
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    let staker_pk = VerifyingKey::from_bytes(&staker_pk_bytes)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
     // get all FP's public keys
-    let fp_pks: Vec<XOnlyPublicKey> = active_delegation
+    let fp_pks: Vec<VerifyingKey> = active_delegation
         .fp_btc_pk_list
         .iter()
         .map(|pk_hex| {
-            XOnlyPublicKey::from_str(pk_hex)
+            let pk_bytes =
+                hex::decode(pk_hex).map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            VerifyingKey::from_bytes(&pk_bytes)
                 .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
         })
-        .collect::<Result<Vec<XOnlyPublicKey>, ContractError>>()?;
+        .collect::<Result<Vec<VerifyingKey>, ContractError>>()?;
     // get all covenant members' public keys
-    let cov_pks: Vec<XOnlyPublicKey> = params
+    let cov_pks: Vec<VerifyingKey> = params
         .covenant_pks
         .iter()
         .map(|pk_hex| {
-            XOnlyPublicKey::from_str(pk_hex)
+            let pk_bytes =
+                hex::decode(pk_hex).map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            VerifyingKey::from_bytes(&pk_bytes)
                 .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
         })
-        .collect::<Result<Vec<XOnlyPublicKey>, ContractError>>()?;
+        .collect::<Result<Vec<VerifyingKey>, ContractError>>()?;
 
     // Check if data provided in request, matches data to which staking tx is
     // committed
