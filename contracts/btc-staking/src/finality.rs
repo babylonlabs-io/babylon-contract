@@ -590,8 +590,8 @@ pub(crate) mod tests {
         let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
 
         // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -644,8 +644,8 @@ pub(crate) mod tests {
         .unwrap();
 
         // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -782,8 +782,8 @@ pub(crate) mod tests {
         .unwrap();
 
         // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -943,8 +943,8 @@ pub(crate) mod tests {
         .unwrap();
 
         // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
