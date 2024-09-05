@@ -271,7 +271,8 @@ mod tests {
         let unbonding_pk_script = babylon_script_paths.unbonding_path_script;
         for cov_unbonding_tx_sig_info in &btc_undel_info.covenant_unbonding_sig_list {
             let cov_pk = XOnlyPublicKey::from_slice(&cov_unbonding_tx_sig_info.pk).unwrap();
-            let cov_sig = Signature::from_slice(&cov_unbonding_tx_sig_info.sig).unwrap();
+            let cov_sig =
+                k256::schnorr::Signature::try_from(&cov_unbonding_tx_sig_info.sig[..]).unwrap();
             verify_transaction_sig_with_output(
                 &unbonding_tx,
                 staking_out,

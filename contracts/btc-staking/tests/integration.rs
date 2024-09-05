@@ -3,9 +3,15 @@ use cosmwasm_vm::testing::{instantiate, mock_env, mock_info, mock_instance};
 
 use btc_staking::msg::InstantiateMsg;
 
+// wasm binary lite version
 static WASM: &[u8] = include_bytes!("../../../artifacts/btc_staking.wasm");
 /// Wasm size limit: https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/validation.go#L24-L25
 const MAX_WASM_SIZE: usize = 800 * 1024; // 800 KB
+
+// wasm binary with full validation
+// TODO: optimise to 800 KB
+static WASM_FULL: &[u8] = include_bytes!("../../../artifacts/btc_staking-full-validation.wasm");
+const MAX_WASM_SIZE_FULL: usize = 1024 * 1024; // 1 MB
 
 const CREATOR: &str = "creator";
 
@@ -13,8 +19,15 @@ const CREATOR: &str = "creator";
 fn wasm_size_limit_check() {
     assert!(
         WASM.len() < MAX_WASM_SIZE,
-        "Wasm file too large: {}",
-        WASM.len()
+        "BTC staking contract (lite version) wasm binary is too large: {} (target: {})",
+        WASM.len(),
+        MAX_WASM_SIZE
+    );
+    assert!(
+        WASM_FULL.len() < MAX_WASM_SIZE_FULL,
+        "BTC staking contract (with full validation) wasm binary is too large: {} (target: {})",
+        WASM_FULL.len(),
+        MAX_WASM_SIZE_FULL
     );
 }
 

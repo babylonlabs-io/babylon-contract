@@ -30,7 +30,7 @@ use babylon_contract::ibc::IBC_VERSION;
 use babylon_contract::msg::btc_header::{BtcHeader, BtcHeadersResponse};
 use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 
-static WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
+static BABYLON_CONTRACT_WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
 /// Wasm size limit: https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/validation.go#L24-L25
 const MAX_WASM_SIZE: usize = 800 * 1024; // 800 KB
 
@@ -38,7 +38,7 @@ const CREATOR: &str = "creator";
 
 #[track_caller]
 fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
-    let mut deps = mock_instance_with_gas_limit(WASM, 2_250_000_000_000);
+    let mut deps = mock_instance_with_gas_limit(BABYLON_CONTRACT_WASM, 2_250_000_000_000);
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
         babylon_tag: "01020304".to_string(),
@@ -80,15 +80,16 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
 #[test]
 fn wasm_size_limit_check() {
     assert!(
-        WASM.len() < MAX_WASM_SIZE,
-        "Wasm file too large: {}",
-        WASM.len()
+        BABYLON_CONTRACT_WASM.len() < MAX_WASM_SIZE,
+        "Babylon contract wasm binary is too large: {} (target: {})",
+        BABYLON_CONTRACT_WASM.len(),
+        MAX_WASM_SIZE
     );
 }
 
 #[test]
 fn instantiate_works() {
-    let mut deps = mock_instance(WASM, &[]);
+    let mut deps = mock_instance(BABYLON_CONTRACT_WASM, &[]);
 
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,

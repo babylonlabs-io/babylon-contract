@@ -16,6 +16,8 @@ pub enum Error {
     InvalidAdaptorSignatureFirstByte(u8),
     #[error("Failed to parse bytes as a mod n scalar")]
     FailedToParseScalar {},
+    #[error("Failed to parse public key: {0}")]
+    FailedToParsePublicKey(String),
     #[error("Cannot create multisig script with less than 2 keys")]
     InsufficientMultisigKeys {},
     #[error("Duplicate key in list of keys")]

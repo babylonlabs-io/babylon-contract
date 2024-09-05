@@ -184,10 +184,9 @@ fn verify_active_delegation(
     let slashing_path_script = babylon_script_paths.slashing_path_script;
 
     // get the staker's signature on the slashing tx
-    let staker_sig = bitcoin::secp256k1::schnorr::Signature::from_slice(
-        &active_delegation.delegator_slashing_sig,
-    )
-    .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    let staker_sig =
+        k256::schnorr::Signature::try_from(active_delegation.delegator_slashing_sig.as_slice())
+            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
     // Verify the signature
     babylon_btcstaking::sig_verify::verify_transaction_sig_with_output(
