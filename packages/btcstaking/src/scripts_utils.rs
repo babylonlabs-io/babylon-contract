@@ -70,10 +70,8 @@ fn assemble_multisig_script(
 
     let mut builder = Builder::new();
     for (i, key) in pubkeys.iter().enumerate() {
-        let pk_bytes = key.to_bytes();
-        let pk = XOnlyPublicKey::from_slice(pk_bytes.as_slice()).unwrap();
-
-        builder = builder.push_x_only_key(&pk);
+        let pk_bytes: [u8; 32] = key.to_bytes().into();
+        builder = builder.push_slice(pk_bytes);
         if i == 0 {
             builder = builder.push_opcode(OP_CHECKSIG);
         } else {
@@ -103,10 +101,9 @@ pub fn build_multisig_script(
 
 /// build_time_lock_script creates a timelock script
 pub fn build_time_lock_script(pub_key: &VerifyingKey, lock_time: u16) -> Result<ScriptBuf> {
-    let pk_bytes = pub_key.to_bytes();
-    let pk = XOnlyPublicKey::from_slice(pk_bytes.as_slice()).unwrap();
+    let pk_bytes: [u8; 32] = pub_key.to_bytes().into();
     let builder = Builder::new()
-        .push_x_only_key(&pk)
+        .push_slice(pk_bytes)
         .push_opcode(OP_CHECKSIGVERIFY)
         .push_int(lock_time as i64)
         .push_opcode(OP_CSV);
@@ -116,10 +113,9 @@ pub fn build_time_lock_script(pub_key: &VerifyingKey, lock_time: u16) -> Result<
 
 /// build_single_key_sig_script builds a single key signature script
 pub fn build_single_key_sig_script(pub_key: &VerifyingKey, with_verify: bool) -> Result<ScriptBuf> {
-    let pk_bytes = pub_key.to_bytes();
-    let pk = XOnlyPublicKey::from_slice(pk_bytes.as_slice()).unwrap();
+    let pk_bytes: [u8; 32] = pub_key.to_bytes().into();
 
-    let mut builder = Builder::new().push_x_only_key(&pk);
+    let mut builder = Builder::new().push_slice(pk_bytes);
 
     if with_verify {
         builder = builder.push_opcode(OP_CHECKSIGVERIFY);
