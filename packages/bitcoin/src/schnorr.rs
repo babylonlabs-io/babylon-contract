@@ -4,9 +4,14 @@
 //!
 //! Adapted from `sha2` [sha256.rs](https://github.com/RustCrypto/hashes/blob/master/sha2/src/sha256.rs)
 //! and https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs
+use crate::error::Error;
+use crate::Result;
 use digest::consts::U32;
 use digest::generic_array::GenericArray;
 use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
+use k256::schnorr::signature::DigestVerifier;
+use k256::schnorr::Signature as SchnorrSignature;
+use k256::schnorr::VerifyingKey;
 use sha2::Digest;
 
 /// The 256-bits identity container
@@ -40,6 +45,22 @@ impl Reset for Identity256 {
     }
 }
 
-pub fn new_digest(msg_hash: [u8; 32]) -> Identity256 {
+pub fn new_digest(msg_hash: &[u8; 32]) -> Identity256 {
     Identity256::new().chain(msg_hash)
+}
+
+pub fn verify_digest(
+    pub_key: &[u8],
+    msg_hash: &[u8; 32],
+    signature: &SchnorrSignature,
+) -> Result<()> {
+    let digest = new_digest(msg_hash);
+
+    // verify the signature w.r.t. the signature, the sig hash, and the public key
+    let verifying_key = VerifyingKey::from_bytes(pub_key)
+        .map_err(|e| Error::FailedToParsePublicKey(e.to_string()))?;
+
+    verifying_key
+        .verify_digest(digest, signature)
+        .map_err(|e| Error::InvalidSchnorrSignature(e.to_string()))
 }

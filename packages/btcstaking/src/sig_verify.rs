@@ -1,7 +1,7 @@
 use crate::adaptor_sig::AdaptorSignature;
 use crate::error::Error;
-use crate::identity_digest::new_digest;
 use crate::Result;
+use babylon_bitcoin::schnorr;
 use bitcoin::hashes::Hash;
 use bitcoin::sighash::{Prevouts, SighashCache};
 use bitcoin::Transaction;
@@ -47,15 +47,8 @@ pub fn verify_transaction_sig_with_output(
 ) -> Result<()> {
     // calculate the sig hash of the tx for the given spending path
     let sighash = calc_sighash(transaction, funding_output, path_script)?;
-    let sighash_digest = new_digest(sighash);
 
-    // verify the signature w.r.t. the signature, the sig hash, and the public key
-    let verifying_key = VerifyingKey::from_bytes(&pub_key.serialize())
-        .map_err(|e| Error::FailedToParsePublicKey(e.to_string()))?;
-
-    verifying_key
-        .verify_digest(sighash_digest, signature)
-        .map_err(|e| Error::InvalidSchnorrSignature(e.to_string()))
+    schnorr::verify_digest(&pub_key.serialize(), &sighash, signature).map_err(Error::BitcoinError)
 }
 
 /// enc_verify_transaction_sig_with_output verifies the validity of a Schnorr adaptor signature for a given transaction

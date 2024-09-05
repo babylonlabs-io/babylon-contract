@@ -10,9 +10,13 @@ pub use bitcoin::{
 pub use cosmwasm_std::Uint256;
 
 pub mod chain_params;
+pub mod error;
 pub mod merkle;
 pub mod op_return;
 pub mod pow;
+pub mod schnorr;
+
+pub type Result<T> = std::result::Result<T, error::Error>;
 
 #[cfg(test)]
 mod tests {

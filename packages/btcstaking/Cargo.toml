@@ -5,14 +5,15 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-bitcoin       = { workspace = true }
-digest        = { workspace = true }
-rust_decimal  = { workspace = true }
-hex           = { workspace = true }
-sha2          = { workspace = true }
-k256          = { workspace = true }
-thiserror     = { workspace = true }
-eots          = { path = "../eots" }
+babylon-bitcoin = { workspace = true }
+bitcoin         = { workspace = true }
+digest          = { workspace = true }
+rust_decimal    = { workspace = true }
+hex             = { workspace = true }
+sha2            = { workspace = true }
+k256            = { workspace = true }
+thiserror       = { workspace = true }
+eots            = { path = "../eots" }
 
 [dev-dependencies]
 test-utils    = { path = "../test-utils" }
