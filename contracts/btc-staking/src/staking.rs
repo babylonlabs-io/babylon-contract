@@ -86,6 +86,9 @@ pub fn handle_new_fp(
     new_fp.validate()?;
     // get DB object
     let fp = FinalityProvider::from(new_fp);
+
+    // TODO: Verify proof of possession
+
     // save to DB
     FPS.save(storage, &fp.btc_pk_hex, &fp)?;
     // Set its voting power to zero
@@ -226,6 +229,8 @@ fn verify_active_delegation(
     // TODO: Check that slashing tx and unbonding tx are valid and consistent
 
     // TODO: Check staker signature against slashing path of the unbonding tx
+
+    // TODO: Verify covenant signatures over unbonding slashing tx
 
     // TODO: Check unbonding tx fees against staking tx
     // - Fee is greater than 0.
