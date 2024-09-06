@@ -1,11 +1,10 @@
-use babylon_bitcoin::schnorr::verify_digest;
 use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
-use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
+use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 use hex::ToHex;
-use k256::sha2::{Digest, Sha256};
+use k256::sha2::Digest;
 
 use std::str::FromStr;
 
@@ -17,16 +16,17 @@ use crate::state::staking::{
     FP_DELEGATIONS, FP_SET, TOTAL_POWER,
 };
 use crate::state::BTC_HEIGHT;
+use crate::validation::verify_new_fp;
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
     UnbondedBtcDelegation,
 };
+
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 
 #[cfg(feature = "full-validation")]
 use bitcoin::Address;
-use k256::schnorr::{Signature, VerifyingKey};
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -85,26 +85,12 @@ pub fn handle_new_fp(
     }
     // validate the finality provider data
     new_fp.validate()?;
+
+    // verify the finality provider registration request
+    verify_new_fp(new_fp)?;
+
     // get DB object
     let fp = FinalityProvider::from(new_fp);
-
-    // TODO: Verify proof of possession
-    let fp_pk_bytes = hex::decode(&new_fp.btc_pk_hex)
-        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-    let fp_pk = VerifyingKey::from_bytes(&fp_pk_bytes)
-        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-
-    // decode address to bytes
-    let address = Addr::unchecked(new_fp.addr.clone());
-    let address_bytes = address.as_bytes();
-    let msg_hash: [u8; 32] = Sha256::new_with_prefix(address_bytes).finalize().into();
-
-    // verify PoP
-    let pop = new_fp.pop.clone().unwrap();
-    let pop_sig = Signature::try_from(pop.btc_sig.as_slice())
-        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-    verify_digest(&fp_pk, &msg_hash, &pop_sig)
-        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
     // save to DB
     FPS.save(storage, &fp.btc_pk_hex, &fp)?;
@@ -127,6 +113,8 @@ fn verify_active_delegation(
     staking_tx: &Transaction,
 ) -> Result<(), ContractError> {
     // get staker's public key
+
+    use k256::schnorr::VerifyingKey;
 
     let staker_pk_bytes = hex::decode(&active_delegation.btc_pk_hex)
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;

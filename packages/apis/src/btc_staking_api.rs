@@ -150,6 +150,31 @@ impl FinalityProviderDescription {
     pub const MAX_DETAILS_LENGTH: usize = 280;
 }
 
+/// BTCSigType indicates the type of btc_sig in a pop
+#[cw_serde]
+pub enum BTCSigType {
+    /// BIP340 means the btc_sig will follow the BIP-340 encoding
+    BIP340 = 0,
+    /// BIP322 means the btc_sig will follow the BIP-322 encoding
+    BIP322 = 1,
+    /// ECDSA means the btc_sig will follow the ECDSA encoding
+    /// ref: https://github.com/okx/js-wallet-sdk/blob/a57c2acbe6ce917c0aa4e951d96c4e562ad58444/packages/coin-bitcoin/src/BtcWallet.ts#L331
+    ECDSA = 2,
+}
+
+impl TryFrom<i32> for BTCSigType {
+    type Error = String;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(BTCSigType::BIP340),
+            1 => Ok(BTCSigType::BIP322),
+            2 => Ok(BTCSigType::ECDSA),
+            _ => Err(format!("Invalid BTCSigType value: {}", value)),
+        }
+    }
+}
+
 /// ProofOfPossessionBtc is the proof of possession that a Babylon secp256k1
 /// secret key and a Bitcoin secp256k1 secret key are held by the same
 /// person
