@@ -1,13 +1,14 @@
 use crate::adaptor_sig::AdaptorSignature;
 use crate::error::Error;
 use crate::Result;
+use babylon_bitcoin::schnorr;
 use bitcoin::hashes::Hash;
-use bitcoin::key::Secp256k1;
-use bitcoin::secp256k1::schnorr::Signature as SchnorrSignature;
-use bitcoin::secp256k1::Message;
 use bitcoin::sighash::{Prevouts, SighashCache};
 use bitcoin::Transaction;
-use bitcoin::{Script, TxOut, XOnlyPublicKey};
+use bitcoin::{Script, TxOut};
+
+use k256::schnorr::Signature as SchnorrSignature;
+use k256::schnorr::VerifyingKey;
 
 fn calc_sighash(
     transaction: &Transaction,
@@ -41,17 +42,13 @@ pub fn verify_transaction_sig_with_output(
     transaction: &Transaction,
     funding_output: &TxOut,
     path_script: &Script,
-    pub_key: &XOnlyPublicKey,
+    pub_key: &VerifyingKey,
     signature: &SchnorrSignature,
 ) -> Result<()> {
     // calculate the sig hash of the tx for the given spending path
     let sighash = calc_sighash(transaction, funding_output, path_script)?;
-    let sighash_msg = Message::from_digest(sighash);
 
-    // verify the signature w.r.t. the signature, the sig hash, and the public key
-    let secp = Secp256k1::verification_only();
-    secp.verify_schnorr(signature, &sighash_msg, pub_key)
-        .map_err(|e| Error::InvalidSchnorrSignature(e.to_string()))
+    schnorr::verify_digest(pub_key, &sighash, signature).map_err(Error::BitcoinError)
 }
 
 /// enc_verify_transaction_sig_with_output verifies the validity of a Schnorr adaptor signature for a given transaction
@@ -59,8 +56,8 @@ pub fn enc_verify_transaction_sig_with_output(
     transaction: &Transaction,
     funding_output: &TxOut,
     path_script: &Script,
-    pub_key: &XOnlyPublicKey,
-    enc_key: &XOnlyPublicKey,
+    pub_key: &VerifyingKey,
+    enc_key: &VerifyingKey,
     signature: &AdaptorSignature,
 ) -> Result<()> {
     // calculate the sig hash of the tx for the given spending path

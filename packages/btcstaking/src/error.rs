@@ -2,6 +2,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum Error {
+    #[error("Bitcoin error: {0}")]
+    BitcoinError(#[from] babylon_bitcoin::error::Error),
     #[error("Failed to decompress bytes to a projective point")]
     DecompressPointFailed {},
     #[error("Point {0} is at infinity")]
@@ -16,6 +18,8 @@ pub enum Error {
     InvalidAdaptorSignatureFirstByte(u8),
     #[error("Failed to parse bytes as a mod n scalar")]
     FailedToParseScalar {},
+    #[error("Failed to parse public key: {0}")]
+    FailedToParsePublicKey(String),
     #[error("Cannot create multisig script with less than 2 keys")]
     InsufficientMultisigKeys {},
     #[error("Duplicate key in list of keys")]

@@ -50,6 +50,7 @@ cw-multi-test = "2.0.1"
 cw-storage-plus = "2.0.0"
 cw-utils = "2.0.0"
 derivative = "2"
+digest = "0.10"
 hex = "0.4.3"
 ics23 = { version = "0.9.0", default-features = false, features = [
     "host-functions",

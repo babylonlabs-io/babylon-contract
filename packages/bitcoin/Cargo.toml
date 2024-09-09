@@ -6,9 +6,13 @@ edition.workspace = true
 
 [dependencies]
 bitcoin      = { workspace = true }
+digest       = { workspace = true }
+sha2         = { workspace = true }
 serde        = { workspace = true }
 schemars     = { workspace = true }
 cosmwasm-std = { workspace = true }
+k256         = { workspace = true }
+thiserror    = { workspace = true }
 
 [dev-dependencies]
 hex          = { workspace = true }

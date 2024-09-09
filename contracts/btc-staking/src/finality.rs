@@ -589,9 +589,11 @@ pub(crate) mod tests {
         // Read public randomness commitment test data
         let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
 
-        // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        // Register one FP
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -643,9 +645,11 @@ pub(crate) mod tests {
         )
         .unwrap();
 
-        // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        // Register one FP
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -781,9 +785,11 @@ pub(crate) mod tests {
         )
         .unwrap();
 
-        // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        // Register one FP
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -942,9 +948,11 @@ pub(crate) mod tests {
         )
         .unwrap();
 
-        // Register one FP with a valid pubkey first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp.btc_pk_hex.clone_from(&pk_hex);
+        // Register one FP
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],

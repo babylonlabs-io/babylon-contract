@@ -21,6 +21,11 @@ const (
 	BTCSTAKING_PARAMS_FILENAME = "btcstaking_params.dat"
 )
 
+var (
+	fpSK *btcec.PrivateKey
+	fpPK *btcec.PublicKey
+)
+
 func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
 	t := &testing.T{}
 
@@ -63,7 +68,17 @@ func GenFinalityProviders(dir string, numFPs int) {
 	t := &testing.T{}
 
 	for i := 1; i <= numFPs; i++ {
-		fp, err := datagen.GenRandomFinalityProvider(r)
+		fpBTCSK, fpBTCPK, err := datagen.GenRandomBTCKeyPair(r)
+		require.NoError(t, err)
+
+		// set the first FP's BTC key pair as the global BTC key pair
+		// they will be used for generating public randomness and finality signatures
+		if i == 1 {
+			fpSK = fpBTCSK
+			fpPK = fpBTCPK
+		}
+
+		fp, err := datagen.GenRandomFinalityProviderWithBTCSK(r, fpBTCSK, "")
 		require.NoError(t, err)
 		fp.ConsumerId = fmt.Sprintf("consumer-%d", i)
 		fpBytes, err := fp.Marshal()
