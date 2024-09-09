@@ -40,6 +40,8 @@ pub enum ContractError {
     SecP256K1Error(String), // TODO: inherit errors from k256
     #[error("Unauthorized")]
     Unauthorized,
+    #[error("Failed to verify the finality provider registration request: {0}")]
+    FinalityProviderVerificationError(String),
     #[error("Finality provider already exists: {0}")]
     FinalityProviderAlreadyExists(String),
     #[error("No finality providers are registered in this Consumer")]

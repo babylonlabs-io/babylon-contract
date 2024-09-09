@@ -1,5 +1,6 @@
 mod finality;
 mod staking;
+mod validation;
 
 pub mod contract;
 pub mod error;

@@ -7,6 +7,8 @@ use cosmwasm_std::StdError;
 pub enum StakingApiError {
     #[error("{0}")]
     Std(#[from] StdError),
+    #[error("Invalid address string: {0}")]
+    InvalidAddressString(String),
     #[error("{0}")]
     HexError(#[from] FromHexError),
     #[error("Staking tx hash hex string is not {0} chars long")]

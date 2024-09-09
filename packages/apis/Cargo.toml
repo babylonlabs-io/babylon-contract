@@ -6,7 +6,7 @@ edition.workspace = true
 [dependencies]
 babylon-bitcoin  = { path = "../bitcoin" }
 babylon-merkle   = { path = "../merkle" }
-
+bech32           = { workspace = true }
 cosmwasm-std     = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 hex              = { workspace = true }

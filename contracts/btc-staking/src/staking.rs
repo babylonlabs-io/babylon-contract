@@ -15,10 +15,12 @@ use crate::state::staking::{
     FP_DELEGATIONS, FP_SET, TOTAL_POWER,
 };
 use crate::state::BTC_HEIGHT;
+use crate::validation::verify_new_fp;
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
     UnbondedBtcDelegation,
 };
+
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 
@@ -83,10 +85,12 @@ pub fn handle_new_fp(
     }
     // validate the finality provider data
     new_fp.validate()?;
+
+    // verify the finality provider registration request
+    verify_new_fp(new_fp)?;
+
     // get DB object
     let fp = FinalityProvider::from(new_fp);
-
-    // TODO: Verify proof of possession
 
     // save to DB
     FPS.save(storage, &fp.btc_pk_hex, &fp)?;
