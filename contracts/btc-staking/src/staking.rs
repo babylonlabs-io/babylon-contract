@@ -4,7 +4,6 @@ use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Order, Response, Storage};
 use hex::ToHex;
-use k256::sha2::Digest;
 
 use std::str::FromStr;
 
@@ -27,6 +26,7 @@ use babylon_bindings::BabylonMsg;
 
 #[cfg(feature = "full-validation")]
 use bitcoin::Address;
+use k256::schnorr::VerifyingKey;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -113,8 +113,6 @@ fn verify_active_delegation(
     staking_tx: &Transaction,
 ) -> Result<(), ContractError> {
     // get staker's public key
-
-    use k256::schnorr::VerifyingKey;
 
     let staker_pk_bytes = hex::decode(&active_delegation.btc_pk_hex)
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
