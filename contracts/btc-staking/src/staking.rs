@@ -171,8 +171,6 @@ pub fn handle_active_delegation(
             continue;
         }
 
-        // TODO?: Skip FPs whose registered epochs are not finalised
-
         // Update staking tx hash by finality provider map
         let mut fp_delegations = FP_DELEGATIONS
             .may_load(storage, fp_btc_pk_hex)?

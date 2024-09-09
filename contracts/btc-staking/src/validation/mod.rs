@@ -59,7 +59,6 @@ pub fn verify_new_fp(_new_fp: &NewFinalityProvider) -> Result<(), ContractError>
 #[cfg(feature = "full-validation")]
 pub fn verify_new_fp(new_fp: &NewFinalityProvider) -> Result<(), ContractError> {
     // get FP's PK
-
     use babylon_apis::new_canonical_addr;
     let fp_pk_bytes = hex::decode(&new_fp.btc_pk_hex)
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
