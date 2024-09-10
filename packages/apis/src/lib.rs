@@ -38,7 +38,7 @@ pub fn new_canonical_addr(addr: &str, prefix: &str) -> Result<CanonicalAddr, Sta
     // check bech32 data
     let bytes = Vec::<u8>::from_base32(&decoded_data)
         .map_err(|_| StakingApiError::InvalidAddressString("invalid bech32 data".to_string()))?;
-    if bytes.len() < 1 || bytes.len() > 255 {
+    if bytes.is_empty() || bytes.len() > 255 {
         return Err(StakingApiError::InvalidAddressString(
             "Invalid canonical address length".to_string(),
         ));
