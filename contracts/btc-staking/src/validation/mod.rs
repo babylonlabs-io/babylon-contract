@@ -1,22 +1,22 @@
 use crate::error::ContractError;
 use crate::state::config::Params;
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, NewFinalityProvider};
-use babylon_apis::btc_staking_api::{BTCSigType, ProofOfPossessionBtc};
-use babylon_bitcoin::schnorr::verify_digest;
-use bitcoin::consensus::deserialize;
 use bitcoin::Transaction;
-use cosmwasm_std::CanonicalAddr;
-use hex::ToHex;
-use k256::{
-    schnorr::{Signature, VerifyingKey},
-    sha2::{Digest, Sha256},
-};
-use std::str::FromStr;
 
 #[cfg(feature = "full-validation")]
-use bitcoin::Address;
+use {
+    babylon_apis::btc_staking_api::{BTCSigType, ProofOfPossessionBtc},
+    babylon_bitcoin::schnorr::verify_digest,
+    bitcoin::{consensus::deserialize, Address},
+    cosmwasm_std::CanonicalAddr,
+    hex::ToHex,
+    k256::schnorr::{Signature, VerifyingKey},
+    k256::sha2::{Digest, Sha256},
+    std::str::FromStr,
+};
 
 /// verify_pop verifies the proof of possession of the given address.
+#[cfg(feature = "full-validation")]
 fn verify_pop(
     btc_pk: &VerifyingKey,
     address: CanonicalAddr,
@@ -157,7 +157,7 @@ pub fn verify_active_delegation(
             .map_err(|_| ContractError::InvalidBtcTx("invalid slashing rate".to_string()))?;
         babylon_btcstaking::tx_verify::check_transactions(
             &slashing_tx,
-            &staking_tx,
+            staking_tx,
             active_delegation.staking_output_idx,
             params.min_slashing_tx_fee_sat,
             slashing_rate,

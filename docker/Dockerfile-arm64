@@ -1,4 +1,4 @@
-FROM cosmwasm/rust-optimizer-arm64:0.16.0 as rust-optimizer
+FROM cosmwasm/rust-optimizer-arm64:0.16.0 AS rust-optimizer
 
 # clang and llvm are required for compiling rust-secp256k1 in rust-bitcoin
 RUN apk update && \
