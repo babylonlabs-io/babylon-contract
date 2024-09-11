@@ -156,9 +156,17 @@ pub fn handle_finality_signature(
     }
 
     // Ensure the finality provider has voting power at this height
-    fps()
+    if fps()
         .may_load_at_height(deps.storage, fp_btc_pk_hex, height)?
-        .ok_or_else(|| ContractError::NoVotingPower(fp_btc_pk_hex.to_string(), height))?;
+        .ok_or_else(|| ContractError::NoVotingPower(fp_btc_pk_hex.to_string(), height))?
+        .power
+        == 0
+    {
+        return Err(ContractError::NoVotingPower(
+            fp_btc_pk_hex.to_string(),
+            height,
+        ));
+    }
 
     // Ensure the signature is not empty
     if signature.is_empty() {
