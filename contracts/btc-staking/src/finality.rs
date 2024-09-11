@@ -5,7 +5,9 @@ use std::cmp::max;
 use std::collections::HashSet;
 
 use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{to_json_binary, DepsMut, Env, Event, Response, StdResult, Storage, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, DepsMut, Env, Event, Order, Response, StdResult, Storage, WasmMsg,
+};
 
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 use babylon_bindings::BabylonMsg;
@@ -19,7 +21,7 @@ use crate::state::finality::{BLOCKS, EVIDENCES, NEXT_HEIGHT, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
-use crate::state::staking::{fps, FPS, FP_SET};
+use crate::state::staking::{fps, FPS, FP_SET, TOTAL_POWER};
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -500,6 +502,47 @@ fn finalize_block(
         .add_attribute("module", "finality")
         .add_attribute("finalized_height", block.height.to_string());
     Ok(ev)
+}
+
+/// `compute_active_finality_providers` sorts all finality providers, counts the total voting
+/// power of top finality providers, and records them in the contract state
+pub fn compute_active_finality_providers(
+    storage: &mut dyn Storage,
+    env: Env,
+    max_active_fps: usize,
+) -> Result<(), ContractError> {
+    // Sort finality providers by power
+    let (finality_providers, running_total): (_, Vec<_>) = fps()
+        .idx
+        .power
+        .range(storage, None, None, Order::Descending)
+        .take(max_active_fps)
+        .scan(0u64, |acc, item| {
+            let (pk_hex, fp_state) = item.ok()?; // Error ends the iteration
+
+            let fp_info = FinalityProviderInfo {
+                btc_pk_hex: pk_hex,
+                power: fp_state.power,
+            };
+            *acc += fp_state.power;
+            Some((fp_info, *acc))
+        })
+        .filter(|(fp, _)| {
+            // Filter out FPs with no voting power
+            fp.power > 0
+        })
+        .unzip();
+
+    // TODO: Online FPs verification
+    // TODO: Filter out slashed / offline / jailed FPs
+    // Save the new set of active finality providers
+    // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
+    FP_SET.save(storage, env.block.height, &finality_providers)?;
+    // Save the total voting power of the top n finality providers
+    let total_power = running_total.last().copied().unwrap_or_default();
+    TOTAL_POWER.save(storage, &total_power)?;
+
+    Ok(())
 }
 
 #[cfg(test)]

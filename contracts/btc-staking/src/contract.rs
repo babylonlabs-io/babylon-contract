@@ -11,9 +11,11 @@ use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
+use crate::finality::{
+    compute_active_finality_providers, handle_finality_signature, handle_public_randomness_commit,
+};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::staking::{compute_active_finality_providers, handle_btc_staking};
+use crate::staking::handle_btc_staking;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::staking::ACTIVATED_HEIGHT;
 use crate::{finality, queries, state};
