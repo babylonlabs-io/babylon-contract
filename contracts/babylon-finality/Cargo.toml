@@ -1,0 +1,58 @@
+[package]
+name = "babylon-finality"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors = ["Babylon Labs Ltd. <admin@babylonlabs.io>"]
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[[bin]]
+name = "finality-schema"
+path = "src/bin/schema.rs"
+test = false
+
+[features]
+# Add feature "cranelift" to default if you need 32 bit or ARM support
+default = []
+# Use cranelift backend instead of singlepass. This is required for development on 32 bit or ARM machines.
+cranelift = ["cosmwasm-vm/cranelift"]
+# for quicker tests, cargo test --lib
+library = []
+# feature for enabling the full validation
+full-validation = []
+
+[dependencies]
+babylon-apis          = { path = "../../packages/apis" }
+babylon-bindings      = { path = "../../packages/bindings" }
+babylon-contract      = { path = "../babylon", features = [ "library" ] }
+babylon-merkle        = { path = "../../packages/merkle" }
+babylon-proto         = { path = "../../packages/proto" }
+babylon-btcstaking    = { path = "../../packages/btcstaking" }
+babylon-bitcoin       = { path = "../../packages/bitcoin" }
+eots                  = { path = "../../packages/eots" }
+
+bitcoin          = { workspace = true }
+cosmwasm-schema  = { workspace = true }
+cosmwasm-std     = { workspace = true }
+cw2              = { workspace = true }
+cw-storage-plus  = { workspace = true }
+cw-utils         = { workspace = true }
+derivative       = { workspace = true }
+hex              = { workspace = true }
+k256             = { workspace = true } 
+prost            = { workspace = true }
+thiserror        = { workspace = true }
+cw-controllers   = { workspace = true }
+
+[dev-dependencies]
+test-utils        = { path = "../../packages/test-utils" }
+babylon-proto     = { path = "../../packages/proto" }
+cosmwasm-vm       = { workspace = true }
+prost             = { workspace = true }
