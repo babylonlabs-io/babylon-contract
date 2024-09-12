@@ -1,6 +1,8 @@
 use crate::error::ContractError;
 use crate::state::config::Params;
-use babylon_apis::btc_staking_api::{ActiveBtcDelegation, NewFinalityProvider};
+use babylon_apis::btc_staking_api::{
+    ActiveBtcDelegation, NewFinalityProvider, SlashedBtcDelegation, UnbondedBtcDelegation,
+};
 use bitcoin::Transaction;
 
 #[cfg(feature = "full-validation")]
@@ -238,6 +240,46 @@ pub fn verify_active_delegation(
     // make static analyser happy with unused parameters
     #[cfg(not(feature = "full-validation"))]
     let _ = (params, active_delegation, staking_tx);
+
+    Ok(())
+}
+
+pub fn verify_undelegation(
+    height: u64,
+    undelegation: &UnbondedBtcDelegation,
+) -> Result<(), ContractError> {
+    // The following code is marked with `#[cfg(feature = "full-validation")]`
+    // so that it is included in the build if the `full-validation` feature is
+    // enabled.
+    // TODO: fix contract size when full-validation is enabled
+    #[cfg(feature = "full-validation")]
+    {
+        // TODO: Verify the signature on the unbonding tx is from the delegator
+    }
+
+    // make static analyser happy with unused parameters
+    #[cfg(not(feature = "full-validation"))]
+    let _ = (height, undelegation);
+
+    Ok(())
+}
+
+pub fn verify_slashed_delegation(
+    height: u64,
+    delegation: &SlashedBtcDelegation,
+) -> Result<(), ContractError> {
+    // The following code is marked with `#[cfg(feature = "full-validation")]`
+    // so that it is included in the build if the `full-validation` feature is
+    // enabled.
+    // TODO: fix contract size when full-validation is enabled
+    #[cfg(feature = "full-validation")]
+    {
+        // TODO: check if the SK corresponds to a FP PK that the delegation restakes to
+    }
+
+    // make static analyser happy with unused parameters
+    #[cfg(not(feature = "full-validation"))]
+    let _ = (height, delegation);
 
     Ok(())
 }

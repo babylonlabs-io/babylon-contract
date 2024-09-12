@@ -15,7 +15,9 @@ use crate::state::staking::{
     FP_DELEGATIONS, FP_SET, TOTAL_POWER,
 };
 use crate::state::BTC_HEIGHT;
-use crate::validation::{verify_active_delegation, verify_new_fp};
+use crate::validation::{
+    verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
+};
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
     UnbondedBtcDelegation,
@@ -79,10 +81,10 @@ pub fn handle_new_fp(
             new_fp.btc_pk_hex.clone(),
         ));
     }
-    // validate the finality provider data
+    // basic validations on the finality provider data
     new_fp.validate()?;
 
-    // verify the finality provider registration request
+    // verify the finality provider registration request (full or lite)
     verify_new_fp(new_fp)?;
 
     // get DB object
@@ -147,7 +149,7 @@ pub fn handle_active_delegation(
         ));
     }
 
-    // full validations on the active delegation
+    // verify the active delegation (full or lite)
     verify_active_delegation(&params, active_delegation, &staking_tx)?;
 
     // All good, construct BTCDelegation and insert BTC delegation
@@ -224,9 +226,13 @@ fn handle_undelegation(
     let staking_tx_hash = Txid::from_str(&undelegation.staking_tx_hash)?;
     let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
-    // TODO: Ensure the BTC delegation is active
+    // Ensure the BTC delegation is active
+    if !btc_del.is_active() {
+        return Err(ContractError::DelegationIsNotActive);
+    }
 
-    // TODO: Verify the signature on the unbonding tx is from the delegator
+    // verify the early unbonded delegation (full or lite)
+    verify_undelegation(height, undelegation)?;
 
     // Add the signature to the BTC delegation's undelegation and set back
     btc_undelegate(
@@ -268,7 +274,13 @@ fn handle_slashed_delegation(
     let staking_tx_hash = Txid::from_str(&delegation.staking_tx_hash)?;
     let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
-    // TODO: Ensure the BTC delegation is active
+    // Ensure the BTC delegation is active
+    if !btc_del.is_active() {
+        return Err(ContractError::DelegationIsNotActive);
+    }
+
+    // verify the slashed delegation (full or lite)
+    verify_slashed_delegation(height, delegation)?;
 
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;

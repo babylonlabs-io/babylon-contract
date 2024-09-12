@@ -50,6 +50,8 @@ pub enum ContractError {
     FinalityProviderNotFound(String),
     #[error("Staking tx hash already exists: {0}")]
     DelegationAlreadyExists(String),
+    #[error("BTC delegation is not active")]
+    DelegationIsNotActive,
     #[error("Invalid Btc tx: {0}")]
     InvalidBtcTx(String),
     #[error("Empty signature from the delegator")]
