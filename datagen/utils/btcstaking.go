@@ -16,9 +16,10 @@ import (
 )
 
 const (
-	FP_FILENAME                = "finality_provider_%d.dat"
-	BTC_DEL_FILENAME           = "btc_delegation_%d_{%s}.dat"
-	BTCSTAKING_PARAMS_FILENAME = "btcstaking_params.dat"
+	FP_FILENAME                    = "finality_provider_%d.dat"
+	BTC_DEL_FILENAME               = "btc_delegation_%d_{%s}.dat"
+	BTC_DEL_UNBONDING_SIG_FILENAME = "btc_unbonding_sig_%d_{%s}.dat"
+	BTCSTAKING_PARAMS_FILENAME     = "btcstaking_params.dat"
 )
 
 var (
@@ -182,6 +183,16 @@ func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuor
 
 	btcDelPath := filepath.Join(dir, fileName)
 	err = os.WriteFile(btcDelPath, btcDelBytes, 0644)
+	require.NoError(t, err)
+
+	// sign unbonding signature
+	unbondingSig, err := btcDel.SignUnbondingTx(bsParams, net, delSK)
+	require.NoError(t, err)
+	unbondingSigBytes := unbondingSig.Serialize()
+	// write unbonding signature to file
+	fileName = fmt.Sprintf(BTC_DEL_UNBONDING_SIG_FILENAME, idx, strings.Join(fpIdxListStr, ","))
+	unbondingSigPath := filepath.Join(dir, fileName)
+	err = os.WriteFile(unbondingSigPath, unbondingSigBytes, 0644)
 	require.NoError(t, err)
 }
 

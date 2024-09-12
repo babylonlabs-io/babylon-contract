@@ -223,6 +223,8 @@ fn handle_undelegation(
     // Basic stateless checks
     undelegation.validate()?;
 
+    let params = PARAMS.load(storage)?;
+
     let staking_tx_hash = Txid::from_str(&undelegation.staking_tx_hash)?;
     let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
@@ -232,7 +234,7 @@ fn handle_undelegation(
     }
 
     // verify the early unbonded delegation (full or lite)
-    verify_undelegation(height, undelegation)?;
+    verify_undelegation(&params, &btc_del, &undelegation.unbonding_tx_sig)?;
 
     // Add the signature to the BTC delegation's undelegation and set back
     btc_undelegate(
@@ -419,7 +421,8 @@ pub(crate) mod tests {
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use crate::contract::tests::{
-        create_new_finality_provider, get_active_btc_delegation, get_params, CREATOR, INIT_ADMIN,
+        create_new_finality_provider, get_active_btc_delegation, get_btc_del_unbonding_sig,
+        get_derived_btc_delegation, get_params, CREATOR, INIT_ADMIN,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -594,14 +597,11 @@ pub(crate) mod tests {
         let params = get_params();
         PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
-        // Build valid active delegation
-        let active_delegation = get_active_btc_delegation();
-
         // Register one FP first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp
-            .btc_pk_hex
-            .clone_from(&active_delegation.fp_btc_pk_list[0]);
+        let new_fp = create_new_finality_provider(1);
+
+        // Build valid active delegation
+        let active_delegation = get_derived_btc_delegation(1, &[1]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -635,10 +635,12 @@ pub(crate) mod tests {
             }
         );
 
+        let unbonding_sig = get_btc_del_unbonding_sig(1, &[1]);
+
         // Now send the undelegation message
         let undelegation = UnbondedBtcDelegation {
             staking_tx_hash: staking_tx_hash_hex.clone(),
-            unbonding_tx_sig: Binary::new(vec![0x01, 0x02, 0x03]), // TODO: Use a proper signature
+            unbonding_tx_sig: unbonding_sig.to_bytes().into(),
         };
 
         let msg = ExecuteMsg::BtcStaking {
@@ -660,7 +662,7 @@ pub(crate) mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
                 slashing_tx: active_delegation_undelegation.slashing_tx.into(),
-                delegator_unbonding_sig: vec![0x01, 0x02, 0x03],
+                delegator_unbonding_sig: unbonding_sig.to_bytes().into(),
                 delegator_slashing_sig: active_delegation_undelegation
                     .delegator_slashing_sig
                     .into(),

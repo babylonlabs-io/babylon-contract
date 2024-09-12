@@ -1,9 +1,10 @@
-use crate::error::ContractError;
 use crate::state::config::Params;
+use crate::{error::ContractError, state::staking::BtcDelegation};
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, NewFinalityProvider, SlashedBtcDelegation, UnbondedBtcDelegation,
 };
 use bitcoin::Transaction;
+use cosmwasm_std::Binary;
 
 #[cfg(feature = "full-validation")]
 use {
@@ -49,6 +50,42 @@ fn verify_pop(
     }
 
     Ok(())
+}
+
+#[cfg(feature = "full-validation")]
+fn get_pks(
+    staker_pk_hex: String,
+    fp_pk_hex_list: Vec<String>,
+    cov_pk_hex_list: Vec<String>,
+) -> Result<(VerifyingKey, Vec<VerifyingKey>, Vec<VerifyingKey>), ContractError> {
+    // get staker's public key
+    let staker_pk_bytes =
+        hex::decode(&staker_pk_hex).map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+    let staker_pk = VerifyingKey::from_bytes(&staker_pk_bytes)
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
+    // get all FP's public keys
+    let fp_pks: Vec<VerifyingKey> = fp_pk_hex_list
+        .iter()
+        .map(|pk_hex| {
+            let pk_bytes =
+                hex::decode(pk_hex).map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            VerifyingKey::from_bytes(&pk_bytes)
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
+        })
+        .collect::<Result<Vec<VerifyingKey>, ContractError>>()?;
+    // get all covenant members' public keys
+    let cov_pks: Vec<VerifyingKey> = cov_pk_hex_list
+        .iter()
+        .map(|pk_hex| {
+            let pk_bytes =
+                hex::decode(pk_hex).map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            VerifyingKey::from_bytes(&pk_bytes)
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
+        })
+        .collect::<Result<Vec<VerifyingKey>, ContractError>>()?;
+
+    Ok((staker_pk, fp_pks, cov_pks))
 }
 
 /// verify_new_fp verifies the new finality provider data (full validation version)
@@ -102,34 +139,11 @@ pub fn verify_active_delegation(
     // TODO: fix contract size when full-validation is enabled
     #[cfg(feature = "full-validation")]
     {
-        // get staker's public key
-        let staker_pk_bytes = hex::decode(&active_delegation.btc_pk_hex)
-            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-        let staker_pk = VerifyingKey::from_bytes(&staker_pk_bytes)
-            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-
-        // get all FP's public keys
-        let fp_pks: Vec<VerifyingKey> = active_delegation
-            .fp_btc_pk_list
-            .iter()
-            .map(|pk_hex| {
-                let pk_bytes = hex::decode(pk_hex)
-                    .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-                VerifyingKey::from_bytes(&pk_bytes)
-                    .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
-            })
-            .collect::<Result<Vec<VerifyingKey>, ContractError>>()?;
-        // get all covenant members' public keys
-        let cov_pks: Vec<VerifyingKey> = params
-            .covenant_pks
-            .iter()
-            .map(|pk_hex| {
-                let pk_bytes = hex::decode(pk_hex)
-                    .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-                VerifyingKey::from_bytes(&pk_bytes)
-                    .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
-            })
-            .collect::<Result<Vec<VerifyingKey>, ContractError>>()?;
+        let (staker_pk, fp_pks, cov_pks) = get_pks(
+            active_delegation.btc_pk_hex.clone(),
+            active_delegation.fp_btc_pk_list.clone(),
+            params.covenant_pks.clone(),
+        )?;
 
         // Check if data provided in request, matches data to which staking tx is
         // committed
@@ -245,8 +259,9 @@ pub fn verify_active_delegation(
 }
 
 pub fn verify_undelegation(
-    height: u64,
-    undelegation: &UnbondedBtcDelegation,
+    params: &Params,
+    btc_del: &BtcDelegation,
+    sig: &Binary,
 ) -> Result<(), ContractError> {
     // The following code is marked with `#[cfg(feature = "full-validation")]`
     // so that it is included in the build if the `full-validation` feature is
@@ -255,6 +270,47 @@ pub fn verify_undelegation(
     #[cfg(feature = "full-validation")]
     {
         // TODO: Verify the signature on the unbonding tx is from the delegator
+
+        // get keys
+        let (staker_pk, fp_pks, cov_pks) = get_pks(
+            btc_del.btc_pk_hex.clone(),
+            btc_del.fp_btc_pk_list.clone(),
+            params.covenant_pks.clone(),
+        )?;
+
+        // get the unbonding path script
+        let staking_tx: Transaction = deserialize(&btc_del.staking_tx)
+            .map_err(|_| ContractError::InvalidBtcTx(btc_del.staking_tx.encode_hex()))?;
+        let staking_output = &staking_tx.output[btc_del.staking_output_idx as usize];
+        let staking_time = (btc_del.end_height - btc_del.start_height) as u16;
+        let babylon_script_paths = babylon_btcstaking::scripts_utils::BabylonScriptPaths::new(
+            &staker_pk,
+            &fp_pks,
+            &cov_pks,
+            params.covenant_quorum as usize,
+            staking_time,
+        )?;
+        let unbonding_path_script = babylon_script_paths.unbonding_path_script;
+
+        // get unbonding tx
+        let unbonding_tx: Transaction = deserialize(&btc_del.undelegation_info.unbonding_tx)
+            .map_err(|_| {
+                ContractError::InvalidBtcTx(btc_del.undelegation_info.unbonding_tx.encode_hex())
+            })?;
+
+        // get the staker's signature on the unbonding tx
+        let staker_sig = k256::schnorr::Signature::try_from(sig.as_slice())
+            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
+        // Verify the signature
+        babylon_btcstaking::sig_verify::verify_transaction_sig_with_output(
+            &unbonding_tx,
+            staking_output,
+            unbonding_path_script.as_script(),
+            &staker_pk,
+            &staker_sig,
+        )
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
     }
 
     // make static analyser happy with unused parameters

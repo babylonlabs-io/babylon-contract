@@ -296,7 +296,11 @@ pub(crate) mod tests {
     };
     use cw_controllers::AdminResponse;
     use hex::ToHex;
-    use test_utils::{get_btc_delegation, get_finality_provider, get_pub_rand_commit};
+    use k256::schnorr::Signature;
+    use test_utils::{
+        get_btc_del_unbonding_sig_bytes, get_btc_delegation, get_finality_provider,
+        get_pub_rand_commit,
+    };
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
@@ -400,6 +404,11 @@ pub(crate) mod tests {
     pub(crate) fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
         let del = get_btc_delegation(del_id, fp_ids.to_vec());
         new_active_btc_delegation(del)
+    }
+
+    pub(crate) fn get_btc_del_unbonding_sig(del_id: i32, fp_ids: &[i32]) -> Signature {
+        let sig_bytes = get_btc_del_unbonding_sig_bytes(del_id, fp_ids.to_vec());
+        Signature::try_from(sig_bytes.as_slice()).unwrap()
     }
 
     /// Get public randomness public key, commitment, and signature information
