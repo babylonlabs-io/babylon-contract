@@ -17,11 +17,11 @@ use crate::error::ContractError;
 use crate::msg::FinalityProviderInfo;
 use crate::staking;
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES, NEXT_HEIGHT, SIGNATURES};
+use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES, TOTAL_POWER};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
-use crate::state::staking::{fps, FPS, FP_SET, TOTAL_POWER};
+use crate::state::staking::{fps, FPS};
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,

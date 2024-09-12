@@ -1,7 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 
-use crate::msg::FinalityProviderInfo;
 use crate::state::fp_index::FinalityProviderIndexes;
 use babylon_apis::btc_staking_api::{BTCDelegationStatus, FinalityProvider, HASH_SIZE};
 use babylon_apis::{btc_staking_api, Bytes};
@@ -215,12 +214,6 @@ pub const FP_POWER_KEY: &str = "fp_state__power";
 
 /// The height at which the contract gets its first delegation
 pub const ACTIVATED_HEIGHT: Item<u64> = Item::new("activated_height");
-
-/// `FP_SET` is the calculated list of the active finality providers by height
-pub const FP_SET: Map<u64, Vec<FinalityProviderInfo>> = Map::new("fp_set");
-/// `TOTAL_POWER` is the total power of all finality providers
-// FIXME: Store by height? Remove? Not currently being used in the contract
-pub const TOTAL_POWER: Item<u64> = Item::new("total_power");
 
 /// Indexed snapshot map for finality providers.
 ///
