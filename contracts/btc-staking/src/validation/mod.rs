@@ -330,7 +330,9 @@ pub fn verify_slashed_delegation(
     // TODO: fix contract size when full-validation is enabled
     #[cfg(feature = "full-validation")]
     {
-        // TODO: check if the SK corresponds to a FP PK that the delegation restakes to
+        /*
+            check if the SK corresponds to a FP PK that the delegation restakes to
+        */
 
         // get the slashed FP's SK
         let slashed_fp_sk = hex::decode(&slashed_fp_sk_hex)
