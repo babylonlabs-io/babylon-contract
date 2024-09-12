@@ -11,10 +11,8 @@ use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::finality::{
-    compute_active_finality_providers, handle_finality_signature, handle_public_randomness_commit,
-};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::queries;
 use crate::staking::handle_btc_staking;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::staking::ACTIVATED_HEIGHT;
@@ -91,46 +89,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
             &queries::finality_providers_by_power(deps, start_after, limit)?,
         )?),
-        QueryMsg::FinalitySignature { btc_pk_hex, height } => Ok(to_json_binary(
-            &queries::finality_signature(deps, btc_pk_hex, height)?,
-        )?),
-        QueryMsg::PubRandCommit {
-            btc_pk_hex,
-            start_after,
-            limit,
-            reverse,
-        } => Ok(to_json_binary(
-            &state::public_randomness::get_pub_rand_commit(
-                deps.storage,
-                &btc_pk_hex,
-                start_after,
-                limit,
-                reverse,
-            )?,
-        )?),
-        QueryMsg::FirstPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
-            &state::public_randomness::get_first_pub_rand_commit(deps.storage, &btc_pk_hex)?,
-        )?),
-        QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
-            &state::public_randomness::get_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
-        )?),
         QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
-        QueryMsg::Block { height } => Ok(to_json_binary(&queries::block(deps, height)?)?),
-        QueryMsg::Blocks {
-            start_after,
-            limit,
-            finalised,
-            reverse,
-        } => Ok(to_json_binary(&queries::blocks(
-            deps,
-            start_after,
-            limit,
-            finalised,
-            reverse,
-        )?)?),
-        QueryMsg::Evidence { btc_pk_hex, height } => Ok(to_json_binary(&queries::evidence(
-            deps, btc_pk_hex, height,
-        )?)?),
     }
 }
 
@@ -166,37 +125,6 @@ pub fn execute(
             &slashed_del,
             &unbonded_del,
         ),
-        ExecuteMsg::SubmitFinalitySignature {
-            fp_pubkey_hex,
-            height,
-            pub_rand,
-            proof,
-            block_hash,
-            signature,
-        } => handle_finality_signature(
-            deps,
-            env,
-            &fp_pubkey_hex,
-            height,
-            &pub_rand,
-            &proof,
-            &block_hash,
-            &signature,
-        ),
-        ExecuteMsg::CommitPublicRandomness {
-            fp_pubkey_hex,
-            start_height,
-            num_pub_rand,
-            commitment,
-            signature,
-        } => handle_public_randomness_commit(
-            deps,
-            &fp_pubkey_hex,
-            start_height,
-            num_pub_rand,
-            &commitment,
-            &signature,
-        ),
     }
 }
 
@@ -224,23 +152,12 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 }
 
 fn handle_end_block(
-    deps: &mut DepsMut,
-    env: Env,
+    _deps: &mut DepsMut,
+    _env: Env,
     _hash_hex: &str,
-    app_hash_hex: &str,
+    _app_hash_hex: &str,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    // If the BTC staking protocol is activated i.e. there exists a height where at least one
-    // finality provider has voting power, start indexing and tallying blocks
-    let mut res = Response::new();
-    if let Some(activated_height) = ACTIVATED_HEIGHT.may_load(deps.storage)? {
-        // Index the current block
-        let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
-        res = res.add_event(ev);
-        // Tally all non-finalised blocks
-        let events = finality::tally_blocks(deps, activated_height, env.block.height)?;
-        res = res.add_events(events);
-    }
-    Ok(res)
+    Ok(Response::new())
 }
 
 #[cfg(test)]
@@ -272,8 +189,8 @@ pub(crate) mod tests {
         get_fp_sk_bytes, get_pub_rand_commit,
     };
 
-    pub(crate) const CREATOR: &str = "creator";
-    pub(crate) const INIT_ADMIN: &str = "initial_admin";
+    const CREATOR: &str = "creator";
+    const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
 
     fn new_params(params: ProtoParams) -> Params {

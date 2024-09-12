@@ -3,22 +3,19 @@ use std::str::FromStr;
 use bitcoin::hashes::Hash;
 use bitcoin::Txid;
 
-use cosmwasm_std::Order::{Ascending, Descending};
+use cosmwasm_std::Order::Descending;
 use cosmwasm_std::{Deps, Order, StdResult};
 use cw_storage_plus::Bound;
 
 use babylon_apis::btc_staking_api::FinalityProvider;
-use babylon_apis::finality_api::IndexedBlock;
 
 use crate::error::ContractError;
 use crate::msg::{
-    ActivatedHeightResponse, BlocksResponse, BtcDelegationsResponse, DelegationsByFPResponse,
-    EvidenceResponse, FinalityProviderInfo, FinalityProvidersByPowerResponse,
-    FinalityProvidersResponse, FinalitySignatureResponse,
+    ActivatedHeightResponse, BtcDelegationsResponse, DelegationsByFPResponse, FinalityProviderInfo,
+    FinalityProvidersByPowerResponse, FinalityProvidersResponse,
 };
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES};
 use crate::state::staking::{
     fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, FPS, FP_DELEGATIONS,
 };
@@ -173,67 +170,11 @@ pub fn finality_providers_by_power(
     Ok(FinalityProvidersByPowerResponse { fps })
 }
 
-pub fn finality_signature(
-    deps: Deps,
-    btc_pk_hex: String,
-    height: u64,
-) -> StdResult<FinalitySignatureResponse> {
-    match crate::state::finality::SIGNATURES.may_load(deps.storage, (height, &btc_pk_hex))? {
-        Some(sig) => Ok(FinalitySignatureResponse { signature: sig }),
-        None => Ok(FinalitySignatureResponse {
-            signature: Vec::new(),
-        }), // Empty signature response
-    }
-}
-
 pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractError> {
     let activated_height = ACTIVATED_HEIGHT.may_load(deps.storage)?.unwrap_or_default();
     Ok(ActivatedHeightResponse {
         height: activated_height,
     })
-}
-
-pub fn block(deps: Deps, height: u64) -> StdResult<IndexedBlock> {
-    BLOCKS.load(deps.storage, height)
-}
-
-/// Get list of blocks.
-/// `start_after`: The height to start after, if any.
-/// `finalised`: List only finalised blocks if true, otherwise list all blocks.
-/// `reverse`: List in descending order if present and true, otherwise in ascending order.
-pub fn blocks(
-    deps: Deps,
-    start_after: Option<u64>,
-    limit: Option<u32>,
-    finalised: Option<bool>,
-    reverse: Option<bool>,
-) -> Result<BlocksResponse, ContractError> {
-    let finalised = finalised.unwrap_or_default();
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start_after = start_after.map(Bound::exclusive);
-    let (start, end, order) = if reverse.unwrap_or(false) {
-        (None, start_after, Descending)
-    } else {
-        (start_after, None, Ascending)
-    };
-    let blocks = BLOCKS
-        .range_raw(deps.storage, start, end, order)
-        .filter(|item| {
-            if let Ok((_, block)) = item {
-                !finalised || block.finalized
-            } else {
-                true // don't filter errors
-            }
-        })
-        .take(limit)
-        .map(|item| item.map(|(_, v)| v))
-        .collect::<Result<Vec<IndexedBlock>, _>>()?;
-    Ok(BlocksResponse { blocks })
-}
-
-pub fn evidence(deps: Deps, btc_pk_hex: String, height: u64) -> StdResult<EvidenceResponse> {
-    let evidence = EVIDENCES.may_load(deps.storage, (&btc_pk_hex, height))?;
-    Ok(EvidenceResponse { evidence })
 }
 
 #[cfg(test)]
@@ -242,7 +183,7 @@ mod tests {
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
-    use cosmwasm_std::{from_json, Storage};
+    use cosmwasm_std::{from_json, Binary, Env, Storage};
 
     use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
 
@@ -251,13 +192,19 @@ mod tests {
     };
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
-    use crate::finality::tests::mock_env_height;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
     use crate::staking::tests::staking_tx_hash;
     use crate::state::config::PARAMS;
     use crate::state::staking::{BtcDelegation, FinalityProviderState, FP_STATE_KEY};
 
     const CREATOR: &str = "creator";
+
+    fn mock_env_height(height: u64) -> Env {
+        let mut env = mock_env();
+        env.block.height = height;
+
+        env
+    }
 
     // Sort delegations by staking tx hash
     fn sort_delegations(dels: &[BtcDelegation]) -> Vec<BtcDelegation> {
@@ -649,7 +596,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
-        let initial_env = crate::finality::tests::mock_env_height(10);
+        let initial_env = mock_env_height(10);
 
         instantiate(
             deps.as_mut(),
