@@ -1,8 +1,6 @@
 use crate::state::config::Params;
 use crate::{error::ContractError, state::staking::BtcDelegation};
-use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, NewFinalityProvider, SlashedBtcDelegation, UnbondedBtcDelegation,
-};
+use babylon_apis::btc_staking_api::{ActiveBtcDelegation, NewFinalityProvider};
 use bitcoin::Transaction;
 use cosmwasm_std::Binary;
 
@@ -13,7 +11,7 @@ use {
     bitcoin::{consensus::deserialize, Address},
     cosmwasm_std::CanonicalAddr,
     hex::ToHex,
-    k256::schnorr::{Signature, VerifyingKey},
+    k256::schnorr::{Signature, SigningKey, VerifyingKey},
     k256::sha2::{Digest, Sha256},
     std::str::FromStr,
 };
@@ -269,7 +267,9 @@ pub fn verify_undelegation(
     // TODO: fix contract size when full-validation is enabled
     #[cfg(feature = "full-validation")]
     {
-        // TODO: Verify the signature on the unbonding tx is from the delegator
+        /*
+            Verify the signature on the unbonding tx is from the delegator
+        */
 
         // get keys
         let (staker_pk, fp_pks, cov_pks) = get_pks(
@@ -315,14 +315,14 @@ pub fn verify_undelegation(
 
     // make static analyser happy with unused parameters
     #[cfg(not(feature = "full-validation"))]
-    let _ = (height, undelegation);
+    let _ = (params, btc_del, sig);
 
     Ok(())
 }
 
 pub fn verify_slashed_delegation(
-    height: u64,
-    delegation: &SlashedBtcDelegation,
+    active_delegation: &BtcDelegation,
+    slashed_fp_sk_hex: String,
 ) -> Result<(), ContractError> {
     // The following code is marked with `#[cfg(feature = "full-validation")]`
     // so that it is included in the build if the `full-validation` feature is
@@ -331,11 +331,29 @@ pub fn verify_slashed_delegation(
     #[cfg(feature = "full-validation")]
     {
         // TODO: check if the SK corresponds to a FP PK that the delegation restakes to
+
+        // get the slashed FP's SK
+        let slashed_fp_sk = hex::decode(&slashed_fp_sk_hex)
+            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+        let slashed_fp_sk = SigningKey::from_bytes(&slashed_fp_sk)
+            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
+        // calculate the corresponding VerifyingKey
+        let slashed_fp_pk = slashed_fp_sk.verifying_key();
+        let slashed_fp_pk_hex = hex::encode(slashed_fp_pk.to_bytes());
+
+        // check if the PK corresponds to a FP PK that the delegation restakes to
+        if !active_delegation
+            .fp_btc_pk_list
+            .contains(&slashed_fp_pk_hex)
+        {
+            return Err(ContractError::FinalityProviderNotRegistered);
+        }
     }
 
     // make static analyser happy with unused parameters
     #[cfg(not(feature = "full-validation"))]
-    let _ = (height, delegation);
+    let _ = (active_delegation, slashed_fp_sk_hex);
 
     Ok(())
 }

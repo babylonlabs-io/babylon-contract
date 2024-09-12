@@ -296,10 +296,10 @@ pub(crate) mod tests {
     };
     use cw_controllers::AdminResponse;
     use hex::ToHex;
-    use k256::schnorr::Signature;
+    use k256::schnorr::{Signature, SigningKey};
     use test_utils::{
         get_btc_del_unbonding_sig_bytes, get_btc_delegation, get_finality_provider,
-        get_pub_rand_commit,
+        get_fp_sk_bytes, get_pub_rand_commit,
     };
 
     pub(crate) const CREATOR: &str = "creator";
@@ -430,6 +430,11 @@ pub(crate) mod tests {
     pub(crate) fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
         let fp = get_finality_provider(id);
         new_finality_provider(fp)
+    }
+
+    pub(crate) fn create_new_fp_sk(id: i32) -> SigningKey {
+        let fp_sk_bytes = get_fp_sk_bytes(id);
+        SigningKey::from_bytes(&fp_sk_bytes).unwrap()
     }
 
     #[test]

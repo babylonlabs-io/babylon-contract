@@ -17,6 +17,7 @@ import (
 
 const (
 	FP_FILENAME                    = "finality_provider_%d.dat"
+	FP_SK_FILENAME                 = "fp_sk_%d.dat"
 	BTC_DEL_FILENAME               = "btc_delegation_%d_{%s}.dat"
 	BTC_DEL_UNBONDING_SIG_FILENAME = "btc_unbonding_sig_%d_{%s}.dat"
 	BTCSTAKING_PARAMS_FILENAME     = "btcstaking_params.dat"
@@ -88,6 +89,13 @@ func GenFinalityProviders(dir string, numFPs int) {
 		fileName := fmt.Sprintf(FP_FILENAME, i)
 		fpPath := filepath.Join(dir, fileName)
 		err = os.WriteFile(fpPath, fpBytes, 0644)
+		require.NoError(t, err)
+
+		// write FP's BTC SK to file
+		fpSKBytes := fpBTCSK.Serialize()
+		fileName = fmt.Sprintf(FP_SK_FILENAME, i)
+		fpSKPath := filepath.Join(dir, fileName)
+		err = os.WriteFile(fpSKPath, fpSKBytes, 0644)
 		require.NoError(t, err)
 	}
 }

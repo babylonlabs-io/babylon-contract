@@ -22,6 +22,7 @@ const BTC_TIMESTAMP_HEADER1: &str = "btc_timestamp_header1.dat";
 
 const PARAMS_DATA: &str = "btcstaking_params.dat";
 const FINALITY_PROVIDER_DATA: &str = "finality_provider_{}.dat";
+const FP_SK_DATA: &str = "fp_sk_{}.dat";
 const BTC_DELEGATION_DATA: &str = "btc_delegation_{idx}_{fp_idx_list}.dat";
 const BTC_DEL_UNBONDING_SIG_DATA: &str = "btc_unbonding_sig_{idx}_{fp_idx_list}.dat";
 const COMMIT_PUB_RAND_DATA: &str = "commit_pub_rand_msg.dat";
@@ -152,6 +153,12 @@ pub fn get_finality_provider(id: i32) -> FinalityProvider {
     let fp_path = find_testdata_path().join(FINALITY_PROVIDER_DATA.replace("{}", &id.to_string()));
     let fp_data: &[u8] = &fs::read(fp_path).unwrap();
     FinalityProvider::decode(fp_data).unwrap()
+}
+
+pub fn get_fp_sk_bytes(id: i32) -> Vec<u8> {
+    let fp_sk_path = find_testdata_path().join(FP_SK_DATA.replace("{}", &id.to_string()));
+    let fp_sk_data: &[u8] = &fs::read(fp_sk_path).unwrap();
+    fp_sk_data.to_vec()
 }
 
 pub fn get_btc_delegation(idx: i32, fp_idx_list: Vec<i32>) -> BtcDelegation {
