@@ -9,19 +9,16 @@ use cosmwasm_std::{
     to_json_binary, DepsMut, Env, Event, Order, Response, StdResult, Storage, WasmMsg,
 };
 
-use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
-use babylon_bindings::BabylonMsg;
-use babylon_merkle::Proof;
-
 use crate::error::ContractError;
-use crate::msg::FinalityProviderInfo;
-use crate::staking;
 use crate::state::config::{CONFIG, PARAMS};
 use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES, TOTAL_POWER};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
-use crate::state::staking::{fps, FPS};
+use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_bindings::BabylonMsg;
+use babylon_merkle::Proof;
+use btc_staking::msg::FinalityProviderInfo;
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -39,7 +36,10 @@ pub fn handle_public_randomness_commit(
     // TODO: ensure log_2(num_pub_rand) is an integer?
 
     // Ensure the finality provider is registered
-    if !FPS.has(deps.storage, fp_pubkey_hex) {
+    if !deps.querier.query_wasm_smart(
+        CONFIG.load(deps.storage)?.staking,
+        btc_staking::msg::QueryMsg::FinalityProvider {},
+    )? {
         return Err(ContractError::FinalityProviderNotFound(
             fp_pubkey_hex.to_string(),
         ));
@@ -129,7 +129,12 @@ pub fn handle_finality_signature(
     signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
-    let fp = FPS.load(deps.storage, fp_btc_pk_hex)?;
+    let fp = deps.querier.query_wasm_smart(
+        CONFIG.load(deps.storage)?.staking,
+        &btc_staking::msg::QueryMsg::FinalityProvider {
+            btc_pk_hex: fp_btc_pk_hex.to_string(),
+        },
+    )?;
 
     // Ensure the finality provider is not slashed at this time point
     // NOTE: It's possible that the finality provider equivocates for height h, and the signature is
@@ -156,11 +161,20 @@ pub fn handle_finality_signature(
     }
 
     // Ensure the finality provider has voting power at this height
-    if fps()
-        .may_load_at_height(deps.storage, fp_btc_pk_hex, height)?
-        .ok_or_else(|| ContractError::NoVotingPower(fp_btc_pk_hex.to_string(), height))?
-        .power
-        == 0
+    // if fps()
+    //     .may_load_at_height(deps.storage, fp_btc_pk_hex, height)?
+    //     .ok_or_else(|| ContractError::NoVotingPower(fp_btc_pk_hex.to_string(), height))?
+    //     .power
+    //     == 0
+    if deps.querier.query_wasm_smart(
+        CONFIG.load(deps.storage)?.staking,
+        btc_staking::msg::QueryMsg::FinalityProvider {},
+    )? {
+        return Err(ContractError::NoVotingPower(
+            fp_btc_pk_hex.to_string(),
+            height,
+        ));
+    }
     {
         return Err(ContractError::NoVotingPower(
             fp_btc_pk_hex.to_string(),
@@ -554,7 +568,11 @@ pub fn compute_active_finality_providers(
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
+    use crate::contract::instantiate;
+    use crate::contract::tests::{create_new_finality_provider, get_public_randomness_commitment};
+    use crate::error::ContractError;
+    use crate::msg::InstantiateMsg;
     use babylon_apis::btc_staking_api::SudoMsg;
     use babylon_apis::finality_api::IndexedBlock;
     use babylon_bindings::BabylonMsg;
@@ -565,14 +583,11 @@ pub(crate) mod tests {
     use hex::ToHex;
     use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
 
-    use crate::contract::tests::{
-        create_new_finality_provider, get_params, get_public_randomness_commitment, CREATOR,
-    };
-    use crate::contract::{execute, instantiate};
-    use crate::msg::{ExecuteMsg, FinalitySignatureResponse, InstantiateMsg};
-    use crate::queries;
+    const CREATOR: &str = "creator";
+    const INIT_ADMIN: &str = "initial_admin";
+    const NEW_ADMIN: &str = "new_admin";
 
-    pub(crate) fn mock_env_height(height: u64) -> Env {
+    fn mock_env_height(height: u64) -> Env {
         let mut env = mock_env();
         env.block.height = height;
 
@@ -580,11 +595,11 @@ pub(crate) mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn call_begin_block(
+    pub fn call_begin_block(
         deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier>,
         app_hash: &[u8],
         height: u64,
-    ) -> Result<Response<BabylonMsg>, crate::error::ContractError> {
+    ) -> Result<Response<BabylonMsg>, ContractError> {
         let env = mock_env_height(height);
         // Hash is not used in the begin-block handler
         let hash_hex = "deadbeef".to_string();
@@ -601,11 +616,11 @@ pub(crate) mod tests {
     }
 
     #[track_caller]
-    pub(crate) fn call_end_block(
+    pub fn call_end_block(
         deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier>,
         app_hash: &[u8],
         height: u64,
-    ) -> Result<Response<BabylonMsg>, crate::error::ContractError> {
+    ) -> Result<Response<BabylonMsg>, ContractError> {
         let env = mock_env_height(height);
         // Hash is not used in the end-block handler
         let hash_hex = "deadbeef".to_string();
@@ -712,11 +727,11 @@ pub(crate) mod tests {
         let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
 
         // Activated height is not set
-        let res = crate::queries::activated_height(deps.as_ref()).unwrap();
+        let res = btc_staking::queries::activated_height(deps.as_ref()).unwrap();
         assert_eq!(res.height, 0);
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del1 = btc_staking::contract::tests::get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
 
         let msg = ExecuteMsg::BtcStaking {
@@ -729,7 +744,7 @@ pub(crate) mod tests {
         execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Activated height is now set
-        let activated_height = crate::queries::activated_height(deps.as_ref()).unwrap();
+        let activated_height = btc_staking::queries::activated_height(deps.as_ref()).unwrap();
         assert_eq!(activated_height.height, initial_height + 1);
 
         // Submit public randomness commitment for the FP and the involved heights
@@ -795,7 +810,7 @@ pub(crate) mod tests {
         .unwrap();
 
         // Query finality signature for that exact height
-        let sig = crate::queries::finality_signature(
+        let sig = btc_staking::queries::finality_signature(
             deps.as_ref(),
             pk_hex.to_string(),
             initial_height + 1,
@@ -852,7 +867,7 @@ pub(crate) mod tests {
         execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del1 = btc_staking::contract::tests::get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
 
         let msg = ExecuteMsg::BtcStaking {
@@ -962,7 +977,7 @@ pub(crate) mod tests {
         assert_eq!(0, res.messages.len());
 
         // Assert the submitted block has been indexed and finalised
-        let indexed_block = crate::queries::block(deps.as_ref(), submit_height).unwrap();
+        let indexed_block = btc_staking::queries::block(deps.as_ref(), submit_height).unwrap();
         assert_eq!(
             indexed_block,
             IndexedBlock {
@@ -1015,7 +1030,7 @@ pub(crate) mod tests {
         let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del1 = btc_staking::contract::tests::get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
 
         let msg = ExecuteMsg::BtcStaking {
@@ -1103,7 +1118,7 @@ pub(crate) mod tests {
 
         // Assert the double signing evidence is proper
         let btc_pk = hex::decode(pk_hex.clone()).unwrap();
-        let evidence = crate::queries::evidence(deps.as_ref(), pk_hex.clone(), submit_height)
+        let evidence = btc_staking::queries::evidence(deps.as_ref(), pk_hex.clone(), submit_height)
             .unwrap()
             .evidence
             .unwrap();
@@ -1113,7 +1128,7 @@ pub(crate) mod tests {
         // Assert the slashing propagation msg is there
         assert_eq!(1, res.messages.len());
         // Assert the slashing propagation msg is proper
-        let babylon_addr = crate::queries::config(deps.as_ref()).unwrap().babylon;
+        let babylon_addr = btc_staking::queries::config(deps.as_ref()).unwrap().babylon;
         // Assert the slashing event is there
         assert_eq!(1, res.events.len());
         // Assert the slashing event is proper
@@ -1138,7 +1153,7 @@ pub(crate) mod tests {
         call_end_block(&mut deps, "deadbeef02".as_bytes(), final_height).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
-        let indexed_block = crate::queries::block(deps.as_ref(), submit_height).unwrap();
+        let indexed_block = btc_staking::queries::block(deps.as_ref(), submit_height).unwrap();
         assert_eq!(
             indexed_block,
             IndexedBlock {
@@ -1149,7 +1164,7 @@ pub(crate) mod tests {
         );
 
         // Assert the finality provider has been slashed
-        let fp = crate::queries::finality_provider(deps.as_ref(), pk_hex).unwrap();
+        let fp = btc_staking::queries::finality_provider(deps.as_ref(), pk_hex).unwrap();
         assert_eq!(fp.slashed_height, submit_height);
     }
 }

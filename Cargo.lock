@@ -192,6 +192,7 @@ dependencies = [
  "babylon-merkle",
  "babylon-proto",
  "bitcoin",
+ "btc-staking",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-vm",

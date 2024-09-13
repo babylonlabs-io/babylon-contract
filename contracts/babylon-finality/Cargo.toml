@@ -36,6 +36,7 @@ babylon-merkle        = { path = "../../packages/merkle" }
 babylon-proto         = { path = "../../packages/proto" }
 babylon-btcstaking    = { path = "../../packages/btcstaking" }
 babylon-bitcoin       = { path = "../../packages/bitcoin" }
+btc-staking           = { path = "../btc-staking", features = [ "library" ] }
 eots                  = { path = "../../packages/eots" }
 
 bitcoin          = { workspace = true }
