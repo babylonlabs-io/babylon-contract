@@ -204,8 +204,7 @@ pub fn verify_active_delegation(
         let staker_sig =
             k256::schnorr::Signature::try_from(active_delegation.delegator_slashing_sig.as_slice())
                 .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
-
-        // Verify the signature
+        // Verify the staker's signature
         babylon_btcstaking::sig_verify::verify_transaction_sig_with_output(
             &slashing_tx,
             staking_output,
@@ -261,28 +260,155 @@ pub fn verify_active_delegation(
         // - is smaller than math.MaxUint16 (due to check in req.ValidateBasic())
 
         /*
-            TODO: Early unbonding logic
+            Early unbonding logic
         */
 
-        // TODO: Deserialize provided transactions
+        // decode unbonding tx
+        let unbonding_tx = &active_delegation.undelegation_info.unbonding_tx;
+        let unbonding_tx: Transaction = deserialize(unbonding_tx)
+            .map_err(|_| ContractError::InvalidBtcTx(unbonding_tx.encode_hex()))?;
+        // decode unbonding slashing tx
+        let unbonding_slashing_tx = &active_delegation.undelegation_info.slashing_tx;
+        let unbonding_slashing_tx: Transaction = deserialize(unbonding_slashing_tx)
+            .map_err(|_| ContractError::InvalidBtcTx(unbonding_slashing_tx.encode_hex()))?;
 
-        // TODO: Check that the unbonding tx input is pointing to staking tx
-
-        // TODO: Check that staking tx output index matches unbonding tx output index
-
-        // TODO: Build unbonding info
-
-        // TODO: Get unbonding output index
-
-        // TODO: Check that slashing tx and unbonding tx are valid and consistent
-
-        // TODO: Check staker signature against slashing path of the unbonding tx
-
-        // TODO: Verify covenant signatures over unbonding slashing tx
+        // Check that the unbonding tx input is pointing to staking tx
+        if unbonding_tx.input[0].previous_output.txid != staking_tx.txid()
+            || unbonding_tx.input[0].previous_output.vout != active_delegation.staking_output_idx
+        {
+            return Err(ContractError::InvalidBtcTx(
+                "Unbonding transaction must spend staking output".to_string(),
+            ));
+        }
 
         // TODO: Check unbonding tx fees against staking tx
         // - Fee is greater than 0.
         // - Unbonding output value is at least `MinUnbondingValue` percentage of staking output value.
+
+        let babylon_unbonding_script_paths =
+            babylon_btcstaking::scripts_utils::BabylonScriptPaths::new(
+                &staker_pk,
+                &fp_pks,
+                &cov_pks,
+                params.covenant_quorum as usize,
+                staking_time,
+            )?;
+
+        // TODO: Ensure the unbonding tx has valid unbonding output, and
+        // get the unbonding output index
+        let unbonding_output_idx = 0;
+        let unbonding_output = &unbonding_tx.output[unbonding_output_idx as usize];
+
+        let unbonding_time = active_delegation.unbonding_time as u16;
+
+        // Check that unbonding tx and unbonding slashing tx are consistent
+        babylon_btcstaking::tx_verify::check_transactions(
+            &unbonding_slashing_tx,
+            &unbonding_tx,
+            unbonding_output_idx,
+            params.min_slashing_tx_fee_sat,
+            slashing_rate,
+            &slashing_address,
+            &staker_pk,
+            unbonding_time,
+        )?;
+
+        /*
+            Check staker signature against slashing path of the unbonding tx
+        */
+        // get unbonding slashing path script
+        let unbonding_slashing_path_script = babylon_unbonding_script_paths.slashing_path_script;
+        // get the staker's signature on the unbonding slashing tx
+        let unbonding_slashing_sig = active_delegation
+            .undelegation_info
+            .delegator_slashing_sig
+            .as_slice();
+        let unbonding_slashing_sig = k256::schnorr::Signature::try_from(unbonding_slashing_sig)
+            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+        // Verify the staker's signature
+        babylon_btcstaking::sig_verify::verify_transaction_sig_with_output(
+            &unbonding_slashing_tx,
+            &unbonding_tx.output[unbonding_output_idx as usize],
+            unbonding_slashing_path_script.as_script(),
+            &staker_pk,
+            &unbonding_slashing_sig,
+        )
+        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+
+        /*
+            verify covenant signatures over unbonding tx
+        */
+        let unbonding_path_script = babylon_script_paths.unbonding_path_script;
+        for cov_sig in active_delegation
+            .undelegation_info
+            .covenant_unbonding_sig_list
+            .iter()
+        {
+            // get covenant public key
+            let cov_pk = VerifyingKey::from_bytes(&cov_sig.pk)
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            // ensure covenant public key is in the params
+            if !params
+                .covenant_pks
+                .contains(&hex::encode(cov_pk.to_bytes()))
+            {
+                return Err(ContractError::InvalidCovenantSig(
+                    "Covenant public key not found in params".to_string(),
+                ));
+            }
+            // get covenant signature
+            let sig = Signature::try_from(cov_sig.sig.as_slice())
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            // Verify the covenant member's signature
+            babylon_btcstaking::sig_verify::verify_transaction_sig_with_output(
+                &staking_tx,
+                &staking_output,
+                unbonding_path_script.as_script(),
+                &cov_pk,
+                &sig,
+            )
+            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+        }
+
+        /*
+            Verify covenant signatures over unbonding slashing tx
+        */
+        for cov_sig in active_delegation
+            .undelegation_info
+            .covenant_slashing_sigs
+            .iter()
+        {
+            let cov_pk = VerifyingKey::from_bytes(&cov_sig.cov_pk)
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            // Check if the covenant public key is in the params.covenant_pks
+            if !params
+                .covenant_pks
+                .contains(&hex::encode(cov_sig.cov_pk.as_slice()))
+            {
+                return Err(ContractError::InvalidCovenantSig(
+                    "Covenant public key not found in params".to_string(),
+                ));
+            }
+            let sigs = cov_sig
+                .adaptor_sigs
+                .iter()
+                .map(|sig| {
+                    AdaptorSignature::new(sig.as_slice())
+                        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
+                })
+                .collect::<Result<Vec<AdaptorSignature>, ContractError>>()?;
+            for (idx, sig) in sigs.iter().enumerate() {
+                enc_verify_transaction_sig_with_output(
+                    &unbonding_slashing_tx,
+                    unbonding_output,
+                    &unbonding_slashing_path_script.as_script(),
+                    &cov_pk,
+                    &fp_pks[idx],
+                    &sig,
+                )
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            }
+        }
     }
 
     // make static analyser happy with unused parameters

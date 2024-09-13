@@ -34,6 +34,8 @@ pub enum Error {
     TxInputCountMismatch(usize, usize),
     #[error("Tx output count mismatch: expected {0}, got {1}")]
     TxOutputCountMismatch(usize, usize),
+    #[error("Tx output index not found")]
+    TxOutputIndexNotFound {},
     #[error("Invalid schnorr signature: {0}")]
     InvalidSchnorrSignature(String),
     #[error("Transaction is replaceable.")]

@@ -4,8 +4,8 @@ use crate::Result;
 use babylon_bitcoin::schnorr;
 use bitcoin::hashes::Hash;
 use bitcoin::sighash::{Prevouts, SighashCache};
-use bitcoin::Transaction;
 use bitcoin::{Script, TxOut};
+use bitcoin::{ScriptBuf, Transaction};
 
 use k256::schnorr::Signature as SchnorrSignature;
 use k256::schnorr::VerifyingKey;
@@ -35,6 +35,17 @@ fn calc_sighash(
         .unwrap();
 
     Ok(sighash.to_raw_hash().to_byte_array())
+}
+
+pub fn get_output_idx(tx: &Transaction, pk_script: ScriptBuf) -> Result<u32> {
+    let output_idx = tx
+        .output
+        .iter()
+        .position(|output| output.script_pubkey == *pk_script);
+    match output_idx {
+        Some(idx) => Ok(idx as u32),
+        None => Err(Error::TxOutputIndexNotFound {}),
+    }
 }
 
 /// verify_transaction_sig_with_output verifies the validity of a Schnorr signature for a given transaction
