@@ -52,6 +52,8 @@ pub enum ContractError {
     DelegationAlreadyExists(String),
     #[error("BTC delegation is not active")]
     DelegationIsNotActive,
+    #[error("Invalid covenant signature: {0}")]
+    InvalidCovenantSig(String),
     #[error("Invalid Btc tx: {0}")]
     InvalidBtcTx(String),
     #[error("Empty signature from the delegator")]

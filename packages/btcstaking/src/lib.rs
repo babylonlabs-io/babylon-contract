@@ -1,4 +1,4 @@
-mod adaptor_sig;
+pub mod adaptor_sig;
 pub mod error;
 pub mod scripts_utils;
 pub mod sig_verify;

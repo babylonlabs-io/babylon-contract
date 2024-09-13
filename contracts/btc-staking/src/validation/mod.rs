@@ -1,6 +1,8 @@
 use crate::state::config::Params;
 use crate::{error::ContractError, state::staking::BtcDelegation};
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, NewFinalityProvider};
+use babylon_btcstaking::adaptor_sig::AdaptorSignature;
+use babylon_btcstaking::sig_verify::enc_verify_transaction_sig_with_output;
 use bitcoin::Transaction;
 use cosmwasm_std::Binary;
 
@@ -213,7 +215,41 @@ pub fn verify_active_delegation(
         )
         .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
-        // TODO: verify covenant signatures
+        /*
+            Verify covenant signatures over slashing tx
+        */
+        for cov_sig in active_delegation.covenant_sigs.iter() {
+            let cov_pk = VerifyingKey::from_bytes(&cov_sig.cov_pk)
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            // Check if the covenant public key is in the params.covenant_pks
+            if !params
+                .covenant_pks
+                .contains(&hex::encode(cov_sig.cov_pk.as_slice()))
+            {
+                return Err(ContractError::InvalidCovenantSig(
+                    "Covenant public key not found in params".to_string(),
+                ));
+            }
+            let sigs = cov_sig
+                .adaptor_sigs
+                .iter()
+                .map(|sig| {
+                    AdaptorSignature::new(sig.as_slice())
+                        .map_err(|e| ContractError::SecP256K1Error(e.to_string()))
+                })
+                .collect::<Result<Vec<AdaptorSignature>, ContractError>>()?;
+            for (idx, sig) in sigs.iter().enumerate() {
+                enc_verify_transaction_sig_with_output(
+                    &slashing_tx,
+                    staking_output,
+                    slashing_path_script.as_script(),
+                    &cov_pk,
+                    &fp_pks[idx],
+                    &sig,
+                )
+                .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
+            }
+        }
 
         // TODO: Check unbonding time (staking time from unbonding tx) is larger than min unbonding time
         // which is larger value from:
