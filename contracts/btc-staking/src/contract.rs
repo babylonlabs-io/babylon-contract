@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
+    to_json_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
     StdResult,
 };
 use cw2::set_contract_version;
@@ -12,7 +12,7 @@ use babylon_bindings::BabylonMsg;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::staking::handle_btc_staking;
+use crate::staking::{handle_btc_staking, handle_slash_fp};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -30,6 +30,7 @@ pub fn instantiate(
     let config = Config {
         denom,
         babylon: info.sender,
+        finality: Addr::unchecked(""), // TODO: Instantiate finality contract and set address in reply handler
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -122,6 +123,7 @@ pub fn execute(
             &slashed_del,
             &unbonded_del,
         ),
+        ExecuteMsg::Slash { fp_btc_pk_hex } => handle_slash_fp(deps, env, &info, &fp_btc_pk_hex),
     }
 }
 

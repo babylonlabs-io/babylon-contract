@@ -313,6 +313,20 @@ fn handle_slashed_delegation(
     Ok(slashing_event)
 }
 
+/// handle_slash_fp handles FP slashing at the staking level
+pub fn handle_slash_fp(
+    deps: DepsMut,
+    env: Env,
+    info: &MessageInfo,
+    fp_btc_pk_hex: &str,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.finality && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+        return Err(ContractError::Unauthorized);
+    }
+    slash_finality_provider(deps, env, fp_btc_pk_hex)
+}
+
 /// btc_undelegate adds the signature of the unbonding tx signed by the staker to the given BTC
 /// delegation
 fn btc_undelegate(
@@ -338,11 +352,10 @@ fn btc_undelegate(
 /// `slash_finality_provider` slashes a finality provider with the given PK.
 /// A slashed finality provider will not have voting power
 pub(crate) fn slash_finality_provider(
-    deps: &mut DepsMut,
+    deps: DepsMut,
     env: Env,
     fp_btc_pk_hex: &str,
-    height: u64,
-) -> Result<(), ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure finality provider exists
     let mut fp = FPS.load(deps.storage, fp_btc_pk_hex)?;
 
@@ -353,12 +366,12 @@ pub(crate) fn slash_finality_provider(
         ));
     }
     // Set the finality provider as slashed
-    fp.slashed_height = height;
+    fp.slashed_height = env.block.height;
 
     // Set BTC slashing height (if available from the babylon contract)
     // FIXME: Turn this into a hard error
     // return fmt.Errorf("failed to get current BTC tip")
-    let btc_height = get_btc_tip_height(deps).unwrap_or_default();
+    let btc_height = get_btc_tip_height(&deps).unwrap_or_default();
     fp.slashed_btc_height = btc_height;
 
     // Record slashed event. The next `BeginBlock` will consume this event for updating the active
@@ -374,7 +387,8 @@ pub(crate) fn slash_finality_provider(
     // Save the finality provider back
     FPS.save(deps.storage, fp_btc_pk_hex, &fp)?;
 
-    Ok(())
+    // TODO: Add events
+    Ok(Response::new())
 }
 
 /// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
@@ -397,8 +411,7 @@ pub(crate) mod tests {
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use crate::contract::tests::{
-        create_new_finality_provider, create_new_fp_sk, get_active_btc_delegation,
-        get_btc_del_unbonding_sig, get_derived_btc_delegation, get_params, CREATOR, INIT_ADMIN,
+        create_new_finality_provider, get_active_btc_delegation, get_params, CREATOR, INIT_ADMIN,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};

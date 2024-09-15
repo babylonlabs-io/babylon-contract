@@ -19,6 +19,13 @@ pub enum ExecuteMsg {
         slashed_del: Vec<SlashedBtcDelegation>,
         unbonded_del: Vec<UnbondedBtcDelegation>,
     },
+    /// Slash finality provider staking power.
+    /// Used by the finality contract only.
+    /// The finality contract will call this message to slash the finality provider's staking power
+    /// when the finality provider is found to be malicious
+    Slash {
+        fp_btc_pk_hex: String
+    },
 }
 
 #[cw_serde]
