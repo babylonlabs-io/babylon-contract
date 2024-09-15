@@ -7,7 +7,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
 
-use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
@@ -126,38 +125,6 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(
-    mut deps: DepsMut,
-    env: Env,
-    msg: SudoMsg,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    match msg {
-        SudoMsg::BeginBlock { .. } => handle_begin_block(&mut deps, env),
-        SudoMsg::EndBlock {
-            hash_hex,
-            app_hash_hex,
-        } => handle_end_block(&mut deps, env, &hash_hex, &app_hash_hex),
-    }
-}
-
-fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
-    // Compute active finality provider set
-    let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
-    compute_active_finality_providers(deps.storage, env, max_active_fps)?;
-
-    Ok(Response::new())
-}
-
-fn handle_end_block(
-    _deps: &mut DepsMut,
-    _env: Env,
-    _hash_hex: &str,
-    _app_hash_hex: &str,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    Ok(Response::new())
-}
-
 #[cfg(test)]
 pub(crate) mod tests {
     use std::str::FromStr;
@@ -169,7 +136,6 @@ pub(crate) mod tests {
         ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
         FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
     };
-    use babylon_apis::finality_api::PubRandCommit;
     use babylon_bitcoin::chain_params::Network;
     use babylon_proto::babylon::btcstaking::v1::{
         BtcDelegation, FinalityProvider, Params as ProtoParams,
@@ -181,11 +147,7 @@ pub(crate) mod tests {
     };
     use cw_controllers::AdminResponse;
     use hex::ToHex;
-    use k256::schnorr::{Signature, SigningKey};
-    use test_utils::{
-        get_btc_del_unbonding_sig_bytes, get_btc_delegation, get_finality_provider,
-        get_fp_sk_bytes, get_pub_rand_commit,
-    };
+    use test_utils::{get_btc_delegation, get_finality_provider};
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
@@ -294,22 +256,6 @@ pub(crate) mod tests {
     pub(crate) fn get_btc_del_unbonding_sig(del_id: i32, fp_ids: &[i32]) -> Signature {
         let sig_bytes = get_btc_del_unbonding_sig_bytes(del_id, fp_ids.to_vec());
         Signature::try_from(sig_bytes.as_slice()).unwrap()
-    }
-
-    /// Get public randomness public key, commitment, and signature information
-    ///
-    /// Signature is a Schnorr signature over the commitment
-    pub(crate) fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
-        let pub_rand_commitment_msg = get_pub_rand_commit();
-        (
-            pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
-            PubRandCommit {
-                start_height: pub_rand_commitment_msg.start_height,
-                num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
-                commitment: pub_rand_commitment_msg.commitment.to_vec(),
-            },
-            pub_rand_commitment_msg.sig.to_vec(),
-        )
     }
 
     pub(crate) fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
