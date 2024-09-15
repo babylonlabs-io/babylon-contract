@@ -14,7 +14,6 @@ use crate::state::staking::{
     fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS,
     FP_DELEGATIONS, FP_SET, TOTAL_POWER,
 };
-use crate::state::BTC_HEIGHT;
 use crate::validation::{
     verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
 };
@@ -25,6 +24,9 @@ use babylon_apis::btc_staking_api::{
 
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
+use babylon_contract::msg::btc_header::BtcHeaderResponse;
+
+use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -378,13 +380,13 @@ pub fn compute_active_finality_providers(
 /// `slash_finality_provider` slashes a finality provider with the given PK.
 /// A slashed finality provider will not have voting power
 pub(crate) fn slash_finality_provider(
-    store: &mut dyn Storage,
+    deps: &mut DepsMut,
     env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
 ) -> Result<(), ContractError> {
     // Ensure finality provider exists
-    let mut fp = FPS.load(store, fp_btc_pk_hex)?;
+    let mut fp = FPS.load(deps.storage, fp_btc_pk_hex)?;
 
     // Check if the finality provider is already slashed
     if fp.slashed_height > 0 {
@@ -395,26 +397,39 @@ pub(crate) fn slash_finality_provider(
     // Set the finality provider as slashed
     fp.slashed_height = height;
 
-    // Set BTC slashing height (if available from the store)
+    // Set BTC slashing height (if available from the babylon contract)
     // FIXME: Turn this into a hard error
     // return fmt.Errorf("failed to get current BTC tip")
-    let btc_height = BTC_HEIGHT.may_load(store, height)?.unwrap_or_default();
+    let btc_height = get_btc_tip_height(deps).unwrap_or_default();
     fp.slashed_btc_height = btc_height;
 
     // Record slashed event. The next `BeginBlock` will consume this event for updating the active
     // FP set.
     // We simply set the FP voting power to zero from the next *processing* height (See NOTE in
     // `handle_finality_signature`)
-    fps().update(store, fp_btc_pk_hex, env.block.height + 1, |fp| {
+    fps().update(deps.storage, fp_btc_pk_hex, env.block.height + 1, |fp| {
         let mut fp = fp.unwrap_or_default();
         fp.power = 0;
         Ok::<_, ContractError>(fp)
     })?;
 
     // Save the finality provider back
-    FPS.save(store, fp_btc_pk_hex, &fp)?;
+    FPS.save(deps.storage, fp_btc_pk_hex, &fp)?;
 
     Ok(())
+}
+
+/// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
+fn get_btc_tip_height(deps: &DepsMut) -> Result<u64, ContractError> {
+    // Get the BTC tip from the babylon contract through a raw query
+    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
+
+    // Query the Babylon contract
+    // TODO: use a raw query for performance / efficiency
+    let query_msg = BabylonQueryMsg::BtcTipHeader {};
+    let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(babylon_addr, &query_msg)?;
+
+    Ok(tip.height)
 }
 
 #[cfg(test)]

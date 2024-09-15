@@ -1,5 +1,3 @@
-use babylon_contract::msg::btc_header::BtcHeaderResponse;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -12,15 +10,12 @@ use cw_utils::{maybe_addr, nonpayable};
 use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 
-use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
-
 use crate::error::ContractError;
 use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::{compute_active_finality_providers, handle_btc_staking};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::staking::ACTIVATED_HEIGHT;
-use crate::state::BTC_HEIGHT;
 use crate::{finality, queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -219,38 +214,11 @@ pub fn sudo(
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
-    // Index BTC height at the current height
-    index_btc_height(deps, env.block.height)?;
-
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
     compute_active_finality_providers(deps.storage, env, max_active_fps)?;
 
     Ok(Response::new())
-}
-
-// index_btc_height indexes the current BTC height, and saves it to the state
-fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
-    // FIXME: Turn this into a hard error. Requires `babylon-contract` instance, and up and running
-    // BTC light client loop (which requires a running BTC node / simulator)
-    let btc_tip_height = get_btc_tip_height(deps) //?;
-        .ok()
-        .unwrap_or_default();
-
-    Ok(BTC_HEIGHT.save(deps.storage, height, &btc_tip_height)?)
-}
-
-/// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
-fn get_btc_tip_height(deps: &DepsMut) -> Result<u64, ContractError> {
-    // Get the BTC tip from the babylon contract through a raw query
-    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
-
-    // Query the Babylon contract
-    // TODO: use a raw query for performance / efficiency
-    let query_msg = BabylonQueryMsg::BtcTipHeader {};
-    let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(babylon_addr, &query_msg)?;
-
-    Ok(tip.height)
 }
 
 fn handle_end_block(
