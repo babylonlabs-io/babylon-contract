@@ -15,8 +15,6 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::staking::handle_btc_staking;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
-use crate::state::staking::ACTIVATED_HEIGHT;
-use crate::{finality, queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -189,8 +187,8 @@ pub(crate) mod tests {
         get_fp_sk_bytes, get_pub_rand_commit,
     };
 
-    const CREATOR: &str = "creator";
-    const INIT_ADMIN: &str = "initial_admin";
+    pub(crate) const CREATOR: &str = "creator";
+    pub(crate) const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
 
     fn new_params(params: ProtoParams) -> Params {
