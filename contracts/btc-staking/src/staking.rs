@@ -15,7 +15,9 @@ use crate::state::staking::{
     FP_DELEGATIONS, FP_SET, TOTAL_POWER,
 };
 use crate::state::BTC_HEIGHT;
-use crate::validation::{verify_active_delegation, verify_new_fp};
+use crate::validation::{
+    verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
+};
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
     UnbondedBtcDelegation,
@@ -79,10 +81,10 @@ pub fn handle_new_fp(
             new_fp.btc_pk_hex.clone(),
         ));
     }
-    // validate the finality provider data
+    // basic validations on the finality provider data
     new_fp.validate()?;
 
-    // verify the finality provider registration request
+    // verify the finality provider registration request (full or lite)
     verify_new_fp(new_fp)?;
 
     // get DB object
@@ -147,7 +149,7 @@ pub fn handle_active_delegation(
         ));
     }
 
-    // full validations on the active delegation
+    // verify the active delegation (full or lite)
     verify_active_delegation(&params, active_delegation, &staking_tx)?;
 
     // All good, construct BTCDelegation and insert BTC delegation
@@ -224,9 +226,16 @@ fn handle_undelegation(
     let staking_tx_hash = Txid::from_str(&undelegation.staking_tx_hash)?;
     let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
-    // TODO: Ensure the BTC delegation is active
+    // Ensure the BTC delegation is active
+    if !btc_del.is_active() {
+        return Err(ContractError::DelegationIsNotActive(
+            staking_tx_hash.to_string(),
+        ));
+    }
 
-    // TODO: Verify the signature on the unbonding tx is from the delegator
+    // verify the early unbonded delegation (full or lite)
+    let params = PARAMS.load(storage)?;
+    verify_undelegation(&params, &btc_del, &undelegation.unbonding_tx_sig)?;
 
     // Add the signature to the BTC delegation's undelegation and set back
     btc_undelegate(
@@ -268,7 +277,16 @@ fn handle_slashed_delegation(
     let staking_tx_hash = Txid::from_str(&delegation.staking_tx_hash)?;
     let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
-    // TODO: Ensure the BTC delegation is active
+    // Ensure the BTC delegation is active
+    if !btc_del.is_active() {
+        return Err(ContractError::DelegationIsNotActive(
+            staking_tx_hash.to_string(),
+        ));
+    }
+
+    // verify the slashed delegation (full or lite)
+    let recovered_fp_sk_hex = delegation.recovered_fp_btc_sk.clone();
+    verify_slashed_delegation(&btc_del, &recovered_fp_sk_hex)?;
 
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
@@ -402,12 +420,12 @@ pub(crate) fn slash_finality_provider(
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use cosmwasm_std::Binary;
 
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use crate::contract::tests::{
-        create_new_finality_provider, get_active_btc_delegation, get_params, CREATOR, INIT_ADMIN,
+        create_new_finality_provider, create_new_fp_sk, get_active_btc_delegation,
+        get_btc_del_unbonding_sig, get_derived_btc_delegation, get_params, CREATOR, INIT_ADMIN,
     };
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -582,14 +600,11 @@ pub(crate) mod tests {
         let params = get_params();
         PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
-        // Build valid active delegation
-        let active_delegation = get_active_btc_delegation();
-
         // Register one FP first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp
-            .btc_pk_hex
-            .clone_from(&active_delegation.fp_btc_pk_list[0]);
+        let new_fp = create_new_finality_provider(1);
+
+        // Build valid active delegation
+        let active_delegation = get_derived_btc_delegation(1, &[1]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -623,10 +638,12 @@ pub(crate) mod tests {
             }
         );
 
+        let unbonding_sig = get_btc_del_unbonding_sig(1, &[1]);
+
         // Now send the undelegation message
         let undelegation = UnbondedBtcDelegation {
             staking_tx_hash: staking_tx_hash_hex.clone(),
-            unbonding_tx_sig: Binary::new(vec![0x01, 0x02, 0x03]), // TODO: Use a proper signature
+            unbonding_tx_sig: unbonding_sig.to_bytes().into(),
         };
 
         let msg = ExecuteMsg::BtcStaking {
@@ -648,7 +665,7 @@ pub(crate) mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
                 slashing_tx: active_delegation_undelegation.slashing_tx.into(),
-                delegator_unbonding_sig: vec![0x01, 0x02, 0x03],
+                delegator_unbonding_sig: unbonding_sig.to_bytes().into(),
                 delegator_slashing_sig: active_delegation_undelegation
                     .delegator_slashing_sig
                     .into(),
@@ -682,14 +699,11 @@ pub(crate) mod tests {
         let params = get_params();
         PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
-        // Build valid active delegation
-        let active_delegation = get_active_btc_delegation();
-
         // Register one FP first
-        let mut new_fp = create_new_finality_provider(1);
-        new_fp
-            .btc_pk_hex
-            .clone_from(&active_delegation.fp_btc_pk_list[0]);
+        let new_fp = create_new_finality_provider(1);
+
+        // Build valid active delegation
+        let active_delegation = get_derived_btc_delegation(1, &[1]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
@@ -716,9 +730,11 @@ pub(crate) mod tests {
         assert_eq!(fp.power, btc_del.total_sat);
 
         // Now send the slashed delegation message
+        let fp_sk = create_new_fp_sk(1);
+        let fp_sk_hex = hex::encode(fp_sk.to_bytes());
         let slashed = SlashedBtcDelegation {
             staking_tx_hash: staking_tx_hash_hex.clone(),
-            recovered_fp_btc_sk: "deadbeef".to_string(), // Currently unused
+            recovered_fp_btc_sk: fp_sk_hex,
         };
 
         let msg = ExecuteMsg::BtcStaking {

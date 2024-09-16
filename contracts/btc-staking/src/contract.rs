@@ -296,7 +296,11 @@ pub(crate) mod tests {
     };
     use cw_controllers::AdminResponse;
     use hex::ToHex;
-    use test_utils::{get_btc_delegation, get_finality_provider, get_pub_rand_commit};
+    use k256::schnorr::{Signature, SigningKey};
+    use test_utils::{
+        get_btc_del_unbonding_sig_bytes, get_btc_delegation, get_finality_provider,
+        get_fp_sk_bytes, get_pub_rand_commit,
+    };
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
@@ -402,6 +406,11 @@ pub(crate) mod tests {
         new_active_btc_delegation(del)
     }
 
+    pub(crate) fn get_btc_del_unbonding_sig(del_id: i32, fp_ids: &[i32]) -> Signature {
+        let sig_bytes = get_btc_del_unbonding_sig_bytes(del_id, fp_ids.to_vec());
+        Signature::try_from(sig_bytes.as_slice()).unwrap()
+    }
+
     /// Get public randomness public key, commitment, and signature information
     ///
     /// Signature is a Schnorr signature over the commitment
@@ -421,6 +430,11 @@ pub(crate) mod tests {
     pub(crate) fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
         let fp = get_finality_provider(id);
         new_finality_provider(fp)
+    }
+
+    pub(crate) fn create_new_fp_sk(id: i32) -> SigningKey {
+        let fp_sk_bytes = get_fp_sk_bytes(id);
+        SigningKey::from_bytes(&fp_sk_bytes).unwrap()
     }
 
     #[test]

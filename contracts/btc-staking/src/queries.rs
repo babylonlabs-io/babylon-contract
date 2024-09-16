@@ -242,11 +242,13 @@ mod tests {
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
-    use cosmwasm_std::{from_json, Binary, Storage};
+    use cosmwasm_std::{from_json, Storage};
 
     use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
 
-    use crate::contract::tests::{create_new_finality_provider, get_params};
+    use crate::contract::tests::{
+        create_new_finality_provider, get_btc_del_unbonding_sig, get_params,
+    };
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use crate::finality::tests::mock_env_height;
@@ -457,13 +459,14 @@ mod tests {
         // Unbond the second delegation
         // Compute staking tx hash
         let staking_tx_hash_hex = staking_tx_hash(&del2.into()).to_string();
+        let unbonding_sig = crate::contract::tests::get_btc_del_unbonding_sig(2, &[1]);
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![UnbondedBtcDelegation {
                 staking_tx_hash: staking_tx_hash_hex,
-                unbonding_tx_sig: Binary::new(vec![0x01, 0x02, 0x03]),
+                unbonding_tx_sig: unbonding_sig.to_bytes().into(),
             }],
         };
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -613,13 +616,14 @@ mod tests {
         // Unbond the first delegation
         // Compute staking tx hash
         let staking_tx_hash_hex = staking_tx_hash(&del1.into()).to_string();
+        let unbonding_sig = get_btc_del_unbonding_sig(1, &[1]);
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![UnbondedBtcDelegation {
                 staking_tx_hash: staking_tx_hash_hex,
-                unbonding_tx_sig: Binary::new(vec![0x01, 0x02, 0x03]),
+                unbonding_tx_sig: unbonding_sig.to_bytes().into(),
             }],
         };
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
