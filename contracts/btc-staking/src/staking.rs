@@ -223,8 +223,6 @@ fn handle_undelegation(
     // Basic stateless checks
     undelegation.validate()?;
 
-    let params = PARAMS.load(storage)?;
-
     let staking_tx_hash = Txid::from_str(&undelegation.staking_tx_hash)?;
     let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
