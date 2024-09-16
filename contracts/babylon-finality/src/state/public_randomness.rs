@@ -2,6 +2,7 @@ use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::{Bound, Map};
 
+use crate::error::ContractError;
 use babylon_apis::finality_api::PubRandCommit;
 
 /// Map of public randomness commitments by fp and block height

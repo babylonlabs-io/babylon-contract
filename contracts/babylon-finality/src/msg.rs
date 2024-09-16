@@ -1,7 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_controllers::AdminResponse;
 
-use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 
 use crate::state::config::{Config, Params};

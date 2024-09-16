@@ -1,20 +1,14 @@
-use std::str::FromStr;
-
-use bitcoin::hashes::Hash;
-use bitcoin::Txid;
-
 use cosmwasm_std::Order::{Ascending, Descending};
-use cosmwasm_std::{Deps, Order, StdResult};
+use cosmwasm_std::{Deps, StdResult};
 use cw_storage_plus::Bound;
 
-use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::IndexedBlock;
 
 use crate::error::ContractError;
 use crate::msg::{BlocksResponse, EvidenceResponse, FinalitySignatureResponse};
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES};
+use crate::state::finality::{BLOCKS, EVIDENCES, SIGNATURES};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -24,168 +18,21 @@ pub fn params(deps: Deps) -> StdResult<Params> {
     PARAMS.load(deps.storage)
 }
 
-pub fn finality_provider(deps: Deps, btc_pk_hex: String) -> StdResult<FinalityProvider> {
-    FPS.load(deps.storage, &btc_pk_hex)
-}
-
 // Settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
-
-pub fn finality_providers(
-    deps: Deps,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<FinalityProvidersResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start_after = start_after.as_ref().map(|s| Bound::exclusive(&**s));
-    let fps = FPS
-        .range_raw(deps.storage, start_after, None, Order::Ascending)
-        .take(limit)
-        .map(|item| item.map(|(_, v)| v))
-        .collect::<StdResult<Vec<FinalityProvider>>>()?;
-    Ok(FinalityProvidersResponse { fps })
-}
-
-/// Get the delegation info by staking tx hash.
-/// `staking_tx_hash_hex`: The (reversed) staking tx hash, in hex
-pub fn delegation(deps: Deps, staking_tx_hash_hex: String) -> Result<BtcDelegation, ContractError> {
-    let staking_tx_hash = Txid::from_str(&staking_tx_hash_hex)?;
-    Ok(DELEGATIONS.load(deps.storage, staking_tx_hash.as_ref())?)
-}
-
-/// Get list of delegations.
-/// `start_after`: The (reversed) associated staking tx hash of the delegation in hex, if provided.
-/// `active`: List only active delegations if true, otherwise list all delegations.
-pub fn delegations(
-    deps: Deps,
-    start_after: Option<String>,
-    limit: Option<u32>,
-    active: Option<bool>,
-) -> Result<BtcDelegationsResponse, ContractError> {
-    let active = active.unwrap_or_default();
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start_after = start_after
-        .as_ref()
-        .map(|s| Txid::from_str(s))
-        .transpose()?;
-    let start_after = start_after.as_ref().map(|s| s.as_ref());
-    let start_after = start_after.map(Bound::exclusive);
-    let delegations = DELEGATIONS
-        .range_raw(deps.storage, start_after, None, Order::Ascending)
-        .filter(|item| {
-            if let Ok((_, del)) = item {
-                !active || del.is_active()
-            } else {
-                true // don't filter errors
-            }
-        })
-        .take(limit)
-        .map(|item| item.map(|(_, v)| v))
-        .collect::<Result<Vec<BtcDelegation>, _>>()?;
-    Ok(BtcDelegationsResponse { delegations })
-}
-
-/// Delegation hashes by FP query.
-///
-/// `btc_pk_hex`: The BTC public key of the finality provider, in hex
-pub fn delegations_by_fp(
-    deps: Deps,
-    btc_pk_hex: String,
-) -> Result<DelegationsByFPResponse, ContractError> {
-    let tx_hashes = FP_DELEGATIONS.load(deps.storage, &btc_pk_hex)?;
-    let tx_hashes = tx_hashes
-        .iter()
-        .map(|h| Ok(Txid::from_slice(h)?.to_string()))
-        .collect::<Result<_, ContractError>>()?;
-    Ok(DelegationsByFPResponse { hashes: tx_hashes })
-}
-
-/// Active / all delegations by FP convenience query.
-///
-/// This is an alternative to `delegations_by_fp` that returns the actual delegations instead of
-/// just the hashes.
-///
-/// `btc_pk_hex`: The BTC public key of the finality provider, in hex.
-/// `active` is a filter to return only active delegations
-pub fn active_delegations_by_fp(
-    deps: Deps,
-    btc_pk_hex: String,
-    active: bool,
-) -> Result<BtcDelegationsResponse, ContractError> {
-    let tx_hashes = FP_DELEGATIONS.load(deps.storage, &btc_pk_hex)?;
-    let delegations = tx_hashes
-        .iter()
-        .map(|h| Ok(DELEGATIONS.load(deps.storage, Txid::from_slice(h)?.as_ref())?))
-        .filter(|item| {
-            if let Ok(del) = item {
-                !active || del.is_active()
-            } else {
-                true // don't filter errors
-            }
-        })
-        .collect::<Result<Vec<_>, ContractError>>()?;
-    Ok(BtcDelegationsResponse { delegations })
-}
-
-pub fn finality_provider_info(
-    deps: Deps,
-    btc_pk_hex: String,
-    height: Option<u64>,
-) -> StdResult<FinalityProviderInfo> {
-    let fp_state = match height {
-        Some(h) => fps().may_load_at_height(deps.storage, &btc_pk_hex, h),
-        None => fps().may_load(deps.storage, &btc_pk_hex),
-    }?
-    .unwrap_or_default();
-
-    Ok(FinalityProviderInfo {
-        btc_pk_hex,
-        power: fp_state.power,
-    })
-}
-
-pub fn finality_providers_by_power(
-    deps: Deps,
-    start_after: Option<FinalityProviderInfo>,
-    limit: Option<u32>,
-) -> StdResult<FinalityProvidersByPowerResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.map(|fpp| Bound::exclusive((fpp.power, fpp.btc_pk_hex.clone())));
-    let fps = fps()
-        .idx
-        .power
-        .range(deps.storage, None, start, Descending)
-        .take(limit)
-        .map(|item| {
-            let (btc_pk_hex, FinalityProviderState { power }) = item?;
-            Ok(FinalityProviderInfo { btc_pk_hex, power })
-        })
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(FinalityProvidersByPowerResponse { fps })
-}
 
 pub fn finality_signature(
     deps: Deps,
     btc_pk_hex: String,
     height: u64,
 ) -> StdResult<FinalitySignatureResponse> {
-    match babylon_finality::state::finality::SIGNATURES
-        .may_load(deps.storage, (height, &btc_pk_hex))?
-    {
+    match SIGNATURES.may_load(deps.storage, (height, &btc_pk_hex))? {
         Some(sig) => Ok(FinalitySignatureResponse { signature: sig }),
         None => Ok(FinalitySignatureResponse {
             signature: Vec::new(),
         }), // Empty signature response
     }
-}
-
-pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractError> {
-    let activated_height = ACTIVATED_HEIGHT.may_load(deps.storage)?.unwrap_or_default();
-    Ok(ActivatedHeightResponse {
-        height: activated_height,
-    })
 }
 
 pub fn block(deps: Deps, height: u64) -> StdResult<IndexedBlock> {

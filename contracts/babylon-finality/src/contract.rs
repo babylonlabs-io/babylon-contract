@@ -1,10 +1,8 @@
-use babylon_contract::msg::btc_header::BtcHeaderResponse;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
-    StdResult,
+    to_json_binary, Addr, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper,
+    QueryRequest, QueryResponse, Reply, Response, StdResult, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
@@ -19,7 +17,7 @@ use crate::finality::{
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::{finality, queries, state};
-use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
+use btc_staking::msg::ActivatedHeightResponse;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -36,6 +34,7 @@ pub fn instantiate(
     let config = Config {
         denom,
         babylon: info.sender,
+        staking: Addr::unchecked("staking"), // TODO: instantiate staking contract and set address in reply
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -61,37 +60,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
         QueryMsg::Params {} => Ok(to_json_binary(&queries::params(deps)?)?),
         QueryMsg::Admin {} => to_json_binary(&ADMIN.query_admin(deps)?).map_err(Into::into),
-        QueryMsg::FinalityProvider { btc_pk_hex } => Ok(to_json_binary(
-            &queries::finality_provider(deps, btc_pk_hex)?,
-        )?),
-        QueryMsg::FinalityProviders { start_after, limit } => Ok(to_json_binary(
-            &queries::finality_providers(deps, start_after, limit)?,
-        )?),
-        QueryMsg::Delegation {
-            staking_tx_hash_hex,
-        } => Ok(to_json_binary(&queries::delegation(
-            deps,
-            staking_tx_hash_hex,
-        )?)?),
-        QueryMsg::Delegations {
-            start_after,
-            limit,
-            active,
-        } => Ok(to_json_binary(&queries::delegations(
-            deps,
-            start_after,
-            limit,
-            active,
-        )?)?),
-        QueryMsg::DelegationsByFP { btc_pk_hex } => Ok(to_json_binary(
-            &queries::delegations_by_fp(deps, btc_pk_hex)?,
-        )?),
-        QueryMsg::FinalityProviderInfo { btc_pk_hex, height } => Ok(to_json_binary(
-            &queries::finality_provider_info(deps, btc_pk_hex, height)?,
-        )?),
-        QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
-            &queries::finality_providers_by_power(deps, start_after, limit)?,
-        )?),
         QueryMsg::FinalitySignature { btc_pk_hex, height } => Ok(to_json_binary(
             &queries::finality_signature(deps, btc_pk_hex, height)?,
         )?),
@@ -115,7 +83,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
             &state::public_randomness::get_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
         )?),
-        QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
         QueryMsg::Block { height } => Ok(to_json_binary(&queries::block(deps, height)?)?),
         QueryMsg::Blocks {
             start_after,
@@ -153,20 +120,6 @@ pub fn execute(
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, maybe_addr(api, admin)?)
             .map_err(Into::into),
-        ExecuteMsg::BtcStaking {
-            new_fp,
-            active_del,
-            slashed_del,
-            unbonded_del,
-        } => handle_btc_staking(
-            deps,
-            env,
-            &info,
-            &new_fp,
-            &active_del,
-            &slashed_del,
-            &unbonded_del,
-        ),
         ExecuteMsg::SubmitFinalitySignature {
             fp_pubkey_hex,
             height,
@@ -217,38 +170,11 @@ pub fn sudo(
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
-    // Index BTC height at the current height
-    index_btc_height(deps, env.block.height)?;
-
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
-    compute_active_finality_providers(deps.storage, env, max_active_fps)?;
+    compute_active_finality_providers(deps, env, max_active_fps)?;
 
     Ok(Response::new())
-}
-
-// index_btc_height indexes the current BTC height, and saves it to the state
-fn index_btc_height(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
-    // FIXME: Turn this into a hard error. Requires `babylon-contract` instance, and up and running
-    // BTC light client loop (which requires a running BTC node / simulator)
-    let btc_tip_height = get_btc_tip_height(deps) //?;
-        .ok()
-        .unwrap_or_default();
-
-    Ok(BTC_HEIGHT.save(deps.storage, height, &btc_tip_height)?)
-}
-
-/// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
-fn get_btc_tip_height(deps: &DepsMut) -> Result<u64, ContractError> {
-    // Get the BTC tip from the babylon contract through a raw query
-    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
-
-    // Query the Babylon contract
-    // TODO: use a raw query for performance / efficiency
-    let query_msg = BabylonQueryMsg::BtcTipHeader {};
-    let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(babylon_addr, &query_msg)?;
-
-    Ok(tip.height)
 }
 
 fn handle_end_block(
@@ -259,8 +185,10 @@ fn handle_end_block(
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // If the BTC staking protocol is activated i.e. there exists a height where at least one
     // finality provider has voting power, start indexing and tallying blocks
+    let cfg = CONFIG.load(deps.storage)?;
     let mut res = Response::new();
-    if let Some(activated_height) = ACTIVATED_HEIGHT.may_load(deps.storage)? {
+    let activated_height = get_activated_height(&cfg.staking, &deps.querier)?;
+    if activated_height > 0 {
         // Index the current block
         let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
         res = res.add_event(ev);
@@ -269,6 +197,27 @@ fn handle_end_block(
         res = res.add_events(events);
     }
     Ok(res)
+}
+
+pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
+    // TODO: Use a raw query
+    let query = encode_smart_query(
+        staking_addr,
+        &btc_staking::msg::QueryMsg::ActivatedHeight {},
+    )?;
+    let res: ActivatedHeightResponse = querier.query(&query)?;
+    Ok(res.height)
+}
+
+pub(crate) fn encode_smart_query<Q: CustomQuery>(
+    addr: &Addr,
+    msg: &btc_staking::msg::QueryMsg,
+) -> StdResult<QueryRequest<Q>> {
+    Ok(WasmQuery::Smart {
+        contract_addr: addr.to_string(),
+        msg: to_json_binary(&msg)?,
+    }
+    .into())
 }
 
 #[cfg(test)]

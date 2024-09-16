@@ -4,21 +4,23 @@ use k256::sha2::{Digest, Sha256};
 use std::cmp::max;
 use std::collections::HashSet;
 
-use cosmwasm_std::Order::Ascending;
-use cosmwasm_std::{
-    to_json_binary, DepsMut, Env, Event, Order, Response, StdResult, Storage, WasmMsg,
-};
-
+use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{CONFIG, PARAMS};
 use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES, TOTAL_POWER};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
+use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
-use btc_staking::msg::FinalityProviderInfo;
+use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
+use cosmwasm_std::Order::Ascending;
+use cosmwasm_std::{
+    to_json_binary, Addr, DepsMut, Env, Event, QuerierWrapper, Response, StdResult, Storage,
+    WasmMsg,
+};
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -38,7 +40,9 @@ pub fn handle_public_randomness_commit(
     // Ensure the finality provider is registered
     if !deps.querier.query_wasm_smart(
         CONFIG.load(deps.storage)?.staking,
-        btc_staking::msg::QueryMsg::FinalityProvider {},
+        &btc_staking::msg::QueryMsg::FinalityProvider {
+            btc_pk_hex: fp_pubkey_hex.to_string(),
+        },
     )? {
         return Err(ContractError::FinalityProviderNotFound(
             fp_pubkey_hex.to_string(),
@@ -129,8 +133,9 @@ pub fn handle_finality_signature(
     signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
-    let fp = deps.querier.query_wasm_smart(
-        CONFIG.load(deps.storage)?.staking,
+    let staking_addr = CONFIG.load(deps.storage)?.staking;
+    let fp: FinalityProvider = deps.querier.query_wasm_smart(
+        staking_addr.clone(),
         &btc_staking::msg::QueryMsg::FinalityProvider {
             btc_pk_hex: fp_btc_pk_hex.to_string(),
         },
@@ -161,21 +166,17 @@ pub fn handle_finality_signature(
     }
 
     // Ensure the finality provider has voting power at this height
-    // if fps()
-    //     .may_load_at_height(deps.storage, fp_btc_pk_hex, height)?
-    //     .ok_or_else(|| ContractError::NoVotingPower(fp_btc_pk_hex.to_string(), height))?
-    //     .power
-    //     == 0
-    if deps.querier.query_wasm_smart(
-        CONFIG.load(deps.storage)?.staking,
-        btc_staking::msg::QueryMsg::FinalityProvider {},
-    )? {
-        return Err(ContractError::NoVotingPower(
-            fp_btc_pk_hex.to_string(),
-            height,
-        ));
-    }
-    {
+    let fp: FinalityProviderInfo = deps
+        .querier
+        .query_wasm_smart(
+            staking_addr.clone(),
+            &btc_staking::msg::QueryMsg::FinalityProviderInfo {
+                btc_pk_hex: fp_btc_pk_hex.to_string(),
+                height: Some(height),
+            },
+        )
+        .map_err(|_| ContractError::NoVotingPower(fp_btc_pk_hex.to_string(), height))?;
+    if fp.power == 0 {
         return Err(ContractError::NoVotingPower(
             fp_btc_pk_hex.to_string(),
             height,
@@ -247,8 +248,13 @@ pub fn handle_finality_signature(
             evidence.canonical_finality_sig = canonical_sig;
             // Slash this finality provider, including setting its voting power to zero, extracting
             // its BTC SK, and emitting an event
-            let (msg, ev) = slash_finality_provider(&mut deps, env, fp_btc_pk_hex, &evidence)?;
-            res = res.add_message(msg);
+            let (msgs, ev) = slash_finality_provider(
+                &mut deps,
+                &staking_addr.clone(),
+                fp_btc_pk_hex,
+                &evidence,
+            )?;
+            res = res.add_messages(msgs);
             res = res.add_event(ev);
         }
         // TODO?: Also slash if this finality provider has signed another fork before
@@ -276,8 +282,9 @@ pub fn handle_finality_signature(
 
         // Slash this finality provider, including setting its voting power to zero, extracting its
         // BTC SK, and emitting an event
-        let (msg, ev) = slash_finality_provider(&mut deps, env, fp_btc_pk_hex, &evidence)?;
-        res = res.add_message(msg);
+        let (msgs, ev) =
+            slash_finality_provider(&mut deps, &staking_addr, fp_btc_pk_hex, &evidence)?;
+        res = res.add_messages(msgs);
         res = res.add_event(ev);
     }
 
@@ -288,13 +295,21 @@ pub fn handle_finality_signature(
 /// its voting power to zero, extracting its BTC SK, and emitting an event
 fn slash_finality_provider(
     deps: &mut DepsMut,
-    env: Env,
+    staking_addr: &Addr,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
-) -> Result<(WasmMsg, Event), ContractError> {
+) -> Result<(Vec<WasmMsg>, Event), ContractError> {
+    let mut wasm_msgs = vec![];
     // Slash this finality provider, i.e., set its slashing height to the block height
-    staking::slash_finality_provider(deps, env, fp_btc_pk_hex, evidence.block_height)
-        .map_err(|err| ContractError::FailedToSlashFinalityProvider(err.to_string()))?;
+    let msg = btc_staking::msg::ExecuteMsg::Slash {
+        fp_btc_pk_hex: fp_btc_pk_hex.to_string(),
+    };
+    let staking_msg = WasmMsg::Execute {
+        contract_addr: staking_addr.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+    wasm_msgs.push(staking_msg);
 
     // Extract BTC SK using the evidence
     let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
@@ -317,11 +332,12 @@ fn slash_finality_provider(
 
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
-    let wasm_msg = WasmMsg::Execute {
+    let babylon_msg = WasmMsg::Execute {
         contract_addr: babylon_addr.to_string(),
         msg: to_json_binary(&msg)?,
         funds: vec![],
     };
+    wasm_msgs.push(babylon_msg);
 
     let ev = Event::new("slashed_finality_provider")
         .add_attribute("module", "finality")
@@ -341,7 +357,7 @@ fn slash_finality_provider(
             hex::encode(&evidence.fork_finality_sig),
         )
         .add_attribute("secret_key", hex::encode(btc_sk.to_bytes()));
-    Ok((wasm_msg, ev))
+    Ok((wasm_msgs, ev))
 }
 
 /// Verifies the finality signature message w.r.t. the public randomness commitment:
@@ -526,45 +542,65 @@ fn finalize_block(
     Ok(ev)
 }
 
+const QUERY_LIMIT: Option<u32> = Some(30);
+
 /// `compute_active_finality_providers` sorts all finality providers, counts the total voting
 /// power of top finality providers, and records them in the contract state
 pub fn compute_active_finality_providers(
-    storage: &mut dyn Storage,
+    deps: &mut DepsMut,
     env: Env,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
-    // Sort finality providers by power
-    let (finality_providers, running_total): (_, Vec<_>) = fps()
-        .idx
-        .power
-        .range(storage, None, None, Order::Descending)
-        .take(max_active_fps)
-        .scan(0u64, |acc, item| {
-            let (pk_hex, fp_state) = item.ok()?; // Error ends the iteration
+    let cfg = CONFIG.load(deps.storage)?;
+    // Get all finality providers from the staking contract, filtered
+    let mut batch = list_fps_by_power(&cfg.staking, &deps.querier, None, QUERY_LIMIT)?;
 
-            let fp_info = FinalityProviderInfo {
-                btc_pk_hex: pk_hex,
-                power: fp_state.power,
-            };
-            *acc += fp_state.power;
-            Some((fp_info, *acc))
-        })
-        .filter(|(fp, _)| {
-            // Filter out FPs with no voting power
-            fp.power > 0
-        })
-        .unzip();
+    let mut finality_providers = vec![];
+    let mut total_power: u64 = 0;
+    while !batch.is_empty() && finality_providers.len() < max_active_fps {
+        let last = batch.last().cloned();
+
+        let (filtered, running_total): (Vec<_>, Vec<_>) = batch
+            .into_iter()
+            .filter(|fp| {
+                // Filter out FPs with no voting power
+                fp.power > 0
+            })
+            .scan(total_power, |acc, fp| {
+                *acc += fp.power;
+                Some((fp, *acc))
+            })
+            .unzip();
+        finality_providers.extend_from_slice(&filtered);
+        total_power = running_total.last().copied().unwrap_or_default();
+
+        // and get the next page
+        batch = list_fps_by_power(&cfg.staking, &deps.querier, last, QUERY_LIMIT)?;
+    }
 
     // TODO: Online FPs verification
     // TODO: Filter out slashed / offline / jailed FPs
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
-    FP_SET.save(storage, env.block.height, &finality_providers)?;
+    FP_SET.save(deps.storage, env.block.height, &finality_providers)?;
     // Save the total voting power of the top n finality providers
-    let total_power = running_total.last().copied().unwrap_or_default();
-    TOTAL_POWER.save(storage, &total_power)?;
+    TOTAL_POWER.save(deps.storage, &total_power)?;
 
     Ok(())
+}
+
+pub fn list_fps_by_power(
+    staking_addr: &Addr,
+    querier: &QuerierWrapper,
+    start_after: Option<FinalityProviderInfo>,
+    limit: Option<u32>,
+) -> StdResult<Vec<FinalityProviderInfo>> {
+    let query = encode_smart_query(
+        staking_addr,
+        &btc_staking::msg::QueryMsg::FinalityProvidersByPower { start_after, limit },
+    )?;
+    let res: FinalityProvidersByPowerResponse = querier.query(&query)?;
+    Ok(res.fps)
 }
 
 #[cfg(test)]
