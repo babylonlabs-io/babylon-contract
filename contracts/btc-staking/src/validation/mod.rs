@@ -51,10 +51,10 @@ fn verify_pop(
 }
 
 #[cfg(feature = "full-validation")]
-fn get_pks(
-    staker_pk_hex: String,
-    fp_pk_hex_list: Vec<String>,
-    cov_pk_hex_list: Vec<String>,
+fn decode_pks(
+    staker_pk_hex: &str,
+    fp_pk_hex_list: &[String],
+    cov_pk_hex_list: &[String],
 ) -> Result<(VerifyingKey, Vec<VerifyingKey>, Vec<VerifyingKey>), ContractError> {
     // get staker's public key
     let staker_pk_bytes =
@@ -137,10 +137,10 @@ pub fn verify_active_delegation(
     // TODO: fix contract size when full-validation is enabled
     #[cfg(feature = "full-validation")]
     {
-        let (staker_pk, fp_pks, cov_pks) = get_pks(
-            active_delegation.btc_pk_hex.clone(),
-            active_delegation.fp_btc_pk_list.clone(),
-            params.covenant_pks.clone(),
+        let (staker_pk, fp_pks, cov_pks) = decode_pks(
+            &active_delegation.btc_pk_hex,
+            &active_delegation.fp_btc_pk_list,
+            &params.covenant_pks,
         )?;
 
         // Check if data provided in request, matches data to which staking tx is
@@ -272,10 +272,10 @@ pub fn verify_undelegation(
         */
 
         // get keys
-        let (staker_pk, fp_pks, cov_pks) = get_pks(
-            btc_del.btc_pk_hex.clone(),
-            btc_del.fp_btc_pk_list.clone(),
-            params.covenant_pks.clone(),
+        let (staker_pk, fp_pks, cov_pks) = decode_pks(
+            &btc_del.btc_pk_hex,
+            &btc_del.fp_btc_pk_list,
+            &params.covenant_pks,
         )?;
 
         // get the unbonding path script
@@ -322,7 +322,7 @@ pub fn verify_undelegation(
 
 pub fn verify_slashed_delegation(
     active_delegation: &BtcDelegation,
-    slashed_fp_sk_hex: String,
+    slashed_fp_sk_hex: &str,
 ) -> Result<(), ContractError> {
     // The following code is marked with `#[cfg(feature = "full-validation")]`
     // so that it is included in the build if the `full-validation` feature is
@@ -349,7 +349,9 @@ pub fn verify_slashed_delegation(
             .fp_btc_pk_list
             .contains(&slashed_fp_pk_hex)
         {
-            return Err(ContractError::FinalityProviderNotRegistered);
+            return Err(ContractError::FinalityProviderNotFound(
+                slashed_fp_pk_hex.to_string(),
+            ));
         }
     }
 
