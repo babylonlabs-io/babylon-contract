@@ -230,10 +230,13 @@ fn handle_undelegation(
 
     // Ensure the BTC delegation is active
     if !btc_del.is_active() {
-        return Err(ContractError::DelegationIsNotActive);
+        return Err(ContractError::DelegationIsNotActive(
+            staking_tx_hash.to_string(),
+        ));
     }
 
     // verify the early unbonded delegation (full or lite)
+    let params = PARAMS.load(storage)?;
     verify_undelegation(&params, &btc_del, &undelegation.unbonding_tx_sig)?;
 
     // Add the signature to the BTC delegation's undelegation and set back
@@ -278,12 +281,14 @@ fn handle_slashed_delegation(
 
     // Ensure the BTC delegation is active
     if !btc_del.is_active() {
-        return Err(ContractError::DelegationIsNotActive);
+        return Err(ContractError::DelegationIsNotActive(
+            staking_tx_hash.to_string(),
+        ));
     }
 
     // verify the slashed delegation (full or lite)
     let recovered_fp_sk_hex = delegation.recovered_fp_btc_sk.clone();
-    verify_slashed_delegation(&btc_del, recovered_fp_sk_hex)?;
+    verify_slashed_delegation(&btc_del, &recovered_fp_sk_hex)?;
 
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
