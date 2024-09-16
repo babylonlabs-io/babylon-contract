@@ -236,6 +236,8 @@ impl BabylonScriptPaths {
             slashing_path_script,
         })
     }
+
+    // TODO: implement a function for aggregating all scripts to a single ScriptBuf
 }
 
 #[cfg(test)]
