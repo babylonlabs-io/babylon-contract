@@ -23,9 +23,7 @@ pub enum ExecuteMsg {
     /// Used by the finality contract only.
     /// The finality contract will call this message to slash the finality provider's staking power
     /// when the finality provider is found to be malicious
-    Slash {
-        fp_btc_pk_hex: String
-    },
+    Slash { fp_btc_pk_hex: String },
 }
 
 #[cw_serde]
