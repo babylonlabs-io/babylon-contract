@@ -1,14 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, QueryResponse, Reply, Response, StdResult, WasmQuery,
+    attr, to_json_binary, Addr, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
+    QuerierWrapper, QueryRequest, QueryResponse, Reply, Response, StdResult, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
 
 use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
+
+use btc_staking::msg::ActivatedHeightResponse;
 
 use crate::error::ContractError;
 use crate::finality::{
@@ -17,7 +19,6 @@ use crate::finality::{
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::{finality, queries, state};
-use btc_staking::msg::ActivatedHeightResponse;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -34,7 +35,7 @@ pub fn instantiate(
     let config = Config {
         denom,
         babylon: info.sender,
-        staking: Addr::unchecked("staking"), // TODO: instantiate staking contract and set address in reply
+        staking: Addr::unchecked("UNSET"), // To be set later, through `UpdateStaking`
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -120,6 +121,7 @@ pub fn execute(
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, maybe_addr(api, admin)?)
             .map_err(Into::into),
+        ExecuteMsg::UpdateStaking { staking } => handle_update_staking(deps, info, staking),
         ExecuteMsg::SubmitFinalitySignature {
             fp_pubkey_hex,
             height,
@@ -167,6 +169,26 @@ pub fn sudo(
             app_hash_hex,
         } => handle_end_block(&mut deps, env, &hash_hex, &app_hash_hex),
     }
+}
+
+fn handle_update_staking(
+    deps: DepsMut,
+    info: MessageInfo,
+    staking_addr: String,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    let mut cfg = CONFIG.load(deps.storage)?;
+    if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+        return Err(ContractError::Unauthorized {});
+    }
+    cfg.staking = deps.api.addr_validate(&staking_addr)?;
+    CONFIG.save(deps.storage, &cfg)?;
+
+    let attributes = vec![
+        attr("action", "update_btc_staking"),
+        attr("staking", staking_addr),
+        attr("sender", info.sender),
+    ];
+    Ok(Response::new().add_attributes(attributes))
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {

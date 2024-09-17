@@ -13,6 +13,9 @@ use crate::Bytes;
 pub enum ExecuteMsg {
     /// Change the admin
     UpdateAdmin { admin: Option<String> },
+    /// Set the BTC staking addr.
+    /// Only admin or the babylon contract can set this
+    UpdateStaking { staking: String },
     /// Committing a sequence of public randomness for EOTS
     CommitPublicRandomness {
         /// `fp_pubkey_hex` is the BTC PK of the finality provider that commits the public randomness

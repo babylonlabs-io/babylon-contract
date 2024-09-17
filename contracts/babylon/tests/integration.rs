@@ -49,6 +49,8 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
         notify_cosmos_zone: false,
         btc_staking_code_id: None,
         btc_staking_msg: None,
+        btc_finality_code_id: None,
+        btc_finality_msg: None,
         admin: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);
@@ -101,6 +103,8 @@ fn instantiate_works() {
         notify_cosmos_zone: false,
         btc_staking_code_id: None,
         btc_staking_msg: None,
+        btc_finality_code_id: None,
+        btc_finality_msg: None,
         admin: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);

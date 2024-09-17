@@ -434,6 +434,8 @@ mod tests {
             notify_cosmos_zone: false,
             btc_staking_code_id: None,
             btc_staking_msg: None,
+            btc_finality_code_id: None,
+            btc_finality_msg: None,
             admin: None,
             consumer_name: None,
             consumer_description: None,

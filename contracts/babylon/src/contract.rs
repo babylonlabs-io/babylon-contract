@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::ParseReplyError;
 
-use babylon_apis::btc_staking_api;
+use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
@@ -135,12 +135,25 @@ fn reply_init_finality_callback(
     reply: SubMsgResponse,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Try to get contract address from events in reply
-    let addr = reply_init_get_contract_address(reply)?;
+    let finality_addr = reply_init_get_contract_address(reply)?;
     CONFIG.update(deps.storage, |mut cfg| {
-        cfg.btc_finality = Some(addr);
+        cfg.btc_finality = Some(finality_addr.clone());
         Ok::<_, ContractError>(cfg)
     })?;
-    Ok(Response::new())
+    // Set the BTC staking contract address to the BTC finality contract
+    let cfg = CONFIG.load(deps.storage)?;
+    let msg = finality_api::ExecuteMsg::UpdateStaking {
+        staking: cfg
+            .btc_staking
+            .ok_or(ContractError::BtcStakingNotSet {})?
+            .to_string(),
+    };
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: finality_addr.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+    Ok(Response::new().add_message(wasm_msg))
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
@@ -263,6 +276,8 @@ mod tests {
             notify_cosmos_zone: false,
             btc_staking_code_id: None,
             btc_staking_msg: None,
+            btc_finality_code_id: None,
+            btc_finality_msg: None,
             admin: None,
             consumer_name: None,
             consumer_description: None,

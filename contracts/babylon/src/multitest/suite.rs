@@ -66,6 +66,8 @@ impl SuiteBuilder {
                     notify_cosmos_zone: false,
                     btc_staking_code_id: Some(btc_staking_code_id),
                     btc_staking_msg: None,
+                    btc_finality_code_id: None,
+                    btc_finality_msg: None,
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
