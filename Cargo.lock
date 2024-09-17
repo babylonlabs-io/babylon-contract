@@ -169,6 +169,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus",
  "cw-utils",
+ "cw2",
  "derivative",
  "hex",
  "ics23",

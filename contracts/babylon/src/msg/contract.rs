@@ -27,7 +27,7 @@ pub struct InstantiateMsg {
     pub notify_cosmos_zone: bool,
     /// If set, this will instantiate a BTC staking contract for BTC re-staking
     pub btc_staking_code_id: Option<u64>,
-    /// If set, this will define the instantiate message for the BTC staking contract.
+    /// If set, this will define the instantiation message for the BTC staking contract.
     /// This message is opaque to the Babylon contract, and depends on the specific staking contract
     /// being instantiated
     pub btc_staking_msg: Option<Binary>,

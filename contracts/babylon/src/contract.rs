@@ -3,6 +3,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
     Response, SubMsg, SubMsgResponse, WasmMsg,
 };
+use cw2::set_contract_version;
 use cw_utils::ParseReplyError;
 
 use crate::ibc::{ibc_packet, IBC_CHANNEL};
@@ -12,7 +13,10 @@ use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
 use babylon_bindings::BabylonMsg;
 
-const REPLY_ID_INSTANTIATE: u64 = 1;
+pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const REPLY_ID_INSTANTIATE: u64 = 2;
 
 /// When we instantiate the Babylon contract, it will optionally instantiate a BTC staking
 /// contract – if its code id is provided – to work with it for BTC re-staking support,
@@ -61,6 +65,7 @@ pub fn instantiate(
     // Save the config after potentially updating it
     CONFIG.save(deps.storage, &cfg)?;
 
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(res)
 }
 
