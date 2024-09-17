@@ -248,13 +248,8 @@ pub fn handle_finality_signature(
             evidence.canonical_finality_sig = canonical_sig;
             // Slash this finality provider, including setting its voting power to zero, extracting
             // its BTC SK, and emitting an event
-            let (msgs, ev) = slash_finality_provider(
-                &mut deps,
-                &staking_addr.clone(),
-                fp_btc_pk_hex,
-                &evidence,
-            )?;
-            res = res.add_messages(msgs);
+            let (msg, ev) = slash_finality_provider(&mut deps, fp_btc_pk_hex, &evidence)?;
+            res = res.add_message(msg);
             res = res.add_event(ev);
         }
         // TODO?: Also slash if this finality provider has signed another fork before
@@ -282,9 +277,8 @@ pub fn handle_finality_signature(
 
         // Slash this finality provider, including setting its voting power to zero, extracting its
         // BTC SK, and emitting an event
-        let (msgs, ev) =
-            slash_finality_provider(&mut deps, &staking_addr, fp_btc_pk_hex, &evidence)?;
-        res = res.add_messages(msgs);
+        let (msg, ev) = slash_finality_provider(&mut deps, fp_btc_pk_hex, &evidence)?;
+        res = res.add_message(msg);
         res = res.add_event(ev);
     }
 
@@ -295,23 +289,9 @@ pub fn handle_finality_signature(
 /// its voting power to zero, extracting its BTC SK, and emitting an event
 fn slash_finality_provider(
     deps: &mut DepsMut,
-    staking_addr: &Addr,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
-) -> Result<(Vec<WasmMsg>, Event), ContractError> {
-    let mut wasm_msgs = vec![];
-    // Slash this finality provider, i.e., set its slashing height to the block height
-    let msg = btc_staking::msg::ExecuteMsg::Slash {
-        fp_btc_pk_hex: fp_btc_pk_hex.to_string(),
-    };
-    let staking_msg = WasmMsg::Execute {
-        contract_addr: staking_addr.to_string(),
-        msg: to_json_binary(&msg)?,
-        funds: vec![],
-    };
-    wasm_msgs.push(staking_msg);
-
-    // Extract BTC SK using the evidence
+) -> Result<(WasmMsg, Event), ContractError> {
     let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
     let btc_sk = pk
         .extract_secret_key(
@@ -332,12 +312,11 @@ fn slash_finality_provider(
 
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
-    let babylon_msg = WasmMsg::Execute {
+    let wasm_msg = WasmMsg::Execute {
         contract_addr: babylon_addr.to_string(),
         msg: to_json_binary(&msg)?,
         funds: vec![],
     };
-    wasm_msgs.push(babylon_msg);
 
     let ev = Event::new("slashed_finality_provider")
         .add_attribute("module", "finality")
@@ -357,7 +336,7 @@ fn slash_finality_provider(
             hex::encode(&evidence.fork_finality_sig),
         )
         .add_attribute("secret_key", hex::encode(btc_sk.to_bytes()));
-    Ok((wasm_msgs, ev))
+    Ok((wasm_msg, ev))
 }
 
 /// Verifies the finality signature message w.r.t. the public randomness commitment:
