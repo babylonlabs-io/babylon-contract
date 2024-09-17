@@ -185,9 +185,9 @@ impl Validate for SlashedBtcDelegation {
             return Err(StakingApiError::InvalidStakingTxHash(HASH_SIZE * 2));
         }
 
-        if self.recovered_fp_btc_sk.is_empty() {
-            return Err(StakingApiError::EmptyBtcSk);
-        }
+        // if self.recovered_fp_btc_sk.is_empty() {
+        //     return Err(StakingApiError::EmptyBtcSk);
+        // }
 
         Ok(())
     }
