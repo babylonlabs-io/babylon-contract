@@ -1,5 +1,5 @@
 [package]
-name = "babylon-finality"
+name = "btc-finality"
 edition.workspace = true
 version.workspace = true
 license.workspace = true

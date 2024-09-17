@@ -182,35 +182,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "babylon-finality"
-version = "0.9.0"
-dependencies = [
- "babylon-apis",
- "babylon-bindings",
- "babylon-bitcoin",
- "babylon-btcstaking",
- "babylon-contract",
- "babylon-merkle",
- "babylon-proto",
- "bitcoin",
- "btc-staking",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-vm",
- "cw-controllers",
- "cw-storage-plus",
- "cw-utils",
- "cw2",
- "derivative",
- "eots",
- "hex",
- "k256",
- "prost 0.11.9",
- "test-utils",
- "thiserror",
-]
-
-[[package]]
 name = "babylon-merkle"
 version = "0.9.0"
 dependencies = [
@@ -405,6 +376,35 @@ dependencies = [
  "quote",
  "syn 2.0.66",
  "syn_derive",
+]
+
+[[package]]
+name = "btc-finality"
+version = "0.9.0"
+dependencies = [
+ "babylon-apis",
+ "babylon-bindings",
+ "babylon-bitcoin",
+ "babylon-btcstaking",
+ "babylon-contract",
+ "babylon-merkle",
+ "babylon-proto",
+ "bitcoin",
+ "btc-staking",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-vm",
+ "cw-controllers",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "derivative",
+ "eots",
+ "hex",
+ "k256",
+ "prost 0.11.9",
+ "test-utils",
+ "thiserror",
 ]
 
 [[package]]

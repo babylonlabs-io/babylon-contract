@@ -17,10 +17,10 @@ pub type ExecuteMsg = babylon_apis::finality_api::ExecuteMsg;
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// `Config` returns the current configuration of the babylon-finality contract
+    /// `Config` returns the current configuration of the btc-finality contract
     #[returns(Config)]
     Config {},
-    /// `Params` returns the current Consumer-specific parameters of the babylon-finality contract
+    /// `Params` returns the current Consumer-specific parameters of the btc-finality contract
     #[returns(Params)]
     Params {},
     /// `Admin` returns the current admin of the contract
