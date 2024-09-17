@@ -16,7 +16,8 @@ use babylon_bindings::BabylonMsg;
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REPLY_ID_INSTANTIATE: u64 = 2;
+const REPLY_ID_INSTANTIATE_STAKING: u64 = 2;
+const REPLY_ID_INSTANTIATE_FINALITY: u64 = 3;
 
 /// When we instantiate the Babylon contract, it will optionally instantiate a BTC staking
 /// contract – if its code id is provided – to work with it for BTC re-staking support,
@@ -38,6 +39,7 @@ pub fn instantiate(
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
         notify_cosmos_zone: msg.notify_cosmos_zone,
         btc_staking: None, // Will be set in `reply` if `btc_staking_code_id` is provided
+        btc_finality: None, // Will be set in `reply` if `btc_finality_code_id` is provided
         consumer_name: None,
         consumer_description: None,
     };
@@ -51,13 +53,27 @@ pub fn instantiate(
 
         // Instantiate BTC staking contract
         let init_msg = WasmMsg::Instantiate {
-            admin: msg.admin,
+            admin: msg.admin.clone(),
             code_id: btc_staking_code_id,
             msg: msg.btc_staking_msg.unwrap_or(Binary::from(b"{}")),
             funds: vec![],
             label: "BTC Staking".into(),
         };
-        let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE);
+        let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE_STAKING);
+
+        res = res.add_submessage(init_msg);
+    }
+
+    if let Some(btc_finality_code_id) = msg.btc_finality_code_id {
+        // Instantiate BTC finality contract
+        let init_msg = WasmMsg::Instantiate {
+            admin: msg.admin,
+            code_id: btc_finality_code_id,
+            msg: msg.btc_finality_msg.unwrap_or(Binary::from(b"{}")),
+            funds: vec![],
+            label: "BTC Finality".into(),
+        };
+        let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE_FINALITY);
 
         res = res.add_submessage(init_msg);
     }
@@ -75,44 +91,54 @@ pub fn reply(
     reply: Reply,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match reply.id {
-        REPLY_ID_INSTANTIATE => reply_init_callback(deps, reply.result.unwrap()),
+        REPLY_ID_INSTANTIATE_STAKING => reply_init_callback_staking(deps, reply.result.unwrap()),
+        REPLY_ID_INSTANTIATE_FINALITY => reply_init_finality_callback(deps, reply.result.unwrap()),
         _ => Err(ContractError::InvalidReplyId(reply.id)),
     }
 }
 
-/// Store virtual BTC staking address
-fn reply_init_callback(
-    deps: DepsMut,
-    reply: SubMsgResponse,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    // Try to get contract address from events in reply
+/// Tries to get contract address from events in reply
+fn reply_init_get_contract_address(reply: SubMsgResponse) -> Result<Addr, ContractError> {
     for event in reply.events {
         if event.ty == "instantiate" {
             for attr in event.attributes {
                 if attr.key == "_contract_address" {
-                    let btc_staking = Addr::unchecked(attr.value);
-                    CONFIG.update(deps.storage, |mut cfg| {
-                        cfg.btc_staking = Some(btc_staking.clone());
-                        Ok::<_, ContractError>(cfg)
-                    })?;
-                    return Ok(Response::new());
+                    return Ok(Addr::unchecked(attr.value));
                 }
             }
         }
     }
-    // Fall back to deprecated way of getting contract address from data
-    // TODO: Remove this if the method above works
-    // TODO: Use the new `msg_responses` field if / when available
-    // let init_data = parse_instantiate_response_data(&reply.data.unwrap())?;
-    // let btc_staking = Addr::unchecked(init_data.contract_address);
-    // CONFIG.update(deps.storage, |mut cfg| {
-    //     cfg.btc_staking = Some(btc_staking.clone());
-    //     Ok::<_, ContractError>(cfg)
-    // })?;
-    // Ok(Response::new())
     Err(ContractError::ParseReply(ParseReplyError::ParseFailure(
         "Cannot parse contract address".to_string(),
     )))
+}
+
+/// Store BTC staking address
+fn reply_init_callback_staking(
+    deps: DepsMut,
+    reply: SubMsgResponse,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // Try to get contract address from events in reply
+    let addr = reply_init_get_contract_address(reply)?;
+    CONFIG.update(deps.storage, |mut cfg| {
+        cfg.btc_staking = Some(addr);
+        Ok::<_, ContractError>(cfg)
+    })?;
+    Ok(Response::new())
+}
+
+/// Store BTC finality address
+fn reply_init_finality_callback(
+    deps: DepsMut,
+    reply: SubMsgResponse,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // Try to get contract address from events in reply
+    let addr = reply_init_get_contract_address(reply)?;
+    CONFIG.update(deps.storage, |mut cfg| {
+        cfg.btc_finality = Some(addr);
+        Ok::<_, ContractError>(cfg)
+    })?;
+    Ok(Response::new())
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
