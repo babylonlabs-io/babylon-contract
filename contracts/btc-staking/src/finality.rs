@@ -117,7 +117,7 @@ fn verify_commitment_signature(
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
@@ -223,7 +223,7 @@ pub fn handle_finality_signature(
             evidence.canonical_finality_sig = canonical_sig;
             // Slash this finality provider, including setting its voting power to zero, extracting
             // its BTC SK, and emitting an event
-            let (msg, ev) = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+            let (msg, ev) = slash_finality_provider(&mut deps, env, fp_btc_pk_hex, &evidence)?;
             res = res.add_message(msg);
             res = res.add_event(ev);
         }
@@ -252,7 +252,7 @@ pub fn handle_finality_signature(
 
         // Slash this finality provider, including setting its voting power to zero, extracting its
         // BTC SK, and emitting an event
-        let (msg, ev) = slash_finality_provider(deps.storage, env, fp_btc_pk_hex, &evidence)?;
+        let (msg, ev) = slash_finality_provider(&mut deps, env, fp_btc_pk_hex, &evidence)?;
         res = res.add_message(msg);
         res = res.add_event(ev);
     }
@@ -263,13 +263,13 @@ pub fn handle_finality_signature(
 /// `slash_finality_provider` slashes a finality provider with the given evidence including setting
 /// its voting power to zero, extracting its BTC SK, and emitting an event
 fn slash_finality_provider(
-    store: &mut dyn Storage,
+    deps: &mut DepsMut,
     env: Env,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
 ) -> Result<(WasmMsg, Event), ContractError> {
     // Slash this finality provider, i.e., set its slashing height to the block height
-    staking::slash_finality_provider(store, env, fp_btc_pk_hex, evidence.block_height)
+    staking::slash_finality_provider(deps, env, fp_btc_pk_hex, evidence.block_height)
         .map_err(|err| ContractError::FailedToSlashFinalityProvider(err.to_string()))?;
 
     // Extract BTC SK using the evidence
@@ -291,7 +291,7 @@ fn slash_finality_provider(
         evidence: evidence.clone(),
     };
 
-    let babylon_addr = CONFIG.load(store)?.babylon;
+    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
     let wasm_msg = WasmMsg::Execute {
         contract_addr: babylon_addr.to_string(),
