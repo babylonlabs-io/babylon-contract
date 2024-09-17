@@ -1,4 +1,3 @@
-use crate::error::ContractError;
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
     Response, SubMsg, SubMsgResponse, WasmMsg,
@@ -6,12 +5,15 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::ParseReplyError;
 
+use babylon_apis::btc_staking_api;
+use babylon_bindings::BabylonMsg;
+
+use crate::error::ContractError;
 use crate::ibc::{ibc_packet, IBC_CHANNEL};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
-use babylon_bindings::BabylonMsg;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -202,20 +204,33 @@ pub fn execute(
             Ok(Response::new())
         }
         ExecuteMsg::Slashing { evidence } => {
-            // This is an internal routing message from the `btc-staking` contract
+            // This is an internal routing message from the `btc_finality` contract
+            let cfg = CONFIG.load(deps.storage)?;
             // Check sender
-            let btc_staking = CONFIG
-                .load(deps.storage)?
-                .btc_staking
-                .ok_or(ContractError::BtcStakingNotSet {})?;
-            if info.sender != btc_staking {
+            let btc_finality = cfg
+                .btc_finality
+                .ok_or(ContractError::BtcFinalityNotSet {})?;
+            if info.sender != btc_finality {
                 return Err(ContractError::Unauthorized {});
             }
+            // Send to the staking contract for processing
+            let btc_staking = cfg.btc_staking.ok_or(ContractError::BtcStakingNotSet {})?;
+            // Slashes this finality provider, i.e., sets its slashing height to the block height
+            // and its power to zero
+            let msg = btc_staking_api::ExecuteMsg::Slash {
+                fp_btc_pk_hex: hex::encode(evidence.fp_btc_pk.clone()),
+            };
+            let wasm_msg = WasmMsg::Execute {
+                contract_addr: btc_staking.to_string(),
+                msg: to_json_binary(&msg)?,
+                funds: vec![],
+            };
+
             // Send over IBC to the Provider (Babylon)
             let channel = IBC_CHANNEL.load(deps.storage)?;
-            let msg = ibc_packet::slashing_msg(&env, &channel, &evidence)?;
+            let ibc_msg = ibc_packet::slashing_msg(&env, &channel, &evidence)?;
             // TODO: Add events
-            Ok(Response::new().add_message(msg))
+            Ok(Response::new().add_message(wasm_msg).add_message(ibc_msg))
         }
     }
 }
