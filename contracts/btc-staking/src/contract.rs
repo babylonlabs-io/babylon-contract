@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
+    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
     StdResult,
 };
 use cw2::set_contract_version;
@@ -30,7 +30,6 @@ pub fn instantiate(
     let config = Config {
         denom,
         babylon: info.sender,
-        finality: Addr::unchecked(""), // TODO: Instantiate finality contract and set address in reply handler
     };
     CONFIG.save(deps.storage, &config)?;
 

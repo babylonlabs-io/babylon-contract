@@ -321,7 +321,7 @@ pub fn handle_slash_fp(
     fp_btc_pk_hex: &str,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.finality && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+    if info.sender != config.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
         return Err(ContractError::Unauthorized);
     }
     slash_finality_provider(deps, env, fp_btc_pk_hex)
