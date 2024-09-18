@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FinalityProvider",
+  "type": "object",
+  "required": [
+    "addr",
+    "btc_pk_hex",
+    "commission",
+    "consumer_id",
+    "slashed_btc_height",
+    "slashed_height"
+  ],
+  "properties": {
+    "addr": {
+      "description": "addr is the bech32 address identifier of the finality provider",
+      "type": "string"
+    },
+    "btc_pk_hex": {
+      "description": "btc_pk_hex is the Bitcoin secp256k1 PK of this finality provider the PK follows encoding in BIP-340 spec in hex format",
+      "type": "string"
+    },
+    "commission": {
+      "description": "commission defines the commission rate of the finality provider.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal"
+        }
+      ]
+    },
+    "consumer_id": {
+      "description": "consumer_id is the ID of the consumer that the finality provider is operating on.",
+      "type": "string"
+    },
+    "description": {
+      "description": "description defines the description terms for the finality provider",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/FinalityProviderDescription"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pop": {
+      "description": "pop is the proof of possession of the babylon_pk and btc_pk",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ProofOfPossessionBtc"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "slashed_btc_height": {
+      "description": "slashed_btc_height is the BTC height on which the finality provider is slashed",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "slashed_height": {
+      "description": "slashed_height is the height on which the finality provider is slashed",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "FinalityProviderDescription": {
+      "type": "object",
+      "required": [
+        "details",
+        "identity",
+        "moniker",
+        "security_contact",
+        "website"
+      ],
+      "properties": {
+        "details": {
+          "description": "details is the details of the finality provider",
+          "type": "string"
+        },
+        "identity": {
+          "description": "identity is the identity of the finality provider",
+          "type": "string"
+        },
+        "moniker": {
+          "description": "moniker is the name of the finality provider",
+          "type": "string"
+        },
+        "security_contact": {
+          "description": "security_contact is the security contact of the finality provider",
+          "type": "string"
+        },
+        "website": {
+          "description": "website is the website of the finality provider",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProofOfPossessionBtc": {
+      "description": "ProofOfPossessionBtc is the proof of possession that a Babylon secp256k1 secret key and a Bitcoin secp256k1 secret key are held by the same person",
+      "type": "object",
+      "required": [
+        "btc_sig",
+        "btc_sig_type"
+      ],
+      "properties": {
+        "btc_sig": {
+          "description": "btc_sig is the signature generated via sign(sk_btc, babylon_sig) the signature follows encoding in either BIP-340 spec or BIP-322 spec",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "btc_sig_type": {
+          "description": "btc_sig_type indicates the type of btc_sig in the pop",
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
