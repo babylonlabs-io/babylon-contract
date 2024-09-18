@@ -584,12 +584,17 @@ pub fn list_fps_by_power(
 
 #[cfg(test)]
 mod tests {
-    use crate::contract::instantiate;
-    use crate::contract::tests::{create_new_finality_provider, get_public_randomness_commitment};
+    use crate::contract::tests::{
+        create_new_finality_provider, get_derived_btc_delegation, get_params,
+        get_public_randomness_commitment,
+    };
+    use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
-    use crate::msg::InstantiateMsg;
+    use crate::msg::{FinalitySignatureResponse, InstantiateMsg};
+    use crate::queries::{block, evidence, finality_signature};
+    use babylon_apis::btc_staking_api;
     use babylon_apis::btc_staking_api::SudoMsg;
-    use babylon_apis::finality_api::IndexedBlock;
+    use babylon_apis::finality_api::{ExecuteMsg, IndexedBlock};
     use babylon_bindings::BabylonMsg;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -599,8 +604,6 @@ mod tests {
     use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
 
     const CREATOR: &str = "creator";
-    const INIT_ADMIN: &str = "initial_admin";
-    const NEW_ADMIN: &str = "new_admin";
 
     fn mock_env_height(height: u64) -> Env {
         let mut env = mock_env();
@@ -676,14 +679,15 @@ mod tests {
         let new_fp = create_new_finality_provider(1);
         assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
-        let msg = ExecuteMsg::BtcStaking {
+        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
         };
 
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let res =
+            btc_staking::contract::execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
 
         // Now commit the public randomness for it
@@ -732,31 +736,33 @@ mod tests {
         let new_fp = create_new_finality_provider(1);
         assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
-        let msg = ExecuteMsg::BtcStaking {
+        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
         };
 
-        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+        let _res =
+            btc_staking::contract::execute(deps.as_mut(), initial_env.clone(), info.clone(), msg)
+                .unwrap();
 
         // Activated height is not set
         let res = btc_staking::queries::activated_height(deps.as_ref()).unwrap();
         assert_eq!(res.height, 0);
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = btc_staking::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
 
-        let msg = ExecuteMsg::BtcStaking {
+        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![del1.clone()],
             slashed_del: vec![],
             unbonded_del: vec![],
         };
 
-        execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
+        btc_staking::contract::execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Activated height is now set
         let activated_height = btc_staking::queries::activated_height(deps.as_ref()).unwrap();
@@ -803,14 +809,14 @@ mod tests {
         );
 
         // Submit a finality signature from that finality provider at height initial_height + 1
-        let finality_signature = add_finality_signature.finality_sig.to_vec();
+        let finality_sig = add_finality_signature.finality_sig.to_vec();
         let msg = ExecuteMsg::SubmitFinalitySignature {
             fp_pubkey_hex: pk_hex.clone(),
             height: initial_height + 1,
             pub_rand: pub_rand_one.into(),
             proof: proof.into(),
             block_hash: add_finality_signature.block_app_hash.to_vec().into(),
-            signature: Binary::new(finality_signature.clone()),
+            signature: Binary::new(finality_sig.clone()),
         };
 
         // Execute the message at a higher height, so that:
@@ -825,16 +831,12 @@ mod tests {
         .unwrap();
 
         // Query finality signature for that exact height
-        let sig = btc_staking::queries::finality_signature(
-            deps.as_ref(),
-            pk_hex.to_string(),
-            initial_height + 1,
-        )
-        .unwrap();
+        let sig =
+            finality_signature(deps.as_ref(), pk_hex.to_string(), initial_height + 1).unwrap();
         assert_eq!(
             sig,
             FinalitySignatureResponse {
-                signature: finality_signature
+                signature: finality_sig
             }
         );
     }
@@ -872,31 +874,35 @@ mod tests {
         let new_fp = create_new_finality_provider(1);
         assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
-        let msg = ExecuteMsg::BtcStaking {
+        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
         };
 
-        execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+        btc_staking::contract::execute(deps.as_mut(), initial_env.clone(), info.clone(), msg)
+            .unwrap();
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = btc_staking::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
 
-        let msg = ExecuteMsg::BtcStaking {
+        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![del1.clone()],
             slashed_del: vec![],
             unbonded_del: vec![],
         };
-        execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
+        btc_staking::contract::execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Check that the finality provider power has been updated
-        let fp_info =
-            queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
-                .unwrap();
+        let fp_info = btc_staking::queries::finality_provider_info(
+            deps.as_ref(),
+            new_fp.btc_pk_hex.clone(),
+            None,
+        )
+        .unwrap();
         assert_eq!(fp_info.power, del1.total_sat);
 
         // Submit public randomness commitment for the FP and the involved heights
@@ -992,7 +998,7 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // Assert the submitted block has been indexed and finalised
-        let indexed_block = btc_staking::queries::block(deps.as_ref(), submit_height).unwrap();
+        let indexed_block = block(deps.as_ref(), submit_height).unwrap();
         assert_eq!(
             indexed_block,
             IndexedBlock {
@@ -1035,32 +1041,38 @@ mod tests {
         let new_fp = create_new_finality_provider(1);
         assert_eq!(new_fp.btc_pk_hex, pk_hex);
 
-        let msg = ExecuteMsg::BtcStaking {
+        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
             active_del: vec![],
             slashed_del: vec![],
             unbonded_del: vec![],
         };
 
-        let _res = execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+        let _res =
+            btc_staking::contract::execute(deps.as_mut(), initial_env.clone(), info.clone(), msg)
+                .unwrap();
 
         // Add a delegation, so that the finality provider has some power
-        let mut del1 = btc_staking::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
 
-        let msg = ExecuteMsg::BtcStaking {
+        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![del1.clone()],
             slashed_del: vec![],
             unbonded_del: vec![],
         };
 
-        execute(deps.as_mut(), initial_env.clone(), info.clone(), msg).unwrap();
+        btc_staking::contract::execute(deps.as_mut(), initial_env.clone(), info.clone(), msg)
+            .unwrap();
 
         // Check that the finality provider power has been updated
-        let fp_info =
-            queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
-                .unwrap();
+        let fp_info = btc_staking::queries::finality_provider_info(
+            deps.as_ref(),
+            new_fp.btc_pk_hex.clone(),
+            None,
+        )
+        .unwrap();
         assert_eq!(fp_info.power, del1.total_sat);
 
         // Submit public randomness commitment for the FP and the involved heights
@@ -1133,7 +1145,7 @@ mod tests {
 
         // Assert the double signing evidence is proper
         let btc_pk = hex::decode(pk_hex.clone()).unwrap();
-        let evidence = btc_staking::queries::evidence(deps.as_ref(), pk_hex.clone(), submit_height)
+        let evidence = evidence(deps.as_ref(), pk_hex.clone(), submit_height)
             .unwrap()
             .evidence
             .unwrap();
@@ -1168,7 +1180,7 @@ mod tests {
         call_end_block(&mut deps, "deadbeef02".as_bytes(), final_height).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
-        let indexed_block = btc_staking::queries::block(deps.as_ref(), submit_height).unwrap();
+        let indexed_block = block(deps.as_ref(), submit_height).unwrap();
         assert_eq!(
             indexed_block,
             IndexedBlock {

@@ -254,7 +254,6 @@ pub(crate) mod tests {
         FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
     };
     use babylon_apis::finality_api::PubRandCommit;
-    use babylon_bitcoin::chain_params::Network;
     use babylon_proto::babylon::btcstaking::v1::{
         BtcDelegation, FinalityProvider, Params as ProtoParams,
     };
@@ -273,14 +272,8 @@ pub(crate) mod tests {
 
     fn new_params(params: ProtoParams) -> Params {
         Params {
-            covenant_pks: params.covenant_pks.iter().map(hex::encode).collect(),
-            covenant_quorum: params.covenant_quorum,
-            btc_network: Network::Regtest, // TODO: fix this
             max_active_finality_providers: params.max_active_finality_providers,
             min_pub_rand: 10, // TODO: fix this
-            slashing_address: params.slashing_address,
-            min_slashing_tx_fee_sat: params.min_slashing_tx_fee_sat as u64,
-            slashing_rate: "0.01".to_string(), // TODO: fix this
         }
     }
 
@@ -359,13 +352,7 @@ pub(crate) mod tests {
         }
     }
 
-    /// Build an active BTC delegation from a BTC delegation
-    pub(crate) fn get_active_btc_delegation() -> ActiveBtcDelegation {
-        let del = get_btc_delegation(1, vec![1]);
-        new_active_btc_delegation(del)
-    }
-
-    // Build a derived active BTC delegation from the base (from testdata) BTC delegation
+    /// Build a derived active BTC delegation from the base (from testdata) BTC delegation
     pub(crate) fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
         let del = get_btc_delegation(del_id, fp_ids.to_vec());
         new_active_btc_delegation(del)
