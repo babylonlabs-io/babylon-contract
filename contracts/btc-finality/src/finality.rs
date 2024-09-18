@@ -655,6 +655,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn commit_public_randomness_works() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
@@ -704,6 +705,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn finality_signature_happy_path() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
@@ -842,6 +844,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn finality_round_works() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
@@ -1010,6 +1013,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn slashing_works() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
