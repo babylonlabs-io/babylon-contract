@@ -127,7 +127,7 @@ pub fn execute(
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+pub mod tests {
     use std::str::FromStr;
 
     use super::*;
@@ -252,7 +252,7 @@ pub(crate) mod tests {
     }
 
     // Build a derived active BTC delegation from the base (from testdata) BTC delegation
-    pub(crate) fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
+    pub fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
         let del = get_btc_delegation(del_id, fp_ids.to_vec());
         new_active_btc_delegation(del)
     }
