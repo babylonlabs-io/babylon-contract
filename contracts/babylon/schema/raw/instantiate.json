@@ -11,7 +11,7 @@
   ],
   "properties": {
     "admin": {
-      "description": "If set, this will be the Wasm migration / upgrade admin of the BTC staking contract",
+      "description": "If set, this will be the Wasm migration / upgrade admin of the BTC staking contract and the BTC finality contract",
       "type": [
         "string",
         "null"
@@ -26,6 +26,26 @@
       "format": "uint64",
       "minimum": 0.0
     },
+    "btc_finality_code_id": {
+      "description": "If set, this will instantiate a BTC finality contract",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "btc_finality_msg": {
+      "description": "If set, this will define the instantiation message for the BTC finality contract. This message is opaque to the Babylon contract, and depends on the specific finality contract being instantiated",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Binary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "btc_staking_code_id": {
       "description": "If set, this will instantiate a BTC staking contract for BTC re-staking",
       "type": [
@@ -36,7 +56,7 @@
       "minimum": 0.0
     },
     "btc_staking_msg": {
-      "description": "If set, this will define the instantiate message for the BTC staking contract. This message is opaque to the Babylon contract, and depends on the specific staking contract being instantiated",
+      "description": "If set, this will define the instantiation message for the BTC staking contract. This message is opaque to the Babylon contract, and depends on the specific staking contract being instantiated",
       "anyOf": [
         {
           "$ref": "#/definitions/Binary"
@@ -69,6 +89,7 @@
       "$ref": "#/definitions/Network"
     },
     "notify_cosmos_zone": {
+      "description": "notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised headers. NOTE: If set to true, then the Cosmos zone needs to integrate the corresponding message handler as well",
       "type": "boolean"
     }
   },
