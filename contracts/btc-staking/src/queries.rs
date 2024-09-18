@@ -183,7 +183,7 @@ mod tests {
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::StdError::NotFound;
-    use cosmwasm_std::{from_json, Binary, Env, Storage};
+    use cosmwasm_std::{from_json, Env, Storage};
 
     use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
 

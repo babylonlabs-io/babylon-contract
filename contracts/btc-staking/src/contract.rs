@@ -148,7 +148,10 @@ pub(crate) mod tests {
     };
     use cw_controllers::AdminResponse;
     use hex::ToHex;
-    use test_utils::{get_btc_delegation, get_finality_provider};
+    use k256::schnorr::{Signature, SigningKey};
+    use test_utils::{
+        get_btc_del_unbonding_sig_bytes, get_btc_delegation, get_finality_provider, get_fp_sk_bytes,
+    };
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
