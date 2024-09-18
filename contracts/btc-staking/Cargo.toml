@@ -22,7 +22,7 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [[bin]]
-name = "btcstaking-schema"
+name = "btc-staking-schema"
 path = "src/bin/schema.rs"
 test = false
 

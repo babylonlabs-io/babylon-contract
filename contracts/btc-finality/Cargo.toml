@@ -14,7 +14,7 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [[bin]]
-name = "finality-schema"
+name = "btc-finality-schema"
 path = "src/bin/schema.rs"
 test = false
 
