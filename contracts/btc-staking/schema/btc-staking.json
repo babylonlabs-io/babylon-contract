@@ -26,14 +26,43 @@
     },
     "additionalProperties": false,
     "definitions": {
+      "Network": {
+        "type": "string",
+        "enum": [
+          "mainnet",
+          "testnet",
+          "signet",
+          "regtest"
+        ]
+      },
       "Params": {
         "description": "Params define Consumer-selectable BTC staking parameters",
         "type": "object",
         "required": [
+          "btc_network",
+          "covenant_pks",
+          "covenant_quorum",
           "max_active_finality_providers",
-          "min_pub_rand"
+          "min_pub_rand",
+          "min_slashing_tx_fee_sat",
+          "slashing_address",
+          "slashing_rate"
         ],
         "properties": {
+          "btc_network": {
+            "$ref": "#/definitions/Network"
+          },
+          "covenant_pks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "covenant_quorum": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "max_active_finality_providers": {
             "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
             "type": "integer",
@@ -45,6 +74,20 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          },
+          "min_slashing_tx_fee_sat": {
+            "description": "`min_slashing_tx_fee_sat` is the minimum amount of tx fee (quantified in Satoshi) needed for the pre-signed slashing tx",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "slashing_address": {
+            "description": "`slashing_address` is the address that the slashed BTC goes to. The address is in string format on Bitcoin.",
+            "type": "string"
+          },
+          "slashing_rate": {
+            "description": "`slashing_rate` determines the portion of the staked amount to be slashed, expressed as a decimal (e.g. 0.5 for 50%).",
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -125,97 +168,20 @@
         "additionalProperties": false
       },
       {
-        "description": "Committing a sequence of public randomness for EOTS",
+        "description": "Slash finality provider staking power. Used by the babylon-contract only. The Babylon contract will call this message to set the finality provider's staking power to zero when the finality provider is found to be malicious by the finality contract.",
         "type": "object",
         "required": [
-          "commit_public_randomness"
+          "slash"
         ],
         "properties": {
-          "commit_public_randomness": {
+          "slash": {
             "type": "object",
             "required": [
-              "commitment",
-              "fp_pubkey_hex",
-              "num_pub_rand",
-              "signature",
-              "start_height"
+              "fp_btc_pk_hex"
             ],
             "properties": {
-              "commitment": {
-                "description": "`commitment` is the commitment of these public randomness values. Currently, it's the root of the Merkle tree that includes the public randomness",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Binary"
-                  }
-                ]
-              },
-              "fp_pubkey_hex": {
-                "description": "`fp_pubkey_hex` is the BTC PK of the finality provider that commits the public randomness",
+              "fp_btc_pk_hex": {
                 "type": "string"
-              },
-              "num_pub_rand": {
-                "description": "`num_pub_rand` is the amount of public randomness committed",
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "signature": {
-                "description": "`signature` is the signature on (start_height || num_pub_rand || commitment) signed by the SK corresponding to `fp_pubkey_hex`. This prevents others committing public randomness on behalf of `fp_pubkey_hex`",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Binary"
-                  }
-                ]
-              },
-              "start_height": {
-                "description": "`start_height` is the start block height of the list of public randomness",
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Submit Finality Signature.\n\nThis is a message that can be called by a finality provider to submit their finality signature to the Consumer chain. The signature is verified by the Consumer chain using the finality provider's public key\n\nThis message is equivalent to the `MsgAddFinalitySig` message in the Babylon finality protobuf defs.",
-        "type": "object",
-        "required": [
-          "submit_finality_signature"
-        ],
-        "properties": {
-          "submit_finality_signature": {
-            "type": "object",
-            "required": [
-              "block_hash",
-              "fp_pubkey_hex",
-              "height",
-              "proof",
-              "pub_rand",
-              "signature"
-            ],
-            "properties": {
-              "block_hash": {
-                "$ref": "#/definitions/Binary"
-              },
-              "fp_pubkey_hex": {
-                "type": "string"
-              },
-              "height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "proof": {
-                "$ref": "#/definitions/Proof"
-              },
-              "pub_rand": {
-                "$ref": "#/definitions/Binary"
-              },
-              "signature": {
-                "$ref": "#/definitions/Binary"
               }
             },
             "additionalProperties": false
@@ -516,38 +482,6 @@
                 "type": "null"
               }
             ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "Proof": {
-        "description": "A `Proof` is a proof of a leaf's existence in a Merkle tree.\n\nThe convention for proofs is to include leaf hashes, but to exclude the root hash. This convention is implemented across IAVL range proofs as well. Keep this consistent unless there's a very good reason to change everything. This affects the generalized proof system as well.\n\nEquivalent to / adapted from cometbft/crypto/merkle/proof.go.",
-        "type": "object",
-        "required": [
-          "aunts",
-          "index",
-          "leaf_hash",
-          "total"
-        ],
-        "properties": {
-          "aunts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Binary"
-            }
-          },
-          "index": {
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
-          },
-          "leaf_hash": {
-            "$ref": "#/definitions/Binary"
-          },
-          "total": {
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
           }
         },
         "additionalProperties": false
@@ -880,122 +814,6 @@
         "additionalProperties": false
       },
       {
-        "description": "`FinalitySignature` returns the signature of the finality provider for a given block height",
-        "type": "object",
-        "required": [
-          "finality_signature"
-        ],
-        "properties": {
-          "finality_signature": {
-            "type": "object",
-            "required": [
-              "btc_pk_hex",
-              "height"
-            ],
-            "properties": {
-              "btc_pk_hex": {
-                "type": "string"
-              },
-              "height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "`PubRandCommit` returns the public random commitments for a given FP.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.\n\n`start_after` is the height of to start after (before, if `reverse` is `true`), or `None` to start from the beginning (end, if `reverse` is `true`). `limit` is the maximum number of commitments to return. `reverse` is an optional flag to return the commitments in reverse order",
-        "type": "object",
-        "required": [
-          "pub_rand_commit"
-        ],
-        "properties": {
-          "pub_rand_commit": {
-            "type": "object",
-            "required": [
-              "btc_pk_hex"
-            ],
-            "properties": {
-              "btc_pk_hex": {
-                "type": "string"
-              },
-              "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "reverse": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "start_after": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "`FirstPubRandCommit` returns the first public random commitment (if any) for a given FP.\n\nIt's a convenience shortcut of `PubRandCommit` with a `limit` of 1, and `reverse` set to false.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
-        "type": "object",
-        "required": [
-          "first_pub_rand_commit"
-        ],
-        "properties": {
-          "first_pub_rand_commit": {
-            "type": "object",
-            "required": [
-              "btc_pk_hex"
-            ],
-            "properties": {
-              "btc_pk_hex": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "`LastPubRandCommit` returns the last public random commitment (if any) for a given FP.\n\nIt's a convenience shortcut of `PubRandCommit` with a `limit` of 1, and `reverse` set to true.\n\n`btc_pk_hex` is the BTC public key of the finality provider, in hex format.",
-        "type": "object",
-        "required": [
-          "last_pub_rand_commit"
-        ],
-        "properties": {
-          "last_pub_rand_commit": {
-            "type": "object",
-            "required": [
-              "btc_pk_hex"
-            ],
-            "properties": {
-              "btc_pk_hex": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "`ActivatedHeight` returns the height at which the contract gets its first delegation, if any",
         "type": "object",
         "required": [
@@ -1004,102 +822,6 @@
         "properties": {
           "activated_height": {
             "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "`Block` returns the indexed block information at height",
-        "type": "object",
-        "required": [
-          "block"
-        ],
-        "properties": {
-          "block": {
-            "type": "object",
-            "required": [
-              "height"
-            ],
-            "properties": {
-              "height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "`Blocks` return the list of indexed blocks.\n\n`start_after` is the height of the block to start after (before, if `reverse` is `true`), or `None` to start from the beginning (end, if `reverse` is `true`). `limit` is the maximum number of blocks to return. `finalised` is an optional filter to return only finalised blocks. `reverse` is an optional flag to return the blocks in reverse order",
-        "type": "object",
-        "required": [
-          "blocks"
-        ],
-        "properties": {
-          "blocks": {
-            "type": "object",
-            "properties": {
-              "finalised": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "limit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "reverse": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "start_after": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "`Evidence` returns the evidence for a given FP and block height",
-        "type": "object",
-        "required": [
-          "evidence"
-        ],
-        "properties": {
-          "evidence": {
-            "type": "object",
-            "required": [
-              "btc_pk_hex",
-              "height"
-            ],
-            "properties": {
-              "btc_pk_hex": {
-                "type": "string"
-              },
-              "height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
             "additionalProperties": false
           }
         },
@@ -1167,89 +889,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "block": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IndexedBlock",
-      "description": "`IndexedBlock` is the necessary metadata and finalization status of a block",
-      "type": "object",
-      "required": [
-        "app_hash",
-        "finalized",
-        "height"
-      ],
-      "properties": {
-        "app_hash": {
-          "description": "`app_hash` is the AppHash of the block",
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          }
-        },
-        "finalized": {
-          "description": "`finalized` indicates whether the IndexedBlock is finalised by 2/3 of the finality providers or not",
-          "type": "boolean"
-        },
-        "height": {
-          "description": "`height` is the height of the block",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        }
-      },
-      "additionalProperties": false
-    },
-    "blocks": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BlocksResponse",
-      "type": "object",
-      "required": [
-        "blocks"
-      ],
-      "properties": {
-        "blocks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/IndexedBlock"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "IndexedBlock": {
-          "description": "`IndexedBlock` is the necessary metadata and finalization status of a block",
-          "type": "object",
-          "required": [
-            "app_hash",
-            "finalized",
-            "height"
-          ],
-          "properties": {
-            "app_hash": {
-              "description": "`app_hash` is the AppHash of the block",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "finalized": {
-              "description": "`finalized` indicates whether the IndexedBlock is finalised by 2/3 of the finality providers or not",
-              "type": "boolean"
-            },
-            "height": {
-              "description": "`height` is the height of the block",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        }
-      }
     },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1778,102 +1417,6 @@
       },
       "additionalProperties": false
     },
-    "evidence": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "EvidenceResponse",
-      "type": "object",
-      "properties": {
-        "evidence": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Evidence"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false,
-      "definitions": {
-        "Evidence": {
-          "description": "Evidence is the evidence that a finality provider has signed finality signatures with correct public randomness on two conflicting Babylon headers",
-          "type": "object",
-          "required": [
-            "block_height",
-            "canonical_app_hash",
-            "canonical_finality_sig",
-            "fork_app_hash",
-            "fork_finality_sig",
-            "fp_btc_pk",
-            "pub_rand"
-          ],
-          "properties": {
-            "block_height": {
-              "description": "`block_height` is the height of the conflicting blocks",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "canonical_app_hash": {
-              "description": "`canonical_app_hash` is the AppHash of the canonical block",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "canonical_finality_sig": {
-              "description": "`canonical_finality_sig` is the finality signature to the canonical block, where finality signature is an EOTS signature, i.e., the `s` in a Schnorr signature `(r, s)`. `r` is the public randomness already committed by the finality provider. Deserializes to `SchnorrEOTSSig`",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "fork_app_hash": {
-              "description": "`fork_app_hash` is the AppHash of the fork block",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "fork_finality_sig": {
-              "description": "`fork_finality_sig` is the finality signature to the fork block, where finality signature is an EOTS signature. Deserializes to `SchnorrEOTSSig`",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "fp_btc_pk": {
-              "description": "`fp_btc_pk` is the BTC PK of the finality provider that casts this vote",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "pub_rand": {
-              "description": "`pub_rand is` the public randomness the finality provider has committed to. Deserializes to `SchnorrPubRand`",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
     "finality_provider": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "FinalityProvider",
@@ -2224,129 +1767,36 @@
         }
       }
     },
-    "finality_signature": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FinalitySignatureResponse",
-      "type": "object",
-      "required": [
-        "signature"
-      ],
-      "properties": {
-        "signature": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "first_pub_rand_commit": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Nullable_PubRandCommit",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/PubRandCommit"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "definitions": {
-        "PubRandCommit": {
-          "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
-          "type": "object",
-          "required": [
-            "commitment",
-            "num_pub_rand",
-            "start_height"
-          ],
-          "properties": {
-            "commitment": {
-              "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "num_pub_rand": {
-              "description": "`num_pub_rand` is the number of committed public randomness",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "start_height": {
-              "description": "`start_height` is the height of the first commitment",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
-    "last_pub_rand_commit": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Nullable_PubRandCommit",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/PubRandCommit"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "definitions": {
-        "PubRandCommit": {
-          "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
-          "type": "object",
-          "required": [
-            "commitment",
-            "num_pub_rand",
-            "start_height"
-          ],
-          "properties": {
-            "commitment": {
-              "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "format": "uint8",
-                "minimum": 0.0
-              }
-            },
-            "num_pub_rand": {
-              "description": "`num_pub_rand` is the number of committed public randomness",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "start_height": {
-              "description": "`start_height` is the height of the first commitment",
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
     "params": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Params",
       "description": "Params define Consumer-selectable BTC staking parameters",
       "type": "object",
       "required": [
+        "btc_network",
+        "covenant_pks",
+        "covenant_quorum",
         "max_active_finality_providers",
-        "min_pub_rand"
+        "min_pub_rand",
+        "min_slashing_tx_fee_sat",
+        "slashing_address",
+        "slashing_rate"
       ],
       "properties": {
+        "btc_network": {
+          "$ref": "#/definitions/Network"
+        },
+        "covenant_pks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "covenant_quorum": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
         "max_active_finality_providers": {
           "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
           "type": "integer",
@@ -2358,44 +1808,34 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        }
-      },
-      "additionalProperties": false
-    },
-    "pub_rand_commit": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PubRandCommit",
-      "description": "`PubRandCommit` is a commitment to a series of public randomness. Currently, the commitment is a root of a Merkle tree that includes a series of public randomness values",
-      "type": "object",
-      "required": [
-        "commitment",
-        "num_pub_rand",
-        "start_height"
-      ],
-      "properties": {
-        "commitment": {
-          "description": "`commitment` is the value of the commitment. Currently, it's the root of the Merkle tree constructed by the public randomness",
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          }
         },
-        "num_pub_rand": {
-          "description": "`num_pub_rand` is the number of committed public randomness",
+        "min_slashing_tx_fee_sat": {
+          "description": "`min_slashing_tx_fee_sat` is the minimum amount of tx fee (quantified in Satoshi) needed for the pre-signed slashing tx",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "start_height": {
-          "description": "`start_height` is the height of the first commitment",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
+        "slashing_address": {
+          "description": "`slashing_address` is the address that the slashed BTC goes to. The address is in string format on Bitcoin.",
+          "type": "string"
+        },
+        "slashing_rate": {
+          "description": "`slashing_rate` determines the portion of the staked amount to be slashed, expressed as a decimal (e.g. 0.5 for 50%).",
+          "type": "string"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "definitions": {
+        "Network": {
+          "type": "string",
+          "enum": [
+            "mainnet",
+            "testnet",
+            "signet",
+            "regtest"
+          ]
+        }
+      }
     }
   }
 }

@@ -22,14 +22,43 @@
   },
   "additionalProperties": false,
   "definitions": {
+    "Network": {
+      "type": "string",
+      "enum": [
+        "mainnet",
+        "testnet",
+        "signet",
+        "regtest"
+      ]
+    },
     "Params": {
       "description": "Params define Consumer-selectable BTC staking parameters",
       "type": "object",
       "required": [
+        "btc_network",
+        "covenant_pks",
+        "covenant_quorum",
         "max_active_finality_providers",
-        "min_pub_rand"
+        "min_pub_rand",
+        "min_slashing_tx_fee_sat",
+        "slashing_address",
+        "slashing_rate"
       ],
       "properties": {
+        "btc_network": {
+          "$ref": "#/definitions/Network"
+        },
+        "covenant_pks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "covenant_quorum": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
         "max_active_finality_providers": {
           "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
           "type": "integer",
@@ -41,6 +70,20 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
+        },
+        "min_slashing_tx_fee_sat": {
+          "description": "`min_slashing_tx_fee_sat` is the minimum amount of tx fee (quantified in Satoshi) needed for the pre-signed slashing tx",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "slashing_address": {
+          "description": "`slashing_address` is the address that the slashed BTC goes to. The address is in string format on Bitcoin.",
+          "type": "string"
+        },
+        "slashing_rate": {
+          "description": "`slashing_rate` determines the portion of the staked amount to be slashed, expressed as a decimal (e.g. 0.5 for 50%).",
+          "type": "string"
         }
       },
       "additionalProperties": false

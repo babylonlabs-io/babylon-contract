@@ -2,7 +2,6 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_controllers::AdminResponse;
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider};
-use babylon_apis::finality_api::{Evidence, IndexedBlock};
 
 use crate::state::config::{Config, Params};
 use crate::state::staking::BtcDelegation;
@@ -119,21 +118,6 @@ pub struct FinalityProviderInfo {
 }
 
 #[cw_serde]
-pub struct FinalitySignatureResponse {
-    pub signature: Vec<u8>,
-}
-
-#[cw_serde]
 pub struct ActivatedHeightResponse {
     pub height: u64,
-}
-
-#[cw_serde]
-pub struct BlocksResponse {
-    pub blocks: Vec<IndexedBlock>,
-}
-
-#[cw_serde]
-pub struct EvidenceResponse {
-    pub evidence: Option<Evidence>,
 }
