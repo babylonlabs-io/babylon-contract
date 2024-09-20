@@ -160,6 +160,7 @@ dependencies = [
  "babylon-bitcoin",
  "babylon-proto",
  "blst",
+ "btc-finality",
  "btc-staking",
  "cosmos-sdk-proto",
  "cosmwasm-schema",
