@@ -383,8 +383,11 @@ dependencies = [
 name = "btc-finality"
 version = "0.9.0"
 dependencies = [
+ "anyhow",
+ "assert_matches",
  "babylon-apis",
  "babylon-bindings",
+ "babylon-bindings-test",
  "babylon-bitcoin",
  "babylon-btcstaking",
  "babylon-contract",
@@ -396,6 +399,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-vm",
  "cw-controllers",
+ "cw-multi-test",
  "cw-storage-plus",
  "cw-utils",
  "cw2",
@@ -403,6 +407,7 @@ dependencies = [
  "eots",
  "hex",
  "k256",
+ "pbjson-types",
  "prost 0.11.9",
  "test-utils",
  "thiserror",

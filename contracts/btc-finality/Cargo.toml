@@ -53,7 +53,17 @@ thiserror        = { workspace = true }
 cw-controllers   = { workspace = true }
 
 [dev-dependencies]
-test-utils        = { path = "../../packages/test-utils" }
-babylon-proto     = { path = "../../packages/proto" }
-cosmwasm-vm       = { workspace = true }
-prost             = { workspace = true }
+babylon-bindings-test = { path = "../../packages/bindings-test" }
+babylon-proto         = { path = "../../packages/proto" }
+babylon-contract      = { path = "../babylon", features = [ "library" ] }
+btc-staking           = { path = "../btc-staking", features = [ "library" ] }
+test-utils            = { path = "../../packages/test-utils" }
+
+cosmwasm-vm           = { workspace = true }
+cw-multi-test         = { workspace = true }
+
+anyhow                = { workspace = true }
+assert_matches        = { workspace = true }
+derivative            = { workspace = true }
+pbjson-types          = { workspace = true }
+prost                 = { workspace = true }
