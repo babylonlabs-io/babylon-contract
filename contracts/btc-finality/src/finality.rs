@@ -655,56 +655,6 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn commit_public_randomness_works() {
-        let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
-
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            info.clone(),
-            InstantiateMsg {
-                params: None,
-                admin: None,
-            },
-        )
-        .unwrap();
-
-        // Read public randomness commitment test data
-        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
-
-        // Register one FP
-        // NOTE: the test data ensures that pub rand commit / finality sig are
-        // signed by the 1st FP
-        let new_fp = create_new_finality_provider(1);
-        assert_eq!(new_fp.btc_pk_hex, pk_hex);
-
-        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
-            new_fp: vec![new_fp.clone()],
-            active_del: vec![],
-            slashed_del: vec![],
-            unbonded_del: vec![],
-        };
-
-        let res =
-            btc_staking::contract::execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // Now commit the public randomness for it
-        let msg = ExecuteMsg::CommitPublicRandomness {
-            fp_pubkey_hex: pk_hex,
-            start_height: pub_rand.start_height,
-            num_pub_rand: pub_rand.num_pub_rand,
-            commitment: pub_rand.commitment.into(),
-            signature: pubrand_signature.into(),
-        };
-
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        assert_eq!(0, res.messages.len());
-    }
-
-    #[test]
-    #[ignore]
     fn finality_signature_happy_path() {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
