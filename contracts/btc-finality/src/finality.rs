@@ -38,16 +38,15 @@ pub fn handle_public_randomness_commit(
     // TODO: ensure log_2(num_pub_rand) is an integer?
 
     // Ensure the finality provider is registered
-    if !deps.querier.query_wasm_smart(
-        CONFIG.load(deps.storage)?.staking,
-        &btc_staking::msg::QueryMsg::FinalityProvider {
-            btc_pk_hex: fp_pubkey_hex.to_string(),
-        },
-    )? {
-        return Err(ContractError::FinalityProviderNotFound(
-            fp_pubkey_hex.to_string(),
-        ));
-    }
+    let _fp: FinalityProvider = deps
+        .querier
+        .query_wasm_smart(
+            CONFIG.load(deps.storage)?.staking,
+            &btc_staking::msg::QueryMsg::FinalityProvider {
+                btc_pk_hex: fp_pubkey_hex.to_string(),
+            },
+        )
+        .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.to_string()))?;
     // Verify signature over the list
     verify_commitment_signature(
         fp_pubkey_hex,
