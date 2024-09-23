@@ -67,3 +67,4 @@ assert_matches        = { workspace = true }
 derivative            = { workspace = true }
 pbjson-types          = { workspace = true }
 prost                 = { workspace = true }
+tendermint-proto      = { workspace = true }

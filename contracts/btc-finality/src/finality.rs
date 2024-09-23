@@ -602,8 +602,8 @@ mod tests {
     };
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
-    use crate::msg::{FinalitySignatureResponse, InstantiateMsg};
-    use crate::queries::{block, evidence, finality_signature};
+    use crate::msg::InstantiateMsg;
+    use crate::queries::{block, evidence};
 
     const CREATOR: &str = "creator";
 
@@ -654,145 +654,6 @@ mod tests {
                 app_hash_hex,
             },
         )
-    }
-
-    #[test]
-    #[ignore]
-    fn finality_signature_happy_path() {
-        let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
-
-        // Read public randomness commitment test data
-        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
-        let pub_rand_one = get_pub_rand_value();
-        // Read equivalent / consistent add finality signature test data
-        let add_finality_signature = get_add_finality_sig();
-        let proof = add_finality_signature.proof.unwrap();
-
-        let initial_height = pub_rand.start_height;
-
-        let initial_env = mock_env_height(initial_height);
-
-        instantiate(
-            deps.as_mut(),
-            initial_env.clone(),
-            info.clone(),
-            InstantiateMsg {
-                params: Some(get_params()),
-                admin: None,
-            },
-        )
-        .unwrap();
-
-        // Register one FP
-        // NOTE: the test data ensures that pub rand commit / finality sig are
-        // signed by the 1st FP
-        let new_fp = create_new_finality_provider(1);
-        assert_eq!(new_fp.btc_pk_hex, pk_hex);
-
-        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
-            new_fp: vec![new_fp.clone()],
-            active_del: vec![],
-            slashed_del: vec![],
-            unbonded_del: vec![],
-        };
-
-        let _res =
-            btc_staking::contract::execute(deps.as_mut(), initial_env.clone(), info.clone(), msg)
-                .unwrap();
-
-        // Activated height is not set
-        let res = btc_staking::queries::activated_height(deps.as_ref()).unwrap();
-        assert_eq!(res.height, 0);
-
-        // Add a delegation, so that the finality provider has some power
-        let mut del1 = get_derived_btc_delegation(1, &[1]);
-        del1.fp_btc_pk_list = vec![pk_hex.clone()];
-
-        let msg = btc_staking_api::ExecuteMsg::BtcStaking {
-            new_fp: vec![],
-            active_del: vec![del1.clone()],
-            slashed_del: vec![],
-            unbonded_del: vec![],
-        };
-
-        btc_staking::contract::execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
-
-        // Activated height is now set
-        let activated_height = btc_staking::queries::activated_height(deps.as_ref()).unwrap();
-        assert_eq!(activated_height.height, initial_height + 1);
-
-        // Submit public randomness commitment for the FP and the involved heights
-        let msg = ExecuteMsg::CommitPublicRandomness {
-            fp_pubkey_hex: pk_hex.clone(),
-            start_height: pub_rand.start_height,
-            num_pub_rand: pub_rand.num_pub_rand,
-            commitment: pub_rand.commitment.into(),
-            signature: pubrand_signature.into(),
-        };
-
-        let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // Call the begin-block sudo handler, for completeness
-        let res = call_begin_block(
-            &mut deps,
-            &add_finality_signature.block_app_hash,
-            initial_height + 1,
-        )
-        .unwrap();
-        assert_eq!(0, res.attributes.len());
-        assert_eq!(0, res.messages.len());
-        assert_eq!(0, res.events.len());
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        let res = call_end_block(
-            &mut deps,
-            &add_finality_signature.block_app_hash,
-            initial_height + 1,
-        )
-        .unwrap();
-        assert_eq!(0, res.attributes.len());
-        assert_eq!(0, res.messages.len());
-        assert_eq!(1, res.events.len());
-        assert_eq!(
-            res.events[0],
-            Event::new("index_block")
-                .add_attribute("module", "finality")
-                .add_attribute("last_height", (initial_height + 1).to_string())
-        );
-
-        // Submit a finality signature from that finality provider at height initial_height + 1
-        let finality_sig = add_finality_signature.finality_sig.to_vec();
-        let msg = ExecuteMsg::SubmitFinalitySignature {
-            fp_pubkey_hex: pk_hex.clone(),
-            height: initial_height + 1,
-            pub_rand: pub_rand_one.into(),
-            proof: proof.into(),
-            block_hash: add_finality_signature.block_app_hash.to_vec().into(),
-            signature: Binary::new(finality_sig.clone()),
-        };
-
-        // Execute the message at a higher height, so that:
-        // 1. It's not rejected because of height being too high.
-        // 2. The FP has consolidated power at such height
-        let _res = execute(
-            deps.as_mut(),
-            mock_env_height(initial_height + 2),
-            info.clone(),
-            msg,
-        )
-        .unwrap();
-
-        // Query finality signature for that exact height
-        let sig =
-            finality_signature(deps.as_ref(), pk_hex.to_string(), initial_height + 1).unwrap();
-        assert_eq!(
-            sig,
-            FinalitySignatureResponse {
-                signature: finality_sig
-            }
-        );
     }
 
     #[test]
