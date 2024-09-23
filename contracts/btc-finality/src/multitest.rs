@@ -12,6 +12,8 @@ const CONTRACT2_ADDR: &str = "cosmwasm1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv73
 mod instantiation {
     use super::*;
 
+    use crate::contract::tests::{create_new_finality_provider, get_public_randomness_commitment};
+
     #[test]
     fn instantiate_works() {
         let suite = SuiteBuilder::new().build();
@@ -28,5 +30,26 @@ mod instantiation {
         // Check that the btc-finality contract was initialized correctly
         let btc_finality_config = suite.get_btc_finality_config();
         assert_eq!(btc_finality_config.babylon, Addr::unchecked(CONTRACT0_ADDR));
+    }
+
+    #[test]
+    fn commit_public_randomness_works() {
+        let mut suite = SuiteBuilder::new().build();
+
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+
+        // Register one FP
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
+
+        suite.register_finality_providers(&[new_fp]).unwrap();
+
+        // Now commit the public randomness for it
+        suite
+            .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
+            .unwrap();
     }
 }

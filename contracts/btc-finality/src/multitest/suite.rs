@@ -3,13 +3,14 @@ use derivative::Derivative;
 
 use cosmwasm_std::Addr;
 
-use cw_multi_test::{Contract, ContractWrapper, Executor};
-
+use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
+use babylon_apis::btc_staking_api::NewFinalityProvider;
+use babylon_apis::finality_api::PubRandCommit;
+use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
-
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
@@ -42,8 +43,7 @@ fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
 
 #[derive(Derivative)]
 #[derivative(Default = "new")]
-pub struct SuiteBuilder {
-}
+pub struct SuiteBuilder {}
 
 impl SuiteBuilder {
     #[track_caller]
@@ -145,5 +145,44 @@ impl Suite {
             .wrap()
             .query_wasm_smart(CONTRACT2_ADDR, &crate::msg::QueryMsg::Config {})
             .unwrap()
+    }
+
+    #[track_caller]
+    pub fn register_finality_providers(
+        &mut self,
+        fps: &[NewFinalityProvider],
+    ) -> anyhow::Result<AppResponse> {
+        self.app.execute_contract(
+            self.babylon.clone(),
+            self.staking.clone(),
+            &btc_staking_api::ExecuteMsg::BtcStaking {
+                new_fp: fps.to_vec(),
+                active_del: vec![],
+                slashed_del: vec![],
+                unbonded_del: vec![],
+            },
+            &[],
+        )
+    }
+
+    #[track_caller]
+    pub fn commit_public_randomness(
+        &mut self,
+        pk_hex: &str,
+        pub_rand: &PubRandCommit,
+        pubrand_signature: &[u8],
+    ) -> anyhow::Result<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked("anyone"),
+            self.finality.clone(),
+            &finality_api::ExecuteMsg::CommitPublicRandomness {
+                fp_pubkey_hex: pk_hex.to_string(),
+                start_height: pub_rand.start_height,
+                num_pub_rand: pub_rand.num_pub_rand,
+                commitment: pub_rand.commitment.clone().into(),
+                signature: pubrand_signature.into(),
+            },
+            &[],
+        )
     }
 }
