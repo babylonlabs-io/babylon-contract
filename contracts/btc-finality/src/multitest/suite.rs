@@ -43,21 +43,11 @@ fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
 #[derive(Derivative)]
 #[derivative(Default = "new")]
 pub struct SuiteBuilder {
-    funds: Vec<(Addr, u128)>,
 }
 
 impl SuiteBuilder {
-    /// Sets initial number of tokens on address
-    #[allow(dead_code)]
-    pub fn with_funds(mut self, addr: &str, amount: u128) -> Self {
-        self.funds.push((Addr::unchecked(addr), amount));
-        self
-    }
-
     #[track_caller]
     pub fn build(self) -> Suite {
-        let _funds = self.funds;
-
         let owner = Addr::unchecked("owner");
 
         let mut app = BabylonApp::new(owner.as_str());
