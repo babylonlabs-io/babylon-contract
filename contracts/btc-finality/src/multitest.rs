@@ -12,15 +12,6 @@ const CONTRACT2_ADDR: &str = "cosmwasm1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv73
 mod instantiation {
     use super::*;
 
-    use test_utils::{get_add_finality_sig, get_pub_rand_value};
-
-    use cosmwasm_std::Event;
-
-    use crate::contract::tests::{
-        create_new_finality_provider, get_derived_btc_delegation, get_public_randomness_commitment,
-    };
-    use crate::msg::FinalitySignatureResponse;
-
     #[test]
     fn instantiate_works() {
         let suite = SuiteBuilder::new().build();
@@ -38,6 +29,19 @@ mod instantiation {
         let btc_finality_config = suite.get_btc_finality_config();
         assert_eq!(btc_finality_config.babylon, Addr::unchecked(CONTRACT0_ADDR));
     }
+}
+
+mod finality {
+    use super::*;
+
+    use cosmwasm_std::Event;
+
+    use test_utils::{get_add_finality_sig, get_pub_rand_value};
+
+    use crate::contract::tests::{
+        create_new_finality_provider, get_derived_btc_delegation, get_public_randomness_commitment,
+    };
+    use crate::msg::FinalitySignatureResponse;
 
     #[test]
     fn commit_public_randomness_works() {
