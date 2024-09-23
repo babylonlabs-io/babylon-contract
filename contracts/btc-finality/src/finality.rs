@@ -584,6 +584,18 @@ pub fn list_fps_by_power(
 
 #[cfg(test)]
 mod tests {
+    use hex::ToHex;
+
+    use cosmwasm_std::testing::{
+        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+    };
+    use cosmwasm_std::{to_json_binary, Binary, Env, Event, OwnedDeps, Response, SubMsg, WasmMsg};
+
+    use babylon_apis::btc_staking_api;
+    use babylon_apis::finality_api::{ExecuteMsg, IndexedBlock, SudoMsg};
+    use babylon_bindings::BabylonMsg;
+    use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
+
     use crate::contract::tests::{
         create_new_finality_provider, get_derived_btc_delegation, get_params,
         get_public_randomness_commitment,
@@ -592,16 +604,6 @@ mod tests {
     use crate::error::ContractError;
     use crate::msg::{FinalitySignatureResponse, InstantiateMsg};
     use crate::queries::{block, evidence, finality_signature};
-    use babylon_apis::btc_staking_api;
-    use babylon_apis::btc_staking_api::SudoMsg;
-    use babylon_apis::finality_api::{ExecuteMsg, IndexedBlock};
-    use babylon_bindings::BabylonMsg;
-    use cosmwasm_std::testing::{
-        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
-    };
-    use cosmwasm_std::{to_json_binary, Binary, Env, Event, OwnedDeps, Response, SubMsg, WasmMsg};
-    use hex::ToHex;
-    use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
 
     const CREATOR: &str = "creator";
 

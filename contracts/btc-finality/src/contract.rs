@@ -1,3 +1,5 @@
+use babylon_apis::finality_api::SudoMsg;
+use babylon_bindings::BabylonMsg;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -6,9 +8,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
-
-use babylon_apis::btc_staking_api::SudoMsg;
-use babylon_bindings::BabylonMsg;
 
 use btc_staking::msg::ActivatedHeightResponse;
 
