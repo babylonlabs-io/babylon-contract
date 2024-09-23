@@ -7,12 +7,12 @@ use cosmwasm_std::Addr;
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, NewFinalityProvider};
-use babylon_apis::finality_api::PubRandCommit;
+use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
 use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
-use btc_staking::msg::ActivatedHeightResponse;
+use btc_staking::msg::{ActivatedHeightResponse, FinalityProviderInfo};
 
 use crate::msg::FinalitySignatureResponse;
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
@@ -172,6 +172,24 @@ impl Suite {
     }
 
     #[track_caller]
+    pub fn get_finality_provider_info(
+        &self,
+        pk_hex: &str,
+        height: Option<u64>,
+    ) -> FinalityProviderInfo {
+        self.app
+            .wrap()
+            .query_wasm_smart(
+                self.staking.clone(),
+                &btc_staking::msg::QueryMsg::FinalityProviderInfo {
+                    btc_pk_hex: pk_hex.to_string(),
+                    height,
+                },
+            )
+            .unwrap()
+    }
+
+    #[track_caller]
     pub fn get_finality_signature(&self, pk_hex: &str, height: u64) -> FinalitySignatureResponse {
         self.app
             .wrap()
@@ -181,6 +199,17 @@ impl Suite {
                     btc_pk_hex: pk_hex.to_string(),
                     height,
                 },
+            )
+            .unwrap()
+    }
+
+    #[track_caller]
+    pub fn get_indexed_block(&self, height: u64) -> IndexedBlock {
+        self.app
+            .wrap()
+            .query_wasm_smart(
+                self.finality.clone(),
+                &crate::msg::QueryMsg::Block { height },
             )
             .unwrap()
     }

@@ -34,14 +34,14 @@ mod instantiation {
 mod finality {
     use super::*;
 
-    use cosmwasm_std::Event;
-
-    use test_utils::{get_add_finality_sig, get_pub_rand_value};
-
     use crate::contract::tests::{
         create_new_finality_provider, get_derived_btc_delegation, get_public_randomness_commitment,
     };
     use crate::msg::FinalitySignatureResponse;
+    use babylon_apis::finality_api::IndexedBlock;
+
+    use cosmwasm_std::Event;
+    use test_utils::{get_add_finality_sig, get_pub_rand_value};
 
     #[test]
     fn commit_public_randomness_works() {
@@ -148,6 +148,107 @@ mod finality {
             sig,
             FinalitySignatureResponse {
                 signature: finality_sig
+            }
+        );
+    }
+
+    #[test]
+    fn finality_round_works() {
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        // Read equivalent / consistent add finality signature test data
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+
+        let mut suite = SuiteBuilder::new().with_height(initial_height).build();
+
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
+
+        suite
+            .register_finality_providers(&[new_fp.clone()])
+            .unwrap();
+
+        // Add a delegation, so that the finality provider has some power
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+
+        suite.add_delegations(&[del1.clone()]).unwrap();
+
+        // Check that the finality provider power has been updated
+        let fp_info = suite.get_finality_provider_info(&new_fp.btc_pk_hex, None);
+        assert_eq!(fp_info.power, del1.total_sat);
+
+        // Submit public randomness commitment for the FP and the involved heights
+        suite
+            .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
+            .unwrap();
+
+        // Call the begin-block sudo handler, for completeness
+        suite
+            .call_begin_block(&add_finality_signature.block_app_hash, initial_height + 1)
+            .unwrap();
+
+        // Call the end-block sudo handler, so that the block is indexed in the store
+        suite
+            .call_end_block(&add_finality_signature.block_app_hash, initial_height + 1)
+            .unwrap();
+
+        // Submit a finality signature from that finality provider at height initial_height + 1
+        let submit_height = initial_height + 1;
+        let finality_sig = add_finality_signature.finality_sig.to_vec();
+        suite
+            .submit_finality_signature(
+                &pk_hex,
+                submit_height,
+                &pub_rand_one,
+                &proof,
+                &add_finality_signature.block_app_hash,
+                &finality_sig,
+            )
+            .unwrap();
+
+        // Call the begin blocker, to compute the active FP set
+        suite
+            .call_begin_block(&add_finality_signature.block_app_hash, submit_height)
+            .unwrap();
+
+        // Call the end blocker, to process the finality signatures
+        let res = suite
+            .call_end_block(&add_finality_signature.block_app_hash, submit_height)
+            .unwrap();
+        assert_eq!(3, res.events.len());
+        assert_eq!(
+            res.events[0],
+            Event::new("sudo").add_attribute("_contract_address", CONTRACT2_ADDR)
+        );
+        assert_eq!(
+            res.events[1],
+            Event::new("wasm-index_block")
+                .add_attribute("_contract_address", CONTRACT2_ADDR)
+                .add_attribute("module", "finality")
+                .add_attribute("last_height", submit_height.to_string())
+        );
+        assert_eq!(
+            res.events[2],
+            Event::new("wasm-finalize_block")
+                .add_attribute("_contract_address", CONTRACT2_ADDR)
+                .add_attribute("module", "finality")
+                .add_attribute("finalized_height", submit_height.to_string())
+        );
+
+        // Assert the submitted block has been indexed and finalised
+        let indexed_block = suite.get_indexed_block(submit_height);
+        assert_eq!(
+            indexed_block,
+            IndexedBlock {
+                height: submit_height,
+                app_hash: add_finality_signature.block_app_hash.to_vec(),
+                finalized: true,
             }
         );
     }
