@@ -1,11 +1,15 @@
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 use anyhow::Result as AnyResult;
+use derivative::Derivative;
+
+use cosmwasm_std::Addr;
+
+use cw_multi_test::{Contract, ContractWrapper, Executor};
+
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
-use cosmwasm_std::Addr;
-use cw_multi_test::{Contract, ContractWrapper, Executor};
-use derivative::Derivative;
+
+use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 
 fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
@@ -95,7 +99,9 @@ impl SuiteBuilder {
         Suite {
             app,
             code_id: contract_code_id,
-            contract,
+            babylon: contract,
+            staking: Addr::unchecked(CONTRACT1_ADDR),
+            finality: Addr::unchecked(CONTRACT2_ADDR),
             owner,
         }
     }
@@ -109,7 +115,11 @@ pub struct Suite {
     /// The code id of the babylon contract
     code_id: u64,
     /// Babylon contract address
-    pub contract: Addr,
+    pub babylon: Addr,
+    /// Staking contract address
+    pub staking: Addr,
+    /// Finality contract address
+    pub finality: Addr,
     /// Admin of babylon and btc-staking contracts
     pub owner: Addr,
 }
@@ -125,7 +135,7 @@ impl Suite {
         self.app
             .wrap()
             .query_wasm_smart(
-                self.contract.clone(),
+                self.babylon.clone(),
                 &babylon_contract::msg::contract::QueryMsg::Config {},
             )
             .unwrap()
