@@ -4,15 +4,11 @@
   "description": "Config are Babylon-selectable BTC staking configuration",
   "type": "object",
   "required": [
-    "babylon",
-    "denom"
+    "babylon"
   ],
   "properties": {
     "babylon": {
       "$ref": "#/definitions/Addr"
-    },
-    "denom": {
-      "type": "string"
     }
   },
   "additionalProperties": false,

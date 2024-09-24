@@ -42,8 +42,6 @@
           "btc_network",
           "covenant_pks",
           "covenant_quorum",
-          "max_active_finality_providers",
-          "min_pub_rand",
           "min_slashing_tx_fee_sat",
           "slashing_address",
           "slashing_rate"
@@ -61,18 +59,6 @@
           "covenant_quorum": {
             "type": "integer",
             "format": "uint32",
-            "minimum": 0.0
-          },
-          "max_active_finality_providers": {
-            "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
-            "type": "integer",
-            "format": "uint32",
-            "minimum": 0.0
-          },
-          "min_pub_rand": {
-            "description": "`min_pub_rand` is the minimum amount of public randomness each public randomness commitment should commit",
-            "type": "integer",
-            "format": "uint64",
             "minimum": 0.0
           },
           "min_slashing_tx_fee_sat": {
@@ -896,15 +882,11 @@
       "description": "Config are Babylon-selectable BTC staking configuration",
       "type": "object",
       "required": [
-        "babylon",
-        "denom"
+        "babylon"
       ],
       "properties": {
         "babylon": {
           "$ref": "#/definitions/Addr"
-        },
-        "denom": {
-          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -1776,8 +1758,6 @@
         "btc_network",
         "covenant_pks",
         "covenant_quorum",
-        "max_active_finality_providers",
-        "min_pub_rand",
         "min_slashing_tx_fee_sat",
         "slashing_address",
         "slashing_rate"
@@ -1795,18 +1775,6 @@
         "covenant_quorum": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
-        },
-        "max_active_finality_providers": {
-          "description": "`max_active_finality_providers` is the maximum number of active finality providers in the BTC staking protocol",
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "min_pub_rand": {
-          "description": "`min_pub_rand` is the minimum amount of public randomness each public randomness commitment should commit",
-          "type": "integer",
-          "format": "uint64",
           "minimum": 0.0
         },
         "min_slashing_tx_fee_sat": {
