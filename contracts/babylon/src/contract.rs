@@ -63,6 +63,17 @@ pub fn instantiate(
         };
         let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE_STAKING);
 
+        // Test code sets a channel, so that we can better approximate IBC in test code
+        #[cfg(any(test, feature = "library"))]
+        {
+            let channel = cosmwasm_std::testing::mock_ibc_channel(
+                "channel-123",
+                cosmwasm_std::IbcOrder::Ordered,
+                "babylon",
+            );
+            IBC_CHANNEL.save(deps.storage, &channel)?;
+        }
+
         res = res.add_submessage(init_msg);
     }
 
@@ -227,6 +238,7 @@ pub fn execute(
                 return Err(ContractError::Unauthorized {});
             }
             // Send to the staking contract for processing
+            let mut res = Response::new();
             let btc_staking = cfg.btc_staking.ok_or(ContractError::BtcStakingNotSet {})?;
             // Slashes this finality provider, i.e., sets its slashing height to the block height
             // and its power to zero
@@ -238,12 +250,24 @@ pub fn execute(
                 msg: to_json_binary(&msg)?,
                 funds: vec![],
             };
+            res = res.add_message(wasm_msg);
 
             // Send over IBC to the Provider (Babylon)
             let channel = IBC_CHANNEL.load(deps.storage)?;
             let ibc_msg = ibc_packet::slashing_msg(&env, &channel, &evidence)?;
+            // Send packet only if we are IBC enabled
+            // TODO: send in test code when multi-test can handle it
+            #[cfg(not(any(test, feature = "library")))]
+            {
+                res = res.add_message(ibc_msg);
+            }
+            #[cfg(any(test, feature = "library"))]
+            {
+                let _ = ibc_msg;
+            }
+
             // TODO: Add events
-            Ok(Response::new().add_message(wasm_msg).add_message(ibc_msg))
+            Ok(res)
         }
     }
 }
