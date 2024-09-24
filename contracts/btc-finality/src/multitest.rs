@@ -305,6 +305,7 @@ mod slashing {
 
         // Call the begin-block sudo handler at the next height, for completeness
         let next_height = initial_height + 1;
+        suite.app.advance_blocks(next_height - initial_height);
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
             .unwrap();
@@ -364,14 +365,20 @@ mod slashing {
 
         // Assert the double signing evidence is proper
         let btc_pk = hex::decode(pk_hex.clone()).unwrap();
-        let evidence = suite.get_double_signing_evidence(&pk_hex, submit_height);
+        let evidence = suite
+            .get_double_signing_evidence(&pk_hex, submit_height)
+            .evidence
+            .unwrap();
         assert_eq!(evidence.block_height, submit_height);
         assert_eq!(evidence.fp_btc_pk, btc_pk);
 
         // Assert the slashing event is there
-        assert_eq!(1, res.events.len());
-        // Assert the slashing event is proper
-        assert_eq!(res.events[0].ty, "slashed_finality_provider".to_string());
+        assert_eq!(4, res.events.len());
+        // Assert the slashing event is proper (slashing is the 2nd event in the list)
+        assert_eq!(
+            res.events[1].ty,
+            "wasm-slashed_finality_provider".to_string()
+        );
 
         // Call the end-block sudo handler for completeness / realism
         suite
@@ -380,6 +387,7 @@ mod slashing {
 
         // Call the next (final) block begin blocker, to compute the active FP set
         let final_height = next_height + 1;
+        suite.app.advance_blocks(final_height - next_height);
         suite
             .call_begin_block("deadbeef02".as_bytes(), final_height)
             .unwrap();
@@ -402,6 +410,6 @@ mod slashing {
 
         // Assert the finality provider has been slashed
         let fp = suite.get_finality_provider(&pk_hex);
-        assert_eq!(fp.slashed_height, submit_height);
+        assert_eq!(fp.slashed_height, next_height);
     }
 }

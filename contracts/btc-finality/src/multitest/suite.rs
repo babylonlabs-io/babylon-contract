@@ -7,14 +7,14 @@ use cosmwasm_std::Addr;
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider, NewFinalityProvider};
-use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
 use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
 use btc_staking::msg::{ActivatedHeightResponse, FinalityProviderInfo};
 
-use crate::msg::FinalitySignatureResponse;
+use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 
 fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
@@ -228,7 +228,7 @@ impl Suite {
     }
 
     #[track_caller]
-    pub fn get_double_signing_evidence(&self, pk_hex: &str, height: u64) -> Evidence {
+    pub fn get_double_signing_evidence(&self, pk_hex: &str, height: u64) -> EvidenceResponse {
         self.app
             .wrap()
             .query_wasm_smart(
