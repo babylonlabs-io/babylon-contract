@@ -410,10 +410,12 @@ pub(crate) mod tests {
 
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
-    use crate::contract::tests::{
+    use test_utils::{
         create_new_finality_provider, create_new_fp_sk, get_active_btc_delegation,
-        get_btc_del_unbonding_sig, get_derived_btc_delegation, get_params, CREATOR, INIT_ADMIN,
+        get_btc_del_unbonding_sig, get_derived_btc_delegation,
     };
+
+    use crate::contract::tests::{get_params, CREATOR, INIT_ADMIN};
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::queries;

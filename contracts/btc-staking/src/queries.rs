@@ -186,10 +186,9 @@ mod tests {
     use cosmwasm_std::{from_json, Env, Storage};
 
     use babylon_apis::btc_staking_api::{FinalityProvider, UnbondedBtcDelegation};
+    use test_utils::{create_new_finality_provider, get_btc_del_unbonding_sig};
 
-    use crate::contract::tests::{
-        create_new_finality_provider, get_btc_del_unbonding_sig, get_params,
-    };
+    use crate::contract::tests::get_params;
     use crate::contract::{execute, instantiate};
     use crate::error::ContractError;
     use crate::msg::{ExecuteMsg, FinalityProviderInfo, InstantiateMsg};
@@ -307,8 +306,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
-        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
+        let del1 = test_utils::get_derived_btc_delegation(1, &[1]);
+        let del2 = test_utils::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -381,8 +380,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
-        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
+        let del1 = test_utils::get_derived_btc_delegation(1, &[1]);
+        let del2 = test_utils::get_derived_btc_delegation(2, &[1]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -406,7 +405,7 @@ mod tests {
         // Unbond the second delegation
         // Compute staking tx hash
         let staking_tx_hash_hex = staking_tx_hash(&del2.into()).to_string();
-        let unbonding_sig = crate::contract::tests::get_btc_del_unbonding_sig(2, &[1]);
+        let unbonding_sig = test_utils::get_btc_del_unbonding_sig(2, &[1]);
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
             active_del: vec![],
@@ -473,8 +472,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
-        let del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
+        let del1 = test_utils::get_derived_btc_delegation(1, &[1]);
+        let del2 = test_utils::get_derived_btc_delegation(2, &[2]);
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![],
@@ -532,8 +531,8 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
-        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
+        let mut del1 = test_utils::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = test_utils::get_derived_btc_delegation(2, &[1]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
@@ -626,8 +625,8 @@ mod tests {
         let _res = execute(deps.as_mut(), initial_env, info.clone(), msg).unwrap();
 
         // Add a couple delegations
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
-        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[1]);
+        let mut del1 = test_utils::get_derived_btc_delegation(1, &[1]);
+        let mut del2 = test_utils::get_derived_btc_delegation(2, &[1]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
@@ -720,7 +719,7 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add a delegation
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1]);
+        let mut del1 = test_utils::get_derived_btc_delegation(1, &[1]);
         // Adjust staking amount
         del1.total_sat = 100;
 
@@ -780,9 +779,9 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // Add some delegations
-        let mut del1 = crate::contract::tests::get_derived_btc_delegation(1, &[1, 3]);
-        let mut del2 = crate::contract::tests::get_derived_btc_delegation(2, &[2]);
-        let mut del3 = crate::contract::tests::get_derived_btc_delegation(3, &[2]);
+        let mut del1 = test_utils::get_derived_btc_delegation(1, &[1, 3]);
+        let mut del2 = test_utils::get_derived_btc_delegation(2, &[2]);
+        let mut del3 = test_utils::get_derived_btc_delegation(3, &[2]);
 
         // Adjust staking amounts
         del1.total_sat = 100;
