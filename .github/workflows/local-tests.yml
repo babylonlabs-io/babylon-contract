@@ -13,5 +13,13 @@ jobs:
       image: rust:1.78.0
     steps:
     - uses: actions/checkout@v4.1.0
-    - name: Build contracts, check formats, and run unit tests (with full validation)
-      run: cargo test --lib --features full-validation
+    - name: Build contracts, check formats, and run unit tests
+      run: cargo test --lib
+  local-build-test-full-validation:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.78.0
+    steps:
+    - uses: actions/checkout@v4.1.0
+    - name: Build contracts, check formats, and run unit tests (full validation)
+      run: cargo test --package btc-staking --lib --features full-validation
