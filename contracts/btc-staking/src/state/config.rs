@@ -35,14 +35,6 @@ pub struct Params {
     // `min_commission_rate` is the chain-wide minimum commission rate that a finality provider
     // can charge their delegators
     // pub min_commission_rate: Decimal,
-    /// `max_active_finality_providers` is the maximum number of active finality providers in the
-    /// BTC staking protocol
-    #[derivative(Default(value = "100"))]
-    pub max_active_finality_providers: u32,
-    /// `min_pub_rand` is the minimum amount of public randomness each public randomness commitment
-    /// should commit
-    #[derivative(Default(value = "1"))]
-    pub min_pub_rand: u64,
     /// `slashing_address` is the address that the slashed BTC goes to.
     /// The address is in string format on Bitcoin.
     #[derivative(Default(value = "String::from(\"n4cV57jePmAAue2WTTBQzH3k3R2rgWBQwY\")"))]
