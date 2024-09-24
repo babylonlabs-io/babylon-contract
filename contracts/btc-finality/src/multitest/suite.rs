@@ -6,8 +6,8 @@ use cosmwasm_std::Addr;
 
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
-use babylon_apis::btc_staking_api::{ActiveBtcDelegation, NewFinalityProvider};
-use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
+use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider, NewFinalityProvider};
+use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
 use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
@@ -172,6 +172,19 @@ impl Suite {
     }
 
     #[track_caller]
+    pub fn get_finality_provider(&self, pk_hex: &str) -> FinalityProvider {
+        self.app
+            .wrap()
+            .query_wasm_smart(
+                self.staking.clone(),
+                &btc_staking::msg::QueryMsg::FinalityProvider {
+                    btc_pk_hex: pk_hex.to_string(),
+                },
+            )
+            .unwrap()
+    }
+
+    #[track_caller]
     pub fn get_finality_provider_info(
         &self,
         pk_hex: &str,
@@ -210,6 +223,20 @@ impl Suite {
             .query_wasm_smart(
                 self.finality.clone(),
                 &crate::msg::QueryMsg::Block { height },
+            )
+            .unwrap()
+    }
+
+    #[track_caller]
+    pub fn get_double_signing_evidence(&self, pk_hex: &str, height: u64) -> Evidence {
+        self.app
+            .wrap()
+            .query_wasm_smart(
+                self.finality.clone(),
+                &crate::msg::QueryMsg::Evidence {
+                    btc_pk_hex: pk_hex.to_string(),
+                    height,
+                },
             )
             .unwrap()
     }
@@ -280,7 +307,7 @@ impl Suite {
         self.app.set_block(block);
 
         // Hash is not used in the begin-block handler
-        let hash_hex = "deadbeef".to_string();
+        let hash_hex = format!("deadbeef{}", height);
         let app_hash_hex: String = app_hash.encode_hex();
 
         self.app.wasm_sudo(
@@ -300,7 +327,7 @@ impl Suite {
         self.app.set_block(block);
 
         // Hash is not used in the begin-block handler
-        let hash_hex = "deadbeef".to_string();
+        let hash_hex = format!("deadbeef{}", height);
         let app_hash_hex: String = app_hash.encode_hex();
 
         self.app.wasm_sudo(
