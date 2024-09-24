@@ -37,14 +37,15 @@ mod instantiation {
 mod finality {
     use super::*;
 
-    use crate::contract::tests::{
-        create_new_finality_provider, get_derived_btc_delegation, get_public_randomness_commitment,
-    };
     use crate::msg::FinalitySignatureResponse;
     use babylon_apis::finality_api::IndexedBlock;
+    use test_utils::get_public_randomness_commitment;
 
     use cosmwasm_std::Event;
-    use test_utils::{get_add_finality_sig, get_pub_rand_value};
+    use test_utils::{
+        create_new_finality_provider, get_add_finality_sig, get_derived_btc_delegation,
+        get_pub_rand_value,
+    };
 
     #[test]
     fn commit_public_randomness_works() {
@@ -259,12 +260,13 @@ mod finality {
 
 mod slashing {
     use babylon_apis::finality_api::IndexedBlock;
-    use test_utils::{get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value};
-
-    use crate::contract::tests::{
-        create_new_finality_provider, get_derived_btc_delegation, get_public_randomness_commitment,
+    use test_utils::{
+        create_new_finality_provider, get_add_finality_sig, get_add_finality_sig_2,
+        get_derived_btc_delegation, get_pub_rand_value,
     };
+
     use crate::multitest::suite::SuiteBuilder;
+    use test_utils::get_public_randomness_commitment;
 
     #[test]
     fn slashing_works() {

@@ -14,6 +14,7 @@ use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
     FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
 };
+use babylon_apis::finality_api::PubRandCommit;
 use babylon_bitcoin::{deserialize, BlockHash, BlockHeader};
 use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
 use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, FinalityProvider, Params};
@@ -324,4 +325,20 @@ pub fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
 pub fn create_new_fp_sk(id: i32) -> SigningKey {
     let fp_sk_bytes = get_fp_sk_bytes(id);
     SigningKey::from_bytes(&fp_sk_bytes).unwrap()
+}
+
+/// Get public randomness public key, commitment, and signature information
+///
+/// Signature is a Schnorr signature over the commitment
+pub fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
+    let pub_rand_commitment_msg = get_pub_rand_commit();
+    (
+        pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
+        PubRandCommit {
+            start_height: pub_rand_commitment_msg.start_height,
+            num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
+            commitment: pub_rand_commitment_msg.commitment.to_vec(),
+        },
+        pub_rand_commitment_msg.sig.to_vec(),
+    )
 }
