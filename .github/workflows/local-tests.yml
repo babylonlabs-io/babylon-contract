@@ -22,4 +22,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4.1.0
     - name: Build contracts, check formats, and run unit tests (full validation)
-      run: cargo test --package btc-staking --lib --features full-validation
+      run: cargo test --lib --features full-validation
