@@ -217,19 +217,17 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
@@ -278,19 +276,17 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
@@ -353,19 +349,17 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -442,19 +436,17 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);
@@ -503,19 +495,17 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -597,19 +587,17 @@ mod tests {
 
         let initial_env = mock_env_height(10);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             initial_env.clone(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -691,19 +679,17 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a finality provider
         let new_fp1 = create_new_finality_provider(1);
@@ -747,19 +733,17 @@ mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Add a couple finality providers
         let new_fp1 = create_new_finality_provider(1);

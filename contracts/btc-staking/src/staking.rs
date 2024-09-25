@@ -510,19 +510,17 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();
@@ -575,19 +573,17 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Register one FP first
         let new_fp = create_new_finality_provider(1);
@@ -674,19 +670,17 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = get_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Register one FP first
         let new_fp = create_new_finality_provider(1);
