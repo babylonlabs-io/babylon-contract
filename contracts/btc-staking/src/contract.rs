@@ -154,7 +154,7 @@ pub mod tests {
         }
     }
 
-    pub(crate) fn get_params() -> Params {
+    pub fn get_params() -> Params {
         let proto_params = test_utils::get_params();
         new_params(proto_params)
     }
