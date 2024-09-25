@@ -1,5 +1,5 @@
 use crate::msg::contract::{InstantiateMsg, QueryMsg};
-use crate::multitest::CONTRACT1_ADDR;
+use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 use crate::state::config::Config;
 use anyhow::Result as AnyResult;
 use babylon_bindings::BabylonMsg;
@@ -14,6 +14,15 @@ fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
         btc_staking::contract::execute,
         btc_staking::contract::instantiate,
         btc_staking::contract::query,
+    );
+    Box::new(contract)
+}
+
+fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
+    let contract = ContractWrapper::new(
+        btc_finality::contract::execute,
+        btc_finality::contract::instantiate,
+        btc_finality::contract::query,
     );
     Box::new(contract)
 }
@@ -52,8 +61,11 @@ impl SuiteBuilder {
         app.init_modules(|_router, _api, _storage| -> AnyResult<()> { Ok(()) })
             .unwrap();
 
-        let btc_staking_code_id = app.store_code(contract_btc_staking());
-        let contract_code_id = app.store_code(contract_babylon());
+        let btc_staking_code_id =
+            app.store_code_with_creator(owner.clone(), contract_btc_staking());
+        let btc_finality_code_id =
+            app.store_code_with_creator(owner.clone(), contract_btc_finality());
+        let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
         let contract = app
             .instantiate_contract(
                 contract_code_id,
@@ -66,6 +78,8 @@ impl SuiteBuilder {
                     notify_cosmos_zone: false,
                     btc_staking_code_id: Some(btc_staking_code_id),
                     btc_staking_msg: None,
+                    btc_finality_code_id: Some(btc_finality_code_id),
+                    btc_finality_msg: None,
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
@@ -116,6 +130,14 @@ impl Suite {
         self.app
             .wrap()
             .query_wasm_smart(CONTRACT1_ADDR, &btc_staking::msg::QueryMsg::Config {})
+            .unwrap()
+    }
+
+    #[track_caller]
+    pub fn get_btc_finality_config(&self) -> btc_finality::state::config::Config {
+        self.app
+            .wrap()
+            .query_wasm_smart(CONTRACT2_ADDR, &btc_finality::msg::QueryMsg::Config {})
             .unwrap()
     }
 

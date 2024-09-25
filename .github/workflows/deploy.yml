@@ -26,6 +26,7 @@ jobs:
         path: |-
           artifacts/babylon_contract.wasm
           artifacts/btc_staking.wasm
+          artifacts/btc_finality.wasm
           artifacts/checksums.txt
     - name: Show data
       run: |-
@@ -35,6 +36,7 @@ jobs:
       run: |-
         zip artifacts/babylon_contract.wasm.zip artifacts/babylon_contract.wasm
         zip artifacts/btc_staking.wasm.zip artifacts/btc_staking.wasm
+        zip artifacts/btc_finality.wasm.zip artifacts/btc_finality.wasm
         zip artifacts/op_finality_gadget.wasm.zip artifacts/op_finality_gadget.wasm
     - name: Create a Release
       id: create-release
@@ -68,6 +70,16 @@ jobs:
         asset_path: ./artifacts/btc_staking.wasm.zip
         asset_name: btc_staking.wasm.zip
         asset_content_type: application/zip
+    - name: Upload btc_finality
+      id: upload-btc_finality
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./artifacts/btc_finality.wasm.zip
+        asset_name: btc_finality.wasm.zip
+        asset_content_type: application/zip
     - name: Upload op_finality_gadget
       id: upload-op_finality_gadget
       uses: actions/upload-release-asset@v1
@@ -91,7 +103,8 @@ jobs:
     - name: Build and run schema generator
       run: |-
         (cd ./contracts/babylon && cargo run --bin schema)
-        (cd ./contracts/btc-staking && cargo run --bin btcstaking-schema)
+        (cd ./contracts/btc-staking && cargo run --bin btc-staking-schema)
+        (cd ./contracts/btc-finality && cargo run --bin btc-finality-schema)
     - name: Consolidate schemas
       run: |-
         mkdir -p ./schemas

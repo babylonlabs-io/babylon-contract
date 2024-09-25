@@ -34,6 +34,8 @@ pub enum ContractError {
     Unauthorized {},
     #[error("The BTC staking contract is not set")]
     BtcStakingNotSet {},
+    #[error("The BTC finality contract is not set")]
+    BtcFinalityNotSet {},
     #[error("Invalid configuration: {msg}")]
     InvalidConfig { msg: String },
 }

@@ -15,13 +15,7 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 // TODO: Add / enable config entries as needed
 #[cw_serde]
 pub struct Config {
-    pub denom: String,
     pub babylon: Addr,
-    // covenant_pks is the list of public keys held by the covenant committee each PK
-    // follows encoding in BIP-340 spec on Bitcoin
-    // pub covenant_pks: Vec<BIP340PubKey>,
-    // covenant_quorum is the minimum number of signatures needed for the covenant multi-signature
-    // pub covenant_quorum: u32,
 }
 
 /// Params define Consumer-selectable BTC staking parameters
@@ -41,14 +35,6 @@ pub struct Params {
     // `min_commission_rate` is the chain-wide minimum commission rate that a finality provider
     // can charge their delegators
     // pub min_commission_rate: Decimal,
-    /// `max_active_finality_providers` is the maximum number of active finality providers in the
-    /// BTC staking protocol
-    #[derivative(Default(value = "100"))]
-    pub max_active_finality_providers: u32,
-    /// `min_pub_rand` is the minimum amount of public randomness each public randomness commitment
-    /// should commit
-    #[derivative(Default(value = "1"))]
-    pub min_pub_rand: u64,
     /// `slashing_address` is the address that the slashed BTC goes to.
     /// The address is in string format on Bitcoin.
     #[derivative(Default(value = "String::from(\"n4cV57jePmAAue2WTTBQzH3k3R2rgWBQwY\")"))]

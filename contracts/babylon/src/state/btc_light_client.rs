@@ -357,6 +357,7 @@ pub(crate) mod tests {
             checkpoint_finalization_timeout: w as u64,
             notify_cosmos_zone: false,
             btc_staking: None,
+            btc_finality: None,
             consumer_name: None,
             consumer_description: None,
         };

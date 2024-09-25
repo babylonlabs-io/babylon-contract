@@ -1,4 +1,3 @@
-mod finality;
 mod staking;
 mod validation;
 

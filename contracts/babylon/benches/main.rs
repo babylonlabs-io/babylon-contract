@@ -51,6 +51,8 @@ pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
         notify_cosmos_zone: false,
         btc_staking_code_id: None,
         btc_staking_msg: None,
+        btc_finality_code_id: None,
+        btc_finality_msg: None,
         admin: None,
     };
     let info = mock_info(CREATOR, &[]);

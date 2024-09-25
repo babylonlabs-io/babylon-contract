@@ -7,16 +7,13 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
 
-use babylon_apis::btc_staking_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::finality::{handle_finality_signature, handle_public_randomness_commit};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::staking::{compute_active_finality_providers, handle_btc_staking};
+use crate::queries;
+use crate::staking::{handle_btc_staking, handle_slash_fp};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
-use crate::state::staking::ACTIVATED_HEIGHT;
-use crate::{finality, queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -29,9 +26,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(&info)?;
-    let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
-        denom,
         babylon: info.sender,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -89,46 +84,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
             &queries::finality_providers_by_power(deps, start_after, limit)?,
         )?),
-        QueryMsg::FinalitySignature { btc_pk_hex, height } => Ok(to_json_binary(
-            &queries::finality_signature(deps, btc_pk_hex, height)?,
-        )?),
-        QueryMsg::PubRandCommit {
-            btc_pk_hex,
-            start_after,
-            limit,
-            reverse,
-        } => Ok(to_json_binary(
-            &state::public_randomness::get_pub_rand_commit(
-                deps.storage,
-                &btc_pk_hex,
-                start_after,
-                limit,
-                reverse,
-            )?,
-        )?),
-        QueryMsg::FirstPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
-            &state::public_randomness::get_first_pub_rand_commit(deps.storage, &btc_pk_hex)?,
-        )?),
-        QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
-            &state::public_randomness::get_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
-        )?),
         QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
-        QueryMsg::Block { height } => Ok(to_json_binary(&queries::block(deps, height)?)?),
-        QueryMsg::Blocks {
-            start_after,
-            limit,
-            finalised,
-            reverse,
-        } => Ok(to_json_binary(&queries::blocks(
-            deps,
-            start_after,
-            limit,
-            finalised,
-            reverse,
-        )?)?),
-        QueryMsg::Evidence { btc_pk_hex, height } => Ok(to_json_binary(&queries::evidence(
-            deps, btc_pk_hex, height,
-        )?)?),
     }
 }
 
@@ -164,85 +120,12 @@ pub fn execute(
             &slashed_del,
             &unbonded_del,
         ),
-        ExecuteMsg::SubmitFinalitySignature {
-            fp_pubkey_hex,
-            height,
-            pub_rand,
-            proof,
-            block_hash,
-            signature,
-        } => handle_finality_signature(
-            deps,
-            env,
-            &fp_pubkey_hex,
-            height,
-            &pub_rand,
-            &proof,
-            &block_hash,
-            &signature,
-        ),
-        ExecuteMsg::CommitPublicRandomness {
-            fp_pubkey_hex,
-            start_height,
-            num_pub_rand,
-            commitment,
-            signature,
-        } => handle_public_randomness_commit(
-            deps,
-            &fp_pubkey_hex,
-            start_height,
-            num_pub_rand,
-            &commitment,
-            &signature,
-        ),
+        ExecuteMsg::Slash { fp_btc_pk_hex } => handle_slash_fp(deps, env, &info, &fp_btc_pk_hex),
     }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(
-    mut deps: DepsMut,
-    env: Env,
-    msg: SudoMsg,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    match msg {
-        SudoMsg::BeginBlock { .. } => handle_begin_block(&mut deps, env),
-        SudoMsg::EndBlock {
-            hash_hex,
-            app_hash_hex,
-        } => handle_end_block(&mut deps, env, &hash_hex, &app_hash_hex),
-    }
-}
-
-fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
-    // Compute active finality provider set
-    let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
-    compute_active_finality_providers(deps.storage, env, max_active_fps)?;
-
-    Ok(Response::new())
-}
-
-fn handle_end_block(
-    deps: &mut DepsMut,
-    env: Env,
-    _hash_hex: &str,
-    app_hash_hex: &str,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    // If the BTC staking protocol is activated i.e. there exists a height where at least one
-    // finality provider has voting power, start indexing and tallying blocks
-    let mut res = Response::new();
-    if let Some(activated_height) = ACTIVATED_HEIGHT.may_load(deps.storage)? {
-        // Index the current block
-        let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
-        res = res.add_event(ev);
-        // Tally all non-finalised blocks
-        let events = finality::tally_blocks(deps, activated_height, env.block.height)?;
-        res = res.add_events(events);
-    }
-    Ok(res)
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+pub mod tests {
     use std::str::FromStr;
 
     use super::*;
@@ -252,7 +135,6 @@ pub(crate) mod tests {
         ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
         FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
     };
-    use babylon_apis::finality_api::PubRandCommit;
     use babylon_bitcoin::chain_params::Network;
     use babylon_proto::babylon::btcstaking::v1::{
         BtcDelegation, FinalityProvider, Params as ProtoParams,
@@ -266,8 +148,7 @@ pub(crate) mod tests {
     use hex::ToHex;
     use k256::schnorr::{Signature, SigningKey};
     use test_utils::{
-        get_btc_del_unbonding_sig_bytes, get_btc_delegation, get_finality_provider,
-        get_fp_sk_bytes, get_pub_rand_commit,
+        get_btc_del_unbonding_sig_bytes, get_btc_delegation, get_finality_provider, get_fp_sk_bytes,
     };
 
     pub(crate) const CREATOR: &str = "creator";
@@ -279,8 +160,6 @@ pub(crate) mod tests {
             covenant_pks: params.covenant_pks.iter().map(hex::encode).collect(),
             covenant_quorum: params.covenant_quorum,
             btc_network: Network::Regtest, // TODO: fix this
-            max_active_finality_providers: params.max_active_finality_providers,
-            min_pub_rand: 10, // TODO: fix this
             slashing_address: params.slashing_address,
             min_slashing_tx_fee_sat: params.min_slashing_tx_fee_sat as u64,
             slashing_rate: "0.01".to_string(), // TODO: fix this
@@ -369,7 +248,7 @@ pub(crate) mod tests {
     }
 
     // Build a derived active BTC delegation from the base (from testdata) BTC delegation
-    pub(crate) fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
+    pub fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
         let del = get_btc_delegation(del_id, fp_ids.to_vec());
         new_active_btc_delegation(del)
     }
@@ -377,22 +256,6 @@ pub(crate) mod tests {
     pub(crate) fn get_btc_del_unbonding_sig(del_id: i32, fp_ids: &[i32]) -> Signature {
         let sig_bytes = get_btc_del_unbonding_sig_bytes(del_id, fp_ids.to_vec());
         Signature::try_from(sig_bytes.as_slice()).unwrap()
-    }
-
-    /// Get public randomness public key, commitment, and signature information
-    ///
-    /// Signature is a Schnorr signature over the commitment
-    pub(crate) fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
-        let pub_rand_commitment_msg = get_pub_rand_commit();
-        (
-            pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
-            PubRandCommit {
-                start_height: pub_rand_commitment_msg.start_height,
-                num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
-                commitment: pub_rand_commitment_msg.commitment.to_vec(),
-            },
-            pub_rand_commitment_msg.sig.to_vec(),
-        )
     }
 
     pub(crate) fn create_new_finality_provider(id: i32) -> NewFinalityProvider {

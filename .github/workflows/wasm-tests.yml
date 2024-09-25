@@ -25,3 +25,4 @@ jobs:
         path: |-
           artifacts/babylon_contract.wasm
           artifacts/btc_staking.wasm
+          artifacts/btc_finality.wasm

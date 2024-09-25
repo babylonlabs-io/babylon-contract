@@ -9,9 +9,7 @@ static WASM: &[u8] = include_bytes!("../../../artifacts/btc_staking.wasm");
 const MAX_WASM_SIZE: usize = 800 * 1024; // 800 KB
 
 // wasm binary with full validation
-// TODO: optimise to 800 KB
 static WASM_FULL: &[u8] = include_bytes!("../../../artifacts/btc_staking-full-validation.wasm");
-const MAX_WASM_SIZE_FULL: usize = 1024 * 1024; // 1 MB
 
 const CREATOR: &str = "creator";
 
@@ -24,10 +22,10 @@ fn wasm_size_limit_check() {
         MAX_WASM_SIZE
     );
     assert!(
-        WASM_FULL.len() < MAX_WASM_SIZE_FULL,
+        WASM_FULL.len() < MAX_WASM_SIZE,
         "BTC staking contract (with full validation) wasm binary is too large: {} (target: {})",
         WASM_FULL.len(),
-        MAX_WASM_SIZE_FULL
+        MAX_WASM_SIZE
     );
 }
 

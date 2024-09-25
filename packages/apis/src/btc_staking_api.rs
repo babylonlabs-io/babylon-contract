@@ -4,8 +4,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Binary, Decimal};
 
-use babylon_merkle::Proof;
-
 /// Hash size in bytes
 pub const HASH_SIZE: usize = 32;
 
@@ -21,57 +19,11 @@ pub enum ExecuteMsg {
         slashed_del: Vec<SlashedBtcDelegation>,
         unbonded_del: Vec<UnbondedBtcDelegation>,
     },
-    /// Committing a sequence of public randomness for EOTS
-    // TODO: Move to its own module / contract
-    CommitPublicRandomness {
-        /// `fp_pubkey_hex` is the BTC PK of the finality provider that commits the public randomness
-        fp_pubkey_hex: String,
-        /// `start_height` is the start block height of the list of public randomness
-        start_height: u64,
-        /// `num_pub_rand` is the amount of public randomness committed
-        num_pub_rand: u64,
-        /// `commitment` is the commitment of these public randomness values.
-        /// Currently, it's the root of the Merkle tree that includes the public randomness
-        commitment: Binary,
-        /// `signature` is the signature on (start_height || num_pub_rand || commitment) signed by
-        /// the SK corresponding to `fp_pubkey_hex`.
-        /// This prevents others committing public randomness on behalf of `fp_pubkey_hex`
-        signature: Binary,
-    },
-    /// Submit Finality Signature.
-    ///
-    /// This is a message that can be called by a finality provider to submit their finality
-    /// signature to the Consumer chain.
-    /// The signature is verified by the Consumer chain using the finality provider's public key
-    ///
-    /// This message is equivalent to the `MsgAddFinalitySig` message in the Babylon finality protobuf
-    /// defs.
-    // TODO: Move to its own module / contract
-    SubmitFinalitySignature {
-        fp_pubkey_hex: String,
-        height: u64,
-        pub_rand: Binary,
-        proof: Proof,
-        block_hash: Binary,
-        signature: Binary,
-    },
-}
-
-#[cw_serde]
-pub enum SudoMsg {
-    /// The SDK should call SudoMsg::BeginBlock{} once per block (in BeginBlock).
-    /// It allows the staking module to index the BTC height, and update the power
-    /// distribution of the active Finality Providers.
-    BeginBlock {
-        hash_hex: String,
-        app_hash_hex: String,
-    },
-    /// The SDK should call SudoMsg::EndBlock{} once per block (in EndBlock).
-    /// It allows the finality module to index blocks and tally the finality provider votes
-    EndBlock {
-        hash_hex: String,
-        app_hash_hex: String,
-    },
+    /// Slash finality provider staking power.
+    /// Used by the babylon-contract only.
+    /// The Babylon contract will call this message to set the finality provider's staking power to
+    /// zero when the finality provider is found to be malicious by the finality contract.
+    Slash { fp_btc_pk_hex: String },
 }
 
 #[cw_serde]

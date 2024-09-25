@@ -1,4 +1,4 @@
 [alias]
 unit-test = "test --lib"
 integration-test = "test --test integration"
-schema = "run --bin btcstaking-schema"
+schema = "run --bin btc-staking-schema"

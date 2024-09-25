@@ -6,9 +6,9 @@ use crate::error::ContractError;
 use babylon_apis::finality_api::PubRandCommit;
 
 /// Map of public randomness commitments by fp and block height
-pub(crate) const PUB_RAND_COMMITS: Map<(&str, u64), PubRandCommit> = Map::new("fp_pub_rand_commit");
+pub const PUB_RAND_COMMITS: Map<(&str, u64), PubRandCommit> = Map::new("fp_pub_rand_commit");
 /// Map of public randomness values by fp and block height
-pub(crate) const PUB_RAND_VALUES: Map<(&str, u64), Vec<u8>> = Map::new("fp_pub_rand");
+pub const PUB_RAND_VALUES: Map<(&str, u64), Vec<u8>> = Map::new("fp_pub_rand");
 
 pub fn get_pub_rand_commit_for_height(
     storage: &dyn Storage,

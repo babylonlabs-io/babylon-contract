@@ -165,9 +165,13 @@ impl BabylonApp {
     }
 
     pub fn new_genesis(owner: &str) -> Self {
+        BabylonApp::new_at_height(owner, 0)
+    }
+
+    pub fn new_at_height(owner: &str, height: u64) -> Self {
         let owner = Addr::unchecked(owner);
         let block_info = BlockInfo {
-            height: 0,
+            height,
             time: Timestamp::from_seconds(1714119228),
             chain_id: "babylon-testnet-phase-3".to_owned(),
         };
@@ -208,7 +212,7 @@ impl BabylonApp {
     }
 
     /// This advances BlockInfo by given number of blocks.
-    /// It does not do any callbacks, but keeps the ratio of seconds/blokc
+    /// It does not do any callbacks, but keeps the ratio of seconds/block
     pub fn advance_blocks(&mut self, blocks: u64) {
         self.update_block(|block| {
             block.time = block.time.plus_seconds(BLOCK_TIME * blocks);
