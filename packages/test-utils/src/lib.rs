@@ -1,16 +1,25 @@
+use cargo_metadata::MetadataCommand;
+use hex::ToHex;
+use k256::schnorr::{Signature, SigningKey};
+use prost::{bytes::Bytes, Message};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::{env, fs};
+
+use cosmwasm_std::{Binary, Decimal};
+
+use babylon_apis::btc_staking_api::{
+    ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
+    FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
+};
+use babylon_apis::finality_api::PubRandCommit;
 use babylon_bitcoin::{deserialize, BlockHash, BlockHeader};
 use babylon_proto::babylon::btclightclient::v1::{BtcHeaderInfo, QueryMainChainResponse};
 use babylon_proto::babylon::btcstaking::v1::{BtcDelegation, FinalityProvider, Params};
-use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
-use cargo_metadata::MetadataCommand;
-use prost::bytes::Bytes;
-use prost::Message;
-use serde::{Deserialize, Serialize};
-
 use babylon_proto::babylon::finality::v1::{MsgAddFinalitySig, MsgCommitPubRandList};
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::{env, fs};
+use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 
 const BTC_LC_MAIN: &str = "btc_light_client.dat";
 const BTC_LC_FORK: &str = "btc_light_client_fork.dat";
@@ -223,4 +232,113 @@ pub fn get_add_finality_sig_2() -> MsgAddFinalitySig {
     let add_finality_sig_data: &[u8] = &fs::read(add_finality_sig_path).unwrap();
 
     MsgAddFinalitySig::decode(add_finality_sig_data).unwrap()
+}
+
+pub fn new_finality_provider(fp: FinalityProvider) -> NewFinalityProvider {
+    NewFinalityProvider {
+        addr: fp.addr,
+        description: fp.description.map(|desc| FinalityProviderDescription {
+            moniker: desc.moniker,
+            identity: desc.identity,
+            website: desc.website,
+            security_contact: desc.security_contact,
+            details: desc.details,
+        }),
+        commission: Decimal::from_str(&fp.commission).unwrap(),
+        btc_pk_hex: fp.btc_pk.encode_hex(),
+        pop: match fp.pop {
+            Some(pop) => Some(ProofOfPossessionBtc {
+                btc_sig_type: pop.btc_sig_type,
+                btc_sig: Binary::new(pop.btc_sig.to_vec()),
+            }),
+            None => None,
+        },
+        consumer_id: fp.consumer_id,
+    }
+}
+
+pub fn new_active_btc_delegation(del: BtcDelegation) -> ActiveBtcDelegation {
+    let btc_undelegation = del.btc_undelegation.unwrap();
+
+    ActiveBtcDelegation {
+        staker_addr: del.staker_addr,
+        btc_pk_hex: del.btc_pk.encode_hex(),
+        fp_btc_pk_list: del
+            .fp_btc_pk_list
+            .iter()
+            .map(|fp_btc_pk| fp_btc_pk.encode_hex())
+            .collect(),
+        start_height: del.start_height,
+        end_height: del.end_height,
+        total_sat: del.total_sat,
+        staking_tx: Binary::new(del.staking_tx.to_vec()),
+        slashing_tx: Binary::new(del.slashing_tx.to_vec()),
+        delegator_slashing_sig: Binary::new(del.delegator_sig.to_vec()),
+        covenant_sigs: del
+            .covenant_sigs
+            .iter()
+            .map(|cov_sig| CovenantAdaptorSignatures {
+                cov_pk: Binary::new(cov_sig.cov_pk.to_vec()),
+                adaptor_sigs: cov_sig
+                    .adaptor_sigs
+                    .iter()
+                    .map(|adaptor_sig| Binary::new(adaptor_sig.to_vec()))
+                    .collect(),
+            })
+            .collect(),
+        staking_output_idx: del.staking_output_idx,
+        unbonding_time: del.unbonding_time,
+        undelegation_info: BtcUndelegationInfo {
+            unbonding_tx: Binary::new(btc_undelegation.unbonding_tx.to_vec()),
+            slashing_tx: Binary::new(btc_undelegation.slashing_tx.to_vec()),
+            delegator_unbonding_sig: Binary::new(btc_undelegation.delegator_unbonding_sig.to_vec()),
+            delegator_slashing_sig: Binary::new(btc_undelegation.delegator_slashing_sig.to_vec()),
+            covenant_unbonding_sig_list: vec![],
+            covenant_slashing_sigs: vec![],
+        },
+        params_version: del.params_version,
+    }
+}
+
+/// Build an active BTC delegation from a BTC delegation
+pub fn get_active_btc_delegation() -> ActiveBtcDelegation {
+    let del = get_btc_delegation(1, vec![1]);
+    new_active_btc_delegation(del)
+}
+
+// Build a derived active BTC delegation from the base (from testdata) BTC delegation
+pub fn get_derived_btc_delegation(del_id: i32, fp_ids: &[i32]) -> ActiveBtcDelegation {
+    let del = get_btc_delegation(del_id, fp_ids.to_vec());
+    new_active_btc_delegation(del)
+}
+
+pub fn get_btc_del_unbonding_sig(del_id: i32, fp_ids: &[i32]) -> Signature {
+    let sig_bytes = get_btc_del_unbonding_sig_bytes(del_id, fp_ids.to_vec());
+    Signature::try_from(sig_bytes.as_slice()).unwrap()
+}
+
+pub fn create_new_finality_provider(id: i32) -> NewFinalityProvider {
+    let fp = get_finality_provider(id);
+    new_finality_provider(fp)
+}
+
+pub fn create_new_fp_sk(id: i32) -> SigningKey {
+    let fp_sk_bytes = get_fp_sk_bytes(id);
+    SigningKey::from_bytes(&fp_sk_bytes).unwrap()
+}
+
+/// Get public randomness public key, commitment, and signature information
+///
+/// Signature is a Schnorr signature over the commitment
+pub fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
+    let pub_rand_commitment_msg = get_pub_rand_commit();
+    (
+        pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
+        PubRandCommit {
+            start_height: pub_rand_commitment_msg.start_height,
+            num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
+            commitment: pub_rand_commitment_msg.commitment.to_vec(),
+        },
+        pub_rand_commitment_msg.sig.to_vec(),
+    )
 }

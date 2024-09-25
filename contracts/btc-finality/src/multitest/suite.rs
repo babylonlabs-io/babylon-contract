@@ -2,7 +2,7 @@ use anyhow::Result as AnyResult;
 use derivative::Derivative;
 use hex::ToHex;
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::{to_json_binary, Addr};
 
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
@@ -12,6 +12,7 @@ use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
+
 use btc_staking::msg::{ActivatedHeightResponse, FinalityProviderInfo};
 
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
@@ -75,6 +76,7 @@ impl SuiteBuilder {
         let btc_finality_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_finality());
         let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
+        let staking_params = btc_staking::test_utils::staking_params();
         let contract = app
             .instantiate_contract(
                 contract_code_id,
@@ -86,7 +88,13 @@ impl SuiteBuilder {
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
                     btc_staking_code_id: Some(btc_staking_code_id),
-                    btc_staking_msg: None,
+                    btc_staking_msg: Some(
+                        to_json_binary(&btc_staking::msg::InstantiateMsg {
+                            params: Some(staking_params),
+                            admin: None,
+                        })
+                        .unwrap(),
+                    ),
                     btc_finality_code_id: Some(btc_finality_code_id),
                     btc_finality_msg: None,
                     admin: Some(owner.to_string()),

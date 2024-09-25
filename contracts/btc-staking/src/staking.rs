@@ -410,14 +410,17 @@ pub(crate) mod tests {
 
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
-    use crate::contract::tests::{
+    use test_utils::{
         create_new_finality_provider, create_new_fp_sk, get_active_btc_delegation,
-        get_btc_del_unbonding_sig, get_derived_btc_delegation, get_params, CREATOR, INIT_ADMIN,
+        get_btc_del_unbonding_sig, get_derived_btc_delegation,
     };
+
+    use crate::contract::tests::{CREATOR, INIT_ADMIN};
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::queries;
     use crate::state::staking::BtcUndelegationInfo;
+    use crate::test_utils::staking_params;
 
     // Compute staking tx hash of a delegation
     pub(crate) fn staking_tx_hash(del: &BtcDelegation) -> Txid {
@@ -508,19 +511,17 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = staking_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Build valid active delegation
         let active_delegation = get_active_btc_delegation();
@@ -573,19 +574,17 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = staking_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Register one FP first
         let new_fp = create_new_finality_provider(1);
@@ -672,19 +671,17 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
+        let params = staking_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             InstantiateMsg {
-                params: None,
+                params: Some(params),
                 admin: None,
             },
         )
         .unwrap();
-
-        let params = get_params();
-        PARAMS.save(deps.as_mut().storage, &params).unwrap();
 
         // Register one FP first
         let new_fp = create_new_finality_provider(1);
