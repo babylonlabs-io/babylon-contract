@@ -134,30 +134,9 @@ pub mod tests {
     };
     use cw_controllers::AdminResponse;
 
-    use babylon_bitcoin::chain_params::Network;
-    use babylon_proto::babylon::btcstaking::v1::Params as ProtoParams;
-
-    use crate::state::config::Params;
-
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
-
-    fn new_params(params: ProtoParams) -> Params {
-        Params {
-            covenant_pks: params.covenant_pks.iter().map(hex::encode).collect(),
-            covenant_quorum: params.covenant_quorum,
-            btc_network: Network::Regtest, // TODO: fix this
-            slashing_address: params.slashing_address,
-            min_slashing_tx_fee_sat: params.min_slashing_tx_fee_sat as u64,
-            slashing_rate: "0.01".to_string(), // TODO: fix this
-        }
-    }
-
-    pub fn get_params() -> Params {
-        let proto_params = test_utils::get_params();
-        new_params(proto_params)
-    }
 
     #[test]
     fn instantiate_without_admin() {

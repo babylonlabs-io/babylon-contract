@@ -415,11 +415,12 @@ pub(crate) mod tests {
         get_btc_del_unbonding_sig, get_derived_btc_delegation,
     };
 
-    use crate::contract::tests::{get_params, CREATOR, INIT_ADMIN};
+    use crate::contract::tests::{CREATOR, INIT_ADMIN};
     use crate::contract::{execute, instantiate};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::queries;
     use crate::state::staking::BtcUndelegationInfo;
+    use crate::test_utils::staking_params;
 
     // Compute staking tx hash of a delegation
     pub(crate) fn staking_tx_hash(del: &BtcDelegation) -> Txid {
@@ -510,7 +511,7 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
-        let params = get_params();
+        let params = staking_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
@@ -573,7 +574,7 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
-        let params = get_params();
+        let params = staking_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
@@ -670,7 +671,7 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
 
-        let params = get_params();
+        let params = staking_params();
         instantiate(
             deps.as_mut(),
             mock_env(),
