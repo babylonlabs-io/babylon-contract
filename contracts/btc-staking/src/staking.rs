@@ -533,9 +533,11 @@ pub(crate) mod tests {
             .clone_from(&active_delegation.fp_btc_pk_list[0]);
 
         // Check that the finality provider has no power yet
-        let res = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None)
-            .unwrap();
-        assert_eq!(res.power, 0);
+        let res = queries::finality_provider_info(deps.as_ref(), new_fp.btc_pk_hex.clone(), None);
+        assert!(matches!(
+            res,
+            Err(ContractError::FinalityProviderNotFound(pk)) if pk == new_fp.btc_pk_hex
+        ));
 
         let msg = ExecuteMsg::BtcStaking {
             new_fp: vec![new_fp.clone()],
