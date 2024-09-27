@@ -131,7 +131,7 @@
             ],
             "properties": {
               "headers": {
-                "description": "`headers` is a list of BTC headers. Typically: - A given delta of headers a user wants to add to the tip of, or fork the BTC chain.",
+                "description": "`headers` is a list of BTC headers. Typically: - A given delta of headers a user wants to add to the tip or fork of the BTC chain.",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/BtcHeader"
