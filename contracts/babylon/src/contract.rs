@@ -64,7 +64,7 @@ pub fn instantiate(
         let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE_STAKING);
 
         // Test code sets a channel, so that we can better approximate IBC in test code
-        #[cfg(any(test, feature = "library"))]
+        #[cfg(any(test, all(feature = "library", not(target_arch = "wasm32"))))]
         {
             let channel = cosmwasm_std::testing::mock_ibc_channel(
                 "channel-123",

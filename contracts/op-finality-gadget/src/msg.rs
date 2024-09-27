@@ -1,10 +1,13 @@
-use crate::state::config::Config;
-use babylon_apis::finality_api::PubRandCommit;
-use babylon_merkle::Proof;
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    crate::state::config::Config, babylon_apis::finality_api::PubRandCommit,
+    cw_controllers::AdminResponse, std::collections::HashSet,
+};
+
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
-use cw_controllers::AdminResponse;
-use std::collections::HashSet;
+
+use babylon_merkle::Proof;
 
 #[cw_serde]
 pub struct InstantiateMsg {

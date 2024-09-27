@@ -36,9 +36,9 @@ blst = "0.3.11"
 cosmos-sdk-proto = { version = "0.19.0", default-features = false, features = [
     "cosmwasm",
 ] }
-cosmwasm-derive = "2.0.4"
-cosmwasm-schema = "2.0.4"
-cosmwasm-std = { version = "2.0.4", default-features = false, features = [
+cosmwasm-derive = "2.1.4"
+cosmwasm-schema = "2.1.4"
+cosmwasm-std = { version = "2.1.4", default-features = false, features = [
     "std",
     "abort",
     "staking",
@@ -67,7 +67,7 @@ rust_decimal = "1.35"
 k256 = { version = "0.13.1", default-features = false, features = ["schnorr"] }
 
 # dev deps
-cosmwasm-vm = { version = "2.0.4", default-features = false, features = [
+cosmwasm-vm = { version = "2.1.4", default-features = false, features = [
     "iterator",
     "stargate",
 ] }
