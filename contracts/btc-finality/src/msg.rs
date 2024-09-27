@@ -1,9 +1,13 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cw_controllers::AdminResponse;
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    crate::state::config::Config, babylon_apis::finality_api::PubRandCommit,
+    cw_controllers::AdminResponse,
+};
 
-use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_apis::finality_api::{Evidence, IndexedBlock};
 
-use crate::state::config::{Config, Params};
+use crate::state::config::Params;
 
 #[cw_serde]
 #[derive(Default)]

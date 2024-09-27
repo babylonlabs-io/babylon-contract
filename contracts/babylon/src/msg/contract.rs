@@ -1,14 +1,20 @@
-use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
-use crate::msg::cz_header::CzHeaderResponse;
-use crate::msg::epoch::EpochResponse;
-use crate::state::config::Config;
-use babylon_apis::finality_api::Evidence;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, StdError, StdResult};
 
+use babylon_apis::finality_api::Evidence;
+
+use crate::msg::btc_header::BtcHeader;
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
+    crate::msg::cz_header::CzHeaderResponse,
+    crate::msg::epoch::EpochResponse,
+    crate::state::config::Config,
+};
+
 const BABYLON_TAG_BYTES: usize = 4;
 
-// common functions for contract msgs
+// Common functions for contract messages
 pub trait ContractMsg {
     fn validate(&self) -> StdResult<()>;
     fn babylon_tag_to_bytes(&self) -> StdResult<Vec<u8>>;
@@ -94,7 +100,7 @@ impl ContractMsg for InstantiateMsg {
 pub enum ExecuteMsg {
     BtcHeaders {
         /// `headers` is a list of BTC headers. Typically:
-        /// - A given delta of headers a user wants to add to the tip of, or fork the BTC chain.
+        /// - A given delta of headers a user wants to add to the tip or fork of the BTC chain.
         headers: Vec<BtcHeader>,
     },
     /// `slashing` is a slashing event from the BTC staking contract.
