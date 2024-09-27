@@ -9,7 +9,7 @@ WORKSPACE="/home/runner/work/babylon-contract/babylon-contract"
 BUILDARCH=$(uname -m)
 DOCKERFILE=./docker/Dockerfile-ci
 OPTIMIZER_IMAGE_NAME="babylonlabs-io/rust-optimizer-$BUILDARCH"
-OPTIMIZER_IMAGE_TAG=$(sed -n -E 's/^FROM.*:([^\s]*)\s.*/\1/p' $DOCKERFILE)
+OPTIMIZER_IMAGE_TAG=$(sed -n -E 's/^FROM.*:([^ 	]*)[ 	].*/\1/p' $DOCKERFILE)
 
 $DOCKER build -t $OPTIMIZER_IMAGE_NAME:$OPTIMIZER_IMAGE_TAG -f $DOCKERFILE .
 
