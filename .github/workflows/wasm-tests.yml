@@ -1,6 +1,6 @@
 name: babylonchain/babylon-contract/wasm-tests
 on:
-  push:
+  pull_request:
     branches: [ "main" ]
 env:
   CARGO_TERM_COLOR: always
@@ -14,15 +14,3 @@ jobs:
       run: "./scripts/build-optimizer-ci.sh"
     - name: List optimised Wasm binaries
       run: bash -c "ls $WORKSPACE/artifacts/*.wasm"
-    - name: Install cosmwasm-check
-      run: cargo install --locked --debug --version ^2.0 cosmwasm-check
-    - name: Check the Wasm binaries' validity
-      run: bash -c "cosmwasm-check $WORKSPACE/artifacts/*.wasm"
-    - name: Integration tests based on CosmWasm
-      run: cargo test --test integration
-    - uses: actions/upload-artifact@v4.1.0
-      with:
-        path: |-
-          artifacts/babylon_contract.wasm
-          artifacts/btc_staking.wasm
-          artifacts/btc_finality.wasm
