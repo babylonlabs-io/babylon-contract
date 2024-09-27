@@ -6,7 +6,7 @@ env:
   CARGO_TERM_COLOR: always
   WORKSPACE: "/home/runner/work/babylon-contract/babylon-contract"
 jobs:
-  wasm-build-check-integration:
+  wasm-build-check-integration-full:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4.1.0
