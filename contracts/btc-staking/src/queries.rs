@@ -139,12 +139,12 @@ pub fn finality_provider_info(
     deps: Deps,
     btc_pk_hex: String,
     height: Option<u64>,
-) -> StdResult<FinalityProviderInfo> {
+) -> Result<FinalityProviderInfo, ContractError> {
     let fp_state = match height {
         Some(h) => fps().may_load_at_height(deps.storage, &btc_pk_hex, h),
         None => fps().may_load(deps.storage, &btc_pk_hex),
     }?
-    .unwrap_or_default();
+    .ok_or_else(|| ContractError::FinalityProviderNotFound(btc_pk_hex.clone()))?;
 
     Ok(FinalityProviderInfo {
         btc_pk_hex,
@@ -710,6 +710,17 @@ mod tests {
                 power: 250,
             }
         );
+
+        // Query finality provider info for a non-existent FP
+        let non_existent_fp = "010203040506".to_string();
+        let result =
+            crate::queries::finality_provider_info(deps.as_ref(), non_existent_fp.clone(), None);
+
+        // Assert that the result is a FinalityProviderNotFound error
+        assert!(matches!(
+            result,
+            Err(ContractError::FinalityProviderNotFound(pk)) if pk == non_existent_fp
+        ));
     }
 
     #[test]
