@@ -4,14 +4,7 @@ DOCKER=$(which docker)
 CUR_DIR=$(pwd)
 CUR_BASENAME=$(basename $CUR_DIR)
 
-# Native arch
-BUILDARCH=$(uname -m)
-OPTIMIZER_IMAGE_NAME="babylonlabs-io/rust-optimizer-$BUILDARCH"
-
-if [ -z "$($DOCKER images -q $OPTIMIZER_IMAGE_NAME)" ]
-then 
-  ./scripts/build-optimizer.sh
-fi
+OPTIMIZER_IMAGE_NAME="babylonlabs/optimizer"
 
 $DOCKER run --rm -v "$CUR_DIR":/code \
   --mount type=volume,source="${CUR_BASENAME}_cache",target=/target \

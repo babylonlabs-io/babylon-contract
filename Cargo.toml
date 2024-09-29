@@ -14,7 +14,6 @@ publish    = false
 gen-proto       = "./scripts/protocgen.sh"
 gen-data        = "go run datagen/*.go"
 gen-schema      = "./scripts/schema.sh"
-build-optimizer = "./scripts/build-optimizer.sh"
 optimize        = "./scripts/optimizer.sh"
 precommit       = "./scripts/precommit.sh"
 lint            = "./scripts/lint.sh"
