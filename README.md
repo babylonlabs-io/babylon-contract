@@ -84,12 +84,6 @@ cargo run-script gen-proto
 cargo run-script gen-data
 ```
 
-### Build the optimizer image
-
-```bash
-cargo run-script build-optimizer
-```
-
 ### Build the optimized contract
 
 ```bash
