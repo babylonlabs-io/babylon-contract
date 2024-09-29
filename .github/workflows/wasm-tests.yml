@@ -11,6 +11,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4.1.0
     - name: Build optimised Wasm binaries
-      run: "./scripts/build-optimizer-ci.sh"
+      run: "./scripts/optimizer.sh"
     - name: List optimised Wasm binaries
       run: bash -c "ls $WORKSPACE/artifacts/*.wasm"
