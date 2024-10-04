@@ -13,7 +13,6 @@ use babylon_merkle::Proof;
 pub struct InstantiateMsg {
     pub admin: String,
     pub consumer_id: String,
-    pub activated_height: u64,
     pub is_enabled: bool,
 }
 

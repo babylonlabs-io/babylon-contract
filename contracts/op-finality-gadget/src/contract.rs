@@ -23,7 +23,6 @@ pub fn instantiate(
 
     let config = Config {
         consumer_id: msg.consumer_id,
-        activated_height: msg.activated_height,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -117,13 +116,11 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let init_admin = deps.api.addr_make(INIT_ADMIN);
         let consumer_id = "op".to_string();
-        let activated_height = 1000;
 
         // Create an InstantiateMsg with admin set to init_admin
         let msg = InstantiateMsg {
             admin: init_admin.to_string(),
             consumer_id,
-            activated_height,
             is_enabled: true,
         };
 
@@ -153,7 +150,6 @@ pub(crate) mod tests {
         let instantiate_msg = InstantiateMsg {
             admin: init_admin.to_string(), // Admin provided
             consumer_id: "op-stack-l2-11155420".to_string(),
-            activated_height: 13513311,
             is_enabled: true,
         };
 

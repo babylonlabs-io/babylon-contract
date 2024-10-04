@@ -3,17 +3,11 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "activated_height",
     "admin",
     "consumer_id",
     "is_enabled"
   ],
   "properties": {
-    "activated_height": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
-    },
     "admin": {
       "type": "string"
     },
