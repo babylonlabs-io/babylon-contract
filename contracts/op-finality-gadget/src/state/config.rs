@@ -11,6 +11,4 @@ pub const IS_ENABLED: Item<bool> = Item::new("is_enabled");
 #[cw_serde]
 pub struct Config {
     pub consumer_id: String,
-    // activated_height is the consumer chain block height at which the finality gadget is activated
-    pub activated_height: u64,
 }

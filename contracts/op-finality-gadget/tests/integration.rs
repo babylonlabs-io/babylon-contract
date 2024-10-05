@@ -18,7 +18,6 @@ fn instantiate_works() {
     let msg = InstantiateMsg {
         admin: mock_api.addr_make(CREATOR),
         consumer_id: "op-stack-l2-11155420".to_string(),
-        activated_height: 13513311,
         is_enabled: false,
     };
     let info = mock_info(CREATOR, &[]);
@@ -30,7 +29,6 @@ fn instantiate_works() {
     let res: Config =
         from_json(query(&mut deps, mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
     assert_eq!(msg.consumer_id, res.consumer_id);
-    assert_eq!(msg.activated_height, res.activated_height);
 
     // Check the admin is properly stored in the state and returned
     let res: AdminResponse =
@@ -51,7 +49,6 @@ fn disable_and_reenable_works() {
     let msg = InstantiateMsg {
         admin: mock_api.addr_make(CREATOR),
         consumer_id: "op-stack-l2-11155420".to_string(),
-        activated_height: 13513311,
         is_enabled: false,
     };
     let info = mock_info(CREATOR, &[]);
@@ -111,7 +108,6 @@ fn instantiate_enabled() {
     let msg = InstantiateMsg {
         admin: mock_api.addr_make(CREATOR),
         consumer_id: "op-stack-l2-11155420".to_string(),
-        activated_height: 13513311,
         is_enabled: true,
     };
     let info = mock_info(CREATOR, &[]);
