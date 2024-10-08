@@ -34,10 +34,10 @@ jobs:
         cat artifacts/checksums.txt
     - name: Zip artefacts
       run: |-
-        zip artifacts/babylon_contract.wasm.zip artifacts/babylon_contract.wasm
-        zip artifacts/btc_staking.wasm.zip artifacts/btc_staking.wasm
-        zip artifacts/btc_finality.wasm.zip artifacts/btc_finality.wasm
-        zip artifacts/op_finality_gadget.wasm.zip artifacts/op_finality_gadget.wasm
+        zip ./babylon_contract.wasm.zip artifacts/babylon_contract.wasm
+        zip ./btc_staking.wasm.zip artifacts/btc_staking.wasm
+        zip ./btc_finality.wasm.zip artifacts/btc_finality.wasm
+        zip ./op_finality_gadget.wasm.zip artifacts/op_finality_gadget.wasm
     - name: Create a Release
       id: create-release
       uses: actions/create-release@v1
@@ -57,7 +57,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./artifacts/babylon_contract.wasm.zip
+        asset_path: ./babylon_contract.wasm.zip
         asset_name: babylon_contract.wasm.zip
         asset_content_type: application/zip
     - name: Upload btc_staking
@@ -67,7 +67,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./artifacts/btc_staking.wasm.zip
+        asset_path: ./btc_staking.wasm.zip
         asset_name: btc_staking.wasm.zip
         asset_content_type: application/zip
     - name: Upload btc_finality
@@ -77,7 +77,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./artifacts/btc_finality.wasm.zip
+        asset_path: ./btc_finality.wasm.zip
         asset_name: btc_finality.wasm.zip
         asset_content_type: application/zip
     - name: Upload op_finality_gadget
@@ -87,7 +87,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./artifacts/op_finality_gadget.wasm.zip
+        asset_path: ./op_finality_gadget.wasm.zip
         asset_name: op_finality_gadget.wasm.zip
         asset_content_type: application/zip
     - name: Upload checksums
