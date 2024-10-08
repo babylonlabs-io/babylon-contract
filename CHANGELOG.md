@@ -2,7 +2,33 @@
 
 ## [Unreleased](https://github.com/babylonlabs-io/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.9.0...HEAD)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.10.0...HEAD)
+
+## [v0.10.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.10.0) (2024-10-08)
+
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.9.0-rc.1...v0.10.0)
+
+**Merged pull requests:**
+
+- \[OP\] chore: remove unused activated\_height [\#77](https://github.com/babylonlabs-io/babylon-contract/pull/77) ([bap2pecs](https://github.com/bap2pecs))
+- F/stock optimizer [\#76](https://github.com/babylonlabs-io/babylon-contract/pull/76) ([maurolacy](https://github.com/maurolacy))
+- Fix: proper name for the full wasm checks job [\#75](https://github.com/babylonlabs-io/babylon-contract/pull/75) ([maurolacy](https://github.com/maurolacy))
+- F/optimizer ci [\#73](https://github.com/babylonlabs-io/babylon-contract/pull/73) ([maurolacy](https://github.com/maurolacy))
+- Fix/optimizer [\#72](https://github.com/babylonlabs-io/babylon-contract/pull/72) ([maurolacy](https://github.com/maurolacy))
+- fix: Fp info query should return err for non existent Fp's [\#71](https://github.com/babylonlabs-io/babylon-contract/pull/71) ([gusin13](https://github.com/gusin13))
+- R/test utils [\#70](https://github.com/babylonlabs-io/babylon-contract/pull/70) ([maurolacy](https://github.com/maurolacy))
+- R/finality contract [\#65](https://github.com/babylonlabs-io/babylon-contract/pull/65) ([maurolacy](https://github.com/maurolacy))
+- R/index btc height [\#64](https://github.com/babylonlabs-io/babylon-contract/pull/64) ([maurolacy](https://github.com/maurolacy))
+- Disable recovered\_fp\_btc\_sk validation in SlashedBtcDelegation [\#63](https://github.com/babylonlabs-io/babylon-contract/pull/63) ([gusin13](https://github.com/gusin13))
+- btcstaking: verify covenant signatures and undelegation data [\#62](https://github.com/babylonlabs-io/babylon-contract/pull/62) ([SebastianElvis](https://github.com/SebastianElvis))
+- btcstaking: full validation of unbonding/slashing BTC delegation [\#60](https://github.com/babylonlabs-io/babylon-contract/pull/60) ([SebastianElvis](https://github.com/SebastianElvis))
+- Fix/lints [\#59](https://github.com/babylonlabs-io/babylon-contract/pull/59) ([maurolacy](https://github.com/maurolacy))
+- chore: move validation functions to a new mod [\#58](https://github.com/babylonlabs-io/babylon-contract/pull/58) ([SebastianElvis](https://github.com/SebastianElvis))
+- pop: verify PoP in FP registration request [\#57](https://github.com/babylonlabs-io/babylon-contract/pull/57) ([SebastianElvis](https://github.com/SebastianElvis))
+- staking: verifying staker's signature over slashing tx [\#56](https://github.com/babylonlabs-io/babylon-contract/pull/56) ([SebastianElvis](https://github.com/SebastianElvis))
+- test: refactor test data generation [\#51](https://github.com/babylonlabs-io/babylon-contract/pull/51) ([SebastianElvis](https://github.com/SebastianElvis))
+- Change license to BSL [\#50](https://github.com/babylonlabs-io/babylon-contract/pull/50) ([maurolacy](https://github.com/maurolacy))
+- staking: verify staking/slashing tx relationship in staking requests [\#46](https://github.com/babylonlabs-io/babylon-contract/pull/46) ([SebastianElvis](https://github.com/SebastianElvis))
 
 ## [v0.9.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.9.0) (2024-08-29)
 
