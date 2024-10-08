@@ -30,10 +30,12 @@ jobs:
           artifacts/checksums.txt
     - name: Show data
       run: |-
+        ls -ld artifacts
         ls -l artifacts
         cat artifacts/checksums.txt
     - name: Zip artefacts
       run: |-
+        id
         zip artifacts/babylon_contract.wasm.zip artifacts/babylon_contract.wasm
         zip artifacts/btc_staking.wasm.zip artifacts/btc_staking.wasm
         zip artifacts/btc_finality.wasm.zip artifacts/btc_finality.wasm
