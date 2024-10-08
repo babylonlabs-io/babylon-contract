@@ -20,8 +20,6 @@ jobs:
       repository-projects: write
       statuses: write
     steps:
-    - name: Create artefacts directory
-      run: mkdir -p artifacts
     - uses: actions/checkout@v4.1.0
     - name: Build optimised Wasm binaries
       run: "./scripts/optimizer.sh"
