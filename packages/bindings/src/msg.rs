@@ -17,6 +17,11 @@ pub enum BabylonMsg {
         height: i64,
         time: i64, // NOTE: UNIX timestamp is in i64
     },
+    /// MintRewards mints the block rewards for the finality providers.
+    /// It can only be sent from the finality contract.
+    /// The rewards are minted to the staking contract address, so that they
+    /// can be distributed across the active finality provider set
+    MintRewards {},
 }
 
 pub type BabylonSudoMsg = Empty;
