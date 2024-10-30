@@ -422,7 +422,7 @@ pub fn tally_blocks(
     deps: &mut DepsMut,
     activated_height: u64,
     height: u64,
-) -> Result<Vec<Event>, ContractError> {
+) -> Result<(Vec<BabylonMsg>, Vec<Event>), ContractError> {
     // Start finalising blocks since max(activated_height, next_height)
     let next_height = NEXT_HEIGHT.may_load(deps.storage)?.unwrap_or(0);
     let start_height = max(activated_height, next_height);
@@ -436,6 +436,7 @@ pub fn tally_blocks(
     // - Does not have finality providers, finalised: Impossible, panic.
     // After this for loop, the blocks since the earliest activated height are either finalised or
     // non-finalisable
+    let mut msgs = vec![];
     let mut events = vec![];
     for h in start_height..=height {
         let mut indexed_block = BLOCKS.load(deps.storage, h)?;
@@ -451,7 +452,9 @@ pub fn tally_blocks(
                     .collect::<StdResult<Vec<_>>>()?;
                 if tally(&fp_set, &voter_btc_pks) {
                     // If this block gets >2/3 votes, finalise it
-                    let ev = finalize_block(deps.storage, &mut indexed_block, &voter_btc_pks)?;
+                    let (msg, ev) =
+                        finalize_block(deps.storage, &mut indexed_block, &voter_btc_pks)?;
+                    msgs.push(msg);
                     events.push(ev);
                 } else {
                     // If not, then this block and all subsequent blocks should not be finalised.
@@ -480,7 +483,7 @@ pub fn tally_blocks(
             }
         }
     }
-    Ok(events)
+    Ok((msgs, events))
 }
 
 /// `tally` checks whether a block with the given finality provider set and votes reaches a quorum
@@ -504,7 +507,7 @@ fn finalize_block(
     store: &mut dyn Storage,
     block: &mut IndexedBlock,
     _voters: &[String],
-) -> Result<Event, ContractError> {
+) -> Result<(BabylonMsg, Event), ContractError> {
     // Set block to be finalised
     block.finalized = true;
     BLOCKS.save(store, block.height, block)?;
@@ -512,13 +515,16 @@ fn finalize_block(
     // Set the next height to finalise as height+1
     NEXT_HEIGHT.save(store, &(block.height + 1))?;
 
+    // Generate block rewards for BTC staking delegators
+    let msg = BabylonMsg::MintRewards {};
+
     // TODO: Distribute rewards to BTC staking delegators
 
     // Record the last finalized height metric
     let ev = Event::new("finalize_block")
         .add_attribute("module", "finality")
         .add_attribute("finalized_height", block.height.to_string());
-    Ok(ev)
+    Ok((msg, ev))
 }
 
 const QUERY_LIMIT: Option<u32> = Some(30);

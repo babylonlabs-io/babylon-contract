@@ -212,7 +212,8 @@ fn handle_end_block(
         let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
         res = res.add_event(ev);
         // Tally all non-finalised blocks
-        let events = finality::tally_blocks(deps, activated_height, env.block.height)?;
+        let (msgs, events) = finality::tally_blocks(deps, activated_height, env.block.height)?;
+        res = res.add_messages(msgs);
         res = res.add_events(events);
     }
     Ok(res)
