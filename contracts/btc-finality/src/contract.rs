@@ -30,7 +30,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(&info)?;
+    let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
+        denom,
         babylon: info.sender,
         staking: Addr::unchecked("UNSET"), // To be set later, through `UpdateStaking`
     };

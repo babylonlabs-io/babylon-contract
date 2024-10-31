@@ -15,6 +15,7 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 // TODO: Add / enable config entries as needed
 #[cw_serde]
 pub struct Config {
+    pub denom: String,
     pub babylon: Addr,
     pub staking: Addr,
 }
