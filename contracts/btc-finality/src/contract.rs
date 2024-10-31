@@ -1,9 +1,10 @@
+use anybuf::Bufany;
 use babylon_apis::finality_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_json_binary, Addr, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
+    attr, to_json_binary, Addr, Binary, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
     QuerierWrapper, QueryRequest, QueryResponse, Reply, Response, StdResult, WasmQuery,
 };
 use cw2::set_contract_version;
@@ -31,8 +32,25 @@ pub fn instantiate(
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(&info)?;
     let denom = deps.querier.query_bonded_denom()?;
+
+    // Query blocks per year from the chain's mint module
+    // FIXME?: Fragile / brittle. Use a custom query instead
+    let res = deps.querier.query_grpc(
+        "cosmos.mint.v1beta1.Query/Params".into(),
+        Binary::new("".into()),
+    )?;
+    // Deserialize protobuf
+    let res_decoded = Bufany::deserialize(&res).unwrap();
+    // See https://github.com/cosmos/cosmos-sdk/blob/8bfcf554275c1efbb42666cc8510d2da139b67fa/proto/cosmos/mint/v1beta1/query.proto#L35-L36
+    let res_params = res_decoded.message(1).unwrap();
+    // See https://github.com/cosmos/cosmos-sdk/blob/8bfcf554275c1efbb42666cc8510d2da139b67fa/proto/cosmos/mint/v1beta1/mint.proto#L60-L61
+    // to understand from where the index comes from
+    let blocks_per_year = res_params
+        .uint64(6)
+        .ok_or(ContractError::MissingBlocksPerYear {})?;
     let config = Config {
         denom,
+        blocks_per_year,
         babylon: info.sender,
         staking: Addr::unchecked("UNSET"), // To be set later, through `UpdateStaking`
     };

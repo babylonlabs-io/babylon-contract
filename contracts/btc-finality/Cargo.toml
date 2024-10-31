@@ -31,14 +31,16 @@ full-validation = [ "btc-staking/full-validation" ]
 [dependencies]
 babylon-apis          = { path = "../../packages/apis" }
 babylon-bindings      = { path = "../../packages/bindings" }
-babylon-contract      = { path = "../babylon", features = [ "library" ] }
 babylon-merkle        = { path = "../../packages/merkle" }
 babylon-proto         = { path = "../../packages/proto" }
 babylon-btcstaking    = { path = "../../packages/btcstaking" }
 babylon-bitcoin       = { path = "../../packages/bitcoin" }
-btc-staking           = { path = "../btc-staking", features = [ "library" ] }
 eots                  = { path = "../../packages/eots" }
 
+babylon-contract      = { path = "../babylon", features = [ "library" ] }
+btc-staking           = { path = "../btc-staking", features = [ "library" ] }
+
+anybuf           = { workspace = true }
 bitcoin          = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }

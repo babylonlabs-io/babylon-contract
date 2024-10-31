@@ -94,4 +94,6 @@ pub enum ContractError {
     SecretKeyExtractionError(String),
     #[error("Hash length error: {0}")]
     WrongHashLength(String),
+    #[error("Blocks per year could not be queried from the mint module")]
+    MissingBlocksPerYear {},
 }
