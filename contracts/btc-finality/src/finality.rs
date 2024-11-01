@@ -552,9 +552,9 @@ fn compute_block_rewards(
     // Compute the block rewards for the finalized blocks
     let inv_blocks_per_year = Decimal::from_ratio(1u128, cfg.blocks_per_year);
     let block_rewards = finality_inflation_rate
-        .mul(Decimal::new(total_supply.amount))
+        .mul(Decimal::from_ratio(total_supply.amount, 1u128))
         .mul(inv_blocks_per_year)
-        .mul(Decimal::raw(finalized_blocks as u128));
+        .mul(Decimal::from_ratio(finalized_blocks, 1u128));
 
     Ok(Coin {
         denom: cfg.denom.clone(),
