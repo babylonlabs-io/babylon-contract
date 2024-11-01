@@ -96,4 +96,6 @@ pub enum ContractError {
     WrongHashLength(String),
     #[error("Blocks per year could not be queried from the mint module")]
     MissingBlocksPerYear {},
+    #[error("Division by zero")]
+    DivideByZero,
 }
