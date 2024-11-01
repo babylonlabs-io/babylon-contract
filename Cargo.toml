@@ -46,7 +46,7 @@ cosmwasm-std = { version = "2.1.4", default-features = false, features = [
 ] }
 cw2 = "2.0.0"
 cw-controllers = "2.0.0"
-cw-multi-test = { version = "2.0.1", features = [ "staking", "cosmwasm_1_1" ] }
+cw-multi-test = { version = "2.0.1", features = [ "staking", "cosmwasm_1_1", "cosmwasm_2_0" ] }
 cw-storage-plus = "2.0.0"
 cw-utils = "2.0.0"
 derivative = "2"

@@ -34,11 +34,11 @@ pub fn instantiate(
 
     // Query blocks per year from the chain's mint module
     let blocks_per_year;
-    #[cfg(test)]
+    #[cfg(any(test, all(feature = "library", not(target_arch = "wasm32"))))]
     {
         blocks_per_year = 60 * 60 * 24 * 365 / 6; // Default / hardcoded value for tests
     }
-    #[cfg(not(test))]
+    #[cfg(not(any(test, all(feature = "library", not(target_arch = "wasm32")))))]
     {
         // FIXME?: Fragile / brittle. Use a custom query instead
         let res = deps.querier.query_grpc(
