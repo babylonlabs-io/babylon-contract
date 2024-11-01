@@ -12,8 +12,8 @@ use babylon_merkle::Proof;
 use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, Fraction, QuerierWrapper, Response,
-    StdResult, Storage, WasmMsg,
+    to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, QuerierWrapper, Response, StdResult,
+    Storage, WasmMsg,
 };
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
@@ -550,9 +550,7 @@ fn compute_block_rewards(
     let finality_inflation_rate = PARAMS.load(deps.storage)?.finality_inflation_rate;
 
     // Compute the block rewards for the finalized blocks
-    let inv_blocks_per_year = Decimal::raw(cfg.blocks_per_year as u128)
-        .inv()
-        .ok_or(ContractError::DivideByZero)?;
+    let inv_blocks_per_year = Decimal::from_ratio(1u128, cfg.blocks_per_year);
     let block_rewards = finality_inflation_rate
         .mul(Decimal::new(total_supply.amount))
         .mul(inv_blocks_per_year)
