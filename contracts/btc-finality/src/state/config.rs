@@ -1,7 +1,7 @@
 use derivative::Derivative;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Decimal};
 
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
@@ -34,4 +34,7 @@ pub struct Params {
     /// should commit
     #[derivative(Default(value = "1"))]
     pub min_pub_rand: u64,
+    /// `finality_inflation_rate` is the inflation rate for finality providers' block rewards
+    #[derivative(Default(value = "Decimal::permille(35)"))] // 3.5 % by default
+    pub finality_inflation_rate: Decimal,
 }
