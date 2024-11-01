@@ -2,7 +2,7 @@ use anyhow::Result as AnyResult;
 use derivative::Derivative;
 use hex::ToHex;
 
-use cosmwasm_std::{to_json_binary, Addr};
+use cosmwasm_std::{to_json_binary, Addr, Coin};
 
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
@@ -52,11 +52,17 @@ fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
 #[derivative(Default = "new")]
 pub struct SuiteBuilder {
     height: Option<u64>,
+    init_funds: Vec<Coin>,
 }
 
 impl SuiteBuilder {
     pub fn with_height(mut self, height: u64) -> Self {
         self.height = Some(height);
+        self
+    }
+
+    pub fn with_funds(mut self, funds: &[Coin]) -> Self {
+        self.init_funds = funds.to_vec();
         self
     }
 
@@ -68,8 +74,10 @@ impl SuiteBuilder {
 
         let _block_info = app.block_info();
 
-        app.init_modules(|_router, _api, _storage| -> AnyResult<()> { Ok(()) })
-            .unwrap();
+        app.init_modules(|router, _api, storage| -> AnyResult<()> {
+            router.bank.init_balance(storage, &owner, self.init_funds)
+        })
+        .unwrap();
 
         let btc_staking_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_staking());
