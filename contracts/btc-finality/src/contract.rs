@@ -42,7 +42,7 @@ pub fn instantiate(
     {
         // FIXME?: Fragile / brittle. Use a custom query instead
         let res = deps.querier.query_grpc(
-            "cosmos.mint.v1beta1.Query/Params".into(),
+            "/cosmos.mint.v1beta1.Query/Params".into(),
             cosmwasm_std::Binary::new("".into()),
         )?;
         // Deserialize protobuf
