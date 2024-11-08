@@ -507,6 +507,7 @@ dependencies = [
 name = "btc-finality"
 version = "0.10.0"
 dependencies = [
+ "anybuf",
  "anyhow",
  "assert_matches",
  "babylon-apis",

@@ -1,12 +1,6 @@
-use k256::ecdsa::signature::Verifier;
-use k256::schnorr::{Signature, VerifyingKey};
-use k256::sha2::{Digest, Sha256};
-use std::cmp::max;
-use std::collections::HashSet;
-
 use crate::contract::encode_smart_query;
 use crate::error::ContractError;
-use crate::state::config::{CONFIG, PARAMS};
+use crate::state::config::{Config, CONFIG, PARAMS};
 use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES, TOTAL_POWER};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
@@ -18,9 +12,15 @@ use babylon_merkle::Proof;
 use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    to_json_binary, Addr, DepsMut, Env, Event, QuerierWrapper, Response, StdResult, Storage,
-    WasmMsg,
+    to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, QuerierWrapper, Response, StdResult,
+    Storage, WasmMsg,
 };
+use k256::ecdsa::signature::Verifier;
+use k256::schnorr::{Signature, VerifyingKey};
+use k256::sha2::{Digest, Sha256};
+use std::cmp::max;
+use std::collections::HashSet;
+use std::ops::Mul;
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
@@ -422,7 +422,7 @@ pub fn tally_blocks(
     deps: &mut DepsMut,
     activated_height: u64,
     height: u64,
-) -> Result<Vec<Event>, ContractError> {
+) -> Result<(Option<BabylonMsg>, Vec<Event>), ContractError> {
     // Start finalising blocks since max(activated_height, next_height)
     let next_height = NEXT_HEIGHT.may_load(deps.storage)?.unwrap_or(0);
     let start_height = max(activated_height, next_height);
@@ -437,6 +437,7 @@ pub fn tally_blocks(
     // After this for loop, the blocks since the earliest activated height are either finalised or
     // non-finalisable
     let mut events = vec![];
+    let mut finalized_blocks = 0;
     for h in start_height..=height {
         let mut indexed_block = BLOCKS.load(deps.storage, h)?;
         // Get the finality provider set of this block
@@ -452,6 +453,7 @@ pub fn tally_blocks(
                 if tally(&fp_set, &voter_btc_pks) {
                     // If this block gets >2/3 votes, finalise it
                     let ev = finalize_block(deps.storage, &mut indexed_block, &voter_btc_pks)?;
+                    finalized_blocks += 1;
                     events.push(ev);
                 } else {
                     // If not, then this block and all subsequent blocks should not be finalised.
@@ -480,7 +482,21 @@ pub fn tally_blocks(
             }
         }
     }
-    Ok(events)
+
+    // Compute block rewards for finalized blocks
+    let msg = if finalized_blocks > 0 {
+        let cfg = CONFIG.load(deps.storage)?;
+        let rewards = compute_block_rewards(deps, &cfg, finalized_blocks)?;
+        // Assemble mint message
+        let mint_msg = BabylonMsg::MintRewards {
+            amount: rewards,
+            recipient: cfg.staking.into(),
+        };
+        Some(mint_msg)
+    } else {
+        None
+    };
+    Ok((msg, events))
 }
 
 /// `tally` checks whether a block with the given finality provider set and votes reaches a quorum
@@ -519,6 +535,31 @@ fn finalize_block(
         .add_attribute("module", "finality")
         .add_attribute("finalized_height", block.height.to_string());
     Ok(ev)
+}
+
+/// `compute_block_rewards` computes the block rewards for the finality providers
+fn compute_block_rewards(
+    deps: &mut DepsMut,
+    cfg: &Config,
+    finalized_blocks: u64,
+) -> Result<Coin, ContractError> {
+    // Get the total supply (standard bank query)
+    let total_supply = deps.querier.query_supply(cfg.denom.clone())?;
+
+    // Get the finality inflation rate (params)
+    let finality_inflation_rate = PARAMS.load(deps.storage)?.finality_inflation_rate;
+
+    // Compute the block rewards for the finalized blocks
+    let inv_blocks_per_year = Decimal::from_ratio(1u128, cfg.blocks_per_year);
+    let block_rewards = finality_inflation_rate
+        .mul(Decimal::from_ratio(total_supply.amount, 1u128))
+        .mul(inv_blocks_per_year)
+        .mul(Decimal::from_ratio(finalized_blocks, 1u128));
+
+    Ok(Coin {
+        denom: cfg.denom.clone(),
+        amount: block_rewards.to_uint_floor(),
+    })
 }
 
 const QUERY_LIMIT: Option<u32> = Some(30);

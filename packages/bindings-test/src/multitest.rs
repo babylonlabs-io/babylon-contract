@@ -88,6 +88,10 @@ impl Module for BabylonModule {
                 // FIXME? We don't do anything here
                 Ok(AppResponse::default())
             }
+            BabylonMsg::MintRewards { .. } => {
+                // FIXME? We don't do anything here
+                Ok(AppResponse::default())
+            }
         }
     }
 

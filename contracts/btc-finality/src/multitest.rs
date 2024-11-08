@@ -41,7 +41,7 @@ mod finality {
     use babylon_apis::finality_api::IndexedBlock;
     use test_utils::get_public_randomness_commitment;
 
-    use cosmwasm_std::Event;
+    use cosmwasm_std::{coin, Event};
     use test_utils::{
         create_new_finality_provider, get_add_finality_sig, get_derived_btc_delegation,
         get_pub_rand_value,
@@ -78,8 +78,12 @@ mod finality {
         let proof = add_finality_signature.proof.unwrap();
 
         let initial_height = pub_rand.start_height;
+        let initial_funds = &[coin(1_000_000, "TOKEN")];
 
-        let mut suite = SuiteBuilder::new().with_height(initial_height).build();
+        let mut suite = SuiteBuilder::new()
+            .with_height(initial_height)
+            .with_funds(initial_funds)
+            .build();
 
         // Register one FP
         // NOTE: the test data ensures that pub rand commit / finality sig are
@@ -166,8 +170,12 @@ mod finality {
         let proof = add_finality_signature.proof.unwrap();
 
         let initial_height = pub_rand.start_height;
+        let initial_funds = &[coin(1_000_000_000_000, "TOKEN")];
 
-        let mut suite = SuiteBuilder::new().with_height(initial_height).build();
+        let mut suite = SuiteBuilder::new()
+            .with_funds(initial_funds)
+            .with_height(initial_height)
+            .build();
 
         // signed by the 1st FP
         let new_fp = create_new_finality_provider(1);
@@ -260,6 +268,7 @@ mod finality {
 
 mod slashing {
     use babylon_apis::finality_api::IndexedBlock;
+    use cosmwasm_std::coin;
     use test_utils::{
         create_new_finality_provider, get_add_finality_sig, get_add_finality_sig_2,
         get_derived_btc_delegation, get_pub_rand_value,
@@ -278,8 +287,12 @@ mod slashing {
         let proof = add_finality_signature.proof.unwrap();
 
         let initial_height = pub_rand.start_height;
+        let initial_funds = &[coin(10_000_000_000_000, "TOKEN")];
 
-        let mut suite = SuiteBuilder::new().with_height(initial_height).build();
+        let mut suite = SuiteBuilder::new()
+            .with_funds(initial_funds)
+            .with_height(initial_height)
+            .build();
 
         // Register one FP
         // NOTE: the test data ensures that pub rand commit / finality sig are
