@@ -2,7 +2,21 @@
 
 ## [Unreleased](https://github.com/babylonlabs-io/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.10.0...HEAD)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.11.0...HEAD)
+
+## [v0.11.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.11.0) (2024-11-19)
+
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.10.0-rc.0...v0.11.0)
+
+
+**Closed issues:**
+
+- sdk: instantiate all Babylon contracts using Babylon SDK (dup) [\#67](https://github.com/babylonlabs-io/babylon-contract/issues/67)
+- OP: integration test vs. unit test [\#18](https://github.com/babylonlabs-io/babylon-contract/issues/18)
+
+**Merged pull requests:**
+
+- F/rewards generation 2 [\#81](https://github.com/babylonlabs-io/babylon-contract/pull/81) ([maurolacy](https://github.com/maurolacy))
 
 ## [v0.10.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.10.0) (2024-10-08)
 
