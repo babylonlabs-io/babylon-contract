@@ -21,6 +21,7 @@ fn wasm_size_limit_check() {
 }
 
 #[test]
+#[ignore = "Unsupported query type: GRPC"]
 fn instantiate_works() {
     let mut deps = mock_instance(WASM, &[]);
 
