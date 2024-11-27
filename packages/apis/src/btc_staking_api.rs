@@ -324,12 +324,6 @@ pub struct BtcUndelegationInfo {
     /// output to unbonding output. Unbonding output will usually have lower timelock
     /// than staking output.
     pub unbonding_tx: Binary,
-    /// delegator_unbonding_info is the information about transaction which spent
-    /// the staking output
-    pub delegator_unbonding_info: Option<DelegatorUnbondingInfo>,
-    /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
-    /// by covenant members
-    pub covenant_unbonding_sig_list: Vec<SignatureInfo>,
     /// slashing_tx is the unbonding slashing tx
     pub slashing_tx: Binary,
     /// delegator_slashing_sig is the signature on the slashing tx
@@ -340,6 +334,12 @@ pub struct BtcUndelegationInfo {
     /// unbonding slashing tx by each covenant member
     /// It will be a part of the witness for the staking tx output.
     pub covenant_slashing_sigs: Vec<CovenantAdaptorSignatures>,
+    /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
+    /// by covenant members
+    pub covenant_unbonding_sig_list: Vec<SignatureInfo>,
+    /// delegator_unbonding_info is the information about transaction which spent
+    /// the staking output
+    pub delegator_unbonding_info: Option<DelegatorUnbondingInfo>,
 }
 
 #[cw_serde]
