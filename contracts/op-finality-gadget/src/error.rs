@@ -38,6 +38,8 @@ pub enum ContractError {
     NotFoundFinalityProvider(String, String),
     #[error("Failed to query the voting power of the finality provider {0}")]
     FailedFetchVotingPower(String),
+    #[error("Empty block range")]
+    EmptyBlockRange,
     #[error("Caller is not the admin")]
     Unauthorized,
     #[error("Finality gadget is already enabled")]
