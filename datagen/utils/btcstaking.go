@@ -12,6 +12,7 @@ import (
 	bbn "github.com/babylonlabs-io/babylon/types"
 	"github.com/babylonlabs-io/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,13 +39,14 @@ func GenParams(dir string) ([]*btcec.PrivateKey, uint32) {
 
 	slashingAddress, err := datagen.GenRandomBTCAddress(r, net)
 	require.NoError(t, err)
+	slashingPkScript, err := txscript.PayToAddrScript(slashingAddress)
+	require.NoError(t, err)
 
 	bsParams := &types.Params{
-		CovenantPks:                bbn.NewBIP340PKsFromBTCPKs(covenantPKs),
-		CovenantQuorum:             covenantQuorum,
-		SlashingAddress:            slashingAddress.EncodeAddress(),
-		MinSlashingTxFeeSat:        1000,
-		MaxActiveFinalityProviders: 100,
+		CovenantPks:         bbn.NewBIP340PKsFromBTCPKs(covenantPKs),
+		CovenantQuorum:      covenantQuorum,
+		SlashingPkScript:    slashingPkScript,
+		MinSlashingTxFeeSat: 1000,
 	}
 
 	paramsBytes, err := bsParams.Marshal()
@@ -170,9 +172,10 @@ func GenBTCDelegations(dir string, covenantSKs []*btcec.PrivateKey, covenantQuor
 		covenantSigners,
 		covPKs,
 		covenantQuorum,
-		bsParams.SlashingAddress,
+		bsParams.SlashingPkScript,
+		uint32(stakingTimeBlocks),
 		1000,
-		uint64(1000+stakingTimeBlocks),
+		uint32(1000+stakingTimeBlocks),
 		uint64(stakingValue),
 		slashingRate,
 		slashingChangeLockTime,

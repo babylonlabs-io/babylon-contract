@@ -1,8 +1,7 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    zoneconcierge_packet_data::Packet, BtcTimestamp, ConsumerRegisterIbcPacket,
-    ZoneconciergePacketData,
+    zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
 
 use crate::state::config::CONFIG;
@@ -81,25 +80,9 @@ pub fn ibc_channel_connect(
         .add_attribute("channel_id", chan_id)
         .add_event(Event::new("ibc").add_attribute("channel", "connect"));
 
-    // If the consumer name and description are set, create and send a ConsumerRegister packet
+    // If the consumer name and description are set, emit an event
     if let (Some(name), Some(description)) = (&cfg.consumer_name, &cfg.consumer_description) {
-        let consumer_register_packet = ConsumerRegisterIbcPacket {
-            consumer_name: name.clone(),
-            consumer_description: description.clone(),
-        };
-
-        let packet_data = ZoneconciergePacketData {
-            packet: Some(Packet::ConsumerRegister(consumer_register_packet)),
-        };
-
-        let ibc_msg = IbcMsg::SendPacket {
-            channel_id: channel.endpoint.channel_id.clone(),
-            data: Binary::new(packet_data.encode_to_vec()),
-            timeout: packet_timeout(&env),
-        };
-
         response = response
-            .add_message(ibc_msg)
             .add_attribute("consumer_name", name)
             .add_attribute("consumer_description", description);
     }
@@ -155,9 +138,6 @@ pub fn ibc_packet_receive(
             Packet::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
             }
-            Packet::ConsumerRegister(_) => Err(StdError::generic_err(
-                "ConsumerRegister packet should not be received",
-            )),
             Packet::ConsumerSlashing(_) => Err(StdError::generic_err(
                 "ConsumerSlashing packet should not be received",
             )),
@@ -177,12 +157,12 @@ pub fn ibc_packet_receive(
 pub(crate) mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
-    use babylon_apis::btc_staking_api::SlashedBtcDelegation;
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
         FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
         UnbondedBtcDelegation,
     };
+    use babylon_apis::btc_staking_api::{DelegatorUnbondingInfo, SlashedBtcDelegation};
     use babylon_apis::finality_api::Evidence;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
@@ -264,6 +244,19 @@ pub(crate) mod ibc_packet {
                 .active_del
                 .iter()
                 .map(|d| {
+                    let delegator_unbonding_info = if let Some(info) = d
+                        .undelegation_info
+                        .clone()
+                        .unwrap()
+                        .delegator_unbonding_info
+                    {
+                        Some(DelegatorUnbondingInfo {
+                            spend_stake_tx: Binary::new(info.spend_stake_tx.to_vec()),
+                        })
+                    } else {
+                        None
+                    };
+
                     Ok(ActiveBtcDelegation {
                         staker_addr: d.staker_addr.clone(),
                         btc_pk_hex: d.btc_pk_hex.clone(),
@@ -293,7 +286,7 @@ pub(crate) mod ibc_packet {
                             .as_ref()
                             .map(|ui| BtcUndelegationInfo {
                                 unbonding_tx: ui.unbonding_tx.to_vec().into(),
-                                delegator_unbonding_sig: ui.delegator_unbonding_sig.to_vec().into(),
+                                delegator_unbonding_info: delegator_unbonding_info,
                                 covenant_unbonding_sig_list: ui
                                     .covenant_unbonding_sig_list
                                     .iter()

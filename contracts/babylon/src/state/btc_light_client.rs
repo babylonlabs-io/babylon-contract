@@ -17,9 +17,9 @@ use crate::utils::btc_light_client::{total_work, verify_headers, zero_work};
 
 pub const BTC_TIP_KEY: &str = "btc_lc_tip";
 
-pub const BTC_HEADERS: Map<u64, Vec<u8>> = Map::new("btc_lc_headers");
+pub const BTC_HEADERS: Map<u32, Vec<u8>> = Map::new("btc_lc_headers");
 pub const BTC_HEADER_BASE: Item<Vec<u8>> = Item::new("btc_lc_header_base");
-pub const BTC_HEIGHTS: Map<&[u8], u64> = Map::new("btc_lc_heights");
+pub const BTC_HEIGHTS: Map<&[u8], u32> = Map::new("btc_lc_heights");
 pub const BTC_TIP: Item<Vec<u8>> = Item::new(BTC_TIP_KEY);
 
 // getters for storages
@@ -91,7 +91,7 @@ fn remove_headers(
 // get_header retrieves the BTC header of a given height
 pub fn get_header(
     storage: &dyn Storage,
-    height: u64,
+    height: u32,
 ) -> Result<BtcHeaderInfo, BTCLightclientError> {
     // Try to find the header with the given hash
     let header_bytes = BTC_HEADERS
@@ -115,7 +115,7 @@ pub fn get_header_by_hash(
 }
 
 // get_header height retrieves the BTC header height of a given BTC hash
-pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u64, BTCLightclientError> {
+pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u32, BTCLightclientError> {
     let height = BTC_HEIGHTS.load(storage, hash).map_err(|_| {
         BTCLightclientError::BTCHeightNotFoundError {
             hash: hash.encode_hex(),
@@ -131,7 +131,7 @@ const DEFAULT_LIMIT: u32 = 10;
 // get_headers retrieves the BTC headers after a given height, up to limit headers
 pub fn get_headers(
     storage: &dyn Storage,
-    start_after: Option<u64>,
+    start_after: Option<u32>,
     limit: Option<u32>,
     reverse: Option<bool>,
 ) -> Result<Vec<BtcHeaderInfo>, BTCLightclientError> {
@@ -166,7 +166,7 @@ pub fn init(
 
     // ensure there are >=w+1 headers, i.e. a base header and at least w subsequent
     // ones as a w-deep proof
-    if (headers.len() as u64) < cfg.checkpoint_finalization_timeout + 1 {
+    if (headers.len() as u32) < cfg.checkpoint_finalization_timeout + 1 {
         return Err(BTCLightclientError::InitErrorLength(
             cfg.checkpoint_finalization_timeout + 1,
         ));
@@ -211,7 +211,7 @@ pub fn init_from_user(
     storage: &mut dyn Storage,
     headers: &[BtcHeader],
 ) -> Result<(), BTCLightclientError> {
-    let mut prev_height = 0;
+    let mut prev_height: u32 = 0;
     let mut prev_work = zero_work();
     let headers = headers
         .iter()
@@ -347,14 +347,14 @@ pub(crate) mod tests {
     use cosmwasm_std::testing::mock_dependencies;
     use test_utils::{get_btc_lc_fork_headers, get_btc_lc_fork_msg, get_btc_lc_headers};
 
-    pub(crate) fn setup(storage: &mut dyn Storage) -> usize {
+    pub(crate) fn setup(storage: &mut dyn Storage) -> u32 {
         // set config first
-        let w: usize = 2;
+        let w: u32 = 2;
         let cfg = Config {
             network: babylon_bitcoin::chain_params::Network::Regtest,
             babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
             btc_confirmation_depth: 1,
-            checkpoint_finalization_timeout: w as u64,
+            checkpoint_finalization_timeout: w,
             notify_cosmos_zone: false,
             btc_staking: None,
             btc_finality: None,
@@ -417,7 +417,7 @@ pub(crate) mod tests {
         let test_headers = get_btc_lc_headers();
 
         // testing initialisation with w+1 headers
-        let test_init_headers: &[BtcHeaderInfo] = &test_headers[0..w + 1];
+        let test_init_headers: &[BtcHeaderInfo] = &test_headers[0..(w + 1) as usize];
         init(&mut storage, test_init_headers).unwrap();
 
         ensure_base_and_tip(&storage, test_init_headers);
@@ -426,7 +426,7 @@ pub(crate) mod tests {
         ensure_headers(&storage, test_init_headers);
 
         // handling subsequent headers
-        let test_new_headers = &test_headers[w + 1..test_headers.len()];
+        let test_new_headers = &test_headers[(w + 1) as usize..test_headers.len()];
         handle_btc_headers_from_babylon(&mut storage, test_new_headers).unwrap();
 
         // ensure tip is set

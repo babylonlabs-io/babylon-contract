@@ -76,11 +76,11 @@ pub struct FinalityProvider {
     /// slashed_btc_height indicates the BTC height when
     /// the finality provider is slashed.
     /// if it's 0 then the finality provider is not slashed
-    #[prost(uint64, tag="7")]
-    pub slashed_btc_height: u64,
-    /// sluggish defines whether the finality provider is detected sluggish
+    #[prost(uint32, tag="7")]
+    pub slashed_btc_height: u32,
+    /// jailed defines whether the finality provider is jailed
     #[prost(bool, tag="8")]
-    pub sluggish: bool,
+    pub jailed: bool,
     /// consumer_id is the ID of the consumer the finality provider is operating on.
     /// If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.
     #[prost(string, tag="9")]
@@ -106,49 +106,64 @@ pub struct BtcDelegation {
     /// to multiple finality providers
     #[prost(bytes="bytes", repeated, tag="4")]
     pub fp_btc_pk_list: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
+    /// staking_time is the number of blocks for which the delegation is locked on BTC chain
+    #[prost(uint32, tag="5")]
+    pub staking_time: u32,
     /// start_height is the start BTC height of the BTC delegation
     /// it is the start BTC height of the timelock
-    #[prost(uint64, tag="5")]
-    pub start_height: u64,
+    #[prost(uint32, tag="6")]
+    pub start_height: u32,
     /// end_height is the end height of the BTC delegation
-    /// it is the end BTC height of the timelock - w
-    #[prost(uint64, tag="6")]
-    pub end_height: u64,
+    /// it is calculated by end_height = start_height + staking_time
+    #[prost(uint32, tag="7")]
+    pub end_height: u32,
     /// total_sat is the total amount of BTC stakes in this delegation
     /// quantified in satoshi
-    #[prost(uint64, tag="7")]
+    #[prost(uint64, tag="8")]
     pub total_sat: u64,
     /// staking_tx is the staking tx
-    #[prost(bytes="bytes", tag="8")]
+    #[prost(bytes="bytes", tag="9")]
     pub staking_tx: ::prost::bytes::Bytes,
     /// staking_output_idx is the index of the staking output in the staking tx
-    #[prost(uint32, tag="9")]
+    #[prost(uint32, tag="10")]
     pub staking_output_idx: u32,
     /// slashing_tx is the slashing tx
     /// It is partially signed by SK corresponding to btc_pk, but not signed by
     /// finality provider or covenant yet.
-    #[prost(bytes="bytes", tag="10")]
+    #[prost(bytes="bytes", tag="11")]
     pub slashing_tx: ::prost::bytes::Bytes,
     /// delegator_sig is the signature on the slashing tx
     /// by the delegator (i.e., SK corresponding to btc_pk).
     /// It will be a part of the witness for the staking tx output.
-    #[prost(bytes="bytes", tag="11")]
+    #[prost(bytes="bytes", tag="12")]
     pub delegator_sig: ::prost::bytes::Bytes,
     /// covenant_sigs is a list of adaptor signatures on the slashing tx
     /// by each covenant member
     /// It will be a part of the witness for the staking tx output.
-    #[prost(message, repeated, tag="12")]
+    #[prost(message, repeated, tag="13")]
     pub covenant_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
     /// unbonding_time describes how long the funds will be locked either in unbonding output
     /// or slashing change output
-    #[prost(uint32, tag="13")]
+    #[prost(uint32, tag="14")]
     pub unbonding_time: u32,
     /// btc_undelegation is the information about the early unbonding path of the BTC delegation
-    #[prost(message, optional, tag="14")]
+    #[prost(message, optional, tag="15")]
     pub btc_undelegation: ::core::option::Option<BtcUndelegation>,
     /// version of the params used to validate the delegation
-    #[prost(uint32, tag="15")]
+    #[prost(uint32, tag="16")]
     pub params_version: u32,
+}
+/// DelegatorUnbondingInfo contains the information about transaction which spent
+/// the staking output. It contains:
+/// - spend_stake_tx: the transaction which spent the staking output
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DelegatorUnbondingInfo {
+    /// spend_stake_tx is the transaction which spent the staking output. It is
+    /// filled only if spend_stake_tx is different than unbonding_tx registered
+    /// on the Babylon chain.
+    #[prost(bytes="bytes", tag="1")]
+    pub spend_stake_tx: ::prost::bytes::Bytes,
 }
 /// BTCUndelegation contains the information about the early unbonding path of the BTC delegation
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -164,28 +179,25 @@ pub struct BtcUndelegation {
     /// finality provider or covenant yet.
     #[prost(bytes="bytes", tag="2")]
     pub slashing_tx: ::prost::bytes::Bytes,
-    /// delegator_unbonding_sig is the signature on the unbonding tx
-    /// by the delegator (i.e., SK corresponding to btc_pk).
-    /// It effectively proves that the delegator wants to unbond and thus
-    /// Babylon will consider this BTC delegation unbonded. Delegator's BTC
-    /// on Bitcoin will be unbonded after timelock
-    #[prost(bytes="bytes", tag="3")]
-    pub delegator_unbonding_sig: ::prost::bytes::Bytes,
     /// delegator_slashing_sig is the signature on the slashing tx
     /// by the delegator (i.e., SK corresponding to btc_pk).
     /// It will be a part of the witness for the unbonding tx output.
-    #[prost(bytes="bytes", tag="4")]
+    #[prost(bytes="bytes", tag="3")]
     pub delegator_slashing_sig: ::prost::bytes::Bytes,
     /// covenant_slashing_sigs is a list of adaptor signatures on the slashing tx
     /// by each covenant member
     /// It will be a part of the witness for the staking tx output.
-    #[prost(message, repeated, tag="5")]
+    #[prost(message, repeated, tag="4")]
     pub covenant_slashing_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
     /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
     /// by covenant members
     /// It must be provided after processing undelegate message by Babylon
-    #[prost(message, repeated, tag="6")]
+    #[prost(message, repeated, tag="5")]
     pub covenant_unbonding_sig_list: ::prost::alloc::vec::Vec<SignatureInfo>,
+    /// delegator_unbonding_info is the information about transaction which spent
+    /// the staking output
+    #[prost(message, optional, tag="6")]
+    pub delegator_unbonding_info: ::core::option::Option<DelegatorUnbondingInfo>,
 }
 /// SignatureInfo is a BIP-340 signature together with its signer's BIP-340 PK
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -208,10 +220,25 @@ pub struct CovenantAdaptorSignatures {
     #[prost(bytes="bytes", repeated, tag="2")]
     pub adaptor_sigs: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
 }
+/// InclusionProof proves the existence of tx on BTC blockchain
+/// including
+/// - the position of the tx on BTC blockchain
+/// - the Merkle proof that this tx is on the above position
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InclusionProof {
+    /// key is the position (txIdx, blockHash) of this tx on BTC blockchain
+    #[prost(message, optional, tag="1")]
+    pub key: ::core::option::Option<super::super::btccheckpoint::v1::TransactionKey>,
+    /// proof is the Merkle proof that this tx is included in the position in `key`
+    #[prost(bytes="bytes", tag="2")]
+    pub proof: ::prost::bytes::Bytes,
+}
 /// Params defines the parameters for the module.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Params {
+    /// PARAMETERS COVERING STAKING
     /// covenant_pks is the list of public keys held by the covenant committee
     /// each PK follows encoding in BIP-340 spec on Bitcoin
     #[prost(bytes="bytes", repeated, tag="1")]
@@ -220,35 +247,54 @@ pub struct Params {
     /// multisignature
     #[prost(uint32, tag="2")]
     pub covenant_quorum: u32,
-    /// slashing address is the address that the slashed BTC goes to
-    /// the address is in string on Bitcoin
-    #[prost(string, tag="3")]
-    pub slashing_address: ::prost::alloc::string::String,
-    /// min_slashing_tx_fee_sat is the minimum amount of tx fee (quantified
-    /// in Satoshi) needed for the pre-signed slashing tx
-    /// TODO: change to satoshi per byte?
+    /// min_staking_value_sat is the minimum of satoshis locked in staking output
+    #[prost(int64, tag="3")]
+    pub min_staking_value_sat: i64,
+    /// max_staking_value_sat is the maximum of satoshis locked in staking output
     #[prost(int64, tag="4")]
+    pub max_staking_value_sat: i64,
+    /// min_staking_time is the minimum lock time specified in staking output script
+    #[prost(uint32, tag="5")]
+    pub min_staking_time_blocks: u32,
+    /// max_staking_time_blocks is the maximum lock time time specified in staking output script
+    #[prost(uint32, tag="6")]
+    pub max_staking_time_blocks: u32,
+    /// PARAMETERS COVERING SLASHING
+    /// slashing_pk_script is the pk_script expected in slashing output ie. the first
+    /// output of slashing transaction
+    #[prost(bytes="bytes", tag="7")]
+    pub slashing_pk_script: ::prost::bytes::Bytes,
+    /// min_slashing_tx_fee_sat is the minimum amount of tx fee (quantified
+    /// in Satoshi) needed for the pre-signed slashing tx. It covers both:
+    /// staking slashing transaction and unbonding slashing transaction
+    #[prost(int64, tag="8")]
     pub min_slashing_tx_fee_sat: i64,
-    /// min_commission_rate is the chain-wide minimum commission rate that a finality provider can charge their delegators
-    #[prost(string, tag="5")]
-    pub min_commission_rate: ::prost::alloc::string::String,
     /// slashing_rate determines the portion of the staked amount to be slashed,
-    /// expressed as a decimal (e.g., 0.5 for 50%).
-    #[prost(string, tag="6")]
-    pub slashing_rate: ::prost::alloc::string::String,
-    /// max_active_finality_providers is the maximum number of active finality providers in the BTC staking protocol
-    #[prost(uint32, tag="7")]
-    pub max_active_finality_providers: u32,
-    /// min_unbonding_time is the minimum time for unbonding transaction timelock in BTC blocks
-    #[prost(uint32, tag="8")]
-    pub min_unbonding_time: u32,
-    /// min_unbonding_rate is the minimum amount of BTC that are required in unbonding
-    /// output, expressed as a fraction of staking output
-    /// example: if min_unbonding_rate=0.9, then the unbonding output value
-    /// must be at least 90% of staking output, for staking request to be considered
-    /// valid
+    /// expressed as a decimal (e.g., 0.5 for 50%). Maximal precion is 2 decimal
+    /// places
     #[prost(string, tag="9")]
-    pub min_unbonding_rate: ::prost::alloc::string::String,
+    pub slashing_rate: ::prost::alloc::string::String,
+    /// PARAMETERS COVERING UNBONDING
+    /// min_unbonding_time is the minimum time for unbonding transaction timelock in BTC blocks
+    #[prost(uint32, tag="10")]
+    pub min_unbonding_time_blocks: u32,
+    /// unbonding_fee exact fee required for unbonding transaction
+    #[prost(int64, tag="11")]
+    pub unbonding_fee_sat: i64,
+    /// PARAMETERS COVERING FINALITY PROVIDERS
+    /// min_commission_rate is the chain-wide minimum commission rate that a finality provider
+    /// can charge their delegators expressed as a decimal (e.g., 0.5 for 50%). Maximal precion
+    /// is 2 decimal places
+    #[prost(string, tag="12")]
+    pub min_commission_rate: ::prost::alloc::string::String,
+    /// base gas fee for delegation creation
+    #[prost(uint64, tag="13")]
+    pub delegation_creation_base_gas_fee: u64,
+    /// allow_list_expiration_height is the height at which the allow list expires
+    /// i.e all staking transactions are allowed to enter Babylon chain afterwards
+    /// setting it to 0 means allow list is disabled
+    #[prost(uint64, tag="14")]
+    pub allow_list_expiration_height: u64,
 }
 /// BTCStakingIBCPacket is an IBC packet sent from Babylon to a consumer
 /// It carries a set of events related to BTC staking for a given consumer
@@ -311,12 +357,12 @@ pub struct ActiveBtcDelegation {
     pub fp_btc_pk_list: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// start_height is the start BTC height of the BTC delegation
     /// it is the start BTC height of the timelock
-    #[prost(uint64, tag="3")]
-    pub start_height: u64,
+    #[prost(uint32, tag="3")]
+    pub start_height: u32,
     /// end_height is the end height of the BTC delegation
     /// it is the end BTC height of the timelock - w
-    #[prost(uint64, tag="4")]
-    pub end_height: u64,
+    #[prost(uint32, tag="4")]
+    pub end_height: u32,
     /// total_sat is the total amount of BTC stakes in this delegation
     /// quantified in satoshi
     #[prost(uint64, tag="5")]
@@ -360,30 +406,30 @@ pub struct BtcUndelegationInfo {
     /// than staking output.
     #[prost(bytes="bytes", tag="1")]
     pub unbonding_tx: ::prost::bytes::Bytes,
-    /// delegator_unbonding_sig is the signature on the unbonding tx
-    /// by the delegator (i.e., SK corresponding to btc_pk).
-    /// It effectively proves that the delegator wants to unbond and thus
-    /// Babylon will consider this BTC delegation unbonded. Delegator's BTC
-    /// on Bitcoin will be unbonded after timelock.
+    /// slashing_tx is the slashing tx for unbonding transactions
+    /// It is partially signed by SK corresponding to btc_pk, but not signed by
+    /// finality provider or covenant yet.
     #[prost(bytes="bytes", tag="2")]
-    pub delegator_unbonding_sig: ::prost::bytes::Bytes,
-    /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
-    /// by covenant members
-    #[prost(message, repeated, tag="3")]
-    pub covenant_unbonding_sig_list: ::prost::alloc::vec::Vec<SignatureInfo>,
-    /// slashing_tx is the unbonding slashing tx
-    #[prost(bytes="bytes", tag="4")]
     pub slashing_tx: ::prost::bytes::Bytes,
     /// delegator_slashing_sig is the signature on the slashing tx
     /// by the delegator (i.e., SK corresponding to btc_pk).
     /// It will be a part of the witness for the unbonding tx output.
-    #[prost(bytes="bytes", tag="5")]
+    #[prost(bytes="bytes", tag="3")]
     pub delegator_slashing_sig: ::prost::bytes::Bytes,
-    /// covenant_slashing_sigs is a list of adaptor signatures on the
-    /// unbonding slashing tx by each covenant member
+    /// covenant_slashing_sigs is a list of adaptor signatures on the slashing tx
+    /// by each covenant member
     /// It will be a part of the witness for the staking tx output.
-    #[prost(message, repeated, tag="6")]
+    #[prost(message, repeated, tag="4")]
     pub covenant_slashing_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
+    /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
+    /// by covenant members
+    /// It must be provided after processing undelegate message by Babylon
+    #[prost(message, repeated, tag="5")]
+    pub covenant_unbonding_sig_list: ::prost::alloc::vec::Vec<SignatureInfo>,
+    /// delegator_unbonding_info is the information about transaction which spent
+    /// the staking output
+    #[prost(message, optional, tag="6")]
+    pub delegator_unbonding_info: ::core::option::Option<DelegatorUnbondingInfo>,
 }
 /// SlashedBTCDelegation is an IBC packet sent from Babylon to consumer
 /// about a slashed BTC delegation restaked to >=1 of this consumer's 
@@ -412,5 +458,11 @@ pub struct UnbondedBtcDelegation {
     /// It proves that the BTC delegator wants to unbond
     #[prost(bytes="bytes", tag="2")]
     pub unbonding_tx_sig: ::prost::bytes::Bytes,
+    /// stake_spending_tx is the stake spending tx
+    #[prost(bytes="bytes", tag="3")]
+    pub stake_spending_tx: ::prost::bytes::Bytes,
+    /// proof is the inclusion proof for the stake spending tx
+    #[prost(message, optional, tag="4")]
+    pub proof: ::core::option::Option<InclusionProof>,
 }
 // @@protoc_insertion_point(module)

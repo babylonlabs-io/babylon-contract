@@ -40,7 +40,7 @@ fn is_simple_transfer(tx: &Transaction) -> Result<()> {
 #[allow(clippy::too_many_arguments)]
 fn validate_slashing_tx(
     slashing_tx: &Transaction,
-    slashing_address: &Address,
+    slashing_pk_script: &[u8],
     slashing_rate: f64,
     slashing_tx_min_fee: u64,
     staking_output_value: u64,
@@ -69,8 +69,7 @@ fn validate_slashing_tx(
     }
 
     // Verify that the first output pays to the provided slashing address.
-    let slashing_pk_script = slashing_address.script_pubkey();
-    if slashing_tx.output[0].script_pubkey != slashing_pk_script {
+    if slashing_tx.output[0].script_pubkey.as_bytes() != slashing_pk_script {
         return Err(Error::InvalidSlashingAddress {});
     }
 
@@ -140,7 +139,7 @@ pub fn check_transactions(
     funding_output_idx: u32,
     slashing_tx_min_fee: u64,
     slashing_rate: f64,
-    slashing_address: &Address,
+    slashing_pk_script: &[u8],
     staker_pk: &VerifyingKey,
     slashing_change_lock_time: u16,
 ) -> Result<()> {
@@ -166,7 +165,7 @@ pub fn check_transactions(
     // Check if slashing transaction is valid
     validate_slashing_tx(
         slashing_tx,
-        slashing_address,
+        slashing_pk_script,
         slashing_rate,
         slashing_tx_min_fee,
         staking_output.value.to_sat(),
@@ -215,9 +214,7 @@ mod tests {
         let funding_out_idx: u32 = 0;
         let slashing_tx_min_fee: u64 = 1;
         let slashing_rate: f64 = 0.01;
-        let slashing_address: Address = Address::from_str(&params.slashing_address)
-            .unwrap()
-            .assume_checked();
+        let slashing_pk_script = &params.slashing_pk_script;
         let staker_pk: VerifyingKey = VerifyingKey::from_bytes(&btc_del.btc_pk).unwrap();
         let slashing_change_lock_time: u16 = 101;
 
@@ -228,7 +225,7 @@ mod tests {
             funding_out_idx,
             slashing_tx_min_fee,
             slashing_rate,
-            &slashing_address,
+            slashing_pk_script,
             &staker_pk,
             slashing_change_lock_time,
         )

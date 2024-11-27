@@ -26,8 +26,8 @@ pub struct InstantiateMsg {
     /// babylon_tag is a string encoding four bytes used for identification / tagging of the Babylon zone.
     /// NOTE: this is a hex string, not raw bytes
     pub babylon_tag: String,
-    pub btc_confirmation_depth: u64,
-    pub checkpoint_finalization_timeout: u64,
+    pub btc_confirmation_depth: u32,
+    pub checkpoint_finalization_timeout: u32,
     /// notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised
     /// headers.
     /// NOTE: If set to true, then the Cosmos zone needs to integrate the corresponding message handler
@@ -124,7 +124,7 @@ pub enum QueryMsg {
     BtcTipHeader {},
     /// BtcHeader returns the BTC header information stored in the contract, by BTC height.
     #[returns(BtcHeaderResponse)]
-    BtcHeader { height: u64 },
+    BtcHeader { height: u32 },
     /// BtcHeaderByHash returns the BTC header information stored in the contract, by BTC hash.
     ///
     /// `hash` is the (byte-reversed) hex-encoded hash of the BTC header
@@ -135,7 +135,7 @@ pub enum QueryMsg {
     /// `start_after` is the height of the header to start after, or `None` to start from the base
     #[returns(BtcHeadersResponse)]
     BtcHeaders {
-        start_after: Option<u64>,
+        start_after: Option<u32>,
         limit: Option<u32>,
         reverse: Option<bool>,
     },

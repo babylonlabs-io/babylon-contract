@@ -59,7 +59,7 @@ pub struct FinalityProvider {
     /// slashed_height is the height on which the finality provider is slashed
     pub slashed_height: u64,
     /// slashed_btc_height is the BTC height on which the finality provider is slashed
-    pub slashed_btc_height: u64,
+    pub slashed_btc_height: u32,
     /// consumer_id is the ID of the consumer that the finality provider is operating on.
     pub consumer_id: String,
 }
@@ -172,10 +172,10 @@ pub struct ActiveBtcDelegation {
     pub fp_btc_pk_list: Vec<String>,
     /// start_height is the start BTC height of the BTC delegation.
     /// It is the start BTC height of the time-lock
-    pub start_height: u64,
+    pub start_height: u32,
     /// end_height is the end height of the BTC delegation
     /// it is the end BTC height of the time-lock - w
-    pub end_height: u64,
+    pub end_height: u32,
     /// total_sat is the total BTC stakes in this delegation, quantified in satoshi
     pub total_sat: u64,
     /// staking_tx is the staking tx
@@ -218,12 +218,9 @@ pub struct BtcUndelegationInfo {
     /// output to unbonding output. Unbonding output will usually have lower timelock
     /// than staking output.
     pub unbonding_tx: Binary,
-    /// delegator_unbonding_sig is the signature on the unbonding tx
-    /// by the delegator (i.e. SK corresponding to btc_pk).
-    /// It effectively proves that the delegator wants to unbond and thus
-    /// Babylon will consider this BTC delegation unbonded. Delegator's BTC
-    /// on Bitcoin will be unbonded after time-lock.
-    pub delegator_unbonding_sig: Binary,
+    /// delegator_unbonding_info is the information about transaction which spent
+    /// the staking output
+    pub delegator_unbonding_info: Option<DelegatorUnbondingInfo>,
     /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
     /// by covenant members
     pub covenant_unbonding_sig_list: Vec<SignatureInfo>,
@@ -237,6 +234,11 @@ pub struct BtcUndelegationInfo {
     /// unbonding slashing tx by each covenant member
     /// It will be a part of the witness for the staking tx output.
     pub covenant_slashing_sigs: Vec<CovenantAdaptorSignatures>,
+}
+
+#[cw_serde]
+pub struct DelegatorUnbondingInfo {
+    pub spend_stake_tx: Binary,
 }
 
 /// SignatureInfo is a BIP-340 signature together with its signer's BIP-340 PK

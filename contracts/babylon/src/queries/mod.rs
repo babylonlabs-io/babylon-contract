@@ -28,7 +28,7 @@ pub fn btc_tip_header(_deps: Deps) -> Result<BtcHeaderResponse, BTCLightclientEr
     BtcHeaderResponse::try_from(&btc_header_info)
 }
 
-pub fn btc_header(deps: Deps, height: u64) -> Result<BtcHeaderResponse, BTCLightclientError> {
+pub fn btc_header(deps: Deps, height: u32) -> Result<BtcHeaderResponse, BTCLightclientError> {
     let btc_header_info = get_header(deps.storage, height)?;
     BtcHeaderResponse::try_from(&btc_header_info)
 }
@@ -44,7 +44,7 @@ pub fn btc_header_by_hash(
 
 pub fn btc_headers(
     deps: Deps,
-    start_after: Option<u64>,
+    start_after: Option<u32>,
     limit: Option<u32>,
     reverse: Option<bool>,
 ) -> Result<BtcHeadersResponse, BTCLightclientError> {

@@ -67,7 +67,7 @@ pub enum BTCLightclientError {
     #[error("The given headers during initialization cannot be verified")]
     InitError {},
     #[error("The given headers during initialization cannot be verified. Less than {0} headers")]
-    InitErrorLength(u64),
+    InitErrorLength(u32),
     #[error("The bytes cannot be decoded")]
     DecodeError(#[from] DecodeError),
     #[error("{0}")]
@@ -85,7 +85,7 @@ pub enum BTCLightclientError {
     #[error("The BTC header does not satisfy the difficulty requirement or is not consecutive")]
     BTCHeaderError {},
     #[error("The BTC header with height {height} is not found in the storage")]
-    BTCHeaderNotFoundError { height: u64 },
+    BTCHeaderNotFoundError { height: u32 },
     #[error("The BTC height with hash {hash} is not found in the storage")]
     BTCHeightNotFoundError { hash: String },
     #[error("The BTC header info cumulative work encoding is wrong")]
@@ -93,7 +93,7 @@ pub enum BTCLightclientError {
     #[error("The BTC header info {0} cumulative work is wrong. Expected {1}, got {2}")]
     BTCWrongCumulativeWork(usize, Work, Work),
     #[error("The BTC header info {0} height is wrong. Expected {1}, got {2}")]
-    BTCWrongHeight(usize, u64, u64),
+    BTCWrongHeight(usize, u32, u32),
     #[error("The new chain's work ({0}), is not better than the current chain's work ({1})")]
     BTCChainWithNotEnoughWork(Work, Work),
 }
@@ -122,7 +122,7 @@ pub enum BabylonEpochChainError {
     #[error("The BTC header with hash {hash} is not found in the storage")]
     BTCHeaderNotFoundError { hash: String },
     #[error("The BTC headers are not {w}-deep")]
-    BTCHeaderNotDeepEnough { w: u64 },
+    BTCHeaderNotDeepEnough { w: u32 },
     #[error("The checkpoint is not in the given BTC headers: {err_msg}")]
     CheckpointNotSubmitted { err_msg: String },
     #[error("The epoch is not sealed by the epoch's validator set: {err_msg}")]

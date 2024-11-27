@@ -138,7 +138,7 @@ fn verify_epoch_and_checkpoint(
         .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;
 
     // this will be used for checking w-deep later
-    let mut min_height: u64 = u64::MAX;
+    let mut min_height: u32 = u32::MAX;
 
     // ensure the given btc headers are in BTC light clients
     for btc_header in btc_headers.iter() {

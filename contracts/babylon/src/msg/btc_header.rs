@@ -43,7 +43,7 @@ pub struct BtcHeader {
 impl BtcHeader {
     pub fn to_btc_header_info(
         &self,
-        prev_height: u64,
+        prev_height: u32,
         prev_work: babylon_bitcoin::Work,
     ) -> Result<BtcHeaderInfo, BTCLightclientError> {
         let block_header: BlockHeader = self.try_into()?;
@@ -173,7 +173,7 @@ pub struct BtcHeaderResponse {
     /// Encoded as a (byte-reversed) hex string.
     pub hash: String,
     /// The height of the block in the BTC blockchain.
-    pub height: u64,
+    pub height: u32,
     /// The cumulative total work of this block and all of its ancestors.
     pub cum_work: cosmwasm_std::Uint256,
 }

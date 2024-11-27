@@ -11,7 +11,7 @@ use std::{env, fs};
 use cosmwasm_std::{Binary, Decimal};
 
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
+    ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures, DelegatorUnbondingInfo,
     FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc,
 };
 use babylon_apis::finality_api::PubRandCommit;
@@ -259,6 +259,14 @@ pub fn new_finality_provider(fp: FinalityProvider) -> NewFinalityProvider {
 
 pub fn new_active_btc_delegation(del: BtcDelegation) -> ActiveBtcDelegation {
     let btc_undelegation = del.btc_undelegation.unwrap();
+    let delegator_unbonding_info =
+        if let Some(delegator_unbonding_info) = btc_undelegation.delegator_unbonding_info {
+            Some(DelegatorUnbondingInfo {
+                spend_stake_tx: Binary::new(delegator_unbonding_info.spend_stake_tx.to_vec()),
+            })
+        } else {
+            None
+        };
 
     ActiveBtcDelegation {
         staker_addr: del.staker_addr,
@@ -291,7 +299,7 @@ pub fn new_active_btc_delegation(del: BtcDelegation) -> ActiveBtcDelegation {
         undelegation_info: BtcUndelegationInfo {
             unbonding_tx: Binary::new(btc_undelegation.unbonding_tx.to_vec()),
             slashing_tx: Binary::new(btc_undelegation.slashing_tx.to_vec()),
-            delegator_unbonding_sig: Binary::new(btc_undelegation.delegator_unbonding_sig.to_vec()),
+            delegator_unbonding_info: delegator_unbonding_info,
             delegator_slashing_sig: Binary::new(btc_undelegation.delegator_slashing_sig.to_vec()),
             covenant_unbonding_sig_list: vec![],
             covenant_slashing_sigs: vec![],

@@ -162,9 +162,8 @@ pub fn verify_active_delegation(
             .map_err(|_| ContractError::InvalidBtcTx(active_delegation.slashing_tx.encode_hex()))?;
 
         // decode slashing address
-        let slashing_address: Address = Address::from_str(&params.slashing_address)
-            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?
-            .assume_checked();
+        let slashing_pk_script = hex::decode(&params.slashing_pk_script)
+            .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
         // Check slashing tx and staking tx are valid and consistent
         let slashing_rate = params
@@ -177,7 +176,7 @@ pub fn verify_active_delegation(
             active_delegation.staking_output_idx,
             params.min_slashing_tx_fee_sat,
             slashing_rate,
-            &slashing_address,
+            &slashing_pk_script,
             &staker_pk,
             active_delegation.unbonding_time as u16,
         )?;
@@ -308,7 +307,7 @@ pub fn verify_active_delegation(
             unbonding_output_idx,
             params.min_slashing_tx_fee_sat,
             slashing_rate,
-            &slashing_address,
+            &slashing_pk_script,
             &staker_pk,
             unbonding_time,
         )?;

@@ -10,8 +10,8 @@ use std::str::FromStr;
 use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG, PARAMS};
 use crate::state::staking::{
-    fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, DELEGATION_FPS, FPS,
-    FP_DELEGATIONS,
+    fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
+    DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
 };
 use crate::validation::{
     verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
@@ -239,12 +239,7 @@ fn handle_undelegation(
     verify_undelegation(&params, &btc_del, &undelegation.unbonding_tx_sig)?;
 
     // Add the signature to the BTC delegation's undelegation and set back
-    btc_undelegate(
-        storage,
-        &staking_tx_hash,
-        &mut btc_del,
-        &undelegation.unbonding_tx_sig,
-    )?;
+    btc_undelegate(storage, &staking_tx_hash, &mut btc_del)?;
 
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
@@ -333,9 +328,10 @@ fn btc_undelegate(
     storage: &mut dyn Storage,
     staking_tx_hash: &Txid,
     btc_del: &mut BtcDelegation,
-    unbonding_tx_sig: &[u8],
 ) -> Result<(), ContractError> {
-    btc_del.undelegation_info.delegator_unbonding_sig = unbonding_tx_sig.to_vec();
+    btc_del.undelegation_info.delegator_unbonding_info = Some(DelegatorUnbondingInfo {
+        spend_stake_tx: vec![0x00; 32], // TODO: avoid handling spend stake tx for now
+    });
 
     // Set BTC delegation back to KV store
     DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
@@ -392,7 +388,7 @@ pub(crate) fn slash_finality_provider(
 }
 
 /// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
-fn get_btc_tip_height(deps: &DepsMut) -> Result<u64, ContractError> {
+fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
     // Get the BTC tip from the babylon contract through a raw query
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
@@ -617,7 +613,7 @@ pub(crate) mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx.to_vec(),
                 slashing_tx: active_delegation_undelegation.slashing_tx.to_vec(),
-                delegator_unbonding_sig: vec![],
+                delegator_unbonding_info: None,
                 delegator_slashing_sig: active_delegation_undelegation
                     .delegator_slashing_sig
                     .to_vec(),
@@ -653,7 +649,9 @@ pub(crate) mod tests {
             BtcUndelegationInfo {
                 unbonding_tx: active_delegation_undelegation.unbonding_tx.into(),
                 slashing_tx: active_delegation_undelegation.slashing_tx.into(),
-                delegator_unbonding_sig: unbonding_sig.to_bytes().into(),
+                delegator_unbonding_info: Some(DelegatorUnbondingInfo {
+                    spend_stake_tx: vec![0x00; 32], // TODO: avoid handling spend stake tx for now
+                }),
                 delegator_slashing_sig: active_delegation_undelegation
                     .delegator_slashing_sig
                     .into(),
@@ -707,7 +705,7 @@ pub(crate) mod tests {
         let staking_tx_hash_hex = staking_tx_hash(&delegation).to_string();
         // Query the delegation
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex.clone()).unwrap();
-        assert!(&btc_del.undelegation_info.delegator_unbonding_sig.is_empty());
+        assert!(btc_del.undelegation_info.delegator_unbonding_info.is_none());
         assert!(!btc_del.slashed);
 
         // Check the finality provider has power
@@ -747,7 +745,7 @@ pub(crate) mod tests {
         let btc_del = queries::delegation(deps.as_ref(), staking_tx_hash_hex).unwrap();
         assert!(btc_del.slashed);
         // Check the unbonding sig is still empty
-        assert!(btc_del.undelegation_info.delegator_unbonding_sig.is_empty());
+        assert!(btc_del.undelegation_info.delegator_unbonding_info.is_none());
 
         // Check the finality provider power has been zeroed (it has only this delegation that was
         // slashed)
