@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 /// BTC staking messages / API
 /// The definitions here follow the same structure as the equivalent IBC protobuf message types,
 /// defined in `packages/proto/src/gen/babylon.btcstaking.v1.rs`
@@ -41,6 +43,36 @@ pub struct NewFinalityProvider {
     pub pop: Option<ProofOfPossessionBtc>,
     /// consumer_id is the ID of the consumer that the finality provider is operating on.
     pub consumer_id: String,
+}
+
+impl TryFrom<&babylon_proto::babylon::btcstaking::v1::NewFinalityProvider> for NewFinalityProvider {
+    type Error = String;
+
+    fn try_from(
+        fp: &babylon_proto::babylon::btcstaking::v1::NewFinalityProvider,
+    ) -> Result<Self, Self::Error> {
+        Ok(NewFinalityProvider {
+            description: fp
+                .description
+                .as_ref()
+                .map(|d| FinalityProviderDescription {
+                    moniker: d.moniker.clone(),
+                    identity: d.identity.clone(),
+                    website: d.website.clone(),
+                    security_contact: d.security_contact.clone(),
+                    details: d.details.clone(),
+                }),
+            commission: Decimal::from_str(&fp.commission)
+                .map_err(|e| format!("Failed to parse commission: {}", e))?,
+            addr: fp.addr.clone(),
+            btc_pk_hex: fp.btc_pk_hex.clone(),
+            pop: fp.pop.as_ref().map(|pop| ProofOfPossessionBtc {
+                btc_sig_type: pop.btc_sig_type,
+                btc_sig: pop.btc_sig.to_vec().into(),
+            }),
+            consumer_id: fp.consumer_id.clone(),
+        })
+    }
 }
 
 #[cw_serde]
@@ -199,6 +231,80 @@ pub struct ActiveBtcDelegation {
     pub undelegation_info: BtcUndelegationInfo,
     /// params version used to validate the delegation
     pub params_version: u32,
+}
+
+impl TryFrom<&babylon_proto::babylon::btcstaking::v1::ActiveBtcDelegation> for ActiveBtcDelegation {
+    type Error = String;
+
+    fn try_from(
+        d: &babylon_proto::babylon::btcstaking::v1::ActiveBtcDelegation,
+    ) -> Result<Self, Self::Error> {
+        let delegator_unbonding_info = if let Some(info) = d
+            .undelegation_info
+            .clone()
+            .unwrap()
+            .delegator_unbonding_info
+        {
+            Some(DelegatorUnbondingInfo {
+                spend_stake_tx: Binary::new(info.spend_stake_tx.to_vec()),
+            })
+        } else {
+            None
+        };
+
+        Ok(ActiveBtcDelegation {
+            staker_addr: d.staker_addr.clone(),
+            btc_pk_hex: d.btc_pk_hex.clone(),
+            fp_btc_pk_list: d.fp_btc_pk_list.clone(),
+            start_height: d.start_height,
+            end_height: d.end_height,
+            total_sat: d.total_sat,
+            staking_tx: d.staking_tx.to_vec().into(),
+            slashing_tx: d.slashing_tx.to_vec().into(),
+            delegator_slashing_sig: d.delegator_slashing_sig.to_vec().into(),
+            covenant_sigs: d
+                .covenant_sigs
+                .iter()
+                .map(|s| CovenantAdaptorSignatures {
+                    cov_pk: s.cov_pk.to_vec().into(),
+                    adaptor_sigs: s.adaptor_sigs.iter().map(|a| a.to_vec().into()).collect(),
+                })
+                .collect(),
+            staking_output_idx: d.staking_output_idx,
+            unbonding_time: d.unbonding_time,
+            undelegation_info: d
+                .undelegation_info
+                .as_ref()
+                .map(|ui| BtcUndelegationInfo {
+                    unbonding_tx: ui.unbonding_tx.to_vec().into(),
+                    delegator_unbonding_info: delegator_unbonding_info,
+                    covenant_unbonding_sig_list: ui
+                        .covenant_unbonding_sig_list
+                        .iter()
+                        .map(|s| SignatureInfo {
+                            pk: s.pk.to_vec().into(),
+                            sig: s.sig.to_vec().into(),
+                        })
+                        .collect(),
+                    slashing_tx: ui.slashing_tx.to_vec().into(),
+                    delegator_slashing_sig: ui.delegator_slashing_sig.to_vec().into(),
+                    covenant_slashing_sigs: ui
+                        .covenant_slashing_sigs
+                        .iter()
+                        .map(|s| CovenantAdaptorSignatures {
+                            cov_pk: s.cov_pk.to_vec().into(),
+                            adaptor_sigs: s
+                                .adaptor_sigs
+                                .iter()
+                                .map(|a| a.to_vec().into())
+                                .collect(),
+                        })
+                        .collect(),
+                })
+                .ok_or("undelegation info not set")?,
+            params_version: d.params_version,
+        })
+    }
 }
 
 /// CovenantAdaptorSignatures is a list adaptor signatures signed by the

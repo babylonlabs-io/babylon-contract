@@ -12,3 +12,4 @@ cosmwasm-schema  = { workspace = true }
 hex              = { workspace = true }
 tendermint-proto = { workspace = true }
 thiserror        = { workspace = true }
+babylon-proto    = { workspace = true }

@@ -224,6 +224,7 @@ version = "0.11.0"
 dependencies = [
  "babylon-bitcoin",
  "babylon-merkle",
+ "babylon-proto",
  "bech32 0.9.1",
  "cosmwasm-schema",
  "cosmwasm-std",
