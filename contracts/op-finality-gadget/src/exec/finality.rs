@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::error::ContractError;
 use crate::queries::query_last_pub_rand_commit;
 use crate::state::config::CONFIG;
-use crate::state::finality::{BLOCK_VOTES, SIGNATURES};
+use crate::state::finality::{BLOCK_VOTES, FORKED_BLOCKS, SIGNATURES};
 use crate::state::public_randomness::{
     get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
@@ -11,10 +11,12 @@ use crate::utils::query_finality_provider;
 
 use babylon_apis::finality_api::PubRandCommit;
 use babylon_merkle::Proof;
-use cosmwasm_std::{Deps, DepsMut, Env, Event, Response};
+use cosmwasm_std::{Deps, DepsMut, Env, Event, MessageInfo, Response};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
+
+use super::admin::check_admin;
 
 // Most logic copied from contracts/btc-staking/src/finality.rs
 pub fn handle_public_randomness_commit(
@@ -301,6 +303,24 @@ pub(crate) fn verify_finality_signature(
         return Err(ContractError::FailedSignatureVerification("EOTS".into()));
     }
     Ok(())
+}
+
+/// `whitelist_forked_blocks` adds a set of forked blocks to the whitelist. These blocks will be skipped by FG
+/// (ie. treated as finalized) duringconsecutive quorum checks to unblock the OP derivation pipeline.
+pub fn whitelist_forked_blocks(
+    deps: DepsMut,
+    info: MessageInfo,
+    forked_blocks: Vec<(u64, u64)>,
+) -> Result<Response, ContractError> {
+    // Check caller is admin
+    check_admin(&deps, info)?;
+
+    // Append blocks to whitelist
+    FORKED_BLOCKS.update::<_, ContractError>(deps.storage, |mut blocks| {
+        blocks.extend(forked_blocks);
+        Ok(blocks)
+    })?;
+    Ok(Response::new())
 }
 
 /// `msg_to_sign` returns the message for an EOTS signature.
