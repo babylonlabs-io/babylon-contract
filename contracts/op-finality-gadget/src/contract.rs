@@ -5,8 +5,8 @@ use crate::exec::finality::{
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries::{
-    query_block_voters, query_config, query_first_pub_rand_commit, query_forked_blocks_in_range,
-    query_is_block_forked, query_last_pub_rand_commit,
+    query_block_voters, query_config, query_first_pub_rand_commit, query_forked_blocks,
+    query_forked_blocks_in_range, query_is_block_forked, query_last_pub_rand_commit,
 };
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
 use cosmwasm_std::{
@@ -45,6 +45,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
             &query_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
         )?),
+        QueryMsg::ForkedBlocks {} => Ok(to_json_binary(&query_forked_blocks(deps)?)?),
         QueryMsg::IsBlockForked { height } => {
             Ok(to_json_binary(&query_is_block_forked(deps, height)?)?)
         }

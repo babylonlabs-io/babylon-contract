@@ -47,6 +47,10 @@ pub fn query_last_pub_rand_commit(
     Ok(res.into_iter().next())
 }
 
+pub fn query_forked_blocks(deps: Deps) -> StdResult<Vec<(u64, u64)>> {
+    FORKED_BLOCKS.load(deps.storage)
+}
+
 pub fn query_is_block_forked(deps: Deps, height: u64) -> StdResult<bool> {
     // loop over forked blocks, starting from last entry
     let forked_blocks = FORKED_BLOCKS.load(deps.storage)?;
