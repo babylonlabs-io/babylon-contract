@@ -87,6 +87,8 @@ pub fn query_forked_blocks_in_range(
             break;
         }
     }
+    // reverse block ranges so they are ordered from highest to lowest
+    block_ranges.reverse();
     Ok(block_ranges)
 }
 
