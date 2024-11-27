@@ -315,6 +315,11 @@ pub fn whitelist_forked_blocks(
     // Check caller is admin
     check_admin(&deps, info)?;
 
+    // Check array is non-empty
+    if forked_blocks.is_empty() {
+        return Err(ContractError::EmptyBlockRange);
+    }
+
     // Append blocks to whitelist
     FORKED_BLOCKS.update::<_, ContractError>(deps.storage, |mut blocks| {
         blocks.extend(forked_blocks);
