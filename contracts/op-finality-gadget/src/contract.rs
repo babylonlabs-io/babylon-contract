@@ -9,6 +9,7 @@ use crate::queries::{
     query_forked_blocks_in_range, query_is_block_forked, query_last_pub_rand_commit,
 };
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
+use crate::state::finality::FORKED_BLOCKS;
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
@@ -28,6 +29,9 @@ pub fn instantiate(
         consumer_id: msg.consumer_id,
     };
     CONFIG.save(deps.storage, &config)?;
+
+    let forked_blocks: Vec<(u64, u64)> = vec![];
+    FORKED_BLOCKS.save(deps.storage, &forked_blocks)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
