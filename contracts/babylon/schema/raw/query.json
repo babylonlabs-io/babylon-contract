@@ -59,7 +59,7 @@
           "properties": {
             "height": {
               "type": "integer",
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             }
           },
@@ -119,7 +119,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             }
           },
