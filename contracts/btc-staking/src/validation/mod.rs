@@ -10,12 +10,11 @@ use {
     babylon_bitcoin::schnorr::verify_digest,
     babylon_btcstaking::adaptor_sig::AdaptorSignature,
     babylon_btcstaking::sig_verify::enc_verify_transaction_sig_with_output,
-    bitcoin::{consensus::deserialize, Address},
+    bitcoin::consensus::deserialize,
     cosmwasm_std::CanonicalAddr,
     hex::ToHex,
     k256::schnorr::{Signature, SigningKey, VerifyingKey},
     k256::sha2::{Digest, Sha256},
-    std::str::FromStr,
 };
 
 /// verify_pop verifies the proof of possession of the given address.

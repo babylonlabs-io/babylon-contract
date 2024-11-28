@@ -7,9 +7,9 @@ use babylon_proto::babylon::zoneconcierge::v1::{
 use crate::state::config::CONFIG;
 use cosmwasm_std::{
     Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel,
-    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcMsg,
-    IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse,
-    IbcTimeout, Never, StdAck, StdError, StdResult,
+    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder,
+    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, IbcTimeout,
+    Never, StdAck, StdError, StdResult,
 };
 use cw_storage_plus::Item;
 use prost::Message;
@@ -59,7 +59,7 @@ pub fn ibc_channel_open(
 /// Second part of the 4-step handshake, i.e. ChannelOpenAck and ChannelOpenConfirm.
 pub fn ibc_channel_connect(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
     // Ensure we have no channel yet
@@ -157,18 +157,15 @@ pub fn ibc_packet_receive(
 pub(crate) mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
+    use babylon_apis::btc_staking_api::SlashedBtcDelegation;
     use babylon_apis::btc_staking_api::{
-        ActiveBtcDelegation, BtcUndelegationInfo, CovenantAdaptorSignatures,
-        FinalityProviderDescription, NewFinalityProvider, ProofOfPossessionBtc, SignatureInfo,
-        UnbondedBtcDelegation,
+        ActiveBtcDelegation, NewFinalityProvider, UnbondedBtcDelegation,
     };
-    use babylon_apis::btc_staking_api::{DelegatorUnbondingInfo, SlashedBtcDelegation};
     use babylon_apis::finality_api::Evidence;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
     use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
-    use cosmwasm_std::{to_json_binary, Decimal, IbcChannel, IbcMsg, WasmMsg};
-    use std::str::FromStr;
+    use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
     pub fn handle_btc_timestamp(
         deps: DepsMut,
