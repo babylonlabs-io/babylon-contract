@@ -70,7 +70,7 @@ fn validate_slashing_tx(
 
     // Verify that the first output pays to the provided slashing address.
     if slashing_tx.output[0].script_pubkey.as_bytes() != slashing_pk_script {
-        return Err(Error::InvalidSlashingAddress {});
+        return Err(Error::InvalidSlashingPkScript {});
     }
 
     // Verify that the second output pays to the taproot address which locks funds for

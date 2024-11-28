@@ -44,8 +44,8 @@ pub enum Error {
     TxHasLocktime {},
     #[error("Slashing transaction must slash at least {0} satoshis")]
     InsufficientSlashingAmount(u64),
-    #[error("Slashing transaction must pay to the provided slashing address")]
-    InvalidSlashingAddress {},
+    #[error("Slashing transaction must pay to the provided slashing pk script")]
+    InvalidSlashingPkScript {},
     #[error("Invalid slashing tx change output script")]
     InvalidSlashingTxChangeOutputScript {},
     #[error("Transaction contains dust outputs")]
