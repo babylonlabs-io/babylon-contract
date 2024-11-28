@@ -1,11 +1,15 @@
 use crate::error::ContractError;
 use crate::exec::admin::set_enabled;
-use crate::exec::finality::{handle_finality_signature, handle_public_randomness_commit};
+use crate::exec::finality::{
+    handle_finality_signature, handle_public_randomness_commit, whitelist_forked_blocks,
+};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries::{
-    query_block_voters, query_config, query_first_pub_rand_commit, query_last_pub_rand_commit,
+    query_block_voters, query_config, query_first_pub_rand_commit, query_forked_blocks,
+    query_forked_blocks_in_range, query_is_block_forked, query_last_pub_rand_commit,
 };
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
+use crate::state::finality::FORKED_BLOCKS;
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
@@ -26,6 +30,9 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &config)?;
 
+    let forked_blocks: Vec<(u64, u64)> = vec![];
+    FORKED_BLOCKS.save(deps.storage, &forked_blocks)?;
+
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -41,6 +48,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         )?),
         QueryMsg::LastPubRandCommit { btc_pk_hex } => Ok(to_json_binary(
             &query_last_pub_rand_commit(deps.storage, &btc_pk_hex)?,
+        )?),
+        QueryMsg::ForkedBlocks {} => Ok(to_json_binary(&query_forked_blocks(deps)?)?),
+        QueryMsg::IsBlockForked { height } => {
+            Ok(to_json_binary(&query_is_block_forked(deps, height)?)?)
+        }
+        QueryMsg::ForkedBlocksInRange { start, end } => Ok(to_json_binary(
+            &query_forked_blocks_in_range(deps, start, end)?,
         )?),
         QueryMsg::IsEnabled {} => Ok(to_json_binary(&IS_ENABLED.load(deps.storage)?)?),
     }
@@ -86,6 +100,9 @@ pub fn execute(
             &block_hash,
             &signature,
         ),
+        ExecuteMsg::WhitelistForkedBlocks { forked_blocks } => {
+            whitelist_forked_blocks(deps, info, forked_blocks)
+        }
         ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, Some(api.addr_validate(&admin)?))

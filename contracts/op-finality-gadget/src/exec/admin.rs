@@ -31,7 +31,7 @@ pub fn set_enabled(
 }
 
 // Helper function to check caller is contract admin
-fn check_admin(deps: &DepsMut, info: MessageInfo) -> Result<(), ContractError> {
+pub fn check_admin(deps: &DepsMut, info: MessageInfo) -> Result<(), ContractError> {
     // Check caller is admin
     if !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
         return Err(ContractError::Unauthorized {});

@@ -36,6 +36,16 @@ pub enum QueryMsg {
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
     #[returns(Option<PubRandCommit>)]
     LastPubRandCommit { btc_pk_hex: String },
+    /// `ForkedBlocks` returns the list of forked blocks
+    #[returns(Vec<(u64, u64)>)]
+    ForkedBlocks {},
+    /// `IsBlockForked` returns whether a given block is forked.
+    #[returns(bool)]
+    IsBlockForked { height: u64 },
+    /// `ForkedBlocksInRange` returns the list of forked blocks in a given range
+    #[returns(Vec<(u64, u64)>)]
+    ForkedBlocksInRange { start: u64, end: u64 },
+    /// `IsEnabled` returns whether the finality gadget is enabled.
     #[returns(bool)]
     IsEnabled {},
 }
@@ -74,6 +84,12 @@ pub enum ExecuteMsg {
         proof: Proof,
         block_hash: Binary,
         signature: Binary,
+    },
+    /// Whitelist forked blocks.
+    ///
+    /// This message can be called by the admin only.
+    WhitelistForkedBlocks {
+        forked_blocks: Vec<(u64, u64)>,
     },
     /// Enable or disable finality gadget.
     ///
