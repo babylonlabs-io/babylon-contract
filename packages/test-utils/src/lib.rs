@@ -299,7 +299,7 @@ pub fn new_active_btc_delegation(del: BtcDelegation) -> ActiveBtcDelegation {
         undelegation_info: BtcUndelegationInfo {
             unbonding_tx: Binary::new(btc_undelegation.unbonding_tx.to_vec()),
             slashing_tx: Binary::new(btc_undelegation.slashing_tx.to_vec()),
-            delegator_unbonding_info: delegator_unbonding_info,
+            delegator_unbonding_info,
             delegator_slashing_sig: Binary::new(btc_undelegation.delegator_slashing_sig.to_vec()),
             covenant_unbonding_sig_list: vec![],
             covenant_slashing_sigs: vec![],
