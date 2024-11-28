@@ -14,8 +14,8 @@ pub struct BtcHeaderInfo {
     pub header: ::prost::bytes::Bytes,
     #[prost(bytes="bytes", tag="2")]
     pub hash: ::prost::bytes::Bytes,
-    #[prost(uint64, tag="3")]
-    pub height: u64,
+    #[prost(uint32, tag="3")]
+    pub height: u32,
     #[prost(bytes="bytes", tag="4")]
     pub work: ::prost::bytes::Bytes,
 }
@@ -43,8 +43,8 @@ pub struct BtcHeaderInfoResponse {
     pub header_hex: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub hash_hex: ::prost::alloc::string::String,
-    #[prost(uint64, tag="3")]
-    pub height: u64,
+    #[prost(uint32, tag="3")]
+    pub height: u32,
     /// Work is the sdkmath.Uint as string.
     #[prost(string, tag="4")]
     pub work: ::prost::alloc::string::String,

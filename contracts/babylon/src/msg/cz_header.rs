@@ -11,8 +11,8 @@ use hex::ToHex;
 /// Adapted from `IndexedHeader`.
 #[cw_serde]
 pub struct CzHeaderResponse {
-    /// chain_id is the unique ID of the chain
-    pub chain_id: String,
+    /// consumer_id is the unique ID of the consumer
+    pub consumer_id: String,
     /// hash is the hash of this header.
     /// Hex-encoded string of 32 bytes
     pub hash: String,
@@ -43,7 +43,7 @@ pub struct CzHeaderResponse {
 impl From<&IndexedHeader> for CzHeaderResponse {
     fn from(header: &IndexedHeader) -> Self {
         CzHeaderResponse {
-            chain_id: header.chain_id.clone(),
+            consumer_id: header.consumer_id.clone(),
             hash: header.hash.encode_hex(),
             height: header.height,
             time: header
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn indexed_header_to_indexed_header_response_works() {
         let indexed_header = IndexedHeader {
-            chain_id: "chain_id".to_string(),
+            consumer_id: "consumer_id".to_string(),
             hash: prost::bytes::Bytes::from("hash"),
             height: 1,
             time: Some(::pbjson_types::Timestamp {
@@ -87,7 +87,7 @@ mod tests {
 
         let indexed_header_response = CzHeaderResponse::from(&indexed_header);
 
-        assert_eq!(indexed_header_response.chain_id, "chain_id");
+        assert_eq!(indexed_header_response.consumer_id, "consumer_id");
         assert_eq!(indexed_header_response.hash, hex::encode("hash"));
         assert_eq!(indexed_header_response.height, 1);
         assert_eq!(

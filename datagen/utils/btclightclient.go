@@ -48,11 +48,11 @@ type BtcHeaders struct {
 	Headers []*BtcHeader `json:"headers"`
 }
 
-func GenBTCLightClient(initialHeaderHeight uint64, mainHeadersLength uint64, dir string) []*btclctypes.BTCHeaderInfoResponse {
+func GenBTCLightClient(initialHeaderHeight uint32, mainHeadersLength uint32, dir string) []*btclctypes.BTCHeaderInfoResponse {
 	headers := datagen.NewBTCHeaderChainWithLength(
 		r,
 		initialHeaderHeight,
-		net.PowLimit.Uint64(),
+		uint32(net.PowLimit.Uint64()),
 		uint32(mainHeadersLength)).GetChainInfoResponse()
 	resp := &btclctypes.QueryMainChainResponse{Headers: headers}
 	respBytes := cdc.MustMarshal(resp)
@@ -64,7 +64,7 @@ func GenBTCLightClient(initialHeaderHeight uint64, mainHeadersLength uint64, dir
 }
 
 func GenBTCLightClientFork(
-	mainHeadersLength uint64,
+	mainHeadersLength uint32,
 	forkHeader *btclctypes.BTCHeaderInfoResponse,
 	dir string,
 ) {
@@ -81,7 +81,7 @@ func GenBTCLightClientFork(
 }
 
 func GenBTCLightClientForkMessages(
-	mainHeadersLength uint64,
+	mainHeadersLength uint32,
 	forkHeader *btclctypes.BTCHeaderInfoResponse,
 	dir string,
 ) {

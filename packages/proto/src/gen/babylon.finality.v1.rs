@@ -15,6 +15,9 @@ pub struct PubRandCommit {
     /// currently, it is the root of the merkle tree constructed by the public randomness
     #[prost(bytes="bytes", tag="3")]
     pub commitment: ::prost::bytes::Bytes,
+    /// epoch_num defines the epoch number that the commit falls into
+    #[prost(uint64, tag="4")]
+    pub epoch_num: u64,
 }
 /// Evidence is the evidence that a finality provider has signed finality
 /// signatures with correct public randomness on two conflicting Babylon headers
@@ -66,7 +69,7 @@ pub struct MsgCommitPubRandList {
     /// currently it's the root of the Merkle tree that includes these public randomness
     #[prost(bytes="bytes", tag="5")]
     pub commitment: ::prost::bytes::Bytes,
-    /// sig is the signature on (start_height || num_pub_rand || commitment) signed by 
+    /// sig is the signature on (start_height || num_pub_rand || commitment) signed by
     /// SK corresponding to fp_btc_pk. This prevents others to commit public
     /// randomness on behalf of fp_btc_pk
     /// TODO: another option is to restrict signer to correspond to fp_btc_pk. This restricts

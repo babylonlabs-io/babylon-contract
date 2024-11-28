@@ -60,14 +60,13 @@ func GenBTCTimestamp(dir string) {
 	}
 
 	// handle a random header from a random consumer chain
-	chainID := datagen.GenRandomHexStr(r, 10)
+	consumerID := datagen.GenRandomHexStr(r, 10)
 	height := datagen.RandomInt(r, 100) + 1
-	ibctmHeader := datagen.GenRandomIBCTMHeader(r, chainID, height)
-	headerInfo := datagen.HeaderToHeaderInfo(ibctmHeader)
-	zck.HandleHeaderWithValidCommit(h.Ctx, datagen.GenRandomByteArray(r, 32), headerInfo, false)
+	ibctmHeader := datagen.GenRandomIBCTMHeader(r, height)
+	zck.HandleHeaderWithValidCommit(h.Ctx, datagen.GenRandomByteArray(r, 32), datagen.NewZCHeaderInfo(ibctmHeader, consumerID), false)
 
 	// ensure the header is successfully inserted
-	indexedHeader, err := zck.GetHeader(h.Ctx, chainID, height)
+	indexedHeader, err := zck.GetHeader(h.Ctx, consumerID, height)
 	h.NoError(err)
 
 	// enter block 21, 1st block of epoch 3
