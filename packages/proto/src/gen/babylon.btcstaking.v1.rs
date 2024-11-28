@@ -345,56 +345,56 @@ pub struct NewFinalityProvider {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActiveBtcDelegation {
     /// staker_addr is the address to receive rewards from BTC delegation.
-    #[prost(string, tag="1")]
+    #[prost(string, tag="11")]
     pub staker_addr: ::prost::alloc::string::String,
     /// btc_pk_hex is the Bitcoin secp256k1 PK of this BTC delegation
     /// the PK follows encoding in BIP-340 spec in hex format
-    #[prost(string, tag="2")]
+    #[prost(string, tag="1")]
     pub btc_pk_hex: ::prost::alloc::string::String,
     /// fp_btc_pk_list is the list of BIP-340 PKs of the finality providers that
     /// this BTC delegation delegates to
-    #[prost(string, repeated, tag="3")]
+    #[prost(string, repeated, tag="2")]
     pub fp_btc_pk_list: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// start_height is the start BTC height of the BTC delegation
     /// it is the start BTC height of the timelock
-    #[prost(uint32, tag="4")]
+    #[prost(uint32, tag="3")]
     pub start_height: u32,
     /// end_height is the end height of the BTC delegation
     /// it is the end BTC height of the timelock - w
-    #[prost(uint32, tag="5")]
+    #[prost(uint32, tag="4")]
     pub end_height: u32,
     /// total_sat is the total amount of BTC stakes in this delegation
     /// quantified in satoshi
-    #[prost(uint64, tag="6")]
+    #[prost(uint64, tag="5")]
     pub total_sat: u64,
     /// staking_tx is the staking tx
-    #[prost(bytes="bytes", tag="7")]
+    #[prost(bytes="bytes", tag="6")]
     pub staking_tx: ::prost::bytes::Bytes,
     /// slashing_tx is the slashing tx
-    #[prost(bytes="bytes", tag="8")]
+    #[prost(bytes="bytes", tag="7")]
     pub slashing_tx: ::prost::bytes::Bytes,
     /// delegator_slashing_sig is the signature on the slashing tx
     /// by the delegator (i.e., SK corresponding to btc_pk) as string hex.
     /// It will be a part of the witness for the staking tx output.
-    #[prost(bytes="bytes", tag="9")]
+    #[prost(bytes="bytes", tag="8")]
     pub delegator_slashing_sig: ::prost::bytes::Bytes,
     /// covenant_sigs is a list of adaptor signatures on the slashing tx
     /// by each covenant member
     /// It will be a part of the witness for the staking tx output.
-    #[prost(message, repeated, tag="10")]
+    #[prost(message, repeated, tag="9")]
     pub covenant_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
     /// staking_output_idx is the index of the staking output in the staking tx
-    #[prost(uint32, tag="11")]
+    #[prost(uint32, tag="10")]
     pub staking_output_idx: u32,
     /// unbonding_time used in unbonding output timelock path and in slashing transactions
     /// change outputs
-    #[prost(uint32, tag="12")]
+    #[prost(uint32, tag="13")]
     pub unbonding_time: u32,
     /// undelegation_info is the undelegation info of this delegation.
-    #[prost(message, optional, tag="13")]
+    #[prost(message, optional, tag="14")]
     pub undelegation_info: ::core::option::Option<BtcUndelegationInfo>,
     /// params version used to validate delegation
-    #[prost(uint32, tag="14")]
+    #[prost(uint32, tag="15")]
     pub params_version: u32,
 }
 /// BTCUndelegationInfo provides all necessary info about the undeleagation
@@ -406,30 +406,30 @@ pub struct BtcUndelegationInfo {
     /// than staking output.
     #[prost(bytes="bytes", tag="1")]
     pub unbonding_tx: ::prost::bytes::Bytes,
-    /// slashing_tx is the slashing tx for unbonding transactions
-    /// It is partially signed by SK corresponding to btc_pk, but not signed by
-    /// finality provider or covenant yet.
+    /// delegator_unbonding_sig is the signature on the unbonding tx
+    /// by the delegator (i.e., SK corresponding to btc_pk).
+    /// It effectively proves that the delegator wants to unbond and thus
+    /// Babylon will consider this BTC delegation unbonded. Delegator's BTC
+    /// on Bitcoin will be unbonded after timelock.
     #[prost(bytes="bytes", tag="2")]
+    pub delegator_unbonding_sig: ::prost::bytes::Bytes,
+    /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
+    /// by covenant members
+    #[prost(message, repeated, tag="3")]
+    pub covenant_unbonding_sig_list: ::prost::alloc::vec::Vec<SignatureInfo>,
+    /// slashing_tx is the unbonding slashing tx
+    #[prost(bytes="bytes", tag="4")]
     pub slashing_tx: ::prost::bytes::Bytes,
     /// delegator_slashing_sig is the signature on the slashing tx
     /// by the delegator (i.e., SK corresponding to btc_pk).
     /// It will be a part of the witness for the unbonding tx output.
-    #[prost(bytes="bytes", tag="3")]
+    #[prost(bytes="bytes", tag="5")]
     pub delegator_slashing_sig: ::prost::bytes::Bytes,
-    /// covenant_slashing_sigs is a list of adaptor signatures on the slashing tx
-    /// by each covenant member
+    /// covenant_slashing_sigs is a list of adaptor signatures on the
+    /// unbonding slashing tx by each covenant member
     /// It will be a part of the witness for the staking tx output.
-    #[prost(message, repeated, tag="4")]
+    #[prost(message, repeated, tag="6")]
     pub covenant_slashing_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
-    /// covenant_unbonding_sig_list is the list of signatures on the unbonding tx
-    /// by covenant members
-    /// It must be provided after processing undelegate message by Babylon
-    #[prost(message, repeated, tag="5")]
-    pub covenant_unbonding_sig_list: ::prost::alloc::vec::Vec<SignatureInfo>,
-    /// delegator_unbonding_info is the information about transaction which spent
-    /// the staking output
-    #[prost(message, optional, tag="6")]
-    pub delegator_unbonding_info: ::core::option::Option<DelegatorUnbondingInfo>,
 }
 /// SlashedBTCDelegation is an IBC packet sent from Babylon to consumer
 /// about a slashed BTC delegation restaked to >=1 of this consumer's 
