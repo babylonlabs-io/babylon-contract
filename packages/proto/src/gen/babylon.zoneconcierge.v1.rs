@@ -154,7 +154,7 @@ pub struct ProofFinalizedChainInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ZoneconciergePacketData {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3, 4")]
+    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3")]
     pub packet: ::core::option::Option<zoneconcierge_packet_data::Packet>,
 }
 /// Nested message and enum types in `ZoneconciergePacketData`.
@@ -168,8 +168,6 @@ pub mod zoneconcierge_packet_data {
         #[prost(message, tag="2")]
         BtcStaking(super::super::super::btcstaking::v1::BtcStakingIbcPacket),
         #[prost(message, tag="3")]
-        ConsumerRegister(super::ConsumerRegisterIbcPacket),
-        #[prost(message, tag="4")]
         ConsumerSlashing(super::ConsumerSlashingIbcPacket),
     }
 }
@@ -209,17 +207,6 @@ pub struct BtcTimestamp {
     /// Proofs that the header is finalized
     #[prost(message, optional, tag="6")]
     pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
-}
-/// ConsumerRegisterIBCPacket defines the packet data for Consumer registration
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ConsumerRegisterIbcPacket {
-    /// consumer_name is a unique identifier for the consumer chain
-    #[prost(string, tag="1")]
-    pub consumer_name: ::prost::alloc::string::String,
-    /// consumer_description is a brief explanation of the consumer chain's purpose
-    #[prost(string, tag="2")]
-    pub consumer_description: ::prost::alloc::string::String,
 }
 /// ConsumerSlashingIBCPacket defines the slashing information that a Consumer sends to Babylon's ZoneConcierge upon a
 /// Consumer slashing event.
