@@ -42,7 +42,7 @@
     "end_height": {
       "description": "end_height is the end height of the BTC delegation it is the end BTC height of the time-lock - w",
       "type": "integer",
-      "format": "uint64",
+      "format": "uint32",
       "minimum": 0.0
     },
     "fp_btc_pk_list": {
@@ -87,7 +87,7 @@
     "start_height": {
       "description": "start_height is the start BTC height of the BTC delegation. It is the start BTC height of the time-lock",
       "type": "integer",
-      "format": "uint64",
+      "format": "uint32",
       "minimum": 0.0
     },
     "total_sat": {
@@ -124,7 +124,6 @@
         "covenant_slashing_sigs",
         "covenant_unbonding_sig_list",
         "delegator_slashing_sig",
-        "delegator_unbonding_sig",
         "slashing_tx",
         "unbonding_tx"
       ],
@@ -151,11 +150,14 @@
             }
           ]
         },
-        "delegator_unbonding_sig": {
-          "description": "delegator_unbonding_sig is the signature on the unbonding tx by the delegator (i.e. SK corresponding to btc_pk). It effectively proves that the delegator wants to unbond and thus Babylon will consider this BTC delegation unbonded. Delegator's BTC on Bitcoin will be unbonded after time-lock.",
-          "allOf": [
+        "delegator_unbonding_info": {
+          "description": "delegator_unbonding_info is the information about transaction which spent the staking output",
+          "anyOf": [
             {
-              "$ref": "#/definitions/Binary"
+              "$ref": "#/definitions/DelegatorUnbondingInfo"
+            },
+            {
+              "type": "null"
             }
           ]
         },
@@ -200,6 +202,18 @@
               "$ref": "#/definitions/Binary"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "DelegatorUnbondingInfo": {
+      "type": "object",
+      "required": [
+        "spend_stake_tx"
+      ],
+      "properties": {
+        "spend_stake_tx": {
+          "$ref": "#/definitions/Binary"
         }
       },
       "additionalProperties": false

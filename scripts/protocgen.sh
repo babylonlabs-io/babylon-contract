@@ -8,6 +8,8 @@ set -eo pipefail
 cd packages/proto
 # To also initialize, fetch and checkout any nested submodules
 git submodule update --init --recursive
+# Update the buf.yaml file to include the consumer-chain-support branch
 buf mod update
+# Generate the Rust protobuf messages
 buf generate --template buf.gen.rust.yaml
 cd ../..

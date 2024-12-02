@@ -27,7 +27,7 @@
       },
       "btc_confirmation_depth": {
         "type": "integer",
-        "format": "uint64",
+        "format": "uint32",
         "minimum": 0.0
       },
       "btc_finality_code_id": {
@@ -72,7 +72,7 @@
       },
       "checkpoint_finalization_timeout": {
         "type": "integer",
-        "format": "uint64",
+        "format": "uint32",
         "minimum": 0.0
       },
       "consumer_description": {
@@ -351,7 +351,7 @@
             "properties": {
               "height": {
                 "type": "integer",
-                "format": "uint64",
+                "format": "uint32",
                 "minimum": 0.0
               }
             },
@@ -411,7 +411,7 @@
                   "integer",
                   "null"
                 ],
-                "format": "uint64",
+                "format": "uint32",
                 "minimum": 0.0
               }
             },
@@ -836,7 +836,7 @@
         "height": {
           "description": "The height of the block in the BTC blockchain.",
           "type": "integer",
-          "format": "uint64",
+          "format": "uint32",
           "minimum": 0.0
         }
       },
@@ -928,7 +928,7 @@
         "height": {
           "description": "The height of the block in the BTC blockchain.",
           "type": "integer",
-          "format": "uint64",
+          "format": "uint32",
           "minimum": 0.0
         }
       },
@@ -1020,7 +1020,7 @@
         "height": {
           "description": "The height of the block in the BTC blockchain.",
           "type": "integer",
-          "format": "uint64",
+          "format": "uint32",
           "minimum": 0.0
         }
       },
@@ -1174,7 +1174,7 @@
             "height": {
               "description": "The height of the block in the BTC blockchain.",
               "type": "integer",
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             }
           },
@@ -1221,7 +1221,7 @@
         "height": {
           "description": "The height of the block in the BTC blockchain.",
           "type": "integer",
-          "format": "uint64",
+          "format": "uint32",
           "minimum": 0.0
         }
       },
@@ -1300,7 +1300,7 @@
         },
         "btc_confirmation_depth": {
           "type": "integer",
-          "format": "uint64",
+          "format": "uint32",
           "minimum": 0.0
         },
         "btc_finality": {
@@ -1327,7 +1327,7 @@
         },
         "checkpoint_finalization_timeout": {
           "type": "integer",
-          "format": "uint64",
+          "format": "uint32",
           "minimum": 0.0
         },
         "consumer_description": {
@@ -1379,7 +1379,7 @@
         "babylon_header_hash",
         "babylon_header_height",
         "babylon_tx_hash",
-        "chain_id",
+        "consumer_id",
         "hash",
         "height"
       ],
@@ -1404,8 +1404,8 @@
           "description": "babylon_tx_hash is the hash of the tx that includes this header. (babylon_block_height, babylon_tx_hash) jointly provides the position of the header in the Babylon ledger. Hex-encoded string of 32 bytes",
           "type": "string"
         },
-        "chain_id": {
-          "description": "chain_id is the unique ID of the chain",
+        "consumer_id": {
+          "description": "consumer_id is the unique ID of the consumer",
           "type": "string"
         },
         "hash": {
@@ -1456,7 +1456,7 @@
         "babylon_header_hash",
         "babylon_header_height",
         "babylon_tx_hash",
-        "chain_id",
+        "consumer_id",
         "hash",
         "height"
       ],
@@ -1481,8 +1481,8 @@
           "description": "babylon_tx_hash is the hash of the tx that includes this header. (babylon_block_height, babylon_tx_hash) jointly provides the position of the header in the Babylon ledger. Hex-encoded string of 32 bytes",
           "type": "string"
         },
-        "chain_id": {
-          "description": "chain_id is the unique ID of the chain",
+        "consumer_id": {
+          "description": "consumer_id is the unique ID of the consumer",
           "type": "string"
         },
         "hash": {

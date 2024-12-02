@@ -8,7 +8,7 @@
     "babylon_header_hash",
     "babylon_header_height",
     "babylon_tx_hash",
-    "chain_id",
+    "consumer_id",
     "hash",
     "height"
   ],
@@ -33,8 +33,8 @@
       "description": "babylon_tx_hash is the hash of the tx that includes this header. (babylon_block_height, babylon_tx_hash) jointly provides the position of the header in the Babylon ledger. Hex-encoded string of 32 bytes",
       "type": "string"
     },
-    "chain_id": {
-      "description": "chain_id is the unique ID of the chain",
+    "consumer_id": {
+      "description": "consumer_id is the unique ID of the consumer",
       "type": "string"
     },
     "hash": {

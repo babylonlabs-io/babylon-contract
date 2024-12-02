@@ -178,7 +178,7 @@ impl From<btc_staking_api::BtcUndelegationInfo> for BtcUndelegationInfo {
 
         BtcUndelegationInfo {
             unbonding_tx: undelegation_info.unbonding_tx.to_vec(),
-            delegator_unbonding_info: delegator_unbonding_info,
+            delegator_unbonding_info,
             covenant_unbonding_sig_list: undelegation_info
                 .covenant_unbonding_sig_list
                 .into_iter()

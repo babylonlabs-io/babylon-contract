@@ -33,7 +33,7 @@
     "height": {
       "description": "The height of the block in the BTC blockchain.",
       "type": "integer",
-      "format": "uint64",
+      "format": "uint32",
       "minimum": 0.0
     }
   },

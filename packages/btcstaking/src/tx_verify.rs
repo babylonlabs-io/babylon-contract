@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::scripts_utils;
 use crate::Result;
 
-use bitcoin::{address::Address, Transaction};
+use bitcoin::Transaction;
 use k256::schnorr::VerifyingKey;
 use rust_decimal::{prelude::*, Decimal};
 
@@ -199,7 +199,6 @@ mod tests {
     use crate::sig_verify::{
         enc_verify_transaction_sig_with_output, verify_transaction_sig_with_output,
     };
-    use bitcoin::address::Address;
     use bitcoin::consensus::deserialize;
 
     use test_utils::{get_btc_delegation, get_params};

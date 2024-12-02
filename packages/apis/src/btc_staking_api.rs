@@ -277,7 +277,7 @@ impl TryFrom<&babylon_proto::babylon::btcstaking::v1::ActiveBtcDelegation> for A
                 .as_ref()
                 .map(|ui| BtcUndelegationInfo {
                     unbonding_tx: ui.unbonding_tx.to_vec().into(),
-                    delegator_unbonding_info: delegator_unbonding_info,
+                    delegator_unbonding_info,
                     covenant_unbonding_sig_list: ui
                         .covenant_unbonding_sig_list
                         .iter()

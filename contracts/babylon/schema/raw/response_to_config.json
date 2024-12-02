@@ -20,7 +20,7 @@
     },
     "btc_confirmation_depth": {
       "type": "integer",
-      "format": "uint64",
+      "format": "uint32",
       "minimum": 0.0
     },
     "btc_finality": {
@@ -47,7 +47,7 @@
     },
     "checkpoint_finalization_timeout": {
       "type": "integer",
-      "format": "uint64",
+      "format": "uint32",
       "minimum": 0.0
     },
     "consumer_description": {

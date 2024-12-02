@@ -39,7 +39,7 @@
         "covenant_pks",
         "covenant_quorum",
         "min_slashing_tx_fee_sat",
-        "slashing_address",
+        "slashing_pk_script",
         "slashing_rate"
       ],
       "properties": {
@@ -63,8 +63,8 @@
           "format": "uint64",
           "minimum": 0.0
         },
-        "slashing_address": {
-          "description": "`slashing_address` is the address that the slashed BTC goes to. The address is in string format on Bitcoin.",
+        "slashing_pk_script": {
+          "description": "`slashing_pk_script` is the pk script that the slashed BTC goes to. The pk script is in string format on Bitcoin.",
           "type": "string"
         },
         "slashing_rate": {

@@ -79,7 +79,7 @@
         "slashed_btc_height": {
           "description": "slashed_btc_height is the BTC height on which the finality provider is slashed",
           "type": "integer",
-          "format": "uint64",
+          "format": "uint32",
           "minimum": 0.0
         },
         "slashed_height": {
