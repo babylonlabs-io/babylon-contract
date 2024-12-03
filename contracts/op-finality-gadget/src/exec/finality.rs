@@ -392,6 +392,9 @@ pub fn packet_timeout(env: &Env) -> IbcTimeout {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use cosmwasm_std::from_json;
+    use cosmwasm_std::testing::mock_env;
+    use std::collections::HashMap;
 
     use babylon_apis::finality_api::PubRandCommit;
     use hex::ToHex;
@@ -471,29 +474,76 @@ pub(crate) mod tests {
         let initial_height = pub_rand.start_height;
         let block_height = initial_height + proof.index.unsigned_abs();
 
-        // Verify both signatures are valid independently
-        let verify_canonical = verify_finality_signature(
-            &pk_hex,
+        // Create evidence struct
+        let evidence = Evidence {
+            fp_btc_pk: hex::decode(&pk_hex).unwrap(),
             block_height,
-            &pub_rand_one,
-            &proof.clone().into(),
-            &pub_rand,
-            &add_finality_signature.block_app_hash,
-            &add_finality_signature.finality_sig,
-        );
-        assert!(verify_canonical.is_ok());
+            pub_rand: pub_rand_one.to_vec(),
+            canonical_app_hash: add_finality_signature.block_app_hash.to_vec(),
+            canonical_finality_sig: add_finality_signature.finality_sig.to_vec(),
+            fork_app_hash: add_finality_signature_2.block_app_hash.to_vec(),
+            fork_finality_sig: add_finality_signature_2.finality_sig.to_vec(),
+        };
 
-        let verify_fork = verify_finality_signature(
-            &pk_hex,
-            block_height,
-            &pub_rand_one,
-            &proof.into(),
-            &pub_rand,
-            &add_finality_signature_2.block_app_hash,
-            &add_finality_signature_2.finality_sig,
-        );
-        assert!(verify_fork.is_ok());
+        // Create mock environment
+        let env = mock_env(); // You'll need to add this mock helper
 
+        // Test slash_finality_provider
+        let (wasm_msg, event) = slash_finality_provider(&env, &pk_hex, &evidence).unwrap();
+
+        // Verify the WasmMsg is correctly constructed
+        match wasm_msg {
+            WasmMsg::Execute {
+                contract_addr,
+                msg,
+                funds,
+            } => {
+                assert_eq!(contract_addr, env.contract.address.to_string());
+                assert!(funds.is_empty());
+                let msg_evidence = from_json::<ExecuteMsg>(&msg).unwrap();
+                match msg_evidence {
+                    ExecuteMsg::Slashing {
+                        evidence: msg_evidence,
+                    } => {
+                        assert_eq!(evidence, msg_evidence);
+                    }
+                    _ => panic!("Expected Slashing msg"),
+                }
+            }
+            _ => panic!("Expected Execute msg"),
+        }
+
+        // Verify the event attributes
+        assert_eq!(event.ty, "slashed_finality_provider");
+        let attrs: HashMap<_, _> = event
+            .attributes
+            .iter()
+            .map(|a| (&a.key, &a.value))
+            .collect();
+        assert_eq!(
+            attrs.get(&"module".to_string()).unwrap().as_str(),
+            "finality"
+        );
+        assert_eq!(
+            attrs
+                .get(&"finality_provider".to_string())
+                .unwrap()
+                .as_str(),
+            &pk_hex
+        );
+        assert_eq!(
+            attrs.get(&"block_height".to_string()).unwrap().as_str(),
+            &block_height.to_string()
+        );
+        assert_eq!(
+            attrs
+                .get(&"canonical_app_hash".to_string())
+                .unwrap()
+                .as_str(),
+            &hex::encode(&evidence.canonical_app_hash)
+        );
+
+        // Verify the extracted secret key corresponds to the public key
         // Hash messages
         let msg1 = msg_to_sign(block_height, &add_finality_signature.block_app_hash);
         let msg1_hash = Sha256::digest(&msg1);
