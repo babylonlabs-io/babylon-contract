@@ -395,7 +395,9 @@ pub(crate) mod tests {
 
     use babylon_apis::finality_api::PubRandCommit;
     use hex::ToHex;
-    use test_utils::{get_add_finality_sig, get_pub_rand_commit, get_pub_rand_value};
+    use test_utils::{
+        get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_commit, get_pub_rand_value,
+    };
 
     /// Get public randomness public key, commitment, and signature information
     ///
@@ -455,5 +457,66 @@ pub(crate) mod tests {
             &add_finality_signature.finality_sig,
         );
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn verify_slashing_works() {
+        // Read test data
+        let (pk_hex, pub_rand, _) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        let add_finality_signature = get_add_finality_sig();
+        let add_finality_signature_2 = get_add_finality_sig_2();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+        let block_height = initial_height + proof.index.unsigned_abs();
+
+        // Verify both signatures are valid independently
+        let verify_canonical = verify_finality_signature(
+            &pk_hex,
+            block_height,
+            &pub_rand_one,
+            &proof.clone().into(),
+            &pub_rand,
+            &add_finality_signature.block_app_hash,
+            &add_finality_signature.finality_sig,
+        );
+        assert!(verify_canonical.is_ok());
+
+        let verify_fork = verify_finality_signature(
+            &pk_hex,
+            block_height,
+            &pub_rand_one,
+            &proof.into(),
+            &pub_rand,
+            &add_finality_signature_2.block_app_hash,
+            &add_finality_signature_2.finality_sig,
+        );
+        assert!(verify_fork.is_ok());
+
+        // Hash messages
+        let msg1 = msg_to_sign(block_height, &add_finality_signature.block_app_hash);
+        let msg1_hash = Sha256::digest(&msg1);
+        let msg2 = msg_to_sign(block_height, &add_finality_signature_2.block_app_hash);
+        let msg2_hash = Sha256::digest(&msg2);
+
+        // Define signatures
+        let sig1 = eots::Signature::new(&add_finality_signature.finality_sig).unwrap();
+        let sig2 = eots::Signature::new(&add_finality_signature_2.finality_sig).unwrap();
+
+        // Extract the finality provider's secret key from the equivocating signatures
+        let pk = eots::PublicKey::from_hex(&pk_hex).unwrap();
+        let btc_sk = pk
+            .extract_secret_key(
+                &pub_rand_one,
+                &msg1_hash,
+                &sig1.to_bytes(),
+                &msg2_hash,
+                &sig2.to_bytes(),
+            )
+            .unwrap();
+        // Verify we got a valid secret key by checking it corresponds to the public key
+        let extracted_pk = btc_sk.pubkey();
+        assert_eq!(pk, extracted_pk);
     }
 }
