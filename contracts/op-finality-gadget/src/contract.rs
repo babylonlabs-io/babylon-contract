@@ -1,11 +1,14 @@
 use crate::error::ContractError;
 use crate::exec::admin::set_enabled;
-use crate::exec::finality::{handle_finality_signature, handle_public_randomness_commit};
+use crate::exec::finality::{
+    handle_finality_signature, handle_public_randomness_commit, handle_slashing,
+};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries::{
     query_block_voters, query_config, query_first_pub_rand_commit, query_last_pub_rand_commit,
 };
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
+use babylon_bindings::BabylonMsg;
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
@@ -16,13 +19,16 @@ pub fn instantiate(
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> StdResult<Response<BabylonMsg>> {
     let api = deps.api;
     ADMIN.set(deps.branch(), Some(api.addr_validate(&msg.admin)?))?;
     IS_ENABLED.save(deps.storage, &msg.is_enabled)?;
 
     let config = Config {
         consumer_id: msg.consumer_id,
+        babylon: msg.babylon,
+        consumer_name: msg.consumer_name,
+        consumer_description: msg.consumer_description,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -51,7 +57,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     let api = deps.api;
 
     match msg {
@@ -86,6 +92,7 @@ pub fn execute(
             &block_hash,
             &signature,
         ),
+        ExecuteMsg::Slashing { evidence } => handle_slashing(&deps, &env, &evidence),
         ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, Some(api.addr_validate(&admin)?))
@@ -109,6 +116,7 @@ pub(crate) mod tests {
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
+    pub(crate) const BABYLON: &str = "babylon";
     const NEW_ADMIN: &str = "new_admin";
 
     #[test]
@@ -116,11 +124,15 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let init_admin = deps.api.addr_make(INIT_ADMIN);
         let consumer_id = "op".to_string();
+        let babylon = deps.api.addr_make(BABYLON);
 
         // Create an InstantiateMsg with admin set to init_admin
         let msg = InstantiateMsg {
             admin: init_admin.to_string(),
             consumer_id,
+            consumer_name: None,
+            consumer_description: None,
+            babylon: babylon,
             is_enabled: true,
         };
 
@@ -145,12 +157,15 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let init_admin = deps.api.addr_make(INIT_ADMIN);
         let new_admin = deps.api.addr_make(NEW_ADMIN);
-
+        let babylon = deps.api.addr_make(BABYLON);
         // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
         let instantiate_msg = InstantiateMsg {
             admin: init_admin.to_string(), // Admin provided
             consumer_id: "op-stack-l2-11155420".to_string(),
+            babylon,
             is_enabled: true,
+            consumer_name: None,
+            consumer_description: None,
         };
 
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);

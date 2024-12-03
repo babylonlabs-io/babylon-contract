@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
 use crate::error::ContractError;
+use crate::ibc::{ibc_packet, IBC_CHANNEL};
+use crate::msg::ExecuteMsg;
 use crate::queries::query_last_pub_rand_commit;
 use crate::state::config::CONFIG;
 use crate::state::finality::{BLOCK_HASHES, BLOCK_VOTES, EVIDENCES, SIGNATURES};
@@ -12,7 +14,7 @@ use babylon_bindings::BabylonMsg;
 
 use babylon_apis::finality_api::{Evidence, PubRandCommit};
 use babylon_merkle::Proof;
-use cosmwasm_std::{Deps, DepsMut, Env, Event, Response, WasmMsg};
+use cosmwasm_std::{to_json_binary, Deps, DepsMut, Env, Event, IbcTimeout, Response, WasmMsg};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
@@ -25,7 +27,7 @@ pub fn handle_public_randomness_commit(
     num_pub_rand: u64,
     commitment: &[u8],
     signature: &[u8],
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider is registered
     check_fp_exist(deps.as_ref(), fp_pubkey_hex)?;
 
@@ -112,14 +114,14 @@ pub(crate) fn verify_commitment_signature(
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
     pub_rand: &[u8],
     proof: &Proof,
     block_hash: &[u8],
     signature: &[u8],
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
     check_fp_exist(deps.as_ref(), fp_btc_pk_hex)?;
 
@@ -210,7 +212,7 @@ pub fn handle_finality_signature(
 
         // slash this finality provider, including setting its voting power to
         // zero, extracting its BTC SK, and emit an event
-        let (msg, ev) = slash_finality_provider(&mut deps, fp_btc_pk_hex, &evidence)?;
+        let (msg, ev) = slash_finality_provider(&env, fp_btc_pk_hex, &evidence)?;
         res = res.add_message(msg);
         res = res.add_event(ev);
     }
@@ -309,7 +311,7 @@ fn check_fp_exist(deps: Deps, fp_pubkey_hex: &str) -> Result<(), ContractError> 
 /// `slash_finality_provider` slashes a finality provider with the given evidence including setting
 /// its voting power to zero, extracting its BTC SK, and emitting an event
 fn slash_finality_provider(
-    deps: &mut DepsMut,
+    env: &Env,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
 ) -> Result<(WasmMsg, Event), ContractError> {
@@ -326,15 +328,11 @@ fn slash_finality_provider(
 
     // Emit slashing event.
     // Raises slashing event to babylon over IBC.
-    // Send to babylon-contract for forwarding
-    let msg = babylon_contract::ExecuteMsg::Slashing {
+    let msg = ExecuteMsg::Slashing {
         evidence: evidence.clone(),
     };
-
-    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
-
-    let wasm_msg = WasmMsg::Execute {
-        contract_addr: babylon_addr.to_string(),
+    let wasm_msg: WasmMsg = WasmMsg::Execute {
+        contract_addr: env.contract.address.to_string(),
         msg: to_json_binary(&msg)?,
         funds: vec![],
     };
@@ -358,6 +356,37 @@ fn slash_finality_provider(
         )
         .add_attribute("secret_key", hex::encode(btc_sk.to_bytes()));
     Ok((wasm_msg, ev))
+}
+
+pub(crate) fn handle_slashing(
+    deps: &DepsMut,
+    env: &Env,
+    evidence: &Evidence,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    let mut res = Response::new();
+    // Send over IBC to the Provider (Babylon)
+    let channel = IBC_CHANNEL.load(deps.storage)?;
+    let ibc_msg = ibc_packet::slashing_msg(&env, &channel, evidence)?;
+    // Send packet only if we are IBC enabled
+    // TODO: send in test code when multi-test can handle it
+    #[cfg(not(any(test, feature = "library")))]
+    {
+        res = res.add_message(ibc_msg);
+    }
+    #[cfg(any(test, feature = "library"))]
+    {
+        let _ = ibc_msg;
+    }
+
+    // TODO: Add events
+    Ok(res)
+}
+
+const DEFAULT_TIMEOUT: u64 = 10 * 60;
+
+pub fn packet_timeout(env: &Env) -> IbcTimeout {
+    let timeout = env.block.time.plus_seconds(DEFAULT_TIMEOUT);
+    IbcTimeout::with_timestamp(timeout)
 }
 
 #[cfg(test)]

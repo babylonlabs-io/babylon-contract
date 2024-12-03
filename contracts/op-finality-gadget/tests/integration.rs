@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_json, ContractResult, Response};
+use cosmwasm_std::{from_json, Addr, ContractResult, Response};
 use cosmwasm_vm::testing::{
     execute, instantiate, mock_env, mock_info, mock_instance, query, MockApi,
 };
@@ -9,6 +9,7 @@ use op_finality_gadget::state::config::Config;
 
 static WASM: &[u8] = include_bytes!("../../../artifacts/op_finality_gadget.wasm");
 const CREATOR: &str = "creator";
+const BABYLON: &str = "babylon";
 
 #[test]
 fn instantiate_works() {
@@ -17,7 +18,10 @@ fn instantiate_works() {
     let mock_api: MockApi = MockApi::default();
     let msg = InstantiateMsg {
         admin: mock_api.addr_make(CREATOR),
+        babylon: Addr::unchecked(BABYLON),
         consumer_id: "op-stack-l2-11155420".to_string(),
+        consumer_name: None,
+        consumer_description: None,
         is_enabled: false,
     };
     let info = mock_info(CREATOR, &[]);
@@ -48,7 +52,10 @@ fn disable_and_reenable_works() {
     let mock_api = MockApi::default();
     let msg = InstantiateMsg {
         admin: mock_api.addr_make(CREATOR),
+        babylon: Addr::unchecked(BABYLON),
         consumer_id: "op-stack-l2-11155420".to_string(),
+        consumer_name: None,
+        consumer_description: None,
         is_enabled: false,
     };
     let info = mock_info(CREATOR, &[]);
@@ -107,7 +114,10 @@ fn instantiate_enabled() {
     let mock_api = MockApi::default();
     let msg = InstantiateMsg {
         admin: mock_api.addr_make(CREATOR),
+        babylon: Addr::unchecked(BABYLON),
         consumer_id: "op-stack-l2-11155420".to_string(),
+        consumer_name: None,
+        consumer_description: None,
         is_enabled: true,
     };
     let info = mock_info(CREATOR, &[]);

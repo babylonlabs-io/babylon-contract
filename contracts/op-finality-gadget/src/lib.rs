@@ -1,3 +1,4 @@
+use babylon_bindings::BabylonMsg;
 use cosmwasm_std::{
     entry_point, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
@@ -7,6 +8,7 @@ use msg::{ExecuteMsg, InstantiateMsg};
 pub mod contract;
 pub mod error;
 pub mod exec;
+pub mod ibc;
 pub mod msg;
 pub mod queries;
 pub mod state;
@@ -18,7 +20,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> StdResult<Response<BabylonMsg>> {
     contract::instantiate(deps, env, info, msg)
 }
 
@@ -33,6 +35,6 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     contract::execute(deps, env, info, msg)
 }
