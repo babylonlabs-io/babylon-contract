@@ -30,6 +30,8 @@ pub enum ContractError {
     MissingPubRandCommit(String, u64),
     #[error("{0}")]
     SecP256K1Error(String), // TODO: inherit errors from k256
+    #[error("Failed to extract secret key: {0}")]
+    SecretKeyExtractionError(String),
     #[error("{0}")]
     StdError(#[from] StdError),
     #[error("Failed to query block voters for block {0} with hash {1}. {2}")]

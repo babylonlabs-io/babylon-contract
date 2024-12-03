@@ -24,6 +24,8 @@ library = []
 [dependencies]
 babylon-apis = { path = "../../packages/apis" }
 babylon-merkle   = { path = "../../packages/merkle" }
+babylon-bindings = { path = "../../packages/bindings" }
+babylon-contract = { path = "../../packages/contract" }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }
 cw-controllers   = { workspace = true }

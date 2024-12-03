@@ -3,15 +3,16 @@ use std::collections::HashSet;
 use crate::error::ContractError;
 use crate::queries::query_last_pub_rand_commit;
 use crate::state::config::CONFIG;
-use crate::state::finality::{BLOCK_VOTES, SIGNATURES};
+use crate::state::finality::{BLOCK_HASHES, BLOCK_VOTES, EVIDENCES, SIGNATURES};
 use crate::state::public_randomness::{
     get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
 use crate::utils::query_finality_provider;
+use babylon_bindings::BabylonMsg;
 
-use babylon_apis::finality_api::PubRandCommit;
+use babylon_apis::finality_api::{Evidence, PubRandCommit};
 use babylon_merkle::Proof;
-use cosmwasm_std::{Deps, DepsMut, Env, Event, Response};
+use cosmwasm_std::{Deps, DepsMut, Env, Event, Response, WasmMsg};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
@@ -178,47 +179,45 @@ pub fn handle_finality_signature(
     // TODO?: Don't save public randomness values, to save storage space
     PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand.to_vec())?;
 
-    // TODO: Verify whether the voted block is a fork or not
-    /*
-    indexedBlock, err := ms.GetBlock(ctx, req.BlockHeight)
-    if err != nil {
-        return nil, err
-    }
-    if !bytes.Equal(indexedBlock.AppHash, req.BlockAppHash) {
-        // the finality provider votes for a fork!
+    // Build the response
+    let mut res: Response<BabylonMsg> = Response::new();
+
+    // If this finality provider has signed the canonical block before, slash it via
+    // extracting its secret key, and emit an event
+    let canonical_sig: Option<Vec<u8>> =
+        SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+    let canonical_block_hash: Option<Vec<u8>> =
+        BLOCK_HASHES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+    if let (Some(canonical_sig), Some(canonical_block_hash)) = (canonical_sig, canonical_block_hash)
+    {
+        // the finality provider has voted for a fork before!
+        // If this evidence is at the same height as this signature, slash this finality provider
 
         // construct evidence
-        evidence := &types.Evidence{
-            FpBtcPk:              req.FpBtcPk,
-            BlockHeight:          req.BlockHeight,
-            PubRand:              req.PubRand,
-            CanonicalAppHash:     indexedBlock.AppHash,
-            CanonicalFinalitySig: nil,
-            ForkAppHash:          req.BlockAppHash,
-            ForkFinalitySig:      signature,
-        }
+        let evidence = Evidence {
+            fp_btc_pk: hex::decode(fp_btc_pk_hex)?,
+            block_height: height,
+            pub_rand: pub_rand.to_vec(),
+            // TODO: we use block hash in place of app hash for now, to define new interface if needed
+            canonical_app_hash: canonical_block_hash,
+            canonical_finality_sig: canonical_sig,
+            fork_app_hash: block_hash.to_vec(),
+            fork_finality_sig: signature.to_vec(),
+        };
 
-        // if this finality provider has also signed canonical block, slash it
-        canonicalSig, err := ms.GetSig(ctx, req.BlockHeight, fpPK)
-        if err == nil {
-            //set canonical sig
-            evidence.CanonicalFinalitySig = canonicalSig
-            // slash this finality provider, including setting its voting power to
-            // zero, extracting its BTC SK, and emit an event
-            ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
-        }
+        // set canonical sig to this evidence
+        EVIDENCES.save(deps.storage, (height, fp_btc_pk_hex), &evidence)?;
 
-        // save evidence
-        ms.SetEvidence(ctx, evidence)
-
-        // NOTE: we should NOT return error here, otherwise the state change triggered in this tx
-        // (including the evidence) will be rolled back
-        return &types.MsgAddFinalitySigResponse{}, nil
+        // slash this finality provider, including setting its voting power to
+        // zero, extracting its BTC SK, and emit an event
+        let (msg, ev) = slash_finality_provider(&mut deps, fp_btc_pk_hex, &evidence)?;
+        res = res.add_message(msg);
+        res = res.add_event(ev);
     }
-    */
 
     // This signature is good, save the vote to the store
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
+    BLOCK_HASHES.save(deps.storage, (height, fp_btc_pk_hex), &block_hash.to_vec())?;
 
     // Check if the key (height, block_hash) exists
     let mut block_votes_fp_set = BLOCK_VOTES
@@ -231,35 +230,14 @@ pub fn handle_finality_signature(
     // Save the updated set back to storage
     BLOCK_VOTES.save(deps.storage, (height, block_hash), &block_votes_fp_set)?;
 
-    // TODO: If this finality provider has signed the canonical block before, slash it via
-    // extracting its secret key, and emit an event
-    /*
-    if ms.HasEvidence(ctx, req.FpBtcPk, req.BlockHeight) {
-        // the finality provider has voted for a fork before!
-        // If this evidence is at the same height as this signature, slash this finality provider
-
-        // get evidence
-        evidence, err := ms.GetEvidence(ctx, req.FpBtcPk, req.BlockHeight)
-        if err != nil {
-            panic(fmt.Errorf("failed to get evidence despite HasEvidence returns true"))
-        }
-
-        // set canonical sig to this evidence
-        evidence.CanonicalFinalitySig = signature
-        ms.SetEvidence(ctx, evidence)
-
-        // slash this finality provider, including setting its voting power to
-        // zero, extracting its BTC SK, and emit an event
-        ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
-    }
-    */
-
     let event = Event::new("submit_finality_signature")
         .add_attribute("fp_pubkey_hex", fp_btc_pk_hex)
         .add_attribute("block_height", height.to_string())
         .add_attribute("block_hash", hex::encode(block_hash));
 
-    Ok(Response::new().add_event(event))
+    res = res.add_event(event);
+
+    Ok(res)
 }
 
 /// Verifies the finality signature message w.r.t. the public randomness commitment:
@@ -326,6 +304,60 @@ fn check_fp_exist(deps: Deps, fp_pubkey_hex: &str) -> Result<(), ContractError> 
             fp_pubkey_hex.to_string(),
         )),
     }
+}
+
+/// `slash_finality_provider` slashes a finality provider with the given evidence including setting
+/// its voting power to zero, extracting its BTC SK, and emitting an event
+fn slash_finality_provider(
+    deps: &mut DepsMut,
+    fp_btc_pk_hex: &str,
+    evidence: &Evidence,
+) -> Result<(WasmMsg, Event), ContractError> {
+    let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
+    let btc_sk = pk
+        .extract_secret_key(
+            &evidence.pub_rand,
+            &evidence.canonical_app_hash,
+            &evidence.canonical_finality_sig,
+            &evidence.fork_app_hash,
+            &evidence.fork_finality_sig,
+        )
+        .map_err(|err| ContractError::SecretKeyExtractionError(err.to_string()))?;
+
+    // Emit slashing event.
+    // Raises slashing event to babylon over IBC.
+    // Send to babylon-contract for forwarding
+    let msg = babylon_contract::ExecuteMsg::Slashing {
+        evidence: evidence.clone(),
+    };
+
+    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
+
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: babylon_addr.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+
+    let ev = Event::new("slashed_finality_provider")
+        .add_attribute("module", "finality")
+        .add_attribute("finality_provider", fp_btc_pk_hex)
+        .add_attribute("block_height", evidence.block_height.to_string())
+        .add_attribute(
+            "canonical_app_hash",
+            hex::encode(&evidence.canonical_app_hash),
+        )
+        .add_attribute(
+            "canonical_finality_sig",
+            hex::encode(&evidence.canonical_finality_sig),
+        )
+        .add_attribute("fork_app_hash", hex::encode(&evidence.fork_app_hash))
+        .add_attribute(
+            "fork_finality_sig",
+            hex::encode(&evidence.fork_finality_sig),
+        )
+        .add_attribute("secret_key", hex::encode(btc_sk.to_bytes()));
+    Ok((wasm_msg, ev))
 }
 
 #[cfg(test)]
