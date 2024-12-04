@@ -1,8 +1,5 @@
 use anybuf::{Anybuf, Bufany};
-use cosmwasm_std::{
-    to_json_vec, Binary, ContractResult, Deps, GrpcQuery, QueryRequest, StdError, StdResult,
-    SystemResult,
-};
+use cosmwasm_std::{Binary, Deps, StdResult};
 
 /// FinalityProviderResponse defines a finality provider with voting power information.
 pub struct FinalityProviderResponse {
@@ -32,8 +29,7 @@ pub fn query_finality_provider(
         .append_string(2, fp_btc_pk_hex.clone())
         .into_vec();
 
-    let res_data: Binary = query_grpc(
-        deps,
+    let res_data: Binary = deps.querier.query_grpc(
         "/babylon.btcstkconsumer.v1.Query/FinalityProvider".to_string(),
         Binary::new(query_data),
     )?;
@@ -52,30 +48,4 @@ pub fn query_finality_provider(
     };
 
     Ok(res)
-}
-
-/// TODO: query_grpc need to be replaced with cosmwasm::std::QuerierWrapper.query_grpc
-/// copy from the cosmwasm
-/// See [`GrpcQuery`](crate::GrpcQuery) for more information.
-pub fn query_grpc(deps: Deps, path: String, data: Binary) -> StdResult<Binary> {
-    query_raw(deps, &QueryRequest::Grpc(GrpcQuery { path, data }))
-}
-
-/// copy from the cosmwasm
-/// Internal helper to avoid code duplication.
-/// Performs a query and returns the binary result without deserializing it,
-/// wrapping any errors that may occur into `StdError`.
-fn query_raw(deps: Deps, request: &QueryRequest<GrpcQuery>) -> StdResult<Binary> {
-    let raw = to_json_vec(request).map_err(|serialize_err| {
-        StdError::generic_err(format!("Serializing QueryRequest: {serialize_err}"))
-    })?;
-    match deps.querier.raw_query(&raw) {
-        SystemResult::Err(system_err) => Err(StdError::generic_err(format!(
-            "Querier system error: {system_err}"
-        ))),
-        SystemResult::Ok(ContractResult::Err(contract_err)) => Err(StdError::generic_err(format!(
-            "Querier contract error: {contract_err}"
-        ))),
-        SystemResult::Ok(ContractResult::Ok(value)) => Ok(value),
-    }
 }
