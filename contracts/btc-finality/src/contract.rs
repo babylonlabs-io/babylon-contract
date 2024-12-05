@@ -13,7 +13,8 @@ use btc_staking::msg::ActivatedHeightResponse;
 
 use crate::error::ContractError;
 use crate::finality::{
-    compute_active_finality_providers, handle_finality_signature, handle_public_randomness_commit,
+    compute_active_finality_providers, distribute_rewards, handle_finality_signature,
+    handle_public_randomness_commit,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
@@ -222,6 +223,9 @@ fn handle_update_staking(
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
+    // Distribute rewards of the previous block
+    distribute_rewards(deps, env.block.height - 1)?;
+
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
     compute_active_finality_providers(deps, env, max_active_fps)?;
