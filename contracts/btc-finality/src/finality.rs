@@ -1,7 +1,7 @@
 use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{Config, CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES, TOTAL_POWER};
+use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
@@ -603,8 +603,6 @@ pub fn compute_active_finality_providers(
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
     FP_SET.save(deps.storage, env.block.height, &finality_providers)?;
-    // Save the total voting power of the top n finality providers
-    TOTAL_POWER.save(deps.storage, &total_power)?;
 
     Ok(())
 }
