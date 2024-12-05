@@ -15,9 +15,5 @@ pub const NEXT_HEIGHT: Item<u64> = Item::new("next_height");
 /// `FP_SET` is the calculated list of the active finality providers by height
 pub const FP_SET: Map<u64, Vec<FinalityProviderInfo>> = Map::new("fp_set");
 
-/// `TOTAL_POWER` is the total power of all finality providers
-// FIXME: Store by height? Remove? Not currently being used in the contract
-pub const TOTAL_POWER: Item<u64> = Item::new("total_power");
-
 /// Map of double signing evidence by FP and block height
 pub const EVIDENCES: Map<(&str, u64), Evidence> = Map::new("evidences");
