@@ -37,7 +37,6 @@ mod instantiation {
 mod finality {
     use super::*;
 
-    use crate::msg::FinalitySignatureResponse;
     use babylon_apis::finality_api::IndexedBlock;
     use test_utils::get_public_randomness_commitment;
 
@@ -150,14 +149,10 @@ mod finality {
             )
             .unwrap();
 
-        // Query finality signature for that exact height
-        let sig = suite.get_finality_signature(&pk_hex, initial_height + 1);
-        assert_eq!(
-            sig,
-            FinalitySignatureResponse {
-                signature: finality_sig
-            }
-        );
+        // Query finality vote for that exact height
+        let sig = suite.get_finality_vote(&pk_hex, initial_height + 1);
+        // Assert the vote signature is correct
+        assert_eq!(sig.signature, finality_sig);
     }
 
     #[test]

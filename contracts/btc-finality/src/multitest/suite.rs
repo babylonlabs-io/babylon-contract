@@ -15,7 +15,7 @@ use babylon_bitcoin::chain_params::Network;
 
 use btc_staking::msg::{ActivatedHeightResponse, FinalityProviderInfo};
 
-use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
+use crate::msg::{EvidenceResponse, FinalityVoteResponse};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 
 fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
@@ -219,12 +219,12 @@ impl Suite {
     }
 
     #[track_caller]
-    pub fn get_finality_signature(&self, pk_hex: &str, height: u64) -> FinalitySignatureResponse {
+    pub fn get_finality_vote(&self, pk_hex: &str, height: u64) -> FinalityVoteResponse {
         self.app
             .wrap()
             .query_wasm_smart(
                 self.finality.clone(),
-                &crate::msg::QueryMsg::FinalitySignature {
+                &crate::msg::QueryMsg::FinalityVote {
                     btc_pk_hex: pk_hex.to_string(),
                     height,
                 },

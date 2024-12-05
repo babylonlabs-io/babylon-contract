@@ -91,8 +91,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
         QueryMsg::Params {} => Ok(to_json_binary(&queries::params(deps)?)?),
         QueryMsg::Admin {} => to_json_binary(&ADMIN.query_admin(deps)?).map_err(Into::into),
-        QueryMsg::FinalitySignature { btc_pk_hex, height } => Ok(to_json_binary(
-            &queries::finality_signature(deps, btc_pk_hex, height)?,
+        QueryMsg::FinalityVote { btc_pk_hex, height } => Ok(to_json_binary(
+            &queries::finality_vote(deps, btc_pk_hex, height)?,
         )?),
         QueryMsg::PubRandCommit {
             btc_pk_hex,

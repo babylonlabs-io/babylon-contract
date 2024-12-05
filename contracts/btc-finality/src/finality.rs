@@ -1,7 +1,8 @@
 use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{Config, CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES};
+use crate::state::finality;
+use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, VOTES};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
@@ -192,9 +193,9 @@ pub fn handle_finality_signature(
         return Err(ContractError::HeightTooHigh);
     }
     // Ensure the finality provider has not cast the same vote yet
-    let existing_sig = SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
-    match existing_sig {
-        Some(existing_sig) if existing_sig == signature => {
+    let existing_vote = VOTES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+    match existing_vote {
+        Some(existing_vote) if existing_vote.signature == signature => {
             deps.api.debug(&format!("Received duplicated finality vote. Height: {height}, Finality Provider: {fp_btc_pk_hex}"));
             // Exactly the same vote already exists, return success to the provider
             return Ok(Response::new());
@@ -242,10 +243,10 @@ pub fn handle_finality_signature(
         };
 
         // If this finality provider has also signed the canonical block, slash it
-        let canonical_sig = SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
-        if let Some(canonical_sig) = canonical_sig {
+        let canonical_vote = VOTES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+        if let Some(canonical_vote) = canonical_vote {
             // Set canonical sig
-            evidence.canonical_finality_sig = canonical_sig;
+            evidence.canonical_finality_sig = canonical_vote.signature;
             // Slash this finality provider, including setting its voting power to zero, extracting
             // its BTC SK, and emitting an event
             let (msg, ev) = slash_finality_provider(&mut deps, fp_btc_pk_hex, &evidence)?;
@@ -263,7 +264,14 @@ pub fn handle_finality_signature(
     }
 
     // This signature is good, save the vote to the store
-    SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
+    VOTES.save(
+        deps.storage,
+        (height, fp_btc_pk_hex),
+        &finality::Vote {
+            signature: signature.to_vec(),
+            voting_power: fp.power,
+        },
+    )?;
 
     // If this finality provider has signed the canonical block before, slash it via extracting its
     // secret key, and emit an event
@@ -430,7 +438,7 @@ pub fn tally_blocks(
     // Find all blocks that are non-finalised AND have a finality provider set since
     // max(activated_height, last_finalized_height + 1)
     // There are 4 different scenarios:
-    // - Has finality providers, non-finalised: Tally and try to finalise.
+    // - Has finality providers, non-finalised: Tally and try to finalise the block
     // - Does not have finality providers, non-finalised: Non-finalisable, continue.
     // - Has finality providers, finalised: Impossible, panic.
     // - Does not have finality providers, finalised: Impossible, panic.
@@ -446,7 +454,7 @@ pub fn tally_blocks(
         match (fp_set, indexed_block.finalized) {
             (Some(fp_set), false) => {
                 // Has finality providers, non-finalised: tally and try to finalise the block
-                let voter_btc_pks = SIGNATURES
+                let voter_btc_pks = VOTES
                     .prefix(indexed_block.height)
                     .keys(deps.storage, None, None, Ascending)
                     .collect::<StdResult<Vec<_>>>()?;
@@ -514,8 +522,7 @@ fn tally(fp_set: &[FinalityProviderInfo], voters: &[String]) -> bool {
     voted_power * 3 > total_power * 2
 }
 
-/// `finalize_block` sets a block to be finalised, and distributes rewards to finality providers
-/// and delegators
+/// `finalize_block` sets a block to be finalised
 fn finalize_block(
     store: &mut dyn Storage,
     block: &mut IndexedBlock,
@@ -527,8 +534,6 @@ fn finalize_block(
 
     // Set the next height to finalise as height+1
     NEXT_HEIGHT.save(store, &(block.height + 1))?;
-
-    // TODO: Distribute rewards to BTC staking delegators
 
     // Record the last finalized height metric
     let ev = Event::new("finalize_block")
