@@ -2,7 +2,9 @@ use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{Config, CONFIG, PARAMS};
 use crate::state::finality;
-use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, VOTES};
+use crate::state::finality::{
+    BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, REWARDS, TOTAL_REWARDS, VOTES,
+};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
@@ -14,7 +16,7 @@ use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, QuerierWrapper, Response, StdResult,
-    Storage, WasmMsg,
+    Storage, Uint128, WasmMsg,
 };
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
@@ -624,4 +626,36 @@ pub fn list_fps_by_power(
     )?;
     let res: FinalityProvidersByPowerResponse = querier.query(&query)?;
     Ok(res.fps)
+}
+
+/// `distribute_rewards` distributes rewards to finality providers who have voted for a block at `height`
+pub fn distribute_rewards(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
+    let voting_fps = VOTES
+        .prefix(height)
+        .range(deps.storage, None, None, Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    // Get the total voting power of the voting FPS
+    let total_voting_power = voting_fps
+        .iter()
+        .map(|(_, vote)| vote.voting_power as u128)
+        .sum::<u128>();
+    // Get the rewards to distribute (bank balance of the staking contract)
+    let cfg = CONFIG.load(deps.storage)?;
+    let rewards_amount = deps.querier.query_balance(cfg.staking, cfg.denom)?.amount;
+    // Compute the rewards for each voting FP
+    let mut total_rewards = Uint128::zero();
+    for (fp_btc_pk_hex, vote) in voting_fps {
+        let reward = (Decimal::from_ratio(vote.voting_power as u128, total_voting_power)
+            * Decimal::from_ratio(rewards_amount, 1u128))
+        .to_uint_floor();
+        // Update the rewards for this FP
+        REWARDS.update(deps.storage, &fp_btc_pk_hex, |r| {
+            Ok::<Uint128, ContractError>(r.unwrap_or_default() + reward)
+        })?;
+        // Compute the total rewards
+        total_rewards += reward;
+    }
+    // Update the total rewards
+    TOTAL_REWARDS.save(deps.storage, &total_rewards)?;
+    Ok(())
 }

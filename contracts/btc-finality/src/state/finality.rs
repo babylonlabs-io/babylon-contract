@@ -1,4 +1,5 @@
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::Uint128;
 use cw_storage_plus::{Item, Map};
 
 use babylon_apis::finality_api::{Evidence, IndexedBlock};
@@ -25,3 +26,9 @@ pub const FP_SET: Map<u64, Vec<FinalityProviderInfo>> = Map::new("fp_set");
 
 /// Map of double signing evidence by FP and block height
 pub const EVIDENCES: Map<(&str, u64), Evidence> = Map::new("evidences");
+
+/// Map of pending finality provider rewards
+pub const REWARDS: Map<&str, Uint128> = Map::new("rewards");
+
+/// Total pending rewards
+pub const TOTAL_REWARDS: Item<Uint128> = Item::new("total_rewards");
