@@ -269,6 +269,9 @@ pub fn execute(
             // TODO: Add events
             Ok(res)
         }
+        ExecuteMsg::SendRewards { .. } => {
+            todo!()
+        }
     }
 }
 
