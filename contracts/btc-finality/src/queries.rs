@@ -5,10 +5,10 @@ use cw_storage_plus::Bound;
 use babylon_apis::finality_api::IndexedBlock;
 
 use crate::error::ContractError;
-use crate::msg::{BlocksResponse, EvidenceResponse, FinalitySignatureResponse};
+use crate::msg::{BlocksResponse, EvidenceResponse, FinalityVoteResponse};
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES, SIGNATURES};
+use crate::state::finality::{BLOCKS, EVIDENCES, VOTES};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -22,15 +22,19 @@ pub fn params(deps: Deps) -> StdResult<Params> {
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub fn finality_signature(
+pub fn finality_vote(
     deps: Deps,
     btc_pk_hex: String,
     height: u64,
-) -> StdResult<FinalitySignatureResponse> {
-    match SIGNATURES.may_load(deps.storage, (height, &btc_pk_hex))? {
-        Some(sig) => Ok(FinalitySignatureResponse { signature: sig }),
-        None => Ok(FinalitySignatureResponse {
+) -> StdResult<FinalityVoteResponse> {
+    match VOTES.may_load(deps.storage, (height, &btc_pk_hex))? {
+        Some(sig) => Ok(FinalityVoteResponse {
+            signature: sig.signature,
+            voting_power: sig.voting_power,
+        }),
+        None => Ok(FinalityVoteResponse {
             signature: Vec::new(),
+            voting_power: 0,
         }), // Empty signature response
     }
 }
