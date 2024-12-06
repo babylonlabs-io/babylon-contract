@@ -1,9 +1,12 @@
 use babylon_apis::finality_api::SudoMsg;
+use babylon_bindings::babylon_sdk::{
+    get_babylon_sdk_params, QueryParamsResponse, QUERY_PARAMS_PATH,
+};
 use babylon_bindings::BabylonMsg;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_json_binary, Addr, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
+    attr, to_json_binary, Addr, Binary, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
     QuerierWrapper, QueryRequest, QueryResponse, Reply, Response, StdResult, WasmQuery,
 };
 use cw2::set_contract_version;
@@ -37,8 +40,6 @@ pub fn instantiate(
     let config = Config {
         denom,
         blocks_per_year,
-        babylon: info.sender,
-        staking: Addr::unchecked("UNSET"), // To be set later, through `UpdateStaking`
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -206,12 +207,17 @@ fn handle_update_staking(
     info: MessageInfo,
     staking_addr: String,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    let mut cfg = CONFIG.load(deps.storage)?;
-    if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+    let params = deps
+        .querier
+        .query_grpc(QUERY_PARAMS_PATH.to_owned(), Binary::new("".into()))?;
+    let params = QueryParamsResponse::from(params).params;
+
+    // ensure the sender is the Babylon contract
+    if info.sender != params.babylon_contract_address
+        && !ADMIN.is_admin(deps.as_ref(), &info.sender)?
+    {
         return Err(ContractError::Unauthorized {});
     }
-    cfg.staking = deps.api.addr_validate(&staking_addr)?;
-    CONFIG.save(deps.storage, &cfg)?;
 
     let attributes = vec![
         attr("action", "update_btc_staking"),
@@ -239,7 +245,7 @@ fn handle_end_block(
     // finality provider has voting power, start indexing and tallying blocks
     let cfg = CONFIG.load(deps.storage)?;
     let mut res = Response::new();
-    let activated_height = get_activated_height(&cfg.staking, &deps.querier)?;
+    let activated_height = get_activated_height(&deps.querier)?;
     if activated_height > 0 {
         // Index the current block
         let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
@@ -254,10 +260,12 @@ fn handle_end_block(
     Ok(res)
 }
 
-pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
+pub fn get_activated_height(querier: &QuerierWrapper) -> StdResult<u64> {
+    let params = get_babylon_sdk_params(querier)?;
+
     // TODO: Use a raw query
     let query = encode_smart_query(
-        staking_addr,
+        &params.btc_staking_contract_address,
         &btc_staking::msg::QueryMsg::ActivatedHeight {},
     )?;
     let res: ActivatedHeightResponse = querier.query(&query)?;

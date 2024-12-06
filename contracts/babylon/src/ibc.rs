@@ -162,7 +162,9 @@ pub(crate) mod ibc_packet {
         ActiveBtcDelegation, NewFinalityProvider, UnbondedBtcDelegation,
     };
     use babylon_apis::finality_api::Evidence;
-    use babylon_bindings::babylon_sdk::{QueryParamsResponse, QUERY_PARAMS_PATH};
+    use babylon_bindings::babylon_sdk::{
+        get_babylon_sdk_params, QueryParamsResponse, QUERY_PARAMS_PATH,
+    };
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
     use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
@@ -202,10 +204,7 @@ pub(crate) mod ibc_packet {
         _caller: String,
         btc_staking: &BtcStakingIbcPacket,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let params = deps
-            .querier
-            .query_grpc(QUERY_PARAMS_PATH.to_owned(), Binary::new("".into()))?;
-        let params = QueryParamsResponse::from(params).params;
+        let params = get_babylon_sdk_params(&deps.querier)?;
 
         // Route the packet to the btc-staking contract
         let btc_staking_addr = params.btc_staking_contract_address;

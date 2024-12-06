@@ -1,4 +1,6 @@
-use babylon_bindings::babylon_sdk::{QueryParamsResponse, QUERY_PARAMS_PATH};
+use babylon_bindings::babylon_sdk::{
+    get_babylon_sdk_params, QueryParamsResponse, QUERY_PARAMS_PATH,
+};
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
     Response, SubMsg, SubMsgResponse, WasmMsg,
@@ -136,10 +138,7 @@ pub fn execute(
         }
         ExecuteMsg::Slashing { evidence } => {
             // Check sender
-            let params = deps
-                .querier
-                .query_grpc(QUERY_PARAMS_PATH.to_owned(), Binary::new("".into()))?;
-            let params = QueryParamsResponse::from(params).params;
+            let params = get_babylon_sdk_params(&deps.querier)?;
             let btc_finality = params.btc_finality_contract_address;
             if info.sender != btc_finality {
                 return Err(ContractError::Unauthorized {});

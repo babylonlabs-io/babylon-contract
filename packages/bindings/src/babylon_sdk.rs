@@ -1,6 +1,6 @@
 use anybuf::Bufany;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::{Addr, Binary, QuerierWrapper, StdError, StdResult};
 
 pub const QUERY_PARAMS_PATH: &str = "/babylonlabs/babylon/v1beta1/params";
 
@@ -44,4 +44,10 @@ impl From<Binary> for QueryParamsResponse {
             },
         }
     }
+}
+
+pub fn get_babylon_sdk_params(querier: &QuerierWrapper) -> Result<Params, StdError> {
+    let params = querier.query_grpc(QUERY_PARAMS_PATH.to_owned(), Binary::new("".into()))?;
+    let params = QueryParamsResponse::from(params).params;
+    Ok(params)
 }
