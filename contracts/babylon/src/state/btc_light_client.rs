@@ -356,8 +356,6 @@ pub(crate) mod tests {
             btc_confirmation_depth: 1,
             checkpoint_finalization_timeout: w,
             notify_cosmos_zone: false,
-            btc_staking: None,
-            btc_finality: None,
             consumer_name: None,
             consumer_description: None,
         };

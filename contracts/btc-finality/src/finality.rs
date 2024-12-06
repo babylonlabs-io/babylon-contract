@@ -7,6 +7,7 @@ use crate::state::public_randomness::{
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_bindings::babylon_sdk::get_babylon_sdk_params;
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
 use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
@@ -37,12 +38,14 @@ pub fn handle_public_randomness_commit(
     }
     // TODO: ensure log_2(num_pub_rand) is an integer?
 
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     // Ensure the finality provider is registered
     // TODO: Use a raw query for performance and cost
     let _fp: FinalityProvider = deps
         .querier
         .query_wasm_smart(
-            CONFIG.load(deps.storage)?.staking,
+            &params.btc_staking_contract_address,
             &btc_staking::msg::QueryMsg::FinalityProvider {
                 btc_pk_hex: fp_pubkey_hex.to_string(),
             },
@@ -132,10 +135,11 @@ pub fn handle_finality_signature(
     block_app_hash: &[u8],
     signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     // Ensure the finality provider exists
-    let staking_addr = CONFIG.load(deps.storage)?.staking;
     let fp: FinalityProvider = deps.querier.query_wasm_smart(
-        staking_addr.clone(),
+        &params.btc_staking_contract_address,
         &btc_staking::msg::QueryMsg::FinalityProvider {
             btc_pk_hex: fp_btc_pk_hex.to_string(),
         },
@@ -169,7 +173,7 @@ pub fn handle_finality_signature(
     let fp: FinalityProviderInfo = deps
         .querier
         .query_wasm_smart(
-            staking_addr.clone(),
+            &params.btc_staking_contract_address,
             &btc_staking::msg::QueryMsg::FinalityProviderInfo {
                 btc_pk_hex: fp_btc_pk_hex.to_string(),
                 height: Some(height),
@@ -310,7 +314,8 @@ fn slash_finality_provider(
         evidence: evidence.clone(),
     };
 
-    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
+    let params = get_babylon_sdk_params(&deps.querier)?;
+    let babylon_addr = &params.babylon_contract_address;
 
     let wasm_msg = WasmMsg::Execute {
         contract_addr: babylon_addr.to_string(),
@@ -483,6 +488,8 @@ pub fn tally_blocks(
         }
     }
 
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     // Compute block rewards for finalized blocks
     let msg = if finalized_blocks > 0 {
         let cfg = CONFIG.load(deps.storage)?;
@@ -490,7 +497,7 @@ pub fn tally_blocks(
         // Assemble mint message
         let mint_msg = BabylonMsg::MintRewards {
             amount: rewards,
-            recipient: cfg.staking.into(),
+            recipient: params.btc_staking_contract_address.into(),
         };
         Some(mint_msg)
     } else {
@@ -571,9 +578,16 @@ pub fn compute_active_finality_providers(
     env: Env,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     let cfg = CONFIG.load(deps.storage)?;
     // Get all finality providers from the staking contract, filtered
-    let mut batch = list_fps_by_power(&cfg.staking, &deps.querier, None, QUERY_LIMIT)?;
+    let mut batch = list_fps_by_power(
+        &params.btc_staking_contract_address,
+        &deps.querier,
+        None,
+        QUERY_LIMIT,
+    )?;
 
     let mut finality_providers = vec![];
     let mut total_power: u64 = 0;
@@ -595,7 +609,12 @@ pub fn compute_active_finality_providers(
         total_power = running_total.last().copied().unwrap_or_default();
 
         // and get the next page
-        batch = list_fps_by_power(&cfg.staking, &deps.querier, last, QUERY_LIMIT)?;
+        batch = list_fps_by_power(
+            &params.btc_staking_contract_address,
+            &deps.querier,
+            last,
+            QUERY_LIMIT,
+        )?;
     }
 
     // TODO: Online FPs verification

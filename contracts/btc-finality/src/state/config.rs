@@ -17,8 +17,6 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 pub struct Config {
     pub denom: String,
     pub blocks_per_year: u64,
-    pub babylon: Addr,
-    pub staking: Addr,
 }
 
 // TODO: Add / enable param entries as needed

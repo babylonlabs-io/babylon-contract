@@ -1,5 +1,4 @@
 use crate::msg::contract::{InstantiateMsg, QueryMsg};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 use crate::state::config::Config;
 use anyhow::Result as AnyResult;
 use babylon_bindings::BabylonMsg;
@@ -29,7 +28,6 @@ fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
 
 fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(crate::execute, crate::instantiate, crate::query)
-        .with_reply(crate::reply)
         .with_migrate(crate::migrate);
     Box::new(contract)
 }
@@ -61,12 +59,9 @@ impl SuiteBuilder {
         app.init_modules(|_router, _api, _storage| -> AnyResult<()> { Ok(()) })
             .unwrap();
 
-        let btc_staking_code_id =
-            app.store_code_with_creator(owner.clone(), contract_btc_staking());
-        let btc_finality_code_id =
-            app.store_code_with_creator(owner.clone(), contract_btc_finality());
+        // Store and instantiate the Babylon contract
         let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
-        let contract = app
+        let babylon_contract = app
             .instantiate_contract(
                 contract_code_id,
                 owner.clone(),
@@ -76,10 +71,6 @@ impl SuiteBuilder {
                     btc_confirmation_depth: 1,
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
-                    btc_staking_code_id: Some(btc_staking_code_id),
-                    btc_staking_msg: None,
-                    btc_finality_code_id: Some(btc_finality_code_id),
-                    btc_finality_msg: None,
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
@@ -90,10 +81,44 @@ impl SuiteBuilder {
             )
             .unwrap();
 
+        let btc_staking_code_id =
+            app.store_code_with_creator(owner.clone(), contract_btc_staking());
+        let btc_staking_contract = app
+            .instantiate_contract(
+                btc_staking_code_id,
+                owner.clone(),
+                &btc_staking::msg::InstantiateMsg {
+                    admin: None,
+                    params: None,
+                },
+                &[],
+                "btc-staking",
+                Some(owner.to_string()),
+            )
+            .unwrap();
+
+        let btc_finality_code_id =
+            app.store_code_with_creator(owner.clone(), contract_btc_finality());
+        let btc_finality_contract = app
+            .instantiate_contract(
+                btc_finality_code_id,
+                owner.clone(),
+                &btc_finality::msg::InstantiateMsg {
+                    admin: None,
+                    params: None,
+                },
+                &[],
+                "btc-finality",
+                Some(owner.to_string()),
+            )
+            .unwrap();
+
         Suite {
             app,
             code_id: contract_code_id,
-            contract,
+            babylon_contract: babylon_contract,
+            btc_staking_contract: btc_staking_contract,
+            btc_finality_contract: btc_finality_contract,
             owner,
         }
     }
@@ -107,7 +132,11 @@ pub struct Suite {
     /// The code id of the babylon contract
     code_id: u64,
     /// Babylon contract address
-    pub contract: Addr,
+    pub babylon_contract: Addr,
+    /// BTC staking contract address
+    pub btc_staking_contract: Addr,
+    /// BTC finality contract address
+    pub btc_finality_contract: Addr,
     /// Admin of babylon and btc-staking contracts
     pub owner: Addr,
 }
@@ -121,7 +150,7 @@ impl Suite {
     pub fn get_config(&self) -> Config {
         self.app
             .wrap()
-            .query_wasm_smart(self.contract.clone(), &QueryMsg::Config {})
+            .query_wasm_smart(self.babylon_contract.clone(), &QueryMsg::Config {})
             .unwrap()
     }
 
@@ -129,7 +158,10 @@ impl Suite {
     pub fn get_btc_staking_config(&self) -> btc_staking::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(CONTRACT1_ADDR, &btc_staking::msg::QueryMsg::Config {})
+            .query_wasm_smart(
+                self.btc_staking_contract.clone(),
+                &btc_staking::msg::QueryMsg::Config {},
+            )
             .unwrap()
     }
 
@@ -137,14 +169,17 @@ impl Suite {
     pub fn get_btc_finality_config(&self) -> btc_finality::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(CONTRACT2_ADDR, &btc_finality::msg::QueryMsg::Config {})
+            .query_wasm_smart(
+                self.btc_finality_contract.clone(),
+                &btc_finality::msg::QueryMsg::Config {},
+            )
             .unwrap()
     }
 
     pub fn migrate(&mut self, addr: &str, msg: Empty) -> AnyResult<AppResponse> {
         self.app.migrate_contract(
             Addr::unchecked(addr),
-            self.contract.clone(),
+            self.babylon_contract.clone(),
             &msg,
             self.code_id,
         )

@@ -95,16 +95,6 @@ impl SuiteBuilder {
                     btc_confirmation_depth: 1,
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
-                    btc_staking_code_id: Some(btc_staking_code_id),
-                    btc_staking_msg: Some(
-                        to_json_binary(&btc_staking::msg::InstantiateMsg {
-                            params: Some(staking_params),
-                            admin: None,
-                        })
-                        .unwrap(),
-                    ),
-                    btc_finality_code_id: Some(btc_finality_code_id),
-                    btc_finality_msg: None,
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),

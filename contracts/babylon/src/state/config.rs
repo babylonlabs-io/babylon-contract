@@ -15,10 +15,6 @@ pub struct Config {
     /// NOTE: if set to true, then the Cosmos zone needs to integrate the corresponding message
     /// handler as well
     pub notify_cosmos_zone: bool,
-    /// If set, this stores a BTC staking contract used for BTC re-staking
-    pub btc_staking: Option<Addr>,
-    /// If set, this stores a BTC finality contract used for BTC finality on the Consumer
-    pub btc_finality: Option<Addr>,
     /// Consumer name
     pub consumer_name: Option<String>,
     /// Consumer description
