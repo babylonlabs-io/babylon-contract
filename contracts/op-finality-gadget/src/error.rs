@@ -18,6 +18,16 @@ pub enum ContractError {
     HexError(#[from] FromHexError),
     #[error("The inclusion proof for height {0} does not correspond to the given height ({1})")]
     InvalidFinalitySigHeight(u64, u64),
+    #[error("Contract already has an open IBC channel")]
+    IbcChannelAlreadyOpen {},
+    #[error("The contract only supports ordered channels")]
+    IbcUnorderedChannel {},
+    #[error("Counterparty version must be `{version}`")]
+    IbcInvalidCounterPartyVersion { version: String },
+    #[error("IBC method is not supported")]
+    IbcUnsupportedMethod {},
+    #[error("IBC send timed out: dest: channel {0}, port {1}")]
+    IbcTimeout(String, String),
     #[error("The total amount of public randomnesses in the proof ({0}) does not match the amount of public committed randomness ({1})")]
     InvalidFinalitySigAmount(u64, u64),
     #[error("The start height ({0}) has overlap with the height of the highest public randomness committed ({1})")]
@@ -30,6 +40,8 @@ pub enum ContractError {
     MissingPubRandCommit(String, u64),
     #[error("{0}")]
     SecP256K1Error(String), // TODO: inherit errors from k256
+    #[error("Failed to extract secret key: {0}")]
+    SecretKeyExtractionError(String),
     #[error("{0}")]
     StdError(#[from] StdError),
     #[error("Failed to query block voters for block {0} with hash {1}. {2}")]

@@ -1,3 +1,4 @@
+use babylon_bindings::BabylonMsg;
 use cosmwasm_std::{DepsMut, MessageInfo, Response};
 
 use crate::{
@@ -14,7 +15,7 @@ pub fn set_enabled(
     deps: DepsMut,
     info: MessageInfo,
     enabled: bool,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Check caller is admin
     check_admin(&deps, info)?;
     // Check if the finality gadget is already in the desired state

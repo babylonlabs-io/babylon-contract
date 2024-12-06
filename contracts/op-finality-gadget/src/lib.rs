@@ -1,3 +1,4 @@
+use babylon_bindings::BabylonMsg;
 use cosmwasm_std::{
     entry_point, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
@@ -18,7 +19,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> StdResult<Response<BabylonMsg>> {
     contract::instantiate(deps, env, info, msg)
 }
 
@@ -33,6 +34,6 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     contract::execute(deps, env, info, msg)
 }

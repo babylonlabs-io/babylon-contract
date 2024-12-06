@@ -92,6 +92,10 @@ impl Module for BabylonModule {
                 // FIXME? We don't do anything here
                 Ok(AppResponse::default())
             }
+            BabylonMsg::EquivocationEvidence { .. } => {
+                // FIXME? We don't do anything here
+                Ok(AppResponse::default())
+            }
         }
     }
 
