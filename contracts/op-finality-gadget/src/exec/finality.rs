@@ -13,7 +13,6 @@ use babylon_bindings::BabylonMsg;
 
 use babylon_apis::finality_api::{Evidence, PubRandCommit};
 use babylon_merkle::Proof;
-use babylon_proto::babylon::btcstaking::v1 as btcstakingtypes;
 use cosmwasm_std::{to_json_binary, Deps, DepsMut, Env, Event, Response, WasmMsg};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
@@ -362,7 +361,11 @@ pub(crate) fn handle_slashing(evidence: &Evidence) -> Result<Response<BabylonMsg
     let mut res = Response::new();
     // Send msg to Babylon
 
-    let msg: BabylonMsg = btcstakingtypes::EquivocationEvidence { ..evidence.clone() };
+    let msg = BabylonMsg::EquivocationEvidence {
+        evidence: Some(evidence.clone()),
+    };
+
+    // Convert to CosmosMsg
     res = res
         .add_message(msg)
         .add_attribute("action", "equivocation_evidence");

@@ -3,9 +3,9 @@
 //! - ForkHeader: reporting a fork that has a valid quorum certificate
 //! - FinalizedHeader: reporting a BTC-finalised header.
 
+use babylon_apis::finality_api::Evidence;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Coin, CosmosMsg, Empty};
-
 /// BabylonMsg is the message that the Babylon contract can send to the Cosmos zone.
 /// The Cosmos zone has to integrate https://github.com/babylonlabs-io/wasmbinding for
 /// handling these messages
@@ -21,7 +21,13 @@ pub enum BabylonMsg {
     /// It can only be sent from the finality contract.
     /// The rewards are minted to the staking contract address, so that they
     /// can be distributed across the active finality provider set
-    MintRewards { amount: Coin, recipient: String },
+    MintRewards {
+        amount: Coin,
+        recipient: String,
+    },
+    EquivocationEvidence {
+        evidence: Option<Evidence>,
+    },
 }
 
 pub type BabylonSudoMsg = Empty;
