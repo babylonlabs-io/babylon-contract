@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use crate::error::ContractError;
-use crate::ibc::{ibc_packet, IBC_CHANNEL};
 use crate::msg::ExecuteMsg;
 use crate::queries::query_last_pub_rand_commit;
 use crate::state::config::CONFIG;
@@ -14,7 +13,7 @@ use babylon_bindings::BabylonMsg;
 
 use babylon_apis::finality_api::{Evidence, PubRandCommit};
 use babylon_merkle::Proof;
-use cosmwasm_std::{to_json_binary, Deps, DepsMut, Env, Event, IbcTimeout, Response, WasmMsg};
+use cosmwasm_std::{to_json_binary, Deps, DepsMut, Env, Event, Response, WasmMsg};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
@@ -358,35 +357,16 @@ fn slash_finality_provider(
     Ok((wasm_msg, ev))
 }
 
-pub(crate) fn handle_slashing(
-    deps: &DepsMut,
-    env: &Env,
-    evidence: &Evidence,
-) -> Result<Response<BabylonMsg>, ContractError> {
+pub(crate) fn handle_slashing(evidence: &Evidence) -> Result<Response<BabylonMsg>, ContractError> {
     let mut res = Response::new();
-    // Send over IBC to the Provider (Babylon)
-    let channel = IBC_CHANNEL.load(deps.storage)?;
-    let ibc_msg = ibc_packet::slashing_msg(&env, &channel, evidence)?;
-    // Send packet only if we are IBC enabled
-    // TODO: send in test code when multi-test can handle it
-    #[cfg(not(any(test, feature = "library")))]
-    {
-        res = res.add_message(ibc_msg);
-    }
-    #[cfg(any(test, feature = "library"))]
-    {
-        let _ = ibc_msg;
-    }
+    // Send msg to Babylon
 
-    // TODO: Add events
+    let msg: BabylonMsg = BabylonMsg::EquivocationEvidence {
+        evidence: evidence.clone(),
+    };
+    res = res.add_message(msg);
+
     Ok(res)
-}
-
-const DEFAULT_TIMEOUT: u64 = 10 * 60;
-
-pub fn packet_timeout(env: &Env) -> IbcTimeout {
-    let timeout = env.block.time.plus_seconds(DEFAULT_TIMEOUT);
-    IbcTimeout::with_timestamp(timeout)
 }
 
 #[cfg(test)]

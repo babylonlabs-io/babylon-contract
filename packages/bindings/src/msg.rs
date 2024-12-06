@@ -3,6 +3,7 @@
 //! - ForkHeader: reporting a fork that has a valid quorum certificate
 //! - FinalizedHeader: reporting a BTC-finalised header.
 
+use babylon_apis::finality_api::Evidence;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Coin, CosmosMsg, Empty};
 
@@ -22,6 +23,9 @@ pub enum BabylonMsg {
     /// The rewards are minted to the staking contract address, so that they
     /// can be distributed across the active finality provider set
     MintRewards { amount: Coin, recipient: String },
+    /// MsgEquivocationEvidence reports the evidence that a finality provider has signed
+    /// finality signatures with correct public randomness on two conflicting Babylon headers
+    EquivocationEvidence { evidence: Evidence },
 }
 
 pub type BabylonSudoMsg = Empty;
