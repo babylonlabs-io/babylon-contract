@@ -34,11 +34,6 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response<BabylonMsg>, ContractError> {
-    contract::reply(deps, env, reply)
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: msg::contract::QueryMsg) -> Result<Binary, ContractError> {
     contract::query(deps, env, msg)
 }

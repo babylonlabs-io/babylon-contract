@@ -1,3 +1,4 @@
+use babylon_bindings::babylon_sdk::{QueryParamsResponse, QUERY_PARAMS_PATH};
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
     Response, SubMsg, SubMsgResponse, WasmMsg,
@@ -40,74 +41,21 @@ pub fn instantiate(
         btc_confirmation_depth: msg.btc_confirmation_depth,
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
         notify_cosmos_zone: msg.notify_cosmos_zone,
-        btc_staking: None, // Will be set in `reply` if `btc_staking_code_id` is provided
-        btc_finality: None, // Will be set in `reply` if `btc_finality_code_id` is provided
         consumer_name: None,
         consumer_description: None,
     };
 
-    let mut res = Response::new().add_attribute("action", "instantiate");
+    let res = Response::new().add_attribute("action", "instantiate");
 
-    if let Some(btc_staking_code_id) = msg.btc_staking_code_id {
-        // Update config with consumer information
-        cfg.consumer_name = msg.consumer_name;
-        cfg.consumer_description = msg.consumer_description;
-
-        // Instantiate BTC staking contract
-        let init_msg = WasmMsg::Instantiate {
-            admin: msg.admin.clone(),
-            code_id: btc_staking_code_id,
-            msg: msg.btc_staking_msg.unwrap_or(Binary::from(b"{}")),
-            funds: vec![],
-            label: "BTC Staking".into(),
-        };
-        let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE_STAKING);
-
-        // Test code sets a channel, so that we can better approximate IBC in test code
-        #[cfg(any(test, all(feature = "library", not(target_arch = "wasm32"))))]
-        {
-            let channel = cosmwasm_std::testing::mock_ibc_channel(
-                "channel-123",
-                cosmwasm_std::IbcOrder::Ordered,
-                "babylon",
-            );
-            IBC_CHANNEL.save(deps.storage, &channel)?;
-        }
-
-        res = res.add_submessage(init_msg);
-    }
-
-    if let Some(btc_finality_code_id) = msg.btc_finality_code_id {
-        // Instantiate BTC finality contract
-        let init_msg = WasmMsg::Instantiate {
-            admin: msg.admin,
-            code_id: btc_finality_code_id,
-            msg: msg.btc_finality_msg.unwrap_or(Binary::from(b"{}")),
-            funds: vec![],
-            label: "BTC Finality".into(),
-        };
-        let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE_FINALITY);
-
-        res = res.add_submessage(init_msg);
-    }
+    // Update config with consumer information
+    cfg.consumer_name = msg.consumer_name;
+    cfg.consumer_description = msg.consumer_description;
 
     // Save the config after potentially updating it
     CONFIG.save(deps.storage, &cfg)?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(res)
-}
-
-pub fn reply(
-    deps: DepsMut,
-    _env: Env,
-    reply: Reply,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    match reply.id {
-        REPLY_ID_INSTANTIATE_STAKING => reply_init_callback_staking(deps, reply.result.unwrap()),
-        REPLY_ID_INSTANTIATE_FINALITY => reply_init_finality_callback(deps, reply.result.unwrap()),
-        _ => Err(ContractError::InvalidReplyId(reply.id)),
-    }
 }
 
 /// Tries to get contract address from events in reply
@@ -124,47 +72,6 @@ fn reply_init_get_contract_address(reply: SubMsgResponse) -> Result<Addr, Contra
     Err(ContractError::ParseReply(ParseReplyError::ParseFailure(
         "Cannot parse contract address".to_string(),
     )))
-}
-
-/// Store BTC staking address
-fn reply_init_callback_staking(
-    deps: DepsMut,
-    reply: SubMsgResponse,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    // Try to get contract address from events in reply
-    let addr = reply_init_get_contract_address(reply)?;
-    CONFIG.update(deps.storage, |mut cfg| {
-        cfg.btc_staking = Some(addr);
-        Ok::<_, ContractError>(cfg)
-    })?;
-    Ok(Response::new())
-}
-
-/// Store BTC finality address
-fn reply_init_finality_callback(
-    deps: DepsMut,
-    reply: SubMsgResponse,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    // Try to get contract address from events in reply
-    let finality_addr = reply_init_get_contract_address(reply)?;
-    CONFIG.update(deps.storage, |mut cfg| {
-        cfg.btc_finality = Some(finality_addr.clone());
-        Ok::<_, ContractError>(cfg)
-    })?;
-    // Set the BTC staking contract address to the BTC finality contract
-    let cfg = CONFIG.load(deps.storage)?;
-    let msg = finality_api::ExecuteMsg::UpdateStaking {
-        staking: cfg
-            .btc_staking
-            .ok_or(ContractError::BtcStakingNotSet {})?
-            .to_string(),
-    };
-    let wasm_msg = WasmMsg::Execute {
-        contract_addr: finality_addr.to_string(),
-        msg: to_json_binary(&msg)?,
-        funds: vec![],
-    };
-    Ok(Response::new().add_message(wasm_msg))
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
@@ -228,18 +135,18 @@ pub fn execute(
             Ok(Response::new())
         }
         ExecuteMsg::Slashing { evidence } => {
-            // This is an internal routing message from the `btc_finality` contract
-            let cfg = CONFIG.load(deps.storage)?;
             // Check sender
-            let btc_finality = cfg
-                .btc_finality
-                .ok_or(ContractError::BtcFinalityNotSet {})?;
+            let params = deps
+                .querier
+                .query_grpc(QUERY_PARAMS_PATH.to_owned(), Binary::new("".into()))?;
+            let params = QueryParamsResponse::from(params).params;
+            let btc_finality = params.btc_finality_contract_address;
             if info.sender != btc_finality {
                 return Err(ContractError::Unauthorized {});
             }
             // Send to the staking contract for processing
             let mut res = Response::new();
-            let btc_staking = cfg.btc_staking.ok_or(ContractError::BtcStakingNotSet {})?;
+            let btc_staking = params.btc_staking_contract_address;
             // Slashes this finality provider, i.e., sets its slashing height to the block height
             // and its power to zero
             let msg = btc_staking_api::ExecuteMsg::Slash {
@@ -298,10 +205,6 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
-            btc_staking_code_id: None,
-            btc_staking_msg: None,
-            btc_finality_code_id: None,
-            btc_finality_msg: None,
             admin: None,
             consumer_name: None,
             consumer_description: None,

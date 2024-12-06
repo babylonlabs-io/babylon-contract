@@ -33,18 +33,6 @@ pub struct InstantiateMsg {
     /// NOTE: If set to true, then the Cosmos zone needs to integrate the corresponding message handler
     /// as well
     pub notify_cosmos_zone: bool,
-    /// If set, this will instantiate a BTC staking contract for BTC re-staking
-    pub btc_staking_code_id: Option<u64>,
-    /// If set, this will define the instantiation message for the BTC staking contract.
-    /// This message is opaque to the Babylon contract, and depends on the specific staking contract
-    /// being instantiated
-    pub btc_staking_msg: Option<Binary>,
-    /// If set, this will instantiate a BTC finality contract
-    pub btc_finality_code_id: Option<u64>,
-    /// If set, this will define the instantiation message for the BTC finality contract.
-    /// This message is opaque to the Babylon contract, and depends on the specific finality contract
-    /// being instantiated
-    pub btc_finality_msg: Option<Binary>,
     /// If set, this will be the Wasm migration / upgrade admin of the BTC staking contract and the
     /// BTC finality contract
     pub admin: Option<String>,
@@ -63,25 +51,6 @@ impl ContractMsg for InstantiateMsg {
             ));
         }
         let _ = self.babylon_tag_to_bytes()?;
-
-        if self.btc_staking_code_id.is_some() {
-            if let (Some(consumer_name), Some(consumer_description)) =
-                (&self.consumer_name, &self.consumer_description)
-            {
-                if consumer_name.trim().is_empty() {
-                    return Err(StdError::generic_err("Consumer name cannot be empty"));
-                }
-                if consumer_description.trim().is_empty() {
-                    return Err(StdError::generic_err(
-                        "Consumer description cannot be empty",
-                    ));
-                }
-            } else {
-                return Err(StdError::generic_err(
-                    "Consumer name and description are required when btc_staking_code_id is set",
-                ));
-            }
-        }
 
         Ok(())
     }

@@ -162,6 +162,7 @@ pub(crate) mod ibc_packet {
         ActiveBtcDelegation, NewFinalityProvider, UnbondedBtcDelegation,
     };
     use babylon_apis::finality_api::Evidence;
+    use babylon_bindings::babylon_sdk::{QueryParamsResponse, QUERY_PARAMS_PATH};
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
     use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
@@ -201,13 +202,13 @@ pub(crate) mod ibc_packet {
         _caller: String,
         btc_staking: &BtcStakingIbcPacket,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
+        let params = deps
+            .querier
+            .query_grpc(QUERY_PARAMS_PATH.to_owned(), Binary::new("".into()))?;
+        let params = QueryParamsResponse::from(params).params;
 
         // Route the packet to the btc-staking contract
-        let btc_staking_addr = cfg
-            .btc_staking
-            .ok_or(StdError::generic_err("btc_staking contract not set"))?;
+        let btc_staking_addr = params.btc_staking_contract_address;
 
         // Build the message to send to the BTC staking contract
         let msg = babylon_apis::btc_staking_api::ExecuteMsg::BtcStaking {
@@ -331,10 +332,6 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
-            btc_staking_code_id: None,
-            btc_staking_msg: None,
-            btc_finality_code_id: None,
-            btc_finality_msg: None,
             admin: None,
             consumer_name: None,
             consumer_description: None,
