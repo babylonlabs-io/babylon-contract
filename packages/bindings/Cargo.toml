@@ -11,4 +11,3 @@ license = "Apache-2.0"
 [dependencies]
 cosmwasm-std    = { workspace = true }
 cosmwasm-schema = { workspace = true }
-babylon-apis = { workspace = true }

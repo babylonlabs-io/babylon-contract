@@ -237,7 +237,6 @@ dependencies = [
 name = "babylon-bindings"
 version = "0.4.0"
 dependencies = [
- "babylon-apis",
  "cosmwasm-schema",
  "cosmwasm-std",
 ]
