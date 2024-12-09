@@ -1,15 +1,15 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
-    Response, SubMsg, SubMsgResponse, WasmMsg,
+    to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo,
+    QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_utils::ParseReplyError;
+use cw_utils::{must_pay, ParseReplyError};
 
 use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::ibc::{ibc_packet, IBC_CHANNEL};
+use crate::ibc::{ibc_packet, packet_timeout, IBC_CHANNEL};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
@@ -34,6 +34,7 @@ pub fn instantiate(
     msg.validate()?;
 
     // Initialize config with None values for consumer fields
+    let denom = deps.querier.query_bonded_denom()?;
     let mut cfg = Config {
         network: msg.network.clone(),
         babylon_tag: msg.babylon_tag_to_bytes()?,
@@ -44,6 +45,7 @@ pub fn instantiate(
         btc_finality: None, // Will be set in `reply` if `btc_finality_code_id` is provided
         consumer_name: None,
         consumer_description: None,
+        denom,
     };
 
     let mut res = Response::new().add_attribute("action", "instantiate");
@@ -269,8 +271,43 @@ pub fn execute(
             // TODO: Add events
             Ok(res)
         }
-        ExecuteMsg::SendRewards { .. } => {
-            todo!()
+        ExecuteMsg::SendRewards { fp_distribution } => {
+            let cfg = CONFIG.load(deps.storage)?;
+            // Assert the funds are there
+            must_pay(&info, &cfg.denom)?;
+            // Assert the sender is right
+            let btc_finality = cfg
+                .btc_finality
+                .ok_or(ContractError::BtcFinalityNotSet {})?;
+            if info.sender != btc_finality {
+                return Err(ContractError::Unauthorized {});
+            }
+            // Build the memo payload
+            let memo_msg = to_json_string(&fp_distribution)?;
+            // Route to babylon over IBC
+            let channel = IBC_CHANNEL.load(deps.storage)?;
+
+            // Construct the transfer message
+            let ibc_msg = IbcMsg::Transfer {
+                channel_id: channel.endpoint.channel_id,
+                to_address: "zoneconcierge".to_string(),
+                amount: info.funds[0].clone(),
+                timeout: packet_timeout(&env),
+                memo: Some(memo_msg),
+            };
+
+            // Send packet only if we are IBC enabled
+            // TODO: send in test code when multi-test can handle it
+            #[cfg(not(any(test, feature = "library")))]
+            {
+                // TODO: Add events
+                Ok(Response::new().add_message(ibc_msg))
+            }
+            #[cfg(any(test, feature = "library"))]
+            {
+                let _ = ibc_msg;
+                Ok(Response::new())
+            }
         }
     }
 }

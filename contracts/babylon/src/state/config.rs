@@ -23,4 +23,5 @@ pub struct Config {
     pub consumer_name: Option<String>,
     /// Consumer description
     pub consumer_description: Option<String>,
+    pub denom: String,
 }
