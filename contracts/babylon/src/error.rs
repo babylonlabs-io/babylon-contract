@@ -1,6 +1,6 @@
 use babylon_bitcoin::Work;
 use cosmwasm_std::StdError;
-use cw_utils::ParseReplyError;
+use cw_utils::{ParseReplyError, PaymentError};
 use hex::FromHexError;
 use prost::DecodeError;
 use std::str::Utf8Error;
@@ -20,6 +20,8 @@ pub enum ContractError {
     BabylonEpochError(#[from] BabylonEpochChainError),
     #[error("{0}")]
     CzHeaderError(#[from] CZHeaderChainError),
+    #[error("{0}")]
+    Payment(#[from] PaymentError),
     #[error("Contract already has an open IBC channel")]
     IbcChannelAlreadyOpen {},
     #[error("The contract only supports ordered channels")]
