@@ -360,6 +360,7 @@ pub(crate) mod tests {
             btc_finality: None,
             consumer_name: None,
             consumer_description: None,
+            denom: "ustake".to_string(),
         };
         CONFIG.save(storage, &cfg).unwrap();
         w
