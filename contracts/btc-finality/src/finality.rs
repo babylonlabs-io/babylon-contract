@@ -628,28 +628,22 @@ pub fn list_fps_by_power(
     Ok(res.fps)
 }
 
-/// `distribute_rewards` distributes rewards to finality providers who have voted for a block at `height`
+/// `distribute_rewards` distributes rewards to finality providers who are in the active set at `height`
 pub fn distribute_rewards(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
-    let voting_fps = VOTES
-        .prefix(height)
-        .range(deps.storage, None, None, Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
-    // Get the total voting power of the voting FPS
-    let total_voting_power = voting_fps
-        .iter()
-        .map(|(_, vote)| vote.voting_power as u128)
-        .sum::<u128>();
+    let active_fps = FP_SET.load(deps.storage, height)?;
+    // Get the voting power of the active FPS
+    let total_voting_power = active_fps.iter().map(|fp| fp.power as u128).sum::<u128>();
     // Get the rewards to distribute (bank balance of the staking contract)
     let cfg = CONFIG.load(deps.storage)?;
     let rewards_amount = deps.querier.query_balance(cfg.staking, cfg.denom)?.amount;
-    // Compute the rewards for each voting FP
+    // Compute the rewards for each active FP
     let mut total_rewards = Uint128::zero();
-    for (fp_btc_pk_hex, vote) in voting_fps {
-        let reward = (Decimal::from_ratio(vote.voting_power as u128, total_voting_power)
+    for fp in active_fps {
+        let reward = (Decimal::from_ratio(fp.power as u128, total_voting_power)
             * Decimal::from_ratio(rewards_amount, 1u128))
         .to_uint_floor();
         // Update the rewards for this FP
-        REWARDS.update(deps.storage, &fp_btc_pk_hex, |r| {
+        REWARDS.update(deps.storage, &fp.btc_pk_hex, |r| {
             Ok::<Uint128, ContractError>(r.unwrap_or_default() + reward)
         })?;
         // Compute the total rewards
