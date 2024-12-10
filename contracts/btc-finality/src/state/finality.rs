@@ -1,19 +1,12 @@
-use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Uint128;
+
 use cw_storage_plus::{Item, Map};
 
 use babylon_apis::finality_api::{Evidence, IndexedBlock};
 use btc_staking::msg::FinalityProviderInfo;
 
-/// Finality provider vote, with the signature and voting power
-#[cw_serde]
-pub struct Vote {
-    pub signature: Vec<u8>,
-    pub voting_power: u64,
-}
-
-/// Map of votes by block height and FP
-pub const VOTES: Map<(u64, &str), Vote> = Map::new("fp_votes");
+/// Map of signatures by block height and FP
+pub const SIGNATURES: Map<(u64, &str), Vec<u8>> = Map::new("fp_sigs");
 
 /// Map of blocks information by height
 pub const BLOCKS: Map<u64, IndexedBlock> = Map::new("blocks");

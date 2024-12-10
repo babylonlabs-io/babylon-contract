@@ -30,10 +30,10 @@ pub enum QueryMsg {
     /// `Admin` returns the current admin of the contract
     #[returns(AdminResponse)]
     Admin {},
-    /// `FinalityVote` returns the vote of the finality provider for a given block height
+    /// `FinalitySignature` returns the signature of the finality provider for a given block height
     ///
-    #[returns(FinalityVoteResponse)]
-    FinalityVote { btc_pk_hex: String, height: u64 },
+    #[returns(FinalitySignatureResponse)]
+    FinalitySignature { btc_pk_hex: String, height: u64 },
     /// `PubRandCommit` returns the public random commitments for a given FP.
     ///
     /// `btc_pk_hex` is the BTC public key of the finality provider, in hex format.
@@ -89,9 +89,8 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct FinalityVoteResponse {
+pub struct FinalitySignatureResponse {
     pub signature: Vec<u8>,
-    pub voting_power: u64,
 }
 
 #[cw_serde]
