@@ -630,7 +630,12 @@ pub fn list_fps_by_power(
 
 /// `distribute_rewards` distributes rewards to finality providers who are in the active set at `height`
 pub fn distribute_rewards(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
-    let active_fps = FP_SET.load(deps.storage, height)?;
+    let active_fps = FP_SET.may_load(deps.storage, height)?;
+    // Short-circuit if there are no active finality providers
+    let active_fps = match active_fps {
+        Some(active_fps) => active_fps,
+        None => return Ok(()),
+    };
     // Get the voting power of the active FPS
     let total_voting_power = active_fps.iter().map(|fp| fp.power as u128).sum::<u128>();
     // Get the rewards to distribute (bank balance of the staking contract)
