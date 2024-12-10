@@ -76,6 +76,7 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
     match resp {
         ExecuteMsg::BtcHeaders { headers } => headers,
         ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
+        ExecuteMsg::SendRewards { .. } => unreachable!("unexpected send rewards message"),
     }
 }
 
