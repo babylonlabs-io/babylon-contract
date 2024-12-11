@@ -422,8 +422,8 @@ pub fn index_block(
 /// It must be invoked only after the BTC staking protocol is activated.
 pub fn tally_blocks(
     deps: &mut DepsMut,
+    env: &Env,
     activated_height: u64,
-    height: u64,
 ) -> Result<(Option<BabylonMsg>, Vec<Event>), ContractError> {
     // Start finalising blocks since max(activated_height, next_height)
     let next_height = NEXT_HEIGHT.may_load(deps.storage)?.unwrap_or(0);
@@ -440,7 +440,7 @@ pub fn tally_blocks(
     // non-finalisable
     let mut events = vec![];
     let mut finalized_blocks = 0;
-    for h in start_height..=height {
+    for h in start_height..=env.block.height {
         let mut indexed_block = BLOCKS.load(deps.storage, h)?;
         // Get the finality provider set of this block
         let fp_set = FP_SET.may_load(deps.storage, h)?;
@@ -492,7 +492,7 @@ pub fn tally_blocks(
         // Assemble mint message
         let mint_msg = BabylonMsg::MintRewards {
             amount: rewards,
-            recipient: cfg.staking.into(),
+            recipient: env.contract.address.to_string(),
         };
         Some(mint_msg)
     } else {
@@ -568,7 +568,7 @@ const QUERY_LIMIT: Option<u32> = Some(30);
 /// power of top finality providers, and records them in the contract state
 pub fn compute_active_finality_providers(
     deps: &mut DepsMut,
-    env: Env,
+    height: u64,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
@@ -602,7 +602,7 @@ pub fn compute_active_finality_providers(
     // TODO: Filter out slashed / offline / jailed FPs
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
-    FP_SET.save(deps.storage, env.block.height, &finality_providers)?;
+    FP_SET.save(deps.storage, height, &finality_providers)?;
 
     Ok(())
 }
@@ -622,8 +622,9 @@ pub fn list_fps_by_power(
 }
 
 /// `distribute_rewards` distributes rewards to finality providers who are in the active set at `height`
-pub fn distribute_rewards(deps: &mut DepsMut, height: u64) -> Result<(), ContractError> {
-    let active_fps = FP_SET.may_load(deps.storage, height)?;
+pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractError> {
+    // Try to use the finality provider set at the previous height
+    let active_fps = FP_SET.may_load(deps.storage, env.block.height - 1)?;
     // Short-circuit if there are no active finality providers
     let active_fps = match active_fps {
         Some(active_fps) => active_fps,
@@ -631,9 +632,12 @@ pub fn distribute_rewards(deps: &mut DepsMut, height: u64) -> Result<(), Contrac
     };
     // Get the voting power of the active FPS
     let total_voting_power = active_fps.iter().map(|fp| fp.power as u128).sum::<u128>();
-    // Get the rewards to distribute (bank balance of the staking contract)
+    // Get the rewards to distribute (bank balance of the finality contract)
     let cfg = CONFIG.load(deps.storage)?;
-    let rewards_amount = deps.querier.query_balance(cfg.staking, cfg.denom)?.amount;
+    let rewards_amount = deps
+        .querier
+        .query_balance(env.contract.address.clone(), cfg.denom)?
+        .amount;
     // Compute the rewards for each active FP
     let mut total_rewards = Uint128::zero();
     for fp in active_fps {
