@@ -223,12 +223,12 @@ fn handle_update_staking(
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
-    // Distribute rewards of the previous block
-    distribute_rewards(deps, env.block.height - 1)?;
+    // Distribute rewards
+    distribute_rewards(deps, &env)?;
 
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
-    compute_active_finality_providers(deps, env, max_active_fps)?;
+    compute_active_finality_providers(deps, env.block.height, max_active_fps)?;
 
     // TODO: Add events
     Ok(Response::new())
