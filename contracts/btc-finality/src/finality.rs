@@ -530,8 +530,6 @@ fn finalize_block(
     // Set the next height to finalise as height+1
     NEXT_HEIGHT.save(store, &(block.height + 1))?;
 
-    // TODO: Distribute rewards to BTC staking delegators
-
     // Record the last finalized height metric
     let ev = Event::new("finalize_block")
         .add_attribute("module", "finality")
