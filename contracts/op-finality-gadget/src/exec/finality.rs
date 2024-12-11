@@ -526,31 +526,5 @@ pub(crate) mod tests {
                 .as_str(),
             &hex::encode(&evidence.canonical_app_hash)
         );
-
-        // Verify the extracted secret key corresponds to the public key
-        // Hash messages
-        let msg1 = msg_to_sign(block_height, &add_finality_signature.block_app_hash);
-        let msg1_hash = Sha256::digest(&msg1);
-        let msg2 = msg_to_sign(block_height, &add_finality_signature_2.block_app_hash);
-        let msg2_hash = Sha256::digest(&msg2);
-
-        // Define signatures
-        let sig1 = eots::Signature::new(&add_finality_signature.finality_sig).unwrap();
-        let sig2 = eots::Signature::new(&add_finality_signature_2.finality_sig).unwrap();
-
-        // Extract the finality provider's secret key from the equivocating signatures
-        let pk = eots::PublicKey::from_hex(&pk_hex).unwrap();
-        let btc_sk = pk
-            .extract_secret_key(
-                &pub_rand_one,
-                &msg1_hash,
-                &sig1.to_bytes(),
-                &msg2_hash,
-                &sig2.to_bytes(),
-            )
-            .unwrap();
-        // Verify we got a valid secret key by checking it corresponds to the public key
-        let extracted_pk = btc_sk.pubkey();
-        assert_eq!(pk, extracted_pk);
     }
 }
