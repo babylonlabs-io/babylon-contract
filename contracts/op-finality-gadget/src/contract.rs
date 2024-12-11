@@ -89,7 +89,7 @@ pub fn execute(
             &block_hash,
             &signature,
         ),
-        ExecuteMsg::Slashing { evidence } => handle_slashing(&evidence),
+        ExecuteMsg::Slashing { env, evidence } => handle_slashing(&env, &evidence),
         ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, Some(api.addr_validate(&admin)?))

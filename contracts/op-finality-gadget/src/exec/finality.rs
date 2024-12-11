@@ -328,6 +328,7 @@ fn slash_finality_provider(
     // Emit slashing event.
     // Raises slashing event to babylon over IBC.
     let msg = ExecuteMsg::Slashing {
+        env: env.clone(),
         evidence: evidence.clone(),
     };
     let wasm_msg: WasmMsg = WasmMsg::Execute {
@@ -357,12 +358,22 @@ fn slash_finality_provider(
     Ok((wasm_msg, ev))
 }
 
-pub(crate) fn handle_slashing(evidence: &Evidence) -> Result<Response<BabylonMsg>, ContractError> {
+pub(crate) fn handle_slashing(
+    env: &Env,
+    evidence: &Evidence,
+) -> Result<Response<BabylonMsg>, ContractError> {
     let mut res = Response::new();
     // Send msg to Babylon
 
     let msg = BabylonMsg::EquivocationEvidence {
-        evidence: Some(evidence.clone()),
+        signer: env.contract.address.to_string(),
+        fp_btc_pk: evidence.fp_btc_pk.clone(),
+        block_height: evidence.block_height,
+        pub_rand: evidence.pub_rand.clone(),
+        canonical_app_hash: evidence.canonical_app_hash.clone(),
+        fork_app_hash: evidence.fork_app_hash.clone(),
+        canonical_finality_sig: evidence.canonical_finality_sig.clone(),
+        fork_finality_sig: evidence.fork_finality_sig.clone(),
     };
 
     // Convert to CosmosMsg
@@ -487,6 +498,7 @@ pub(crate) mod tests {
                 let msg_evidence = from_json::<ExecuteMsg>(&msg).unwrap();
                 match msg_evidence {
                     ExecuteMsg::Slashing {
+                        env: _,
                         evidence: msg_evidence,
                     } => {
                         assert_eq!(evidence, msg_evidence);
