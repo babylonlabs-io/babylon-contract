@@ -1,5 +1,4 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 
@@ -12,7 +11,4 @@ pub const IS_ENABLED: Item<bool> = Item::new("is_enabled");
 #[cw_serde]
 pub struct Config {
     pub consumer_id: String,
-    pub consumer_name: Option<String>,
-    pub consumer_description: Option<String>,
-    pub babylon: Addr,
 }

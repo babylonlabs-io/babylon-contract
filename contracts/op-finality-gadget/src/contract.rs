@@ -26,9 +26,6 @@ pub fn instantiate(
 
     let config = Config {
         consumer_id: msg.consumer_id,
-        babylon: msg.babylon,
-        consumer_name: msg.consumer_name,
-        consumer_description: msg.consumer_description,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -116,7 +113,6 @@ pub(crate) mod tests {
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
-    pub(crate) const BABYLON: &str = "babylon";
     const NEW_ADMIN: &str = "new_admin";
 
     #[test]
@@ -124,15 +120,11 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let init_admin = deps.api.addr_make(INIT_ADMIN);
         let consumer_id = "op".to_string();
-        let babylon = deps.api.addr_make(BABYLON);
 
         // Create an InstantiateMsg with admin set to init_admin
         let msg = InstantiateMsg {
             admin: init_admin.to_string(),
             consumer_id,
-            consumer_name: None,
-            consumer_description: None,
-            babylon: babylon,
             is_enabled: true,
         };
 
@@ -157,15 +149,11 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let init_admin = deps.api.addr_make(INIT_ADMIN);
         let new_admin = deps.api.addr_make(NEW_ADMIN);
-        let babylon = deps.api.addr_make(BABYLON);
         // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
         let instantiate_msg = InstantiateMsg {
             admin: init_admin.to_string(), // Admin provided
             consumer_id: "op-stack-l2-11155420".to_string(),
-            babylon,
             is_enabled: true,
-            consumer_name: None,
-            consumer_description: None,
         };
 
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
