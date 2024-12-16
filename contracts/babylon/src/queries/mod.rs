@@ -111,14 +111,17 @@ pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZH
     Ok(CzHeaderResponse::from(&header))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "btc-lc"))]
 mod tests {
+    use cosmwasm_std::testing::mock_dependencies;
 
-    #[cfg(feature = "btc-lc")]
+    use test_utils::get_btc_lc_headers;
+
     use crate::state::btc_light_client::{init, tests::setup};
 
+    use super::*;
+
     #[test]
-    #[cfg(feature = "btc-lc")]
     fn btc_headers_work() {
         let mut deps = mock_dependencies();
         setup(deps.as_mut().storage);
@@ -179,7 +182,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "btc-lc")]
     fn btc_headers_reverse_order_work() {
         let mut deps = mock_dependencies();
         setup(deps.as_mut().storage);
