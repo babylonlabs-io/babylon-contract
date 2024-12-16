@@ -16,19 +16,24 @@
 //!          //...
 //!      });
 //! 4. Anywhere you see query(&deps, ...) you must replace it with query(&mut deps, ...)
+#[cfg(feature = "btc-lc")]
+use cosmwasm_std::from_json;
 use cosmwasm_std::testing::{message_info, mock_ibc_channel_open_try};
-use cosmwasm_std::{from_json, Addr, ContractResult, IbcOrder, Response};
+use cosmwasm_std::{Addr, ContractResult, IbcOrder, Response};
 use cosmwasm_vm::testing::{
-    execute, ibc_channel_open, instantiate, mock_env, mock_info, mock_instance,
-    mock_instance_with_gas_limit, query, MockApi, MockQuerier, MockStorage,
+    ibc_channel_open, instantiate, mock_env, mock_instance, mock_instance_with_gas_limit, MockApi,
+    MockQuerier, MockStorage,
 };
 use cosmwasm_vm::Instance;
-use test_utils::{get_btc_lc_fork_msg, get_btc_lc_mainchain_resp};
+#[cfg(feature = "btc-lc")]
+use test_utils::get_btc_lc_fork_msg;
+use test_utils::get_btc_lc_mainchain_resp;
 
-use babylon_bindings::BabylonMsg;
 use babylon_contract::ibc::IBC_VERSION;
-use babylon_contract::msg::btc_header::{BtcHeader, BtcHeadersResponse};
-use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
+use babylon_contract::msg::btc_header::BtcHeader;
+#[cfg(feature = "btc-lc")]
+use babylon_contract::msg::contract::ExecuteMsg;
+use babylon_contract::msg::contract::InstantiateMsg;
 
 static BABYLON_CONTRACT_WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
 /// Wasm size limit: https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/validation.go#L24-L25
@@ -70,10 +75,12 @@ pub fn get_main_msg_test_headers() -> Vec<BtcHeader> {
 }
 
 #[track_caller]
+#[cfg(feature = "btc-lc")]
 fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
     let testdata = get_btc_lc_fork_msg();
     let resp: ExecuteMsg = from_json(testdata).unwrap();
     match resp {
+        #[cfg(feature = "btc-lc")]
         ExecuteMsg::BtcHeaders { headers } => headers,
         ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
     }
@@ -128,6 +135,7 @@ fn enforce_version_in_handshake() {
 }
 
 #[test]
+#[cfg(feature = "btc-lc")]
 fn btc_headers_works() {
     let mut deps = setup();
     let env = mock_env();
@@ -143,6 +151,7 @@ fn btc_headers_works() {
 }
 
 #[test]
+#[cfg(feature = "btc-lc")]
 fn btc_headers_fork_works() {
     let mut deps = setup();
     let env = mock_env();
@@ -168,6 +177,7 @@ fn btc_headers_fork_works() {
 }
 
 #[test]
+#[cfg(feature = "btc-lc")]
 fn btc_headers_query_works() {
     let mut deps = setup();
     let env = mock_env();

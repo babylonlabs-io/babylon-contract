@@ -23,8 +23,9 @@ use babylon_apis::btc_staking_api::{
 
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
+#[cfg(feature = "btc-lc")]
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
-
+#[cfg(feature = "btc-lc")]
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 
 /// handle_btc_staking handles the BTC staking operations
@@ -367,7 +368,15 @@ pub(crate) fn slash_finality_provider(
     // Set BTC slashing height (if available from the babylon contract)
     // FIXME: Turn this into a hard error
     // return fmt.Errorf("failed to get current BTC tip")
-    let btc_height = get_btc_tip_height(&deps).unwrap_or_default();
+    let btc_height;
+    #[cfg(feature = "btc-lc")]
+    {
+        btc_height = get_btc_tip_height(&deps).unwrap_or_default();
+    }
+    #[cfg(not(feature = "btc-lc"))]
+    {
+        btc_height = 1; // Unsupported BTC light client. Just set to non-zero value
+    }
     fp.slashed_btc_height = btc_height;
 
     // Record slashed event. The next `BeginBlock` will consume this event for updating the active
@@ -388,8 +397,9 @@ pub(crate) fn slash_finality_provider(
 }
 
 /// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
+#[cfg(feature = "btc-lc")]
 fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
-    // Get the BTC tip from the babylon contract through a raw query
+    // Get the BTC tip from the babylon contract through a query
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
     // Query the Babylon contract

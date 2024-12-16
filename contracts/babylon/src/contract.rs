@@ -12,6 +12,7 @@ use crate::error::ContractError;
 use crate::ibc::{ibc_packet, IBC_CHANNEL};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
+#[cfg(feature = "btc-lc")]
 use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
 
@@ -170,12 +171,17 @@ fn reply_init_finality_callback(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BtcBaseHeader {} => Ok(to_json_binary(&queries::btc_base_header(deps)?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BtcTipHeader {} => Ok(to_json_binary(&queries::btc_tip_header(deps)?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BtcHeader { height } => Ok(to_json_binary(&queries::btc_header(deps, height)?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BtcHeaderByHash { hash } => {
             Ok(to_json_binary(&queries::btc_header_by_hash(deps, &hash)?)?)
         }
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BtcHeaders {
             start_after,
             limit,
@@ -186,12 +192,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
             limit,
             reverse,
         )?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BabylonBaseEpoch {} => Ok(to_json_binary(&queries::babylon_base_epoch(deps)?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BabylonLastEpoch {} => Ok(to_json_binary(&queries::babylon_last_epoch(deps)?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BabylonEpoch { epoch_number } => Ok(to_json_binary(&queries::babylon_epoch(
             deps,
             epoch_number,
         )?)?),
+        #[cfg(feature = "btc-lc")]
         QueryMsg::BabylonCheckpoint { epoch_number } => Ok(to_json_binary(
             &queries::babylon_checkpoint(deps, epoch_number)?,
         )?),
@@ -216,6 +226,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
+        #[cfg(feature = "btc-lc")]
         ExecuteMsg::BtcHeaders {
             headers: btc_headers,
         } => {

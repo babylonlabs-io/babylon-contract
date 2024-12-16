@@ -3,13 +3,14 @@ use cosmwasm_std::{Binary, StdError, StdResult};
 
 use babylon_apis::finality_api::Evidence;
 
-use crate::msg::btc_header::BtcHeader;
 #[cfg(not(target_arch = "wasm32"))]
-use {
-    crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
-    crate::msg::cz_header::CzHeaderResponse,
-    crate::msg::epoch::EpochResponse,
-    crate::state::config::Config,
+use crate::{msg::cz_header::CzHeaderResponse, state::config::Config};
+
+#[cfg(feature = "btc-lc")]
+use crate::msg::{
+    btc_header::BtcHeader,
+    btc_header::{BtcHeaderResponse, BtcHeadersResponse},
+    epoch::EpochResponse,
 };
 
 const BABYLON_TAG_BYTES: usize = 4;
@@ -98,6 +99,7 @@ impl ContractMsg for InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    #[cfg(feature = "btc-lc")]
     BtcHeaders {
         /// `headers` is a list of BTC headers. Typically:
         /// - A given delta of headers a user wants to add to the tip or fork of the BTC chain.
@@ -117,22 +119,27 @@ pub enum QueryMsg {
     #[returns(Config)]
     Config {},
     /// BtcBaseHeader returns the base BTC header stored in the contract
+    #[cfg(feature = "btc-lc")]
     #[returns(BtcHeaderResponse)]
     BtcBaseHeader {},
     /// BtcTipHeader returns the tip BTC header stored in the contract
+    #[cfg(feature = "btc-lc")]
     #[returns(BtcHeaderResponse)]
     BtcTipHeader {},
     /// BtcHeader returns the BTC header information stored in the contract, by BTC height.
+    #[cfg(feature = "btc-lc")]
     #[returns(BtcHeaderResponse)]
     BtcHeader { height: u32 },
     /// BtcHeaderByHash returns the BTC header information stored in the contract, by BTC hash.
     ///
     /// `hash` is the (byte-reversed) hex-encoded hash of the BTC header
+    #[cfg(feature = "btc-lc")]
     #[returns(BtcHeaderResponse)]
     BtcHeaderByHash { hash: String },
     /// BtcHeaders returns the canonical BTC chain stored in the contract.
     ///
     /// `start_after` is the height of the header to start after, or `None` to start from the base
+    #[cfg(feature = "btc-lc")]
     #[returns(BtcHeadersResponse)]
     BtcHeaders {
         start_after: Option<u32>,
@@ -140,15 +147,19 @@ pub enum QueryMsg {
         reverse: Option<bool>,
     },
     /// BabylonBaseEpoch returns the base Babylon epoch stored in the contract
+    #[cfg(feature = "btc-lc")]
     #[returns(EpochResponse)]
     BabylonBaseEpoch {},
     /// BabylonLastEpoch returns the last babylon finalized epoch stored in the contract
+    #[cfg(feature = "btc-lc")]
     #[returns(EpochResponse)]
     BabylonLastEpoch {},
     /// BabylonEpoch returns the Babylon epoch stored in the contract, by epoch number.
+    #[cfg(feature = "btc-lc")]
     #[returns(EpochResponse)]
     BabylonEpoch { epoch_number: u64 },
     /// BabylonCheckpoint returns the Babylon checkpoint stored in the contract, by epoch number.
+    #[cfg(feature = "btc-lc")]
     #[returns(EpochResponse)]
     BabylonCheckpoint { epoch_number: u64 },
     /// CzLastHeader returns the last CZ epoch stored in the contract

@@ -12,6 +12,7 @@ use crate::error::ContractError;
 pub use crate::msg::contract::ExecuteMsg;
 use crate::msg::contract::InstantiateMsg;
 
+#[cfg(feature = "btc-lc")]
 mod bindings;
 pub mod contract;
 pub mod error;

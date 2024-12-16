@@ -1,21 +1,26 @@
 //! state is the module that manages smart contract's system state
-use cosmwasm_std::{StdError, Storage};
 
-use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
-
-use crate::bindings::msg_btc_finalized_header;
-use babylon_bindings::BabylonMsg;
-
+#[cfg(feature = "btc-lc")]
 pub mod babylon_epoch_chain;
+#[cfg(feature = "btc-lc")]
 pub mod btc_light_client;
 pub mod config;
 pub mod cz_header_chain;
+
+#[cfg(feature = "btc-lc")]
+use {
+    crate::bindings::msg_btc_finalized_header,
+    babylon_bindings::BabylonMsg,
+    babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp,
+    cosmwasm_std::{StdError, Storage},
+};
 
 /// handle_btc_timestamp handles a BTC timestamp
 /// It returns an option if the BTC timestamp is verified, otherwise an error.
 /// The returned option is a `FinalizedHeader` Babylon message notifying a
 /// newly finalised CZ header, or None if this BTC timestamp does not carry
 /// a newly finalised CZ header.
+#[cfg(feature = "btc-lc")]
 pub fn handle_btc_timestamp(
     storage: &mut dyn Storage,
     btc_ts: &BtcTimestamp,

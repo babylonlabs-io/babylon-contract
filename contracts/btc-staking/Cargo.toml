@@ -35,6 +35,7 @@ cranelift = ["cosmwasm-vm/cranelift"]
 library = []
 # feature for enabling the full validation
 full-validation = []
+btc-lc = ["babylon-contract/btc-lc" ]
 
 [dependencies]
 babylon-apis          = { path = "../../packages/apis" }

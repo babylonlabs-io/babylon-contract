@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
+    zoneconcierge_packet_data::Packet, ZoneconciergePacketData,
 };
 
 use crate::state::config::CONFIG;
@@ -134,7 +134,12 @@ pub fn ibc_packet_receive(
             .packet
             .ok_or(StdError::generic_err("empty IBC packet"))?;
         match zc_packet {
+            #[cfg(feature = "btc-lc")]
             Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
+            #[cfg(not(feature = "btc-lc"))]
+            Packet::BtcTimestamp(_) => Err(StdError::generic_err(
+                "BTC light client feature is not enabled",
+            )),
             Packet::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
             }
@@ -164,9 +169,12 @@ pub(crate) mod ibc_packet {
     use babylon_apis::finality_api::Evidence;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
+    #[cfg(feature = "btc-lc")]
+    use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
     use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
     use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
+    #[cfg(feature = "btc-lc")]
     pub fn handle_btc_timestamp(
         deps: DepsMut,
         _caller: String,
