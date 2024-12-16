@@ -13,7 +13,8 @@ use btc_staking::msg::ActivatedHeightResponse;
 
 use crate::error::ContractError;
 use crate::finality::{
-    compute_active_finality_providers, handle_finality_signature, handle_public_randomness_commit,
+    compute_active_finality_providers, distribute_rewards, handle_finality_signature,
+    handle_public_randomness_commit,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
@@ -222,10 +223,14 @@ fn handle_update_staking(
 }
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
+    // Distribute rewards
+    distribute_rewards(deps, &env)?;
+
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
-    compute_active_finality_providers(deps, env, max_active_fps)?;
+    compute_active_finality_providers(deps, env.block.height, max_active_fps)?;
 
+    // TODO: Add events
     Ok(Response::new())
 }
 
@@ -245,7 +250,7 @@ fn handle_end_block(
         let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
         res = res.add_event(ev);
         // Tally all non-finalised blocks
-        let (msg, events) = finality::tally_blocks(deps, activated_height, env.block.height)?;
+        let (msg, events) = finality::tally_blocks(deps, &env, activated_height)?;
         if let Some(msg) = msg {
             res = res.add_message(msg);
         }
