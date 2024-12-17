@@ -261,7 +261,7 @@ fn handle_end_block(
     // On an epoch boundary, send rewards to Babylon through the babylon contract
     let params = PARAMS.load(deps.storage)?;
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
-        let rewards = TOTAL_REWARDS.load(deps.storage)?;
+        let rewards = TOTAL_REWARDS.may_load(deps.storage)?.unwrap_or_default();
         if rewards.u128() > 0 {
             let wasm_msg = send_rewards_msg(deps, rewards.u128(), &cfg)?;
             res = res.add_message(wasm_msg);
