@@ -105,12 +105,4 @@ pub struct MsgAddFinalitySig {
     #[prost(bytes="bytes", tag="7")]
     pub finality_sig: ::prost::bytes::Bytes,
 }
-/// MsgEquivocationEvidence is the message for handling evidence of equivocation
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct MsgEquivocationEvidence {
-    /// evidence is the evidence of equivocation
-    #[prost(message, optional, tag="1")]
-    pub evidence: ::core::option::Option<Evidence>,
-}
 // @@protoc_insertion_point(module)
