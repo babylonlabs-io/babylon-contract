@@ -141,6 +141,9 @@ pub fn ibc_packet_receive(
             Packet::ConsumerSlashing(_) => Err(StdError::generic_err(
                 "ConsumerSlashing packet should not be received",
             )),
+            Packet::ConsumerFpDistribution(_) => Err(StdError::generic_err(
+                "ConsumerFpDistribution packet should not be received",
+            )),
         }
     })()
     .or_else(|e| {
