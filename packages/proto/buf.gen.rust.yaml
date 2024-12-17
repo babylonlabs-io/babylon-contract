@@ -32,3 +32,4 @@ plugins:
       - extern_path=.google.protobuf=::pbjson_types
       - extern_path=.cosmos=cosmos_sdk_proto::cosmos
       - extern_path=.tendermint=tendermint_proto
+      - extern_path=.ibc=cosmos_sdk_proto::ibc
