@@ -83,6 +83,7 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
         #[cfg(feature = "btc-lc")]
         ExecuteMsg::BtcHeaders { headers } => headers,
         ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
+        ExecuteMsg::SendRewards { .. } => unreachable!("unexpected send rewards message"),
     }
 }
 

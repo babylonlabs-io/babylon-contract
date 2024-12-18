@@ -1,15 +1,15 @@
 use babylon_apis::finality_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
+use btc_staking::msg::ActivatedHeightResponse;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_json_binary, Addr, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo,
-    QuerierWrapper, QueryRequest, QueryResponse, Reply, Response, StdResult, WasmQuery,
+    attr, coins, to_json_binary, Addr, CustomQuery, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    QuerierWrapper, QueryRequest, QueryResponse, Reply, Response, StdResult, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
-
-use btc_staking::msg::ActivatedHeightResponse;
 
 use crate::error::ContractError;
 use crate::finality::{
@@ -18,6 +18,7 @@ use crate::finality::{
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
+use crate::state::finality::{REWARDS, TOTAL_REWARDS};
 use crate::{finality, queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -49,6 +50,7 @@ pub fn instantiate(
     let params = msg.params.unwrap_or_default();
     PARAMS.save(deps.storage, &params)?;
     // initialize storage, so no issue when reading for the first time
+    TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new().add_attribute("action", "instantiate"))
@@ -256,7 +258,58 @@ fn handle_end_block(
         }
         res = res.add_events(events);
     }
+
+    // On an epoch boundary, send rewards to Babylon through the babylon contract
+    let params = PARAMS.load(deps.storage)?;
+    if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
+        let rewards = TOTAL_REWARDS.load(deps.storage)?;
+        if rewards.u128() > 0 {
+            let wasm_msg = send_rewards_msg(deps, rewards.u128(), &cfg)?;
+            res = res.add_message(wasm_msg);
+            // Zero out total rewards
+            TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
+        }
+    }
     Ok(res)
+}
+
+fn send_rewards_msg(
+    deps: &mut DepsMut,
+    rewards: u128,
+    cfg: &Config,
+) -> Result<WasmMsg, ContractError> {
+    // Get the pending rewards distribution
+    let fp_rewards = REWARDS
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter(|item| {
+            if let Ok((_, reward)) = item {
+                reward.u128() > 0
+            } else {
+                true // don't filter errors
+            }
+        })
+        .map(|item| {
+            let (fp_pubkey_hex, reward) = item?;
+            Ok(babylon_contract::msg::contract::RewardsDistribution {
+                fp_pubkey_hex,
+                reward,
+            })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+    let msg = babylon_contract::ExecuteMsg::SendRewards {
+        fp_distribution: fp_rewards.clone(),
+    };
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: cfg.babylon.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: coins(rewards, cfg.denom.as_str()),
+    };
+    // Zero out individual rewards
+    for reward in fp_rewards {
+        REWARDS.remove(deps.storage, &reward.fp_pubkey_hex);
+    }
+
+    Ok(wasm_msg)
 }
 
 pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
