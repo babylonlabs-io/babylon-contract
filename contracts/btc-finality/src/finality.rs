@@ -632,14 +632,20 @@ pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractE
     };
     // Get the voting power of the active FPS
     let total_voting_power = active_fps.iter().map(|fp| fp.power as u128).sum::<u128>();
-    // Get the rewards to distribute (bank balance of the finality contract)
+    // Get the rewards to distribute (bank balance of the finality contract minus already distributed rewards)
+    let distributed_rewards = TOTAL_REWARDS.load(deps.storage)?;
     let cfg = CONFIG.load(deps.storage)?;
     let rewards_amount = deps
         .querier
         .query_balance(env.contract.address.clone(), cfg.denom)?
-        .amount;
+        .amount
+        .saturating_sub(distributed_rewards);
+    // Short-circuit if there are no rewards to distribute
+    if rewards_amount.is_zero() {
+        return Ok(());
+    }
     // Compute the rewards for each active FP
-    let mut total_rewards = Uint128::zero();
+    let mut accumulated_rewards = Uint128::zero();
     for fp in active_fps {
         let reward = (Decimal::from_ratio(fp.power as u128, total_voting_power)
             * Decimal::from_ratio(rewards_amount, 1u128))
@@ -649,9 +655,11 @@ pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractE
             Ok::<Uint128, ContractError>(r.unwrap_or_default() + reward)
         })?;
         // Compute the total rewards
-        total_rewards += reward;
+        accumulated_rewards += reward;
     }
     // Update the total rewards
-    TOTAL_REWARDS.save(deps.storage, &total_rewards)?;
+    TOTAL_REWARDS.update(deps.storage, |r| {
+        Ok::<Uint128, ContractError>(r + accumulated_rewards)
+    })?;
     Ok(())
 }
