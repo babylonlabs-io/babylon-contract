@@ -50,6 +50,7 @@ pub fn instantiate(
     let params = msg.params.unwrap_or_default();
     PARAMS.save(deps.storage, &params)?;
     // initialize storage, so no issue when reading for the first time
+    TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new().add_attribute("action", "instantiate"))
@@ -261,7 +262,7 @@ fn handle_end_block(
     // On an epoch boundary, send rewards to Babylon through the babylon contract
     let params = PARAMS.load(deps.storage)?;
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
-        let rewards = TOTAL_REWARDS.may_load(deps.storage)?.unwrap_or_default();
+        let rewards = TOTAL_REWARDS.load(deps.storage)?;
         if rewards.u128() > 0 {
             let wasm_msg = send_rewards_msg(deps, rewards.u128(), &cfg)?;
             res = res.add_message(wasm_msg);
