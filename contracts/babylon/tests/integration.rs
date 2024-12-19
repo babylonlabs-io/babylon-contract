@@ -32,7 +32,7 @@ use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 
 static BABYLON_CONTRACT_WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
 /// Wasm size limit: https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/validation.go#L24-L25
-const MAX_WASM_SIZE: usize = 800 * 1024; // 800 KB
+const MAX_WASM_SIZE: usize = 1 * 1024 * 1024; // 1 MB
 
 const CREATOR: &str = "creator";
 
