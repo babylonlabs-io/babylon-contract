@@ -37,7 +37,7 @@ pub enum BabylonMsg {
         /// `canonical_app_hash` is the AppHash of the canonical block
         canonical_app_hash: Vec<u8>,
         /// `fork_app_hash` is the AppHash of the fork block
-        fork_app_hash: Bytes,
+        fork_app_hash: Vec<u8>,
         /// `canonical_finality_sig` is the finality signature to the canonical block,
         /// where finality signature is an EOTS signature, i.e.,
         /// the `s` in a Schnorr signature `(r, s)`.
