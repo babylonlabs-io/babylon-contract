@@ -13,7 +13,9 @@ use babylon_bindings::BabylonMsg;
 
 use babylon_apis::finality_api::{Evidence, PubRandCommit};
 use babylon_merkle::Proof;
-use cosmwasm_std::{to_json_binary, Deps, DepsMut, Env, Event, Response, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, Addr, Deps, DepsMut, Env, Event, MessageInfo, Response, WasmMsg,
+};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
@@ -114,6 +116,7 @@ pub(crate) fn verify_commitment_signature(
 pub fn handle_finality_signature(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     fp_btc_pk_hex: &str,
     height: u64,
     pub_rand: &[u8],
@@ -211,7 +214,7 @@ pub fn handle_finality_signature(
 
         // slash this finality provider, including setting its voting power to
         // zero, extracting its BTC SK, and emit an event
-        let (msg, ev) = slash_finality_provider(&env, fp_btc_pk_hex, &evidence)?;
+        let (msg, ev) = slash_finality_provider(&env, &info, fp_btc_pk_hex, &evidence)?;
         res = res.add_message(msg);
         res = res.add_event(ev);
     }
@@ -311,6 +314,7 @@ fn check_fp_exist(deps: Deps, fp_pubkey_hex: &str) -> Result<(), ContractError> 
 /// its voting power to zero, extracting its BTC SK, and emitting an event
 fn slash_finality_provider(
     env: &Env,
+    info: &MessageInfo,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
 ) -> Result<(WasmMsg, Event), ContractError> {
@@ -328,6 +332,7 @@ fn slash_finality_provider(
     // Emit slashing event.
     // Raises slashing event to babylon over IBC.
     let msg = ExecuteMsg::Slashing {
+        sender: info.sender.clone(),
         evidence: evidence.clone(),
     };
     let wasm_msg: WasmMsg = WasmMsg::Execute {
@@ -357,12 +362,22 @@ fn slash_finality_provider(
     Ok((wasm_msg, ev))
 }
 
-pub(crate) fn handle_slashing(evidence: &Evidence) -> Result<Response<BabylonMsg>, ContractError> {
+pub(crate) fn handle_slashing(
+    sender: &Addr,
+    evidence: &Evidence,
+) -> Result<Response<BabylonMsg>, ContractError> {
     let mut res = Response::new();
     // Send msg to Babylon
 
     let msg = BabylonMsg::EquivocationEvidence {
-        evidence: Some(evidence.clone()),
+        signer: sender.to_string(),
+        fp_btc_pk: evidence.fp_btc_pk.clone(),
+        block_height: evidence.block_height,
+        pub_rand: evidence.pub_rand.clone(),
+        canonical_app_hash: evidence.canonical_app_hash.clone(),
+        fork_app_hash: evidence.fork_app_hash.clone(),
+        canonical_finality_sig: evidence.canonical_finality_sig.clone(),
+        fork_finality_sig: evidence.fork_finality_sig.clone(),
     };
 
     // Convert to CosmosMsg
@@ -376,8 +391,9 @@ pub(crate) fn handle_slashing(evidence: &Evidence) -> Result<Response<BabylonMsg
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use cosmwasm_std::from_json;
     use cosmwasm_std::testing::mock_env;
+    use cosmwasm_std::Addr;
+    use cosmwasm_std::{from_json, testing::message_info};
     use std::collections::HashMap;
 
     use babylon_apis::finality_api::PubRandCommit;
@@ -471,9 +487,9 @@ pub(crate) mod tests {
 
         // Create mock environment
         let env = mock_env(); // You'll need to add this mock helper
-
+        let info = message_info(&Addr::unchecked("test"), &[]);
         // Test slash_finality_provider
-        let (wasm_msg, event) = slash_finality_provider(&env, &pk_hex, &evidence).unwrap();
+        let (wasm_msg, event) = slash_finality_provider(&env, &info, &pk_hex, &evidence).unwrap();
 
         // Verify the WasmMsg is correctly constructed
         match wasm_msg {
@@ -487,6 +503,7 @@ pub(crate) mod tests {
                 let msg_evidence = from_json::<ExecuteMsg>(&msg).unwrap();
                 match msg_evidence {
                     ExecuteMsg::Slashing {
+                        sender: _,
                         evidence: msg_evidence,
                     } => {
                         assert_eq!(evidence, msg_evidence);

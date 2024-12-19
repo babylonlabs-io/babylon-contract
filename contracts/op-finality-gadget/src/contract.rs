@@ -82,6 +82,7 @@ pub fn execute(
         } => handle_finality_signature(
             deps,
             env,
+            info,
             &fp_pubkey_hex,
             height,
             &pub_rand,
@@ -89,7 +90,7 @@ pub fn execute(
             &block_hash,
             &signature,
         ),
-        ExecuteMsg::Slashing { evidence } => handle_slashing(&evidence),
+        ExecuteMsg::Slashing { sender, evidence } => handle_slashing(&sender, &evidence),
         ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, Some(api.addr_validate(&admin)?))

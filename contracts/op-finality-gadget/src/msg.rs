@@ -6,7 +6,7 @@ use {
 
 use babylon_apis::finality_api::Evidence;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Addr, Binary};
 
 use babylon_merkle::Proof;
 
@@ -80,6 +80,7 @@ pub enum ExecuteMsg {
     ///
     /// This message can be called by the admin only.
     Slashing {
+        sender: Addr,
         evidence: Evidence,
     },
     /// Enable or disable finality gadget.
