@@ -1,7 +1,4 @@
-use cosmwasm_std::{
-    to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo,
-    QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg,
-};
+use cosmwasm_std::{to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcChannel, IbcEndpoint, IbcMsg, IbcOrder, MessageInfo, QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg};
 use cw2::set_contract_version;
 use cw_utils::{must_pay, ParseReplyError};
 
@@ -285,7 +282,21 @@ pub fn execute(
             // Build the memo payload
             let memo_msg = to_json_string(&fp_distribution)?;
             // Route to babylon over IBC
-            let channel = IBC_CHANNEL.load(deps.storage)?;
+            // let channel = IBC_CHANNEL.load(deps.storage)?;
+            // TODO: Get from the list of open channels
+            let channel = IbcChannel::new(
+                IbcEndpoint {
+                    port_id: "transfer".to_string(),
+                    channel_id: "channel-1".to_string(),
+                },
+                IbcEndpoint {
+                    port_id: "transfer".to_string(),
+                    channel_id: "channel-1".to_string(),
+                },
+                IbcOrder::Unordered,
+                "ics20-1",
+                "connection-0",
+            );
 
             // Construct the transfer message
             let ibc_msg = IbcMsg::Transfer {
@@ -301,6 +312,7 @@ pub fn execute(
             #[cfg(not(any(test, feature = "library")))]
             {
                 // TODO: Add events
+                deps.api.debug(&format!("FINALITY CONTRACT IBC msg: {:#?}", ibc_msg));
                 Ok(Response::new().add_message(ibc_msg))
             }
             #[cfg(any(test, feature = "library"))]
