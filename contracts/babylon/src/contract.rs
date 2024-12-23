@@ -282,7 +282,6 @@ pub fn execute(
             // Build the memo payload
             let memo_msg = to_json_string(&fp_distribution)?;
             // Route to babylon over IBC
-            // let channel = IBC_CHANNEL.load(deps.storage)?;
             // TODO: Get from the list of open channels
             let channel = IbcChannel::new(
                 IbcEndpoint {
@@ -299,9 +298,11 @@ pub fn execute(
             );
 
             // Construct the transfer message
+            // TODO: Generate or get from config
+            let module_address = "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3";
             let ibc_msg = IbcMsg::Transfer {
                 channel_id: channel.endpoint.channel_id,
-                to_address: "zoneconcierge".to_string(),
+                to_address: module_address.to_string(),
                 amount: info.funds[0].clone(),
                 timeout: packet_timeout(&env),
                 memo: Some(memo_msg),
@@ -312,7 +313,6 @@ pub fn execute(
             #[cfg(not(any(test, feature = "library")))]
             {
                 // TODO: Add events
-                deps.api.debug(&format!("FINALITY CONTRACT IBC msg: {:#?}", ibc_msg));
                 Ok(Response::new().add_message(ibc_msg))
             }
             #[cfg(any(test, feature = "library"))]
