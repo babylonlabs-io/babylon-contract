@@ -1,17 +1,21 @@
 use std::collections::HashSet;
 
 use crate::error::ContractError;
+use crate::msg::ExecuteMsg;
 use crate::queries::query_last_pub_rand_commit;
 use crate::state::config::CONFIG;
-use crate::state::finality::{BLOCK_VOTES, SIGNATURES};
+use crate::state::finality::{BLOCK_HASHES, BLOCK_VOTES, EVIDENCES, SIGNATURES};
 use crate::state::public_randomness::{
     get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
 use crate::utils::query_finality_provider;
+use babylon_bindings::BabylonMsg;
 
-use babylon_apis::finality_api::PubRandCommit;
+use babylon_apis::finality_api::{Evidence, PubRandCommit};
 use babylon_merkle::Proof;
-use cosmwasm_std::{Deps, DepsMut, Env, Event, Response};
+use cosmwasm_std::{
+    to_json_binary, Addr, Deps, DepsMut, Env, Event, MessageInfo, Response, WasmMsg,
+};
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
 use k256::sha2::{Digest, Sha256};
@@ -24,7 +28,7 @@ pub fn handle_public_randomness_commit(
     num_pub_rand: u64,
     commitment: &[u8],
     signature: &[u8],
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider is registered
     check_fp_exist(deps.as_ref(), fp_pubkey_hex)?;
 
@@ -111,14 +115,15 @@ pub(crate) fn verify_commitment_signature(
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
+    info: MessageInfo,
     fp_btc_pk_hex: &str,
     height: u64,
     pub_rand: &[u8],
     proof: &Proof,
     block_hash: &[u8],
     signature: &[u8],
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
     check_fp_exist(deps.as_ref(), fp_btc_pk_hex)?;
 
@@ -178,47 +183,45 @@ pub fn handle_finality_signature(
     // TODO?: Don't save public randomness values, to save storage space
     PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand.to_vec())?;
 
-    // TODO: Verify whether the voted block is a fork or not
-    /*
-    indexedBlock, err := ms.GetBlock(ctx, req.BlockHeight)
-    if err != nil {
-        return nil, err
-    }
-    if !bytes.Equal(indexedBlock.AppHash, req.BlockAppHash) {
-        // the finality provider votes for a fork!
+    // Build the response
+    let mut res: Response<BabylonMsg> = Response::new();
+
+    // If this finality provider has signed the canonical block before, slash it via
+    // extracting its secret key, and emit an event
+    let canonical_sig: Option<Vec<u8>> =
+        SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+    let canonical_block_hash: Option<Vec<u8>> =
+        BLOCK_HASHES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
+    if let (Some(canonical_sig), Some(canonical_block_hash)) = (canonical_sig, canonical_block_hash)
+    {
+        // the finality provider has voted for a fork before!
+        // If this evidence is at the same height as this signature, slash this finality provider
 
         // construct evidence
-        evidence := &types.Evidence{
-            FpBtcPk:              req.FpBtcPk,
-            BlockHeight:          req.BlockHeight,
-            PubRand:              req.PubRand,
-            CanonicalAppHash:     indexedBlock.AppHash,
-            CanonicalFinalitySig: nil,
-            ForkAppHash:          req.BlockAppHash,
-            ForkFinalitySig:      signature,
-        }
+        let evidence = Evidence {
+            fp_btc_pk: hex::decode(fp_btc_pk_hex)?,
+            block_height: height,
+            pub_rand: pub_rand.to_vec(),
+            // TODO: we use block hash in place of app hash for now, to define new interface if needed
+            canonical_app_hash: canonical_block_hash,
+            canonical_finality_sig: canonical_sig,
+            fork_app_hash: block_hash.to_vec(),
+            fork_finality_sig: signature.to_vec(),
+        };
 
-        // if this finality provider has also signed canonical block, slash it
-        canonicalSig, err := ms.GetSig(ctx, req.BlockHeight, fpPK)
-        if err == nil {
-            //set canonical sig
-            evidence.CanonicalFinalitySig = canonicalSig
-            // slash this finality provider, including setting its voting power to
-            // zero, extracting its BTC SK, and emit an event
-            ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
-        }
+        // set canonical sig to this evidence
+        EVIDENCES.save(deps.storage, (height, fp_btc_pk_hex), &evidence)?;
 
-        // save evidence
-        ms.SetEvidence(ctx, evidence)
-
-        // NOTE: we should NOT return error here, otherwise the state change triggered in this tx
-        // (including the evidence) will be rolled back
-        return &types.MsgAddFinalitySigResponse{}, nil
+        // slash this finality provider, including setting its voting power to
+        // zero, extracting its BTC SK, and emit an event
+        let (msg, ev) = slash_finality_provider(&env, &info, fp_btc_pk_hex, &evidence)?;
+        res = res.add_message(msg);
+        res = res.add_event(ev);
     }
-    */
 
     // This signature is good, save the vote to the store
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
+    BLOCK_HASHES.save(deps.storage, (height, fp_btc_pk_hex), &block_hash.to_vec())?;
 
     // Check if the key (height, block_hash) exists
     let mut block_votes_fp_set = BLOCK_VOTES
@@ -231,35 +234,14 @@ pub fn handle_finality_signature(
     // Save the updated set back to storage
     BLOCK_VOTES.save(deps.storage, (height, block_hash), &block_votes_fp_set)?;
 
-    // TODO: If this finality provider has signed the canonical block before, slash it via
-    // extracting its secret key, and emit an event
-    /*
-    if ms.HasEvidence(ctx, req.FpBtcPk, req.BlockHeight) {
-        // the finality provider has voted for a fork before!
-        // If this evidence is at the same height as this signature, slash this finality provider
-
-        // get evidence
-        evidence, err := ms.GetEvidence(ctx, req.FpBtcPk, req.BlockHeight)
-        if err != nil {
-            panic(fmt.Errorf("failed to get evidence despite HasEvidence returns true"))
-        }
-
-        // set canonical sig to this evidence
-        evidence.CanonicalFinalitySig = signature
-        ms.SetEvidence(ctx, evidence)
-
-        // slash this finality provider, including setting its voting power to
-        // zero, extracting its BTC SK, and emit an event
-        ms.slashFinalityProvider(ctx, req.FpBtcPk, evidence)
-    }
-    */
-
     let event = Event::new("submit_finality_signature")
         .add_attribute("fp_pubkey_hex", fp_btc_pk_hex)
         .add_attribute("block_height", height.to_string())
         .add_attribute("block_hash", hex::encode(block_hash));
 
-    Ok(Response::new().add_event(event))
+    res = res.add_event(event);
+
+    Ok(res)
 }
 
 /// Verifies the finality signature message w.r.t. the public randomness commitment:
@@ -328,13 +310,97 @@ fn check_fp_exist(deps: Deps, fp_pubkey_hex: &str) -> Result<(), ContractError> 
     }
 }
 
+/// `slash_finality_provider` slashes a finality provider with the given evidence including setting
+/// its voting power to zero, extracting its BTC SK, and emitting an event
+fn slash_finality_provider(
+    env: &Env,
+    info: &MessageInfo,
+    fp_btc_pk_hex: &str,
+    evidence: &Evidence,
+) -> Result<(WasmMsg, Event), ContractError> {
+    let pk = eots::PublicKey::from_hex(fp_btc_pk_hex)?;
+    let btc_sk = pk
+        .extract_secret_key(
+            &evidence.pub_rand,
+            &evidence.canonical_app_hash,
+            &evidence.canonical_finality_sig,
+            &evidence.fork_app_hash,
+            &evidence.fork_finality_sig,
+        )
+        .map_err(|err| ContractError::SecretKeyExtractionError(err.to_string()))?;
+
+    // Emit slashing event.
+    // Raises slashing event to babylon over IBC.
+    let msg = ExecuteMsg::Slashing {
+        sender: info.sender.clone(),
+        evidence: evidence.clone(),
+    };
+    let wasm_msg: WasmMsg = WasmMsg::Execute {
+        contract_addr: env.contract.address.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+
+    let ev = Event::new("slashed_finality_provider")
+        .add_attribute("module", "finality")
+        .add_attribute("finality_provider", fp_btc_pk_hex)
+        .add_attribute("block_height", evidence.block_height.to_string())
+        .add_attribute(
+            "canonical_app_hash",
+            hex::encode(&evidence.canonical_app_hash),
+        )
+        .add_attribute(
+            "canonical_finality_sig",
+            hex::encode(&evidence.canonical_finality_sig),
+        )
+        .add_attribute("fork_app_hash", hex::encode(&evidence.fork_app_hash))
+        .add_attribute(
+            "fork_finality_sig",
+            hex::encode(&evidence.fork_finality_sig),
+        )
+        .add_attribute("secret_key", hex::encode(btc_sk.to_bytes()));
+    Ok((wasm_msg, ev))
+}
+
+pub(crate) fn handle_slashing(
+    sender: &Addr,
+    evidence: &Evidence,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    let mut res = Response::new();
+    // Send msg to Babylon
+
+    let msg = BabylonMsg::EquivocationEvidence {
+        signer: sender.to_string(),
+        fp_btc_pk: evidence.fp_btc_pk.clone(),
+        block_height: evidence.block_height,
+        pub_rand: evidence.pub_rand.clone(),
+        canonical_app_hash: evidence.canonical_app_hash.clone(),
+        fork_app_hash: evidence.fork_app_hash.clone(),
+        canonical_finality_sig: evidence.canonical_finality_sig.clone(),
+        fork_finality_sig: evidence.fork_finality_sig.clone(),
+    };
+
+    // Convert to CosmosMsg
+    res = res
+        .add_message(msg)
+        .add_attribute("action", "equivocation_evidence");
+
+    Ok(res)
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use cosmwasm_std::testing::mock_env;
+    use cosmwasm_std::Addr;
+    use cosmwasm_std::{from_json, testing::message_info};
+    use std::collections::HashMap;
 
     use babylon_apis::finality_api::PubRandCommit;
     use hex::ToHex;
-    use test_utils::{get_add_finality_sig, get_pub_rand_commit, get_pub_rand_value};
+    use test_utils::{
+        get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_commit, get_pub_rand_value,
+    };
 
     /// Get public randomness public key, commitment, and signature information
     ///
@@ -394,5 +460,88 @@ pub(crate) mod tests {
             &add_finality_signature.finality_sig,
         );
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn verify_slashing_works() {
+        // Read test data
+        let (pk_hex, pub_rand, _) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        let add_finality_signature = get_add_finality_sig();
+        let add_finality_signature_2 = get_add_finality_sig_2();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+        let block_height = initial_height + proof.index.unsigned_abs();
+
+        // Create evidence struct
+        let evidence = Evidence {
+            fp_btc_pk: hex::decode(&pk_hex).unwrap(),
+            block_height,
+            pub_rand: pub_rand_one.to_vec(),
+            canonical_app_hash: add_finality_signature.block_app_hash.to_vec(),
+            canonical_finality_sig: add_finality_signature.finality_sig.to_vec(),
+            fork_app_hash: add_finality_signature_2.block_app_hash.to_vec(),
+            fork_finality_sig: add_finality_signature_2.finality_sig.to_vec(),
+        };
+
+        // Create mock environment
+        let env = mock_env(); // You'll need to add this mock helper
+        let info = message_info(&Addr::unchecked("test"), &[]);
+        // Test slash_finality_provider
+        let (wasm_msg, event) = slash_finality_provider(&env, &info, &pk_hex, &evidence).unwrap();
+
+        // Verify the WasmMsg is correctly constructed
+        match wasm_msg {
+            WasmMsg::Execute {
+                contract_addr,
+                msg,
+                funds,
+            } => {
+                assert_eq!(contract_addr, env.contract.address.to_string());
+                assert!(funds.is_empty());
+                let msg_evidence = from_json::<ExecuteMsg>(&msg).unwrap();
+                match msg_evidence {
+                    ExecuteMsg::Slashing {
+                        sender: _,
+                        evidence: msg_evidence,
+                    } => {
+                        assert_eq!(evidence, msg_evidence);
+                    }
+                    _ => panic!("Expected Slashing msg"),
+                }
+            }
+            _ => panic!("Expected Execute msg"),
+        }
+
+        // Verify the event attributes
+        assert_eq!(event.ty, "slashed_finality_provider");
+        let attrs: HashMap<_, _> = event
+            .attributes
+            .iter()
+            .map(|a| (&a.key, &a.value))
+            .collect();
+        assert_eq!(
+            attrs.get(&"module".to_string()).unwrap().as_str(),
+            "finality"
+        );
+        assert_eq!(
+            attrs
+                .get(&"finality_provider".to_string())
+                .unwrap()
+                .as_str(),
+            &pk_hex
+        );
+        assert_eq!(
+            attrs.get(&"block_height".to_string()).unwrap().as_str(),
+            &block_height.to_string()
+        );
+        assert_eq!(
+            attrs
+                .get(&"canonical_app_hash".to_string())
+                .unwrap()
+                .as_str(),
+            &hex::encode(&evidence.canonical_app_hash)
+        );
     }
 }

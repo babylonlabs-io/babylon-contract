@@ -22,6 +22,33 @@ pub enum BabylonMsg {
     /// The rewards are minted to the staking contract address, so that they
     /// can be distributed across the active finality provider set
     MintRewards { amount: Coin, recipient: String },
+    /// EquivocationEvidence is the message that the Babylon contract sends to Babylon
+    /// to notify it of consumer chain slashing.
+    EquivocationEvidence {
+        /// `signer` is the address submitting the evidence
+        signer: String,
+        /// `fp_btc_pk` is the BTC PK of the finality provider that casts this vote
+        fp_btc_pk: Vec<u8>,
+        /// `block_height` is the height of the conflicting blocks
+        block_height: u64,
+        /// `pub_rand is` the public randomness the finality provider has committed to.
+        /// Deserializes to `SchnorrPubRand`
+        pub_rand: Vec<u8>,
+        /// `canonical_app_hash` is the AppHash of the canonical block
+        canonical_app_hash: Vec<u8>,
+        /// `fork_app_hash` is the AppHash of the fork block
+        fork_app_hash: Vec<u8>,
+        /// `canonical_finality_sig` is the finality signature to the canonical block,
+        /// where finality signature is an EOTS signature, i.e.,
+        /// the `s` in a Schnorr signature `(r, s)`.
+        /// `r` is the public randomness already committed by the finality provider.
+        /// Deserializes to `SchnorrEOTSSig`
+        canonical_finality_sig: Vec<u8>,
+        /// `fork_finality_sig` is the finality signature to the fork block,
+        /// where finality signature is an EOTS signature.
+        /// Deserializes to `SchnorrEOTSSig`
+        fork_finality_sig: Vec<u8>,
+    },
 }
 
 pub type BabylonSudoMsg = Empty;

@@ -4,8 +4,9 @@ use {
     cw_controllers::AdminResponse, std::collections::HashSet,
 };
 
+use babylon_apis::finality_api::Evidence;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Addr, Binary};
 
 use babylon_merkle::Proof;
 
@@ -75,6 +76,13 @@ pub enum ExecuteMsg {
         block_hash: Binary,
         signature: Binary,
     },
+    /// Slashing message.
+    ///
+    /// This message can be called by the admin only.
+    Slashing {
+        sender: Addr,
+        evidence: Evidence,
+    },
     /// Enable or disable finality gadget.
     ///
     /// This message can be called by the admin only.
@@ -90,4 +98,9 @@ pub enum ExecuteMsg {
     UpdateAdmin {
         admin: String,
     },
+}
+
+#[cw_serde]
+pub struct FinalitySignatureResponse {
+    pub signature: Vec<u8>,
 }

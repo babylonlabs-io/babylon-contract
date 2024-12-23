@@ -1,7 +1,9 @@
 use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{Config, CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, SIGNATURES, TOTAL_POWER};
+use crate::state::finality::{
+    BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, REWARDS, SIGNATURES, TOTAL_REWARDS,
+};
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
@@ -14,7 +16,7 @@ use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, QuerierWrapper, Response, StdResult,
-    Storage, WasmMsg,
+    Storage, Uint128, WasmMsg,
 };
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
@@ -425,8 +427,8 @@ pub fn index_block(
 /// It must be invoked only after the BTC staking protocol is activated.
 pub fn tally_blocks(
     deps: &mut DepsMut,
+    env: &Env,
     activated_height: u64,
-    height: u64,
 ) -> Result<(Option<BabylonMsg>, Vec<Event>), ContractError> {
     // Start finalising blocks since max(activated_height, next_height)
     let next_height = NEXT_HEIGHT.may_load(deps.storage)?.unwrap_or(0);
@@ -443,7 +445,7 @@ pub fn tally_blocks(
     // non-finalisable
     let mut events = vec![];
     let mut finalized_blocks = 0;
-    for h in start_height..=height {
+    for h in start_height..=env.block.height {
         let mut indexed_block = BLOCKS.load(deps.storage, h)?;
         // Get the finality provider set of this block
         let fp_set = FP_SET.may_load(deps.storage, h)?;
@@ -535,8 +537,6 @@ fn finalize_block(
     // Set the next height to finalise as height+1
     NEXT_HEIGHT.save(store, &(block.height + 1))?;
 
-    // TODO: Distribute rewards to BTC staking delegators
-
     // Record the last finalized height metric
     let ev = Event::new("finalize_block")
         .add_attribute("module", "finality")
@@ -575,7 +575,7 @@ const QUERY_LIMIT: Option<u32> = Some(30);
 /// power of top finality providers, and records them in the contract state
 pub fn compute_active_finality_providers(
     deps: &mut DepsMut,
-    env: Env,
+    height: u64,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
     let params = get_babylon_sdk_params(&deps.querier)?;
@@ -621,9 +621,7 @@ pub fn compute_active_finality_providers(
     // TODO: Filter out slashed / offline / jailed FPs
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
-    FP_SET.save(deps.storage, env.block.height, &finality_providers)?;
-    // Save the total voting power of the top n finality providers
-    TOTAL_POWER.save(deps.storage, &total_power)?;
+    FP_SET.save(deps.storage, height, &finality_providers)?;
 
     Ok(())
 }
@@ -640,4 +638,39 @@ pub fn list_fps_by_power(
     )?;
     let res: FinalityProvidersByPowerResponse = querier.query(&query)?;
     Ok(res.fps)
+}
+
+/// `distribute_rewards` distributes rewards to finality providers who are in the active set at `height`
+pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractError> {
+    // Try to use the finality provider set at the previous height
+    let active_fps = FP_SET.may_load(deps.storage, env.block.height - 1)?;
+    // Short-circuit if there are no active finality providers
+    let active_fps = match active_fps {
+        Some(active_fps) => active_fps,
+        None => return Ok(()),
+    };
+    // Get the voting power of the active FPS
+    let total_voting_power = active_fps.iter().map(|fp| fp.power as u128).sum::<u128>();
+    // Get the rewards to distribute (bank balance of the finality contract)
+    let cfg = CONFIG.load(deps.storage)?;
+    let rewards_amount = deps
+        .querier
+        .query_balance(env.contract.address.clone(), cfg.denom)?
+        .amount;
+    // Compute the rewards for each active FP
+    let mut total_rewards = Uint128::zero();
+    for fp in active_fps {
+        let reward = (Decimal::from_ratio(fp.power as u128, total_voting_power)
+            * Decimal::from_ratio(rewards_amount, 1u128))
+        .to_uint_floor();
+        // Update the rewards for this FP
+        REWARDS.update(deps.storage, &fp.btc_pk_hex, |r| {
+            Ok::<Uint128, ContractError>(r.unwrap_or_default() + reward)
+        })?;
+        // Compute the total rewards
+        total_rewards += reward;
+    }
+    // Update the total rewards
+    TOTAL_REWARDS.save(deps.storage, &total_rewards)?;
+    Ok(())
 }

@@ -1,11 +1,14 @@
 use crate::error::ContractError;
 use crate::exec::admin::set_enabled;
-use crate::exec::finality::{handle_finality_signature, handle_public_randomness_commit};
+use crate::exec::finality::{
+    handle_finality_signature, handle_public_randomness_commit, handle_slashing,
+};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries::{
     query_block_voters, query_config, query_first_pub_rand_commit, query_last_pub_rand_commit,
 };
 use crate::state::config::{Config, ADMIN, CONFIG, IS_ENABLED};
+use babylon_bindings::BabylonMsg;
 use cosmwasm_std::{
     to_json_binary, Deps, DepsMut, Env, MessageInfo, QueryResponse, Response, StdResult,
 };
@@ -16,7 +19,7 @@ pub fn instantiate(
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> StdResult<Response<BabylonMsg>> {
     let api = deps.api;
     ADMIN.set(deps.branch(), Some(api.addr_validate(&msg.admin)?))?;
     IS_ENABLED.save(deps.storage, &msg.is_enabled)?;
@@ -51,7 +54,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     let api = deps.api;
 
     match msg {
@@ -79,6 +82,7 @@ pub fn execute(
         } => handle_finality_signature(
             deps,
             env,
+            info,
             &fp_pubkey_hex,
             height,
             &pub_rand,
@@ -86,6 +90,7 @@ pub fn execute(
             &block_hash,
             &signature,
         ),
+        ExecuteMsg::Slashing { sender, evidence } => handle_slashing(&sender, &evidence),
         ExecuteMsg::SetEnabled { enabled } => set_enabled(deps, info, enabled),
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, Some(api.addr_validate(&admin)?))
@@ -145,7 +150,6 @@ pub(crate) mod tests {
         let mut deps = mock_dependencies();
         let init_admin = deps.api.addr_make(INIT_ADMIN);
         let new_admin = deps.api.addr_make(NEW_ADMIN);
-
         // Create an InstantiateMsg with admin set to Some(INIT_ADMIN.into())
         let instantiate_msg = InstantiateMsg {
             admin: init_admin.to_string(), // Admin provided
