@@ -29,9 +29,9 @@ babylon-btcstaking = { path = "./packages/btcstaking" }
 babylon-contract = { path = "./contracts/babylon" }
 eots = { path = "./packages/eots" }
 anyhow = "1.0.82"
+bech32 = "0.9.1"
 bitcoin = "0.31.1"
 bitvec = "1"
-bech32 = "0.9.1"
 blst = "0.3.11"
 cosmos-sdk-proto = { version = "0.19.0", default-features = false, features = [
     "cosmwasm",

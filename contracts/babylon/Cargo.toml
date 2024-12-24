@@ -36,6 +36,7 @@ babylon-apis     = { path = "../../packages/apis" }
 babylon-bindings = { path = "../../packages/bindings" }
 babylon-proto    = { path = "../../packages/proto" }
 babylon-bitcoin  = { path = "../../packages/bitcoin" }
+bech32           = { workspace = true }
 blst             = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }
@@ -48,6 +49,7 @@ cosmos-sdk-proto = { workspace = true }
 thiserror        = { workspace = true }
 prost            = { workspace = true }
 ics23            = { workspace = true }
+sha2             = { workspace = true }
 
 [dev-dependencies]
 babylon-bindings-test  = { path = "../../packages/bindings-test" }

@@ -1,16 +1,21 @@
-use cosmwasm_std::{to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcChannel, IbcEndpoint, IbcMsg, IbcOrder, MessageInfo, QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg};
-use cw2::set_contract_version;
-use cw_utils::{must_pay, ParseReplyError};
-
-use babylon_apis::{btc_staking_api, finality_api};
-use babylon_bindings::BabylonMsg;
-
 use crate::error::ContractError;
 use crate::ibc::{ibc_packet, packet_timeout, IBC_CHANNEL};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
+use babylon_apis::{btc_staking_api, finality_api};
+use babylon_bindings::BabylonMsg;
+use bech32::ToBase32;
+use bech32::Variant::Bech32;
+use cosmwasm_std::{
+    to_json_binary, to_json_string, Addr, Binary, CanonicalAddr, Deps, DepsMut, Empty, Env,
+    IbcChannel, IbcEndpoint, IbcMsg, IbcOrder, MessageInfo, QueryResponse, Reply, Response, SubMsg,
+    SubMsgResponse, WasmMsg,
+};
+use cw2::set_contract_version;
+use cw_utils::{must_pay, ParseReplyError};
+use sha2::Digest;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -297,9 +302,9 @@ pub fn execute(
                 "connection-0",
             );
 
+            // TODO: Get prefix and module name from config
+            let module_address = to_bech32("bbn", &module_address("zoneconcierge"))?;
             // Construct the transfer message
-            // TODO: Generate or get from config
-            let module_address = "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3";
             let ibc_msg = IbcMsg::Transfer {
                 channel_id: channel.endpoint.channel_id,
                 to_address: module_address.to_string(),
@@ -322,6 +327,27 @@ pub fn execute(
             }
         }
     }
+}
+
+/// Hash function to replace Cosmos SDK crypto.AddressHash and Hash.
+fn hash(namespace: &str, input: &[u8]) -> Vec<u8> {
+    let mut hasher = sha2::Sha256::new();
+    sha2::digest::Update::update(&mut hasher, namespace.as_bytes());
+    sha2::digest::Update::update(&mut hasher, input);
+    hasher.finalize().to_vec()
+}
+
+/// Generates a Cosmos SDK compatible module address from a module name
+// TODO: Move this to a common utility module
+fn module_address(module_name: &str) -> CanonicalAddr {
+    CanonicalAddr::from(hash("", module_name.as_bytes()))
+}
+
+/// Converts a CanonicalAddr to a Cosmos SDK compatible Bech32 encoded Addr
+// TODO: Move this to a common utility module
+fn to_bech32(prefix: &str, addr: &CanonicalAddr) -> Result<Addr, ContractError> {
+    let bech32_addr = bech32::encode(prefix, &addr.as_slice().to_base32()[..32], Bech32)?;
+    Ok(Addr::unchecked(bech32_addr))
 }
 
 #[cfg(test)]
@@ -429,6 +455,19 @@ mod tests {
                 label: "BTC Finality".into(),
             }
             .into()
+        );
+    }
+
+    #[test]
+    fn test_module_address() {
+        // Example usage
+        let prefix = "bbn";
+        let module_name = "zoneconcierge";
+
+        let addr = to_bech32(prefix, &module_address(module_name)).unwrap();
+        assert_eq!(
+            addr.to_string(),
+            "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3"
         );
     }
 }

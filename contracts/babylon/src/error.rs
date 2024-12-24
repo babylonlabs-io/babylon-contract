@@ -22,6 +22,8 @@ pub enum ContractError {
     CzHeaderError(#[from] CZHeaderChainError),
     #[error("{0}")]
     Payment(#[from] PaymentError),
+    #[error("{0}")]
+    Bech32(#[from] bech32::Error),
     #[error("Contract already has an open IBC channel")]
     IbcChannelAlreadyOpen {},
     #[error("The contract only supports ordered channels")]
