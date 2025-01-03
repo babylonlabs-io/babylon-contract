@@ -229,6 +229,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "hex",
+ "sha2",
  "tendermint-proto",
  "thiserror",
 ]
@@ -300,7 +301,6 @@ dependencies = [
  "babylon-bindings-test",
  "babylon-bitcoin",
  "babylon-proto",
- "bech32 0.9.1",
  "blst",
  "btc-finality",
  "btc-staking",
