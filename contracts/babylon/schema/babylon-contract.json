@@ -95,6 +95,17 @@
       "notify_cosmos_zone": {
         "description": "notify_cosmos_zone indicates whether to send Cosmos zone messages notifying BTC-finalised headers. NOTE: If set to true, then the Cosmos zone needs to integrate the corresponding message handler as well",
         "type": "boolean"
+      },
+      "transfer_info": {
+        "description": "IBC information for ICS-020 rewards transfer. If not set, distributed rewards will be native to the Consumer",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/IbcTransferInfo"
+          },
+          {
+            "type": "null"
+          }
+        ]
       }
     },
     "additionalProperties": false,
@@ -103,6 +114,22 @@
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
       },
+      "IbcTransferInfo": {
+        "type": "object",
+        "required": [
+          "channel_id",
+          "recipient"
+        ],
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "recipient": {
+            "$ref": "#/definitions/Recipient"
+          }
+        },
+        "additionalProperties": false
+      },
       "Network": {
         "type": "string",
         "enum": [
@@ -110,6 +137,34 @@
           "testnet",
           "signet",
           "regtest"
+        ]
+      },
+      "Recipient": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "contract_addr"
+            ],
+            "properties": {
+              "contract_addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "module_addr"
+            ],
+            "properties": {
+              "module_addr": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
         ]
       }
     }
@@ -575,6 +630,20 @@
                 "minimum": 0.0
               }
             },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "TransferInfo returns the IBC transfer information stored in the contract for ICS-020 rewards transfer. If not set, distributed rewards are native to the Consumer",
+        "type": "object",
+        "required": [
+          "transfer_info"
+        ],
+        "properties": {
+          "transfer_info": {
+            "type": "object",
             "additionalProperties": false
           }
         },
@@ -1570,6 +1639,41 @@
         "Uint64": {
           "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
           "type": "string"
+        }
+      }
+    },
+    "transfer_info": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_TransferInfo",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TransferInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "TransferInfo": {
+          "description": "IBC transfer (ICS-020) channel settings",
+          "type": "object",
+          "required": [
+            "address_type",
+            "channel_id",
+            "to_address"
+          ],
+          "properties": {
+            "address_type": {
+              "type": "string"
+            },
+            "channel_id": {
+              "type": "string"
+            },
+            "to_address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         }
       }
     }
