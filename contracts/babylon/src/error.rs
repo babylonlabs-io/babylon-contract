@@ -1,3 +1,4 @@
+use babylon_apis::error::StakingApiError;
 use babylon_bitcoin::Work;
 use cosmwasm_std::StdError;
 use cw_utils::{ParseReplyError, PaymentError};
@@ -22,8 +23,8 @@ pub enum ContractError {
     CzHeaderError(#[from] CZHeaderChainError),
     #[error("{0}")]
     Payment(#[from] PaymentError),
-    #[error("{0}")]
-    Bech32(#[from] bech32::Error),
+    #[error("API error: {0}")]
+    ApiError(#[from] StakingApiError),
     #[error("Contract already has an open IBC channel")]
     IbcChannelAlreadyOpen {},
     #[error("The contract only supports ordered channels")]

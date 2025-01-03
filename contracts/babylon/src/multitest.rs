@@ -37,8 +37,8 @@ fn initialization() {
 
 mod instantiation {
     use super::*;
-    use crate::contract::{module_address, to_bech32};
     use crate::msg::ibc::Recipient;
+    use babylon_apis::{to_bech32_addr, to_module_canonical_addr};
     use cosmwasm_std::to_json_string;
 
     #[test]
@@ -116,7 +116,7 @@ mod instantiation {
         assert_eq!(transfer_info.channel_id, "channel-10");
         assert_eq!(
             transfer_info.to_address,
-            to_bech32("bbn", &module_address("module-addr"))
+            to_bech32_addr("bbn", &to_module_canonical_addr("module-addr"))
                 .unwrap()
                 .to_string()
         );

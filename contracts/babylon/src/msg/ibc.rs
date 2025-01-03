@@ -1,5 +1,5 @@
 use crate::ibc::TransferInfo;
-use babylon_apis::new_canonical_addr;
+use babylon_apis::to_canonical_addr;
 use cosmos_sdk_proto::ibc::core::channel::v1::{acknowledgement::Response, Acknowledgement};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{StdError, StdResult};
@@ -23,7 +23,7 @@ impl IbcTransferInfo {
         }
         match self.recipient {
             Recipient::ContractAddr(ref addr) => {
-                new_canonical_addr(addr, "bbn").map_err(|e| {
+                to_canonical_addr(addr, "bbn").map_err(|e| {
                     StdError::generic_err(format!("Invalid contract address: {}", e))
                 })?;
             }
