@@ -53,6 +53,9 @@ pub struct InstantiateMsg {
     pub consumer_name: Option<String>,
     /// Description of the consumer
     pub consumer_description: Option<String>,
+    /// IBC information for ICS-020 rewards transfer.
+    /// If not set, distributed rewards will be native to the Consumer
+    pub transfer_info: Option<crate::msg::ibc::IbcTransferInfo>,
 }
 
 impl ContractMsg for InstantiateMsg {
@@ -82,6 +85,10 @@ impl ContractMsg for InstantiateMsg {
                     "Consumer name and description are required when btc_staking_code_id is set",
                 ));
             }
+        }
+
+        if let Some(transfer_info) = &self.transfer_info {
+            transfer_info.validate()?;
         }
 
         Ok(())
@@ -169,4 +176,9 @@ pub enum QueryMsg {
     /// CzHeader returns the CZ header stored in the contract, by CZ height.
     #[returns(CzHeaderResponse)]
     CzHeader { height: u64 },
+    /// TransferInfo returns the IBC transfer information stored in the contract
+    /// for ICS-020 rewards transfer.
+    /// If not set, distributed rewards are native to the Consumer
+    #[returns(crate::msg::ibc::TransferInfoResponse)]
+    TransferInfo {},
 }

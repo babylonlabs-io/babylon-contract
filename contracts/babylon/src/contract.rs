@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::ibc::{ibc_packet, packet_timeout, IBC_CHANNEL};
+use crate::ibc::{ibc_packet, packet_timeout, TransferInfo, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
@@ -9,9 +9,8 @@ use babylon_bindings::BabylonMsg;
 use bech32::ToBase32;
 use bech32::Variant::Bech32;
 use cosmwasm_std::{
-    to_json_binary, to_json_string, Addr, Binary, CanonicalAddr, Deps, DepsMut, Empty, Env,
-    IbcChannel, IbcEndpoint, IbcMsg, IbcOrder, MessageInfo, QueryResponse, Reply, Response, SubMsg,
-    SubMsgResponse, WasmMsg,
+    to_json_binary, to_json_string, Addr, Binary, CanonicalAddr, Deps, DepsMut, Empty, Env, IbcMsg,
+    MessageInfo, QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_utils::{must_pay, ParseReplyError};
@@ -97,6 +96,25 @@ pub fn instantiate(
 
     // Save the config after potentially updating it
     CONFIG.save(deps.storage, &cfg)?;
+
+    // Format and save the IBC transfer info
+    if let Some(transfer_info) = msg.transfer_info {
+        let (to_address, address_type) = match transfer_info.recipient {
+            crate::msg::ibc::Recipient::ContractAddr(addr) => (addr, "contract"),
+            crate::msg::ibc::Recipient::ModuleAddr(module) => (
+                to_bech32("bbn", &module_address(&module))?.to_string(),
+                "module",
+            ),
+        };
+        IBC_TRANSFER.save(
+            deps.storage,
+            &TransferInfo {
+                channel_id: transfer_info.channel_id,
+                to_address,
+                address_type: address_type.to_string(),
+            },
+        )?;
+    }
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(res)
@@ -201,6 +219,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         )?),
         QueryMsg::CzLastHeader {} => Ok(to_json_binary(&queries::cz_last_header(deps)?)?),
         QueryMsg::CzHeader { height } => Ok(to_json_binary(&queries::cz_header(deps, height)?)?),
+        QueryMsg::TransferInfo {} => Ok(to_json_binary(&queries::transfer_info(deps)?)?),
     }
 }
 
@@ -284,46 +303,38 @@ pub fn execute(
             if info.sender != btc_finality {
                 return Err(ContractError::Unauthorized {});
             }
-            // Build the memo payload
-            let memo_msg = to_json_string(&fp_distribution)?;
-            // Route to babylon over IBC
-            // TODO: Get from the list of open channels
-            let channel = IbcChannel::new(
-                IbcEndpoint {
-                    port_id: "transfer".to_string(),
-                    channel_id: "channel-1".to_string(),
-                },
-                IbcEndpoint {
-                    port_id: "transfer".to_string(),
-                    channel_id: "channel-1".to_string(),
-                },
-                IbcOrder::Unordered,
-                "ics20-1",
-                "connection-0",
-            );
+            // Route to babylon over IBC, if available
+            let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
+            match transfer_info {
+                Some(transfer_info) => {
+                    // Build the payload
+                    let payload_msg = to_json_string(&fp_distribution)?;
+                    // Construct the transfer message
+                    let ibc_msg = IbcMsg::Transfer {
+                        channel_id: transfer_info.channel_id,
+                        to_address: transfer_info.to_address,
+                        amount: info.funds[0].clone(),
+                        timeout: packet_timeout(&env),
+                        memo: Some(payload_msg),
+                    };
 
-            // TODO: Get prefix and module name from config
-            let module_address = to_bech32("bbn", &module_address("zoneconcierge"))?;
-            // Construct the transfer message
-            let ibc_msg = IbcMsg::Transfer {
-                channel_id: channel.endpoint.channel_id,
-                to_address: module_address.to_string(),
-                amount: info.funds[0].clone(),
-                timeout: packet_timeout(&env),
-                memo: Some(memo_msg),
-            };
-
-            // Send packet only if we are IBC enabled
-            // TODO: send in test code when multi-test can handle it
-            #[cfg(not(any(test, feature = "library")))]
-            {
-                // TODO: Add events
-                Ok(Response::new().add_message(ibc_msg))
-            }
-            #[cfg(any(test, feature = "library"))]
-            {
-                let _ = ibc_msg;
-                Ok(Response::new())
+                    // Send packet only if we are IBC enabled
+                    // TODO: send in test code when multi-test can handle it
+                    #[cfg(not(any(test, feature = "library")))]
+                    {
+                        // TODO: Add events
+                        Ok(Response::new().add_message(ibc_msg))
+                    }
+                    #[cfg(any(test, feature = "library"))]
+                    {
+                        let _ = ibc_msg;
+                        Ok(Response::new())
+                    }
+                }
+                None => {
+                    // TODO: Send payload over the custom IBC channel for distribution
+                    Ok(Response::new())
+                }
             }
         }
     }
@@ -339,13 +350,13 @@ fn hash(namespace: &str, input: &[u8]) -> Vec<u8> {
 
 /// Generates a Cosmos SDK compatible module address from a module name
 // TODO: Move this to a common utility module
-fn module_address(module_name: &str) -> CanonicalAddr {
+pub fn module_address(module_name: &str) -> CanonicalAddr {
     CanonicalAddr::from(hash("", module_name.as_bytes()))
 }
 
 /// Converts a CanonicalAddr to a Cosmos SDK compatible Bech32 encoded Addr
 // TODO: Move this to a common utility module
-fn to_bech32(prefix: &str, addr: &CanonicalAddr) -> Result<Addr, ContractError> {
+pub fn to_bech32(prefix: &str, addr: &CanonicalAddr) -> Result<Addr, ContractError> {
     let bech32_addr = bech32::encode(prefix, &addr.as_slice().to_base32()[..32], Bech32)?;
     Ok(Addr::unchecked(bech32_addr))
 }
@@ -383,6 +394,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
+            transfer_info: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -405,6 +417,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
+            transfer_info: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -440,6 +453,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
+            transfer_info: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();

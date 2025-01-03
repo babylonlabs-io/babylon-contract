@@ -1,3 +1,5 @@
+use crate::msg::ibc::TransferInfoResponse;
+use crate::msg::ibc::{IbcTransferInfo, Recipient};
 use anyhow::Result as AnyResult;
 use derivative::Derivative;
 
@@ -43,6 +45,7 @@ pub struct SuiteBuilder {
     funds: Vec<(Addr, u128)>,
     staking_msg: Option<String>,
     finality_msg: Option<String>,
+    transfer_info: Option<IbcTransferInfo>,
 }
 
 impl SuiteBuilder {
@@ -62,6 +65,17 @@ impl SuiteBuilder {
     /// Sets the finality contract instantiation message
     pub fn with_finality_msg(mut self, msg: &str) -> Self {
         self.finality_msg = Some(msg.into());
+        self
+    }
+
+    /// Sets the IBC transfer info
+    #[allow(dead_code)]
+    pub fn with_ibc_transfer_info(mut self, channel_id: &str, recipient: Recipient) -> Self {
+        let transfer_info = IbcTransferInfo {
+            channel_id: channel_id.into(),
+            recipient,
+        };
+        self.transfer_info = Some(transfer_info);
         self
     }
 
@@ -103,6 +117,7 @@ impl SuiteBuilder {
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
+                    transfer_info: self.transfer_info,
                 },
                 &[],
                 "babylon",
@@ -158,6 +173,14 @@ impl Suite {
         self.app
             .wrap()
             .query_wasm_smart(CONTRACT2_ADDR, &btc_finality::msg::QueryMsg::Config {})
+            .unwrap()
+    }
+
+    #[track_caller]
+    pub fn get_transfer_info(&self) -> TransferInfoResponse {
+        self.app
+            .wrap()
+            .query_wasm_smart(self.contract.clone(), &QueryMsg::TransferInfo {})
             .unwrap()
     }
 
