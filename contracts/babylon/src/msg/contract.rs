@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Uint128;
 use cosmwasm_std::{Binary, StdError, StdResult};
 
 use babylon_apis::finality_api::Evidence;
@@ -52,6 +53,9 @@ pub struct InstantiateMsg {
     pub consumer_name: Option<String>,
     /// Description of the consumer
     pub consumer_description: Option<String>,
+    /// IBC information for ICS-020 rewards transfer.
+    /// If not set, distributed rewards will be native to the Consumer
+    pub transfer_info: Option<crate::msg::ibc::IbcTransferInfo>,
 }
 
 impl ContractMsg for InstantiateMsg {
@@ -83,6 +87,10 @@ impl ContractMsg for InstantiateMsg {
             }
         }
 
+        if let Some(transfer_info) = &self.transfer_info {
+            transfer_info.validate()?;
+        }
+
         Ok(())
     }
 
@@ -108,6 +116,17 @@ pub enum ExecuteMsg {
     /// This will be forwarded over IBC to the Babylon side for propagation to other Consumers, and
     /// Babylon itself
     Slashing { evidence: Evidence },
+    /// `SendRewards` is a message sent by the finality contract, to send rewards to Babylon
+    SendRewards {
+        /// `fp_distribution` is the list of finality providers and their rewards
+        fp_distribution: Vec<RewardsDistribution>,
+    },
+}
+
+#[cw_serde]
+pub struct RewardsDistribution {
+    pub fp_pubkey_hex: String,
+    pub reward: Uint128,
 }
 
 #[cw_serde]
@@ -157,4 +176,9 @@ pub enum QueryMsg {
     /// CzHeader returns the CZ header stored in the contract, by CZ height.
     #[returns(CzHeaderResponse)]
     CzHeader { height: u64 },
+    /// TransferInfo returns the IBC transfer information stored in the contract
+    /// for ICS-020 rewards transfer.
+    /// If not set, distributed rewards are native to the Consumer
+    #[returns(crate::msg::ibc::TransferInfoResponse)]
+    TransferInfo {},
 }

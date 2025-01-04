@@ -1,13 +1,18 @@
-use crate::msg::contract::{InstantiateMsg, QueryMsg};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
-use crate::state::config::Config;
+use crate::msg::ibc::TransferInfoResponse;
+use crate::msg::ibc::{IbcTransferInfo, Recipient};
 use anyhow::Result as AnyResult;
+use derivative::Derivative;
+
+use cosmwasm_std::{Addr, Binary, Empty};
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
+
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
-use cosmwasm_std::{Addr, Empty};
-use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
-use derivative::Derivative;
+
+use crate::msg::contract::{InstantiateMsg, QueryMsg};
+use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
+use crate::state::config::Config;
 
 fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
@@ -38,6 +43,9 @@ fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
 #[derivative(Default = "new")]
 pub struct SuiteBuilder {
     funds: Vec<(Addr, u128)>,
+    staking_msg: Option<String>,
+    finality_msg: Option<String>,
+    transfer_info: Option<IbcTransferInfo>,
 }
 
 impl SuiteBuilder {
@@ -45,6 +53,29 @@ impl SuiteBuilder {
     #[allow(dead_code)]
     pub fn with_funds(mut self, addr: &str, amount: u128) -> Self {
         self.funds.push((Addr::unchecked(addr), amount));
+        self
+    }
+
+    /// Sets the staking contract instantiation message
+    pub fn with_staking_msg(mut self, msg: &str) -> Self {
+        self.staking_msg = Some(msg.into());
+        self
+    }
+
+    /// Sets the finality contract instantiation message
+    pub fn with_finality_msg(mut self, msg: &str) -> Self {
+        self.finality_msg = Some(msg.into());
+        self
+    }
+
+    /// Sets the IBC transfer info
+    #[allow(dead_code)]
+    pub fn with_ibc_transfer_info(mut self, channel_id: &str, recipient: Recipient) -> Self {
+        let transfer_info = IbcTransferInfo {
+            channel_id: channel_id.into(),
+            recipient,
+        };
+        self.transfer_info = Some(transfer_info);
         self
     }
 
@@ -66,6 +97,9 @@ impl SuiteBuilder {
         let btc_finality_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_finality());
         let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
+
+        let staking_msg = self.staking_msg.map(|msg| Binary::from(msg.as_bytes()));
+        let finality_msg = self.finality_msg.map(|msg| Binary::from(msg.as_bytes()));
         let contract = app
             .instantiate_contract(
                 contract_code_id,
@@ -77,12 +111,13 @@ impl SuiteBuilder {
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
                     btc_staking_code_id: Some(btc_staking_code_id),
-                    btc_staking_msg: None,
+                    btc_staking_msg: staking_msg,
                     btc_finality_code_id: Some(btc_finality_code_id),
-                    btc_finality_msg: None,
+                    btc_finality_msg: finality_msg,
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
+                    transfer_info: self.transfer_info,
                 },
                 &[],
                 "babylon",
@@ -138,6 +173,14 @@ impl Suite {
         self.app
             .wrap()
             .query_wasm_smart(CONTRACT2_ADDR, &btc_finality::msg::QueryMsg::Config {})
+            .unwrap()
+    }
+
+    #[track_caller]
+    pub fn get_transfer_info(&self) -> TransferInfoResponse {
+        self.app
+            .wrap()
+            .query_wasm_smart(self.contract.clone(), &QueryMsg::TransferInfo {})
             .unwrap()
     }
 

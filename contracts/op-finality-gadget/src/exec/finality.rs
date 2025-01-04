@@ -519,28 +519,16 @@ pub(crate) mod tests {
         let attrs: HashMap<_, _> = event
             .attributes
             .iter()
-            .map(|a| (&a.key, &a.value))
+            .map(|a| (a.key.clone(), a.value.clone()))
             .collect();
+        assert_eq!(attrs.get("module").unwrap(), "finality");
+        assert_eq!(attrs.get("finality_provider").unwrap(), &pk_hex);
         assert_eq!(
-            attrs.get(&"module".to_string()).unwrap().as_str(),
-            "finality"
-        );
-        assert_eq!(
-            attrs
-                .get(&"finality_provider".to_string())
-                .unwrap()
-                .as_str(),
-            &pk_hex
-        );
-        assert_eq!(
-            attrs.get(&"block_height".to_string()).unwrap().as_str(),
+            attrs.get("block_height").unwrap(),
             &block_height.to_string()
         );
         assert_eq!(
-            attrs
-                .get(&"canonical_app_hash".to_string())
-                .unwrap()
-                .as_str(),
+            attrs.get("canonical_app_hash").unwrap(),
             &hex::encode(&evidence.canonical_app_hash)
         );
     }

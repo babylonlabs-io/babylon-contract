@@ -3,6 +3,7 @@ use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
+use cosmwasm_schema::cw_serde;
 
 use crate::state::config::CONFIG;
 use cosmwasm_std::{
@@ -14,11 +15,19 @@ use cosmwasm_std::{
 use cw_storage_plus::Item;
 use prost::Message;
 
+/// IBC custom channel settings
 pub const IBC_VERSION: &str = "zoneconcierge-1";
 pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
-
-// IBC specific state
 pub const IBC_CHANNEL: Item<IbcChannel> = Item::new("ibc_channel");
+
+/// IBC transfer (ICS-020) channel settings
+#[cw_serde]
+pub struct TransferInfo {
+    pub channel_id: String,
+    pub to_address: String,
+    pub address_type: String,
+}
+pub const IBC_TRANSFER: Item<TransferInfo> = Item::new("ibc_transfer");
 
 /// This is executed during the ChannelOpenInit and ChannelOpenTry
 /// of the IBC 4-step channel protocol
@@ -140,6 +149,9 @@ pub fn ibc_packet_receive(
             }
             Packet::ConsumerSlashing(_) => Err(StdError::generic_err(
                 "ConsumerSlashing packet should not be received",
+            )),
+            Packet::ConsumerFpDistribution(_) => Err(StdError::generic_err(
+                "ConsumerFpDistribution packet should not be received",
             )),
         }
     })()
@@ -315,6 +327,7 @@ mod tests {
     use super::*;
     use crate::contract::instantiate;
     use crate::msg::contract::InstantiateMsg;
+    use crate::msg::ibc::{IbcTransferInfo, Recipient};
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_ibc_channel_open_try, MockApi, MockQuerier, MockStorage,
@@ -338,6 +351,10 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
+            transfer_info: Some(IbcTransferInfo {
+                channel_id: "channel-1".to_string(),
+                recipient: Recipient::ModuleAddr("zoneconcierge".to_string()),
+            }),
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();

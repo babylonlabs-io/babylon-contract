@@ -360,6 +360,7 @@ pub(crate) mod tests {
             btc_finality: None,
             consumer_name: None,
             consumer_description: None,
+            denom: "ustake".to_string(),
         };
         CONFIG.save(storage, &cfg).unwrap();
         w
@@ -371,6 +372,7 @@ pub(crate) mod tests {
         match resp {
             ExecuteMsg::BtcHeaders { headers } => headers,
             ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
+            ExecuteMsg::SendRewards { .. } => unreachable!("unexpected send rewards message"),
         }
     }
 

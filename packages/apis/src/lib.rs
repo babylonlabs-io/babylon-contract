@@ -1,10 +1,19 @@
+use bech32::Variant::Bech32;
+use bech32::{FromBase32, ToBase32, Variant};
+use sha2::Digest;
+
+use cosmwasm_std::{Addr, Binary, CanonicalAddr, CustomQuery, QueryRequest, WasmQuery};
+
+use error::StakingApiError;
+
 pub mod btc_staking_api;
 pub mod error;
 pub mod finality_api;
 mod validate;
 
-use bech32::{FromBase32, Variant};
-use cosmwasm_std::{Addr, Binary, CanonicalAddr, CustomQuery, QueryRequest, WasmQuery};
+pub type Bytes = Vec<u8>;
+
+pub use validate::Validate;
 
 pub fn encode_raw_query<T: Into<Binary>, Q: CustomQuery>(addr: &Addr, key: T) -> QueryRequest<Q> {
     WasmQuery::Raw {
@@ -14,9 +23,9 @@ pub fn encode_raw_query<T: Into<Binary>, Q: CustomQuery>(addr: &Addr, key: T) ->
     .into()
 }
 
-/// new_canonical_addr converts a bech32 address to a canonical address
+/// to_canonical_addr converts a bech32 address to a canonical address
 /// ported from cosmwasm-std/testing/mock.rs
-pub fn new_canonical_addr(addr: &str, prefix: &str) -> Result<CanonicalAddr, StakingApiError> {
+pub fn to_canonical_addr(addr: &str, prefix: &str) -> Result<CanonicalAddr, StakingApiError> {
     // decode bech32 address
     let decode_result = bech32::decode(addr);
     if let Err(e) = decode_result {
@@ -47,7 +56,23 @@ pub fn new_canonical_addr(addr: &str, prefix: &str) -> Result<CanonicalAddr, Sta
     Ok(bytes.into())
 }
 
-pub type Bytes = Vec<u8>;
+// Hash function to replace Cosmos SDK crypto.AddressHash and Hash.
+fn hash(namespace: &str, input: &[u8]) -> Vec<u8> {
+    let mut hasher = sha2::Sha256::new();
+    sha2::digest::Update::update(&mut hasher, namespace.as_bytes());
+    sha2::digest::Update::update(&mut hasher, input);
+    hasher.finalize().to_vec()
+}
 
-use error::StakingApiError;
-pub use validate::Validate;
+/// Generates a Cosmos SDK compatible module address from a module name
+pub fn to_module_canonical_addr(module_name: &str) -> CanonicalAddr {
+    CanonicalAddr::from(hash("", module_name.as_bytes()))
+}
+
+/// Converts a CanonicalAddr to a Cosmos SDK compatible Bech32 encoded Addr with
+/// the given prefix
+pub fn to_bech32_addr(prefix: &str, addr: &CanonicalAddr) -> Result<Addr, StakingApiError> {
+    let bech32_addr = bech32::encode(prefix, &addr.as_slice().to_base32()[..32], Bech32)
+        .map_err(|e| StakingApiError::InvalidAddressString(e.to_string()))?;
+    Ok(Addr::unchecked(bech32_addr))
+}
