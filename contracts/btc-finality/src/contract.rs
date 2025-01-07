@@ -318,7 +318,7 @@ fn send_rewards_msg(
     Ok(wasm_msg)
 }
 
-pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
+pub fn get_activated_height(querier: &QuerierWrapper) -> StdResult<u64> {
     // TODO: Use a raw query
     let query = encode_smart_query(
         &params.btc_staking_contract_address,
