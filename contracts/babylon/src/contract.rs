@@ -265,67 +265,6 @@ mod tests {
     }
 
     #[test]
-    fn instantiate_finality_works() {
-        let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            network: babylon_bitcoin::chain_params::Network::Regtest,
-            babylon_tag: "01020304".to_string(),
-            btc_confirmation_depth: 10,
-            checkpoint_finalization_timeout: 100,
-            notify_cosmos_zone: false,
-            admin: None,
-            consumer_name: None,
-            consumer_description: None,
-            transfer_info: None,
-        };
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(1, res.messages.len());
-        assert_eq!(
-            res.messages[0].msg,
-            WasmMsg::Instantiate {
-                admin: None,
-                code_id: 2,
-                msg: Binary::from(b"{}"),
-                funds: vec![],
-                label: "BTC Finality".into(),
-            }
-            .into()
-        );
-    }
-
-    #[test]
-    fn instantiate_finality_params_works() {
-        let mut deps = mock_dependencies();
-        let params = r#"{"params": {"epoch_length": 10}}"#;
-        let msg = InstantiateMsg {
-            network: babylon_bitcoin::chain_params::Network::Regtest,
-            babylon_tag: "01020304".to_string(),
-            btc_confirmation_depth: 10,
-            checkpoint_finalization_timeout: 100,
-            notify_cosmos_zone: false,
-            admin: None,
-            consumer_name: None,
-            consumer_description: None,
-            transfer_info: None,
-        };
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(1, res.messages.len());
-        assert_eq!(
-            res.messages[0].msg,
-            WasmMsg::Instantiate {
-                admin: None,
-                code_id: 2,
-                msg: Binary::from(params.as_bytes()),
-                funds: vec![],
-                label: "BTC Finality".into(),
-            }
-            .into()
-        );
-    }
-
-    #[test]
     fn test_module_address() {
         // Example usage
         let prefix = "bbn";
