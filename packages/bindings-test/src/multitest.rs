@@ -1,7 +1,6 @@
 use anyhow::{bail, Result as AnyResult};
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
-use std::cmp::max;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use thiserror::Error;
@@ -20,7 +19,7 @@ use cw_multi_test::{
 };
 use cw_storage_plus::{Item, Map};
 
-use babylon_bindings::{BabylonMsg, BabylonQuery};
+use babylon_bindings::{msg::BabylonMsg, query::BabylonQuery};
 
 pub struct BabylonModule {}
 
@@ -67,7 +66,7 @@ impl BabylonModule {
 
 impl Module for BabylonModule {
     type ExecT = BabylonMsg;
-    type QueryT = Empty;
+    type QueryT = BabylonQuery;
     type SudoT = Empty;
 
     fn execute<ExecC, QueryC>(
@@ -210,32 +209,6 @@ impl BabylonApp {
         self.execute(Addr::unchecked(owner), msg.into())
     }
      */
-
-    /// This reverses to genesis (based on current time/height)
-    pub fn back_to_genesis(&mut self) {
-        self.update_block(|block| {
-            block.time = block.time.minus_seconds(BLOCK_TIME * block.height);
-            block.height = 0;
-        });
-    }
-
-    /// This advances BlockInfo by given number of blocks.
-    /// It does not do any callbacks, but keeps the ratio of seconds/block
-    pub fn advance_blocks(&mut self, blocks: u64) {
-        self.update_block(|block| {
-            block.time = block.time.plus_seconds(BLOCK_TIME * blocks);
-            block.height += blocks;
-        });
-    }
-
-    /// This advances BlockInfo by given number of seconds.
-    /// It does not do any callbacks, but keeps the ratio of seconds/blokc
-    pub fn advance_seconds(&mut self, seconds: u64) {
-        self.update_block(|block| {
-            block.time = block.time.plus_seconds(seconds);
-            block.height += max(1, seconds / BLOCK_TIME);
-        });
-    }
 
     /*
     /// next_block will call the end_blocker, increment block info 1 height and 5 seconds,

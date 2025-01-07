@@ -1,7 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, ContractResult, QuerierWrapper, StdError, SystemResult,
+    from_json, to_json_binary, Addr, ContractResult, CustomQuery, QuerierWrapper, StdError,
+    SystemResult,
 };
+
+impl CustomQuery for BabylonQuery {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
