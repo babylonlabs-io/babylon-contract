@@ -48,6 +48,7 @@ cosmos-sdk-proto = { workspace = true }
 thiserror        = { workspace = true }
 prost            = { workspace = true }
 ics23            = { workspace = true }
+sha2             = { workspace = true }
 
 [dev-dependencies]
 babylon-bindings-test  = { path = "../../packages/bindings-test" }

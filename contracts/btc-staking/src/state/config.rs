@@ -24,13 +24,13 @@ pub struct Config {
 #[derive(Derivative)]
 #[derivative(Default)]
 pub struct Params {
-    // covenant_pks is the list of public keys held by the covenant committee each PK
-    // follows encoding in BIP-340 spec on Bitcoin
+    /// `covenant_pks` is the list of public keys held by the covenant committee each PK
+    /// follows encoding in BIP-340 spec on Bitcoin
     pub covenant_pks: Vec<String>,
-    // covenant_quorum is the minimum number of signatures needed for the covenant multi-signature
+    /// `covenant_quorum` is the minimum number of signatures needed for the covenant multi-signature
     pub covenant_quorum: u32,
+    /// `btc_network` is the network the BTC staking protocol is running on
     #[derivative(Default(value = "Network::Regtest"))]
-    // ntc_network is the network the BTC staking protocol is running on
     pub btc_network: Network,
     // `min_commission_rate` is the chain-wide minimum commission rate that a finality provider
     // can charge their delegators

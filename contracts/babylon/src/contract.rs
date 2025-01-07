@@ -2,17 +2,17 @@ use babylon_bindings::babylon_sdk::{
     get_babylon_sdk_params, QueryParamsResponse, QUERY_PARAMS_PATH,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
-    Response, SubMsg, SubMsgResponse, WasmMsg,
+    to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo,
+    QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_utils::ParseReplyError;
+use cw_utils::{must_pay, ParseReplyError};
 
-use babylon_apis::{btc_staking_api, finality_api};
+use babylon_apis::{btc_staking_api, finality_api, to_bech32_addr, to_module_canonical_addr};
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::ibc::{ibc_packet, IBC_CHANNEL};
+use crate::ibc::{ibc_packet, packet_timeout, TransferInfo, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
@@ -37,6 +37,7 @@ pub fn instantiate(
     msg.validate()?;
 
     // Initialize config with None values for consumer fields
+    let denom = deps.querier.query_bonded_denom()?;
     let mut cfg = Config {
         network: msg.network.clone(),
         babylon_tag: msg.babylon_tag_to_bytes()?,
@@ -45,6 +46,7 @@ pub fn instantiate(
         notify_cosmos_zone: msg.notify_cosmos_zone,
         consumer_name: None,
         consumer_description: None,
+        denom,
     };
 
     let res = Response::new().add_attribute("action", "instantiate");
@@ -55,6 +57,25 @@ pub fn instantiate(
 
     // Save the config after potentially updating it
     CONFIG.save(deps.storage, &cfg)?;
+
+    // Format and save the IBC transfer info
+    if let Some(transfer_info) = msg.transfer_info {
+        let (to_address, address_type) = match transfer_info.recipient {
+            crate::msg::ibc::Recipient::ContractAddr(addr) => (addr, "contract"),
+            crate::msg::ibc::Recipient::ModuleAddr(module) => (
+                to_bech32_addr("bbn", &to_module_canonical_addr(&module))?.to_string(),
+                "module",
+            ),
+        };
+        IBC_TRANSFER.save(
+            deps.storage,
+            &TransferInfo {
+                channel_id: transfer_info.channel_id,
+                to_address,
+                address_type: address_type.to_string(),
+            },
+        )?;
+    }
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(res)
@@ -106,6 +127,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         )?),
         QueryMsg::CzLastHeader {} => Ok(to_json_binary(&queries::cz_last_header(deps)?)?),
         QueryMsg::CzHeader { height } => Ok(to_json_binary(&queries::cz_header(deps, height)?)?),
+        QueryMsg::TransferInfo {} => Ok(to_json_binary(&queries::transfer_info(deps)?)?),
     }
 }
 
@@ -175,6 +197,51 @@ pub fn execute(
             // TODO: Add events
             Ok(res)
         }
+        ExecuteMsg::SendRewards { fp_distribution } => {
+            let cfg = CONFIG.load(deps.storage)?;
+            // Assert the funds are there
+            must_pay(&info, &cfg.denom)?;
+            // Assert the sender is right
+            let btc_finality = cfg
+                .btc_finality
+                .ok_or(ContractError::BtcFinalityNotSet {})?;
+            if info.sender != btc_finality {
+                return Err(ContractError::Unauthorized {});
+            }
+            // Route to babylon over IBC, if available
+            let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
+            match transfer_info {
+                Some(transfer_info) => {
+                    // Build the payload
+                    let payload_msg = to_json_string(&fp_distribution)?;
+                    // Construct the transfer message
+                    let ibc_msg = IbcMsg::Transfer {
+                        channel_id: transfer_info.channel_id,
+                        to_address: transfer_info.to_address,
+                        amount: info.funds[0].clone(),
+                        timeout: packet_timeout(&env),
+                        memo: Some(payload_msg),
+                    };
+
+                    // Send packet only if we are IBC enabled
+                    // TODO: send in test code when multi-test can handle it
+                    #[cfg(not(any(test, feature = "library")))]
+                    {
+                        // TODO: Add events
+                        Ok(Response::new().add_message(ibc_msg))
+                    }
+                    #[cfg(any(test, feature = "library"))]
+                    {
+                        let _ = ibc_msg;
+                        Ok(Response::new())
+                    }
+                }
+                None => {
+                    // TODO: Send payload over the custom IBC channel for distribution
+                    Ok(Response::new())
+                }
+            }
+        }
     }
 }
 
@@ -207,9 +274,94 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
+            transfer_info: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn instantiate_finality_works() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            network: babylon_bitcoin::chain_params::Network::Regtest,
+            babylon_tag: "01020304".to_string(),
+            btc_confirmation_depth: 10,
+            checkpoint_finalization_timeout: 100,
+            notify_cosmos_zone: false,
+            btc_staking_code_id: None,
+            btc_staking_msg: None,
+            btc_finality_code_id: Some(2),
+            btc_finality_msg: None,
+            admin: None,
+            consumer_name: None,
+            consumer_description: None,
+            transfer_info: None,
+        };
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(1, res.messages.len());
+        assert_eq!(REPLY_ID_INSTANTIATE_FINALITY, res.messages[0].id);
+        assert_eq!(
+            res.messages[0].msg,
+            WasmMsg::Instantiate {
+                admin: None,
+                code_id: 2,
+                msg: Binary::from(b"{}"),
+                funds: vec![],
+                label: "BTC Finality".into(),
+            }
+            .into()
+        );
+    }
+
+    #[test]
+    fn instantiate_finality_params_works() {
+        let mut deps = mock_dependencies();
+        let params = r#"{"params": {"epoch_length": 10}}"#;
+        let msg = InstantiateMsg {
+            network: babylon_bitcoin::chain_params::Network::Regtest,
+            babylon_tag: "01020304".to_string(),
+            btc_confirmation_depth: 10,
+            checkpoint_finalization_timeout: 100,
+            notify_cosmos_zone: false,
+            btc_staking_code_id: None,
+            btc_staking_msg: None,
+            btc_finality_code_id: Some(2),
+            btc_finality_msg: Some(Binary::from(params.as_bytes())),
+            admin: None,
+            consumer_name: None,
+            consumer_description: None,
+            transfer_info: None,
+        };
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(1, res.messages.len());
+        assert_eq!(REPLY_ID_INSTANTIATE_FINALITY, res.messages[0].id);
+        assert_eq!(
+            res.messages[0].msg,
+            WasmMsg::Instantiate {
+                admin: None,
+                code_id: 2,
+                msg: Binary::from(params.as_bytes()),
+                funds: vec![],
+                label: "BTC Finality".into(),
+            }
+            .into()
+        );
+    }
+
+    #[test]
+    fn test_module_address() {
+        // Example usage
+        let prefix = "bbn";
+        let module_name = "zoneconcierge";
+
+        let addr = to_bech32_addr(prefix, &to_module_canonical_addr(module_name)).unwrap();
+        assert_eq!(
+            addr.to_string(),
+            "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3"
+        );
     }
 }

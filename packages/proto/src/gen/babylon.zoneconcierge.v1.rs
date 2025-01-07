@@ -154,7 +154,7 @@ pub struct ProofFinalizedChainInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ZoneconciergePacketData {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3")]
+    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3, 4")]
     pub packet: ::core::option::Option<zoneconcierge_packet_data::Packet>,
 }
 /// Nested message and enum types in `ZoneconciergePacketData`.
@@ -169,6 +169,8 @@ pub mod zoneconcierge_packet_data {
         BtcStaking(super::super::super::btcstaking::v1::BtcStakingIbcPacket),
         #[prost(message, tag="3")]
         ConsumerSlashing(super::ConsumerSlashingIbcPacket),
+        #[prost(message, tag="4")]
+        ConsumerFpDistribution(cosmos_sdk_proto::ibc::applications::transfer::v2::FungibleTokenPacketData),
     }
 }
 /// BTCTimestamp is a BTC timestamp that carries information of a BTC-finalised epoch

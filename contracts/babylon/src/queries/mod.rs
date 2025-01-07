@@ -1,7 +1,11 @@
-use crate::error::{BTCLightclientError, BabylonEpochChainError, CZHeaderChainError};
+use crate::error::{
+    BTCLightclientError, BabylonEpochChainError, CZHeaderChainError, ContractError,
+};
+use crate::ibc::IBC_TRANSFER;
 use crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse};
 use crate::msg::cz_header::CzHeaderResponse;
 use crate::msg::epoch::{CheckpointResponse, EpochResponse};
+use crate::msg::ibc::TransferInfoResponse;
 use crate::state::babylon_epoch_chain::{
     get_base_epoch, get_checkpoint, get_epoch, get_last_finalized_epoch,
 };
@@ -92,6 +96,11 @@ pub fn cz_last_header(deps: Deps) -> Result<CzHeaderResponse, CZHeaderChainError
 pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZHeaderChainError> {
     let header = get_cz_header(deps.storage, height)?;
     Ok(CzHeaderResponse::from(&header))
+}
+
+pub(crate) fn transfer_info(deps: Deps) -> Result<TransferInfoResponse, ContractError> {
+    let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
+    Ok(transfer_info)
 }
 
 #[cfg(test)]

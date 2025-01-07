@@ -50,6 +50,7 @@ pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
         checkpoint_finalization_timeout: 1,
         notify_cosmos_zone: false,
         admin: None,
+        transfer_info: None,
     };
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();

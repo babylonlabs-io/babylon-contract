@@ -35,4 +35,7 @@ pub struct Params {
     /// `finality_inflation_rate` is the inflation rate for finality providers' block rewards
     #[derivative(Default(value = "Decimal::permille(35)"))] // 3.5 % by default
     pub finality_inflation_rate: Decimal,
+    /// `epoch_length` is the number of blocks that defines an epoch
+    #[derivative(Default(value = "50"))] // 50 * ~6.5s = ~5min
+    pub epoch_length: u64,
 }

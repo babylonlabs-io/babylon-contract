@@ -6,6 +6,7 @@
     "babylon_tag",
     "btc_confirmation_depth",
     "checkpoint_finalization_timeout",
+    "denom",
     "network",
     "notify_cosmos_zone"
   ],
@@ -63,6 +64,9 @@
         "string",
         "null"
       ]
+    },
+    "denom": {
+      "type": "string"
     },
     "network": {
       "$ref": "#/definitions/Network"

@@ -98,6 +98,7 @@ impl SuiteBuilder {
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
+                    transfer_info: None,
                 },
                 &[],
                 "babylon",

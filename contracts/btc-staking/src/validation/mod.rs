@@ -96,16 +96,16 @@ pub fn verify_new_fp(new_fp: &NewFinalityProvider) -> Result<(), ContractError> 
     #[cfg(feature = "full-validation")]
     {
         // get FP's PK
-        use babylon_apis::new_canonical_addr;
+        use babylon_apis::to_canonical_addr;
         let fp_pk_bytes = hex::decode(&new_fp.btc_pk_hex)
             .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
         let fp_pk = VerifyingKey::from_bytes(&fp_pk_bytes)
             .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
-        // get canonicalised FP address
+        // get canonical FP address
         // TODO: parameterise `bbn` prefix
         let addr = new_fp.addr.clone();
-        let address = new_canonical_addr(&addr, "bbn")?;
+        let address = to_canonical_addr(&addr, "bbn")?;
 
         // get FP's PoP
         let pop = new_fp

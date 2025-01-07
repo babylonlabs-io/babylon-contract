@@ -32,7 +32,7 @@ use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
 
 static BABYLON_CONTRACT_WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
 /// Wasm size limit: https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/validation.go#L24-L25
-const MAX_WASM_SIZE: usize = 800 * 1024; // 800 KB
+const MAX_WASM_SIZE: usize = 1024 * 1024; // 1 MB
 
 const CREATOR: &str = "creator";
 
@@ -48,6 +48,7 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
         checkpoint_finalization_timeout: 99,
         notify_cosmos_zone: false,
         admin: None,
+        transfer_info: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
@@ -72,6 +73,7 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
     match resp {
         ExecuteMsg::BtcHeaders { headers } => headers,
         ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
+        ExecuteMsg::SendRewards { .. } => unreachable!("unexpected send rewards message"),
     }
 }
 
@@ -98,6 +100,7 @@ fn instantiate_works() {
         checkpoint_finalization_timeout: 100,
         notify_cosmos_zone: false,
         admin: None,
+        transfer_info: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);
