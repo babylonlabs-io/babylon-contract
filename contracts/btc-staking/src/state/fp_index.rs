@@ -8,7 +8,7 @@ pub struct FinalityProviderIndexes<'a> {
     pub power: MultiIndex<'a, u64, FinalityProviderState, String>,
 }
 
-impl<'a> IndexList<FinalityProviderState> for FinalityProviderIndexes<'a> {
+impl IndexList<FinalityProviderState> for FinalityProviderIndexes<'_> {
     fn get_indexes(
         &'_ self,
     ) -> Box<dyn Iterator<Item = &'_ dyn Index<FinalityProviderState>> + '_> {

@@ -120,7 +120,7 @@ pub(crate) fn transfer_info(
 mod tests {
     use super::*;
     use crate::state::btc_light_client::{init, tests::setup};
-    use cosmwasm_std::testing::mock_dependencies;
+    use babylon_bindings_test::mock_dependencies;
     use test_utils::get_btc_lc_headers;
 
     #[test]

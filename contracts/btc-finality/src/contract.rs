@@ -325,7 +325,7 @@ fn send_rewards_msg(
 pub fn get_activated_height(querier: &QuerierWrapper<BabylonQuery>) -> StdResult<u64> {
     // TODO: Use a raw query
     let query = encode_smart_query(
-        &get_babylon_sdk_params(&querier)?.btc_staking_contract_address,
+        &get_babylon_sdk_params(querier)?.btc_staking_contract_address,
         &btc_staking::msg::QueryMsg::ActivatedHeight {},
     )?;
     let res: ActivatedHeightResponse = querier.query(&query)?;
@@ -345,51 +345,21 @@ pub(crate) fn encode_smart_query<Q: CustomQuery>(
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use std::marker::PhantomData;
+    
 
     use super::*;
 
-    use babylon_bindings::query::ParamsResponse;
+    
+    use babylon_bindings_test::mock_dependencies;
     use cosmwasm_std::{
         from_json,
-        testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage},
-        Coin, ContractResult, OwnedDeps, SystemResult,
+        testing::{message_info, mock_env},
     };
     use cw_controllers::AdminResponse;
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
-
-    pub fn mock_dependencies(
-    ) -> OwnedDeps<MockStorage, MockApi, MockQuerier<BabylonQuery>, BabylonQuery> {
-        let custom_querier: MockQuerier<BabylonQuery> = MockQuerier::new(&[("", &[])])
-            .with_custom_handler(|query| {
-                // Handle your custom query type here
-                match query {
-                    BabylonQuery::Params {} => {
-                        // Return a mock response for the custom query
-                        let response = ParamsResponse {
-                            babylon_contract_address: Addr::unchecked(""),
-                            btc_staking_contract_address: Addr::unchecked(""),
-                            btc_finality_contract_address: Addr::unchecked(""),
-                            babylon_contract_code_id: 0,
-                            btc_staking_contract_code_id: 0,
-                            btc_finality_contract_code_id: 0,
-                            max_gas_begin_blocker: 0,
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    }
-                    _ => panic!("Unsupported query type"),
-                }
-            });
-        OwnedDeps {
-            storage: MockStorage::default(),
-            api: MockApi::default(),
-            querier: custom_querier,
-            custom_query_type: PhantomData,
-        }
-    }
 
     #[test]
     fn instantiate_without_admin() {

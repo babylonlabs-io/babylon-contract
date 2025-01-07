@@ -1,12 +1,12 @@
 use babylon_bindings::query::{get_babylon_sdk_params, BabylonQuery};
 use cosmwasm_std::{
-    to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo,
-    QueryResponse, Response, SubMsg, SubMsgResponse, WasmMsg,
+    to_json_binary, to_json_string, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo, QueryResponse,
+    Response, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_utils::must_pay;
 
-use babylon_apis::{btc_staking_api, finality_api, to_bech32_addr, to_module_canonical_addr};
+use babylon_apis::{btc_staking_api, to_bech32_addr, to_module_canonical_addr};
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
@@ -229,9 +229,11 @@ pub fn execute(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use babylon_bindings_test::mock_dependencies;
     use babylon_bitcoin::BlockHeader;
     use cosmwasm_std::testing::message_info;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use cosmwasm_std::testing::mock_env;
+    use cosmwasm_std::Binary;
 
     const CREATOR: &str = "creator";
 

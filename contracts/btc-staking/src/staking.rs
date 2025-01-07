@@ -1,3 +1,4 @@
+use babylon_bindings::query::{get_babylon_sdk_params, BabylonQuery};
 use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
@@ -8,7 +9,7 @@ use hex::ToHex;
 use std::str::FromStr;
 
 use crate::error::ContractError;
-use crate::state::config::{ADMIN, CONFIG, PARAMS};
+use crate::state::config::{ADMIN, PARAMS};
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
     DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
@@ -29,7 +30,7 @@ use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: &MessageInfo,
     new_fps: &[NewFinalityProvider],
@@ -37,8 +38,8 @@ pub fn handle_btc_staking(
     slashed_delegations: &[SlashedBtcDelegation],
     unbonded_delegations: &[UnbondedBtcDelegation],
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+    let babylon_addr = get_babylon_sdk_params(&deps.querier)?.babylon_contract_address;
+    if info.sender != babylon_addr && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
         return Err(ContractError::Unauthorized);
     }
 
@@ -310,13 +311,13 @@ fn handle_slashed_delegation(
 
 /// handle_slash_fp handles FP slashing at the staking level
 pub fn handle_slash_fp(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: &MessageInfo,
     fp_btc_pk_hex: &str,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+    let babylon_addr = get_babylon_sdk_params(&deps.querier)?.babylon_contract_address;
+    if info.sender != babylon_addr && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
         return Err(ContractError::Unauthorized);
     }
     slash_finality_provider(deps, env, fp_btc_pk_hex)
@@ -348,7 +349,7 @@ fn btc_undelegate(
 /// `slash_finality_provider` slashes a finality provider with the given PK.
 /// A slashed finality provider will not have voting power
 pub(crate) fn slash_finality_provider(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     fp_btc_pk_hex: &str,
 ) -> Result<Response<BabylonMsg>, ContractError> {
@@ -388,9 +389,9 @@ pub(crate) fn slash_finality_provider(
 }
 
 /// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
-fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
+fn get_btc_tip_height(deps: &DepsMut<BabylonQuery>) -> Result<u32, ContractError> {
     // Get the BTC tip from the babylon contract through a raw query
-    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
+    let babylon_addr = get_babylon_sdk_params(&deps.querier)?.babylon_contract_address;
 
     // Query the Babylon contract
     // TODO: use a raw query for performance / efficiency
@@ -404,7 +405,8 @@ fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
 pub(crate) mod tests {
     use super::*;
 
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
+    use babylon_bindings_test::mock_dependencies;
+    use cosmwasm_std::testing::{message_info, mock_env};
 
     use test_utils::{
         create_new_finality_provider, create_new_fp_sk, get_active_btc_delegation,

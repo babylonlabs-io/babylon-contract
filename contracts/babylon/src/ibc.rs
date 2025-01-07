@@ -334,8 +334,7 @@ mod tests {
     use cosmwasm_std::OwnedDeps;
 
     const CREATOR: &str = "creator";
-
-    fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier<BabylonQuery>> {
+    fn setup() -> OwnedDeps<MockStorage, MockApi, MockQuerier<BabylonQuery>, BabylonQuery> {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             network: babylon_bitcoin::chain_params::Network::Regtest,
@@ -354,7 +353,7 @@ mod tests {
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
-        deps.as_mut()
+        deps
     }
 
     #[test]
@@ -362,7 +361,7 @@ mod tests {
         let mut deps = setup();
 
         let wrong_order = mock_ibc_channel_open_try("channel-12", IbcOrder::Unordered, IBC_VERSION);
-        ibc_channel_open(deps, mock_env(), wrong_order).unwrap_err();
+        ibc_channel_open(deps.as_mut(), mock_env(), wrong_order).unwrap_err();
 
         let wrong_version = mock_ibc_channel_open_try("channel-12", IbcOrder::Ordered, "reflect");
         ibc_channel_open(deps.as_mut(), mock_env(), wrong_version).unwrap_err();

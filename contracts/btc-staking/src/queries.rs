@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use babylon_bindings::query::BabylonQuery;
 use bitcoin::hashes::Hash;
 use bitcoin::Txid;
 
@@ -20,15 +21,18 @@ use crate::state::staking::{
     fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, FPS, FP_DELEGATIONS,
 };
 
-pub fn config(deps: Deps) -> StdResult<Config> {
+pub fn config(deps: Deps<BabylonQuery>) -> StdResult<Config> {
     CONFIG.load(deps.storage)
 }
 
-pub fn params(deps: Deps) -> StdResult<Params> {
+pub fn params(deps: Deps<BabylonQuery>) -> StdResult<Params> {
     PARAMS.load(deps.storage)
 }
 
-pub fn finality_provider(deps: Deps, btc_pk_hex: String) -> StdResult<FinalityProvider> {
+pub fn finality_provider(
+    deps: Deps<BabylonQuery>,
+    btc_pk_hex: String,
+) -> StdResult<FinalityProvider> {
     FPS.load(deps.storage, &btc_pk_hex)
 }
 
@@ -37,7 +41,7 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 pub fn finality_providers(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<FinalityProvidersResponse> {
@@ -53,7 +57,10 @@ pub fn finality_providers(
 
 /// Get the delegation info by staking tx hash.
 /// `staking_tx_hash_hex`: The (reversed) staking tx hash, in hex
-pub fn delegation(deps: Deps, staking_tx_hash_hex: String) -> Result<BtcDelegation, ContractError> {
+pub fn delegation(
+    deps: Deps<BabylonQuery>,
+    staking_tx_hash_hex: String,
+) -> Result<BtcDelegation, ContractError> {
     let staking_tx_hash = Txid::from_str(&staking_tx_hash_hex)?;
     Ok(DELEGATIONS.load(deps.storage, staking_tx_hash.as_ref())?)
 }
@@ -62,7 +69,7 @@ pub fn delegation(deps: Deps, staking_tx_hash_hex: String) -> Result<BtcDelegati
 /// `start_after`: The (reversed) associated staking tx hash of the delegation in hex, if provided.
 /// `active`: List only active delegations if true, otherwise list all delegations.
 pub fn delegations(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     start_after: Option<String>,
     limit: Option<u32>,
     active: Option<bool>,
@@ -94,7 +101,7 @@ pub fn delegations(
 ///
 /// `btc_pk_hex`: The BTC public key of the finality provider, in hex
 pub fn delegations_by_fp(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     btc_pk_hex: String,
 ) -> Result<DelegationsByFPResponse, ContractError> {
     let tx_hashes = FP_DELEGATIONS.load(deps.storage, &btc_pk_hex)?;
@@ -113,7 +120,7 @@ pub fn delegations_by_fp(
 /// `btc_pk_hex`: The BTC public key of the finality provider, in hex.
 /// `active` is a filter to return only active delegations
 pub fn active_delegations_by_fp(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     btc_pk_hex: String,
     active: bool,
 ) -> Result<BtcDelegationsResponse, ContractError> {
@@ -133,7 +140,7 @@ pub fn active_delegations_by_fp(
 }
 
 pub fn finality_provider_info(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     btc_pk_hex: String,
     height: Option<u64>,
 ) -> Result<FinalityProviderInfo, ContractError> {
@@ -150,7 +157,7 @@ pub fn finality_provider_info(
 }
 
 pub fn finality_providers_by_power(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     start_after: Option<FinalityProviderInfo>,
     limit: Option<u32>,
 ) -> StdResult<FinalityProvidersByPowerResponse> {
@@ -170,7 +177,9 @@ pub fn finality_providers_by_power(
     Ok(FinalityProvidersByPowerResponse { fps })
 }
 
-pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractError> {
+pub fn activated_height(
+    deps: Deps<BabylonQuery>,
+) -> Result<ActivatedHeightResponse, ContractError> {
     let activated_height = ACTIVATED_HEIGHT.may_load(deps.storage)?.unwrap_or_default();
     Ok(ActivatedHeightResponse {
         height: activated_height,
@@ -179,9 +188,10 @@ pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractE
 
 #[cfg(test)]
 mod tests {
+    use babylon_bindings_test::mock_dependencies;
     use cosmwasm_std::storage_keys::namespace_with_key;
     use cosmwasm_std::testing::message_info;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::StdError::NotFound;
     use cosmwasm_std::{from_json, Env, Storage};
 

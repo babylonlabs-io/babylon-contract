@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cosmwasm_std::{Binary, StdError, StdResult};
+use cosmwasm_std::{StdError, StdResult};
 
 use babylon_apis::finality_api::Evidence;
 

@@ -39,6 +39,7 @@ full-validation = []
 [dependencies]
 babylon-apis          = { path = "../../packages/apis" }
 babylon-bindings      = { path = "../../packages/bindings" }
+babylon-bindings-test = { path = "../../packages/bindings-test" }
 babylon-contract      = { path = "../babylon", features = [ "library" ] }
 babylon-merkle        = { path = "../../packages/merkle" }
 babylon-proto         = { path = "../../packages/proto" }

@@ -3,7 +3,7 @@ use babylon_bindings::query::BabylonQuery;
 use derivative::Derivative;
 use hex::ToHex;
 
-use cosmwasm_std::{to_json_binary, Addr, Coin};
+use cosmwasm_std::{Addr, Coin};
 
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
