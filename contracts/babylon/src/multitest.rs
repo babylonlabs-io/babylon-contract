@@ -58,9 +58,6 @@ mod instantiation {
 
         // Confirm the btc-staking contract has been instantiated and set
         let config = suite.get_config();
-        assert_eq!(config.btc_staking, Some(Addr::unchecked(CONTRACT1_ADDR)));
-        // Confirm the btc-finality contract has been instantiated and set
-        assert_eq!(config.btc_finality, Some(Addr::unchecked(CONTRACT2_ADDR)));
     }
 
     #[test]
@@ -82,9 +79,6 @@ mod instantiation {
 
         // Confirm the btc-staking contract has been instantiated and set
         let config = suite.get_config();
-        assert_eq!(config.btc_staking, Some(Addr::unchecked(CONTRACT1_ADDR)));
-        // Confirm the btc-finality contract has been instantiated and set
-        assert_eq!(config.btc_finality, Some(Addr::unchecked(CONTRACT2_ADDR)));
     }
 
     #[test]

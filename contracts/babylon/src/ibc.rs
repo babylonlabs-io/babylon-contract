@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use babylon_bindings::BabylonMsg;
+use babylon_bindings::{query::BabylonQuery, BabylonMsg};
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
@@ -35,7 +35,7 @@ pub const IBC_TRANSFER: Item<TransferInfo> = Item::new("ibc_transfer");
 /// In the case of ChannelOpenTry there's a counterparty_version attribute in the message.
 /// Here we ensure the ordering and version constraints.
 pub fn ibc_channel_open(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
@@ -67,7 +67,7 @@ pub fn ibc_channel_open(
 
 /// Second part of the 4-step handshake, i.e. ChannelOpenAck and ChannelOpenConfirm.
 pub fn ibc_channel_connect(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     _env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
@@ -102,7 +102,7 @@ pub fn ibc_channel_connect(
 /// This is invoked on the IBC Channel Close message
 /// We perform any cleanup related to the channel
 pub fn ibc_channel_close(
-    _deps: DepsMut,
+    _deps: DepsMut<BabylonQuery>,
     _env: Env,
     msg: IbcChannelCloseMsg,
 ) -> StdResult<IbcBasicResponse> {
@@ -126,7 +126,7 @@ pub fn ibc_channel_close(
 /// That's because we want to send an ACK for the packet regardless if there's an error or not,
 /// but in the case of an error, we do not want the state to be committed.
 pub fn ibc_packet_receive(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
@@ -174,16 +174,14 @@ pub(crate) mod ibc_packet {
         ActiveBtcDelegation, NewFinalityProvider, UnbondedBtcDelegation,
     };
     use babylon_apis::finality_api::Evidence;
-    use babylon_bindings::babylon_sdk::{
-        get_babylon_sdk_params, QueryParamsResponse, QUERY_PARAMS_PATH,
-    };
+    use babylon_bindings::query::get_babylon_sdk_params;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
     use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
     use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
     pub fn handle_btc_timestamp(
-        deps: DepsMut,
+        deps: DepsMut<BabylonQuery>,
         _caller: String,
         btc_ts: &BtcTimestamp,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
@@ -212,7 +210,7 @@ pub(crate) mod ibc_packet {
     }
 
     pub fn handle_btc_staking(
-        deps: DepsMut,
+        deps: DepsMut<BabylonQuery>,
         _caller: String,
         btc_staking: &BtcStakingIbcPacket,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
@@ -303,7 +301,7 @@ pub fn packet_timeout(env: &Env) -> IbcTimeout {
 }
 
 pub fn ibc_packet_ack(
-    _deps: DepsMut,
+    _deps: DepsMut<BabylonQuery>,
     _env: Env,
     _msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
@@ -311,7 +309,7 @@ pub fn ibc_packet_ack(
 }
 
 pub fn ibc_packet_timeout(
-    _deps: DepsMut,
+    _deps: DepsMut<BabylonQuery>,
     _env: Env,
     msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {

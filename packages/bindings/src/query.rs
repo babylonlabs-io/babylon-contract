@@ -4,14 +4,15 @@ use cosmwasm_std::{
     SystemResult,
 };
 
-impl CustomQuery for BabylonQuery {}
-
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum BabylonQuery {
     #[returns(ParamsResponse)]
     Params {},
 }
+
+// Implement required traits for BabylonQuery
+impl CustomQuery for BabylonQuery {}
 
 #[cw_serde]
 pub struct ParamsResponse {
@@ -31,7 +32,9 @@ pub struct ParamsResponse {
     pub max_gas_begin_blocker: u32,
 }
 
-pub fn get_babylon_sdk_params(querier: &QuerierWrapper) -> Result<ParamsResponse, StdError> {
+pub fn get_babylon_sdk_params(
+    querier: &QuerierWrapper<BabylonQuery>,
+) -> Result<ParamsResponse, StdError> {
     let query = BabylonQuery::Params {};
     let res = match querier.raw_query(&to_json_binary(&query)?) {
         SystemResult::Err(system_err) => Err(StdError::generic_err(format!(

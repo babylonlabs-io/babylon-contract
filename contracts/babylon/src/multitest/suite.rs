@@ -3,6 +3,7 @@ use crate::msg::ibc::TransferInfoResponse;
 use crate::msg::ibc::{IbcTransferInfo, Recipient};
 use crate::state::config::Config;
 use anyhow::Result as AnyResult;
+use babylon_bindings::query::BabylonQuery;
 use derivative::Derivative;
 
 use cosmwasm_std::{Addr, Binary, Empty};
@@ -12,11 +13,7 @@ use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
 
-use crate::msg::contract::{InstantiateMsg, QueryMsg};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
-use crate::state::config::Config;
-
-fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         btc_staking::contract::execute,
         btc_staking::contract::instantiate,
@@ -25,7 +22,7 @@ fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     Box::new(contract)
 }
 
-fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         btc_finality::contract::execute,
         btc_finality::contract::instantiate,
@@ -34,7 +31,7 @@ fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
     Box::new(contract)
 }
 
-fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_babylon() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(crate::execute, crate::instantiate, crate::query)
         .with_migrate(crate::migrate);
     Box::new(contract)
@@ -154,7 +151,7 @@ impl SuiteBuilder {
         Suite {
             app,
             code_id: contract_code_id,
-            babylon_contract: babylon_contract,
+            babylon_contract: contract,
             btc_staking_contract: btc_staking_contract,
             btc_finality_contract: btc_finality_contract,
             owner,
@@ -218,7 +215,7 @@ impl Suite {
     pub fn get_transfer_info(&self) -> TransferInfoResponse {
         self.app
             .wrap()
-            .query_wasm_smart(self.contract.clone(), &QueryMsg::TransferInfo {})
+            .query_wasm_smart(self.babylon_contract.clone(), &QueryMsg::TransferInfo {})
             .unwrap()
     }
 

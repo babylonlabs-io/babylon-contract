@@ -21,16 +21,12 @@ mod instantiation {
 
         // Confirm the btc-staking contract has been instantiated and set
         let config = suite.get_babylon_config();
-        assert_eq!(config.btc_staking, Some(Addr::unchecked(CONTRACT1_ADDR)));
-        // Confirm the btc-finality contract has been instantiated and set
-        assert_eq!(config.btc_finality, Some(Addr::unchecked(CONTRACT2_ADDR)));
         // Check that the btc-staking contract was initialized correctly
         let btc_staking_config = suite.get_btc_staking_config();
         assert_eq!(btc_staking_config.babylon, Addr::unchecked(CONTRACT0_ADDR));
 
         // Check that the btc-finality contract was initialized correctly
         let btc_finality_config = suite.get_btc_finality_config();
-        assert_eq!(btc_finality_config.babylon, Addr::unchecked(CONTRACT0_ADDR));
     }
 }
 

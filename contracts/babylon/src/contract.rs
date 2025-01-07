@@ -1,12 +1,10 @@
-use babylon_bindings::babylon_sdk::{
-    get_babylon_sdk_params, QueryParamsResponse, QUERY_PARAMS_PATH,
-};
+use babylon_bindings::query::{get_babylon_sdk_params, BabylonQuery};
 use cosmwasm_std::{
     to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo,
-    QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg,
+    QueryResponse, Response, SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_utils::{must_pay, ParseReplyError};
+use cw_utils::must_pay;
 
 use babylon_apis::{btc_staking_api, finality_api, to_bech32_addr, to_module_canonical_addr};
 use babylon_bindings::BabylonMsg;
@@ -20,9 +18,6 @@ use crate::state::config::{Config, CONFIG};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-const REPLY_ID_INSTANTIATE_STAKING: u64 = 2;
-const REPLY_ID_INSTANTIATE_FINALITY: u64 = 3;
 
 /// When we instantiate the Babylon contract, it will optionally instantiate a BTC staking
 /// contract – if its code id is provided – to work with it for BTC re-staking support,
@@ -81,23 +76,11 @@ pub fn instantiate(
     Ok(res)
 }
 
-/// Tries to get contract address from events in reply
-fn reply_init_get_contract_address(reply: SubMsgResponse) -> Result<Addr, ContractError> {
-    for event in reply.events {
-        if event.ty == "instantiate" {
-            for attr in event.attributes {
-                if attr.key == "_contract_address" {
-                    return Ok(Addr::unchecked(attr.value));
-                }
-            }
-        }
-    }
-    Err(ContractError::ParseReply(ParseReplyError::ParseFailure(
-        "Cannot parse contract address".to_string(),
-    )))
-}
-
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
+pub fn query(
+    deps: Deps<BabylonQuery>,
+    _env: Env,
+    msg: QueryMsg,
+) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
         QueryMsg::BtcBaseHeader {} => Ok(to_json_binary(&queries::btc_base_header(deps)?)?),
@@ -133,7 +116,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
 
 /// this is a no-op just to test how this integrates with wasmd
 pub fn migrate(
-    _deps: DepsMut,
+    _deps: DepsMut<BabylonQuery>,
     _env: Env,
     _msg: Empty,
 ) -> Result<Response<BabylonMsg>, ContractError> {
@@ -141,7 +124,7 @@ pub fn migrate(
 }
 
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -202,9 +185,7 @@ pub fn execute(
             // Assert the funds are there
             must_pay(&info, &cfg.denom)?;
             // Assert the sender is right
-            let btc_finality = cfg
-                .btc_finality
-                .ok_or(ContractError::BtcFinalityNotSet {})?;
+            let btc_finality = get_babylon_sdk_params(&deps.querier)?.btc_finality_contract_address;
             if info.sender != btc_finality {
                 return Err(ContractError::Unauthorized {});
             }
@@ -298,7 +279,6 @@ mod tests {
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(1, res.messages.len());
-        assert_eq!(REPLY_ID_INSTANTIATE_FINALITY, res.messages[0].id);
         assert_eq!(
             res.messages[0].msg,
             WasmMsg::Instantiate {
@@ -330,7 +310,6 @@ mod tests {
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(1, res.messages.len());
-        assert_eq!(REPLY_ID_INSTANTIATE_FINALITY, res.messages[0].id);
         assert_eq!(
             res.messages[0].msg,
             WasmMsg::Instantiate {

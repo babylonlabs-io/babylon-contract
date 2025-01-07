@@ -1,4 +1,5 @@
 use anyhow::Result as AnyResult;
+use babylon_bindings::query::BabylonQuery;
 use derivative::Derivative;
 use hex::ToHex;
 
@@ -18,7 +19,7 @@ use btc_staking::msg::{ActivatedHeightResponse, FinalityProviderInfo};
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 
-fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         btc_staking::contract::execute,
         btc_staking::contract::instantiate,
@@ -27,7 +28,7 @@ fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     Box::new(contract)
 }
 
-fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -37,13 +38,12 @@ fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
     Box::new(contract)
 }
 
-fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_babylon() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         babylon_contract::execute,
         babylon_contract::instantiate,
         babylon_contract::query,
     )
-    .with_reply(babylon_contract::reply)
     .with_migrate(babylon_contract::migrate);
     Box::new(contract)
 }

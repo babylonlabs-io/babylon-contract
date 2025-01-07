@@ -14,31 +14,35 @@ use crate::state::btc_light_client::{
 };
 use crate::state::config::{Config, CONFIG};
 use crate::state::cz_header_chain::{get_cz_header, get_last_cz_header};
+use babylon_bindings::query::BabylonQuery;
 use babylon_bitcoin::BlockHash;
 use cosmwasm_std::{Deps, StdResult};
 use std::str::FromStr;
 
-pub fn config(deps: Deps) -> StdResult<Config> {
+pub fn config(deps: Deps<BabylonQuery>) -> StdResult<Config> {
     CONFIG.load(deps.storage)
 }
 
-pub fn btc_base_header(deps: Deps) -> Result<BtcHeaderResponse, BTCLightclientError> {
+pub fn btc_base_header(deps: Deps<BabylonQuery>) -> Result<BtcHeaderResponse, BTCLightclientError> {
     let btc_header_info = get_base_header(deps.storage)?;
     BtcHeaderResponse::try_from(&btc_header_info)
 }
 
-pub fn btc_tip_header(_deps: Deps) -> Result<BtcHeaderResponse, BTCLightclientError> {
+pub fn btc_tip_header(_deps: Deps<BabylonQuery>) -> Result<BtcHeaderResponse, BTCLightclientError> {
     let btc_header_info = get_tip(_deps.storage)?;
     BtcHeaderResponse::try_from(&btc_header_info)
 }
 
-pub fn btc_header(deps: Deps, height: u32) -> Result<BtcHeaderResponse, BTCLightclientError> {
+pub fn btc_header(
+    deps: Deps<BabylonQuery>,
+    height: u32,
+) -> Result<BtcHeaderResponse, BTCLightclientError> {
     let btc_header_info = get_header(deps.storage, height)?;
     BtcHeaderResponse::try_from(&btc_header_info)
 }
 
 pub fn btc_header_by_hash(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     hash: &str,
 ) -> Result<BtcHeaderResponse, BTCLightclientError> {
     let hash = BlockHash::from_str(hash)?;
@@ -47,7 +51,7 @@ pub fn btc_header_by_hash(
 }
 
 pub fn btc_headers(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     start_after: Option<u32>,
     limit: Option<u32>,
     reverse: Option<bool>,
@@ -62,18 +66,22 @@ pub fn btc_headers(
     })
 }
 
-pub fn babylon_base_epoch(deps: Deps) -> Result<EpochResponse, BabylonEpochChainError> {
+pub fn babylon_base_epoch(
+    deps: Deps<BabylonQuery>,
+) -> Result<EpochResponse, BabylonEpochChainError> {
     let epoch = get_base_epoch(deps.storage)?;
     Ok(EpochResponse::from(&epoch))
 }
 
-pub fn babylon_last_epoch(deps: Deps) -> Result<EpochResponse, BabylonEpochChainError> {
+pub fn babylon_last_epoch(
+    deps: Deps<BabylonQuery>,
+) -> Result<EpochResponse, BabylonEpochChainError> {
     let epoch = get_last_finalized_epoch(deps.storage)?;
     Ok(EpochResponse::from(&epoch))
 }
 
 pub fn babylon_epoch(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     epoch_number: u64,
 ) -> Result<EpochResponse, BabylonEpochChainError> {
     let epoch = get_epoch(deps.storage, epoch_number)?;
@@ -81,24 +89,29 @@ pub fn babylon_epoch(
 }
 
 pub fn babylon_checkpoint(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     epoch_number: u64,
 ) -> Result<CheckpointResponse, BabylonEpochChainError> {
     let raw_checkpoint = get_checkpoint(deps.storage, epoch_number)?;
     Ok(CheckpointResponse::from(&raw_checkpoint))
 }
 
-pub fn cz_last_header(deps: Deps) -> Result<CzHeaderResponse, CZHeaderChainError> {
+pub fn cz_last_header(deps: Deps<BabylonQuery>) -> Result<CzHeaderResponse, CZHeaderChainError> {
     let header = get_last_cz_header(deps.storage)?;
     Ok(CzHeaderResponse::from(&header))
 }
 
-pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZHeaderChainError> {
+pub(crate) fn cz_header(
+    deps: Deps<BabylonQuery>,
+    height: u64,
+) -> Result<CzHeaderResponse, CZHeaderChainError> {
     let header = get_cz_header(deps.storage, height)?;
     Ok(CzHeaderResponse::from(&header))
 }
 
-pub(crate) fn transfer_info(deps: Deps) -> Result<TransferInfoResponse, ContractError> {
+pub(crate) fn transfer_info(
+    deps: Deps<BabylonQuery>,
+) -> Result<TransferInfoResponse, ContractError> {
     let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
     Ok(transfer_info)
 }

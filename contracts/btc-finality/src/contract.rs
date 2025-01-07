@@ -1,7 +1,5 @@
 use babylon_apis::finality_api::SudoMsg;
-use babylon_bindings::babylon_sdk::{
-    get_babylon_sdk_params, QueryParamsResponse, QUERY_PARAMS_PATH,
-};
+use babylon_bindings::query::{get_babylon_sdk_params, BabylonQuery};
 use babylon_bindings::BabylonMsg;
 use btc_staking::msg::ActivatedHeightResponse;
 #[cfg(not(feature = "library"))]
@@ -29,7 +27,7 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    mut deps: DepsMut<BabylonQuery>,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -58,7 +56,7 @@ pub fn instantiate(
 }
 
 /// Queries the chain's blocks per year using the mint Params Grpc query
-fn get_blocks_per_year(deps: &mut DepsMut) -> Result<u64, ContractError> {
+fn get_blocks_per_year(deps: &mut DepsMut<BabylonQuery>) -> Result<u64, ContractError> {
     let blocks_per_year;
     #[cfg(any(test, all(feature = "library", not(target_arch = "wasm32"))))]
     {
@@ -85,12 +83,16 @@ fn get_blocks_per_year(deps: &mut DepsMut) -> Result<u64, ContractError> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> StdResult<Response> {
+pub fn reply(_deps: DepsMut<BabylonQuery>, _env: Env, _reply: Reply) -> StdResult<Response> {
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
+pub fn query(
+    deps: Deps<BabylonQuery>,
+    _env: Env,
+    msg: QueryMsg,
+) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
         QueryMsg::Params {} => Ok(to_json_binary(&queries::params(deps)?)?),
@@ -145,7 +147,7 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -192,7 +194,7 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(
-    mut deps: DepsMut,
+    mut deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: SudoMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
@@ -206,14 +208,11 @@ pub fn sudo(
 }
 
 fn handle_update_staking(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     info: MessageInfo,
     staking_addr: String,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    let params = deps
-        .querier
-        .query_grpc(QUERY_PARAMS_PATH.to_owned(), Binary::new("".into()))?;
-    let params = QueryParamsResponse::from(params).params;
+    let params = get_babylon_sdk_params(&deps.querier)?;
 
     // ensure the sender is the Babylon contract
     if info.sender != params.babylon_contract_address
@@ -230,7 +229,10 @@ fn handle_update_staking(
     Ok(Response::new().add_attributes(attributes))
 }
 
-fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
+fn handle_begin_block(
+    deps: &mut DepsMut<BabylonQuery>,
+    env: Env,
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Distribute rewards
     distribute_rewards(deps, &env)?;
 
@@ -243,7 +245,7 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 }
 
 fn handle_end_block(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     env: Env,
     _hash_hex: &str,
     app_hash_hex: &str,
@@ -280,7 +282,7 @@ fn handle_end_block(
 }
 
 fn send_rewards_msg(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     rewards: u128,
     cfg: &Config,
 ) -> Result<WasmMsg, ContractError> {
@@ -306,7 +308,9 @@ fn send_rewards_msg(
         fp_distribution: fp_rewards.clone(),
     };
     let wasm_msg = WasmMsg::Execute {
-        contract_addr: cfg.babylon.to_string(),
+        contract_addr: get_babylon_sdk_params(&deps.querier)?
+            .babylon_contract_address
+            .to_string(),
         msg: to_json_binary(&msg)?,
         funds: coins(rewards, cfg.denom.as_str()),
     };
@@ -318,10 +322,10 @@ fn send_rewards_msg(
     Ok(wasm_msg)
 }
 
-pub fn get_activated_height(querier: &QuerierWrapper) -> StdResult<u64> {
+pub fn get_activated_height(querier: &QuerierWrapper<BabylonQuery>) -> StdResult<u64> {
     // TODO: Use a raw query
     let query = encode_smart_query(
-        &params.btc_staking_contract_address,
+        &get_babylon_sdk_params(&querier)?.btc_staking_contract_address,
         &btc_staking::msg::QueryMsg::ActivatedHeight {},
     )?;
     let res: ActivatedHeightResponse = querier.query(&query)?;
@@ -341,17 +345,51 @@ pub(crate) fn encode_smart_query<Q: CustomQuery>(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use std::marker::PhantomData;
+
     use super::*;
 
+    use babylon_bindings::query::ParamsResponse;
     use cosmwasm_std::{
         from_json,
-        testing::{message_info, mock_dependencies, mock_env},
+        testing::{message_info, mock_env, MockApi, MockQuerier, MockStorage},
+        Coin, ContractResult, OwnedDeps, SystemResult,
     };
     use cw_controllers::AdminResponse;
 
     pub(crate) const CREATOR: &str = "creator";
     pub(crate) const INIT_ADMIN: &str = "initial_admin";
     const NEW_ADMIN: &str = "new_admin";
+
+    pub fn mock_dependencies(
+    ) -> OwnedDeps<MockStorage, MockApi, MockQuerier<BabylonQuery>, BabylonQuery> {
+        let custom_querier: MockQuerier<BabylonQuery> = MockQuerier::new(&[("", &[])])
+            .with_custom_handler(|query| {
+                // Handle your custom query type here
+                match query {
+                    BabylonQuery::Params {} => {
+                        // Return a mock response for the custom query
+                        let response = ParamsResponse {
+                            babylon_contract_address: Addr::unchecked(""),
+                            btc_staking_contract_address: Addr::unchecked(""),
+                            btc_finality_contract_address: Addr::unchecked(""),
+                            babylon_contract_code_id: 0,
+                            btc_staking_contract_code_id: 0,
+                            btc_finality_contract_code_id: 0,
+                            max_gas_begin_blocker: 0,
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                    }
+                    _ => panic!("Unsupported query type"),
+                }
+            });
+        OwnedDeps {
+            storage: MockStorage::default(),
+            api: MockApi::default(),
+            querier: custom_querier,
+            custom_query_type: PhantomData,
+        }
+    }
 
     #[test]
     fn instantiate_without_admin() {

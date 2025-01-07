@@ -9,7 +9,7 @@ use crate::state::public_randomness::{
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
-use babylon_bindings::babylon_sdk::get_babylon_sdk_params;
+use babylon_bindings::query::{get_babylon_sdk_params, BabylonQuery};
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
 use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
@@ -26,7 +26,7 @@ use std::collections::HashSet;
 use std::ops::Mul;
 
 pub fn handle_public_randomness_commit(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     fp_pubkey_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -128,7 +128,7 @@ fn verify_commitment_signature(
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
-    mut deps: DepsMut,
+    mut deps: DepsMut<BabylonQuery>,
     env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
@@ -294,7 +294,7 @@ pub fn handle_finality_signature(
 /// `slash_finality_provider` slashes a finality provider with the given evidence including setting
 /// its voting power to zero, extracting its BTC SK, and emitting an event
 fn slash_finality_provider(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
 ) -> Result<(WasmMsg, Event), ContractError> {
@@ -397,7 +397,7 @@ fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
 }
 
 pub fn index_block(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     height: u64,
     app_hash: &[u8],
 ) -> Result<Event, ContractError> {
@@ -426,7 +426,7 @@ pub fn index_block(
 ///
 /// It must be invoked only after the BTC staking protocol is activated.
 pub fn tally_blocks(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     env: &Env,
     activated_height: u64,
 ) -> Result<(Option<BabylonMsg>, Vec<Event>), ContractError> {
@@ -546,7 +546,7 @@ fn finalize_block(
 
 /// `compute_block_rewards` computes the block rewards for the finality providers
 fn compute_block_rewards(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     cfg: &Config,
     finalized_blocks: u64,
 ) -> Result<Coin, ContractError> {
@@ -574,7 +574,7 @@ const QUERY_LIMIT: Option<u32> = Some(30);
 /// `compute_active_finality_providers` sorts all finality providers, counts the total voting
 /// power of top finality providers, and records them in the contract state
 pub fn compute_active_finality_providers(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     height: u64,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
@@ -628,7 +628,7 @@ pub fn compute_active_finality_providers(
 
 pub fn list_fps_by_power(
     staking_addr: &Addr,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<BabylonQuery>,
     start_after: Option<FinalityProviderInfo>,
     limit: Option<u32>,
 ) -> StdResult<Vec<FinalityProviderInfo>> {
@@ -641,7 +641,10 @@ pub fn list_fps_by_power(
 }
 
 /// `distribute_rewards` distributes rewards to finality providers who are in the active set at `height`
-pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractError> {
+pub fn distribute_rewards(
+    deps: &mut DepsMut<BabylonQuery>,
+    env: &Env,
+) -> Result<(), ContractError> {
     // Try to use the finality provider set at the previous height
     let active_fps = FP_SET.may_load(deps.storage, env.block.height - 1)?;
     // Short-circuit if there are no active finality providers
