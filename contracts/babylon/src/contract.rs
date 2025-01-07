@@ -24,7 +24,7 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// as they both need references to each other.
 /// The admin of the BTC staking contract is taken as an explicit argument.
 pub fn instantiate(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,

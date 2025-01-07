@@ -25,7 +25,7 @@ mod utils;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
