@@ -3,10 +3,10 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     Binary, Deps, DepsMut, Empty, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg,
     IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Never, Reply, Response, StdResult,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Never, Response, StdResult,
 };
 
-use babylon_bindings::BabylonMsg;
+use babylon_bindings::{query::BabylonQuery, BabylonMsg};
 
 use crate::error::ContractError;
 pub use crate::msg::contract::ExecuteMsg;
@@ -25,7 +25,7 @@ mod utils;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -34,23 +34,26 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response<BabylonMsg>, ContractError> {
-    contract::reply(deps, env, reply)
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: msg::contract::QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(
+    deps: Deps<BabylonQuery>,
+    env: Env,
+    msg: msg::contract::QueryMsg,
+) -> Result<Binary, ContractError> {
     contract::query(deps, env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, env: Env, msg: Empty) -> Result<Response<BabylonMsg>, ContractError> {
+pub fn migrate(
+    deps: DepsMut<BabylonQuery>,
+    env: Env,
+    msg: Empty,
+) -> Result<Response<BabylonMsg>, ContractError> {
     contract::migrate(deps, env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -60,7 +63,7 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, error::ContractError> {
@@ -69,7 +72,7 @@ pub fn ibc_channel_open(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_connect(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
@@ -78,7 +81,7 @@ pub fn ibc_channel_connect(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_close(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: IbcChannelCloseMsg,
 ) -> StdResult<IbcBasicResponse> {
@@ -87,7 +90,7 @@ pub fn ibc_channel_close(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_receive(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
@@ -96,7 +99,7 @@ pub fn ibc_packet_receive(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_ack(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
@@ -105,7 +108,7 @@ pub fn ibc_packet_ack(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_timeout(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {

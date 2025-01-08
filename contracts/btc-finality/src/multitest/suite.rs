@@ -1,8 +1,9 @@
 use anyhow::Result as AnyResult;
+use babylon_bindings::query::BabylonQuery;
 use derivative::Derivative;
 use hex::ToHex;
 
-use cosmwasm_std::{to_json_binary, Addr, Coin};
+use cosmwasm_std::{Addr, Coin};
 
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
@@ -18,7 +19,7 @@ use btc_staking::msg::{ActivatedHeightResponse, FinalityProviderInfo};
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 
-fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         btc_staking::contract::execute,
         btc_staking::contract::instantiate,
@@ -27,7 +28,7 @@ fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     Box::new(contract)
 }
 
-fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -37,13 +38,12 @@ fn contract_btc_finality() -> Box<dyn Contract<BabylonMsg>> {
     Box::new(contract)
 }
 
-fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
+fn contract_babylon() -> Box<dyn Contract<BabylonMsg, BabylonQuery>> {
     let contract = ContractWrapper::new(
         babylon_contract::execute,
         babylon_contract::instantiate,
         babylon_contract::query,
     )
-    .with_reply(babylon_contract::reply)
     .with_migrate(babylon_contract::migrate);
     Box::new(contract)
 }
@@ -68,7 +68,8 @@ impl SuiteBuilder {
 
     #[track_caller]
     pub fn build(self) -> Suite {
-        let owner = Addr::unchecked("owner");
+        let owner =
+            Addr::unchecked("cosmwasm19mfs8tl4s396u7vqw9rrnsmrrtca5r66p7v8jvwdxvjn3shcmllqupdgxu");
 
         let mut app = BabylonApp::new_at_height(owner.as_str(), self.height.unwrap_or(1));
 
@@ -84,8 +85,9 @@ impl SuiteBuilder {
         let btc_finality_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_finality());
         let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
-        let staking_params = btc_staking::test_utils::staking_params();
-        let contract = app
+
+        // instantiate Babylon contract
+        let babylon_contract_addr = app
             .instantiate_contract(
                 contract_code_id,
                 owner.clone(),
@@ -95,16 +97,6 @@ impl SuiteBuilder {
                     btc_confirmation_depth: 1,
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
-                    btc_staking_code_id: Some(btc_staking_code_id),
-                    btc_staking_msg: Some(
-                        to_json_binary(&btc_staking::msg::InstantiateMsg {
-                            params: Some(staking_params),
-                            admin: None,
-                        })
-                        .unwrap(),
-                    ),
-                    btc_finality_code_id: Some(btc_finality_code_id),
-                    btc_finality_msg: None,
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
@@ -116,12 +108,43 @@ impl SuiteBuilder {
             )
             .unwrap();
 
+        // instantiate BTC Staking contract
+        let staking_params = btc_staking::test_utils::staking_params();
+        let staking_contract_addr = app
+            .instantiate_contract(
+                btc_staking_code_id,
+                owner.clone(),
+                &btc_staking::msg::InstantiateMsg {
+                    admin: Some(owner.to_string()),
+                    params: Some(staking_params),
+                },
+                &[],
+                "btc-staking",
+                Some(owner.to_string()),
+            )
+            .unwrap();
+
+        // instantiate BTC Finality contract
+        let finality_contract_addr = app
+            .instantiate_contract(
+                btc_finality_code_id,
+                owner.clone(),
+                &crate::msg::InstantiateMsg {
+                    admin: Some(owner.to_string()),
+                    params: Some(crate::state::config::Params::default()),
+                },
+                &[],
+                "btc-finality",
+                Some(owner.to_string()),
+            )
+            .unwrap();
+
         Suite {
             app,
             code_id: contract_code_id,
-            babylon: contract,
-            staking: Addr::unchecked(CONTRACT1_ADDR),
-            finality: Addr::unchecked(CONTRACT2_ADDR),
+            babylon: babylon_contract_addr,
+            staking: staking_contract_addr,
+            finality: finality_contract_addr,
             owner,
         }
     }

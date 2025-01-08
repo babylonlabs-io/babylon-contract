@@ -1,3 +1,4 @@
+use babylon_bindings::query::BabylonQuery;
 use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{Deps, StdResult};
 use cw_storage_plus::Bound;
@@ -10,11 +11,11 @@ use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
 use crate::state::finality::{BLOCKS, EVIDENCES, SIGNATURES};
 
-pub fn config(deps: Deps) -> StdResult<Config> {
+pub fn config(deps: Deps<BabylonQuery>) -> StdResult<Config> {
     CONFIG.load(deps.storage)
 }
 
-pub fn params(deps: Deps) -> StdResult<Params> {
+pub fn params(deps: Deps<BabylonQuery>) -> StdResult<Params> {
     PARAMS.load(deps.storage)
 }
 
@@ -23,7 +24,7 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 pub fn finality_signature(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     btc_pk_hex: String,
     height: u64,
 ) -> StdResult<FinalitySignatureResponse> {
@@ -35,7 +36,7 @@ pub fn finality_signature(
     }
 }
 
-pub fn block(deps: Deps, height: u64) -> StdResult<IndexedBlock> {
+pub fn block(deps: Deps<BabylonQuery>, height: u64) -> StdResult<IndexedBlock> {
     BLOCKS.load(deps.storage, height)
 }
 
@@ -44,7 +45,7 @@ pub fn block(deps: Deps, height: u64) -> StdResult<IndexedBlock> {
 /// `finalised`: List only finalised blocks if true, otherwise list all blocks.
 /// `reverse`: List in descending order if present and true, otherwise in ascending order.
 pub fn blocks(
-    deps: Deps,
+    deps: Deps<BabylonQuery>,
     start_after: Option<u64>,
     limit: Option<u32>,
     finalised: Option<bool>,
@@ -73,7 +74,11 @@ pub fn blocks(
     Ok(BlocksResponse { blocks })
 }
 
-pub fn evidence(deps: Deps, btc_pk_hex: String, height: u64) -> StdResult<EvidenceResponse> {
+pub fn evidence(
+    deps: Deps<BabylonQuery>,
+    btc_pk_hex: String,
+    height: u64,
+) -> StdResult<EvidenceResponse> {
     let evidence = EVIDENCES.may_load(deps.storage, (&btc_pk_hex, height))?;
     Ok(EvidenceResponse { evidence })
 }

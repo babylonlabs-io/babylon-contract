@@ -1,3 +1,4 @@
+use babylon_bindings::query::BabylonQuery;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -20,15 +21,13 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    mut deps: DepsMut<BabylonQuery>,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(&info)?;
-    let config = Config {
-        babylon: info.sender,
-    };
+    let config = Config {};
     CONFIG.save(deps.storage, &config)?;
 
     let api = deps.api;
@@ -43,12 +42,16 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> StdResult<Response> {
+pub fn reply(_deps: DepsMut<BabylonQuery>, _env: Env, _reply: Reply) -> StdResult<Response> {
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
+pub fn query(
+    deps: Deps<BabylonQuery>,
+    _env: Env,
+    msg: QueryMsg,
+) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
         QueryMsg::Params {} => Ok(to_json_binary(&queries::params(deps)?)?),
@@ -90,13 +93,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
 
 /// This is a no-op just to test how this integrates with wasmd
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
+pub fn migrate(_deps: DepsMut<BabylonQuery>, _env: Env, _msg: Empty) -> StdResult<Response> {
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -128,9 +131,10 @@ pub fn execute(
 pub mod tests {
     use super::*;
 
+    use babylon_bindings_test::mock_dependencies;
     use cosmwasm_std::{
         from_json,
-        testing::{message_info, mock_dependencies, mock_env},
+        testing::{message_info, mock_env},
     };
     use cw_controllers::AdminResponse;
 

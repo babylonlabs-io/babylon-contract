@@ -1,4 +1,5 @@
 use anyhow::{bail, Result as AnyResult};
+use babylon_bindings::query::ParamsResponse;
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use std::cmp::max;
@@ -7,7 +8,7 @@ use std::ops::{Deref, DerefMut};
 use thiserror::Error;
 
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::OwnedDeps;
+use cosmwasm_std::{to_json_binary, OwnedDeps};
 use std::marker::PhantomData;
 
 use cosmwasm_std::Order::Ascending;
@@ -20,7 +21,7 @@ use cw_multi_test::{
 };
 use cw_storage_plus::{Item, Map};
 
-use babylon_bindings::{BabylonMsg, BabylonQuery};
+use babylon_bindings::{msg::BabylonMsg, query::BabylonQuery};
 
 pub struct BabylonModule {}
 
@@ -67,7 +68,7 @@ impl BabylonModule {
 
 impl Module for BabylonModule {
     type ExecT = BabylonMsg;
-    type QueryT = Empty;
+    type QueryT = BabylonQuery;
     type SudoT = Empty;
 
     fn execute<ExecC, QueryC>(
@@ -105,9 +106,22 @@ impl Module for BabylonModule {
         _storage: &dyn Storage,
         _querier: &dyn Querier,
         _block: &BlockInfo,
-        _request: BabylonQuery,
+        request: BabylonQuery,
     ) -> anyhow::Result<Binary> {
-        bail!("query not implemented for BabylonModule")
+        match request {
+            BabylonQuery::Params {} => {
+                let response = ParamsResponse {
+                    babylon_contract_address: Addr::unchecked(""),
+                    btc_staking_contract_address: Addr::unchecked(""),
+                    btc_finality_contract_address: Addr::unchecked(""),
+                    babylon_contract_code_id: 0,
+                    btc_staking_contract_code_id: 0,
+                    btc_finality_contract_code_id: 0,
+                    max_gas_begin_blocker: 0,
+                };
+                Ok(to_json_binary(&response)?)
+            }
+        }
     }
 
     fn sudo<ExecC, QueryC>(

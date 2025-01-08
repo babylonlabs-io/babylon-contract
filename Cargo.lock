@@ -238,6 +238,7 @@ dependencies = [
 name = "babylon-bindings"
 version = "0.4.0"
 dependencies = [
+ "anybuf",
  "babylon-apis",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -549,6 +550,7 @@ version = "0.11.0"
 dependencies = [
  "babylon-apis",
  "babylon-bindings",
+ "babylon-bindings-test",
  "babylon-bitcoin",
  "babylon-btcstaking",
  "babylon-contract",

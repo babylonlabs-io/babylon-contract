@@ -1,7 +1,7 @@
 use derivative::Derivative;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal};
+use cosmwasm_std::Decimal;
 
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
@@ -17,8 +17,6 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 pub struct Config {
     pub denom: String,
     pub blocks_per_year: u64,
-    pub babylon: Addr,
-    pub staking: Addr,
 }
 
 // TODO: Add / enable param entries as needed

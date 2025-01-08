@@ -52,8 +52,8 @@ pub enum BabylonMsg {
 }
 
 pub type BabylonSudoMsg = Empty;
-pub type BabylonQuery = Empty;
 
+// make BabylonMsg to implement CosmosMsg::CustomMsg
 // make BabylonMsg to implement CosmosMsg::CustomMsg
 impl cosmwasm_std::CustomMsg for BabylonMsg {}
 

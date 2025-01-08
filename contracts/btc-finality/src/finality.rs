@@ -9,6 +9,7 @@ use crate::state::public_randomness::{
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_bindings::query::{get_babylon_sdk_params, BabylonQuery};
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
 use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
@@ -25,7 +26,7 @@ use std::collections::HashSet;
 use std::ops::Mul;
 
 pub fn handle_public_randomness_commit(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     fp_pubkey_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -39,12 +40,14 @@ pub fn handle_public_randomness_commit(
     }
     // TODO: ensure log_2(num_pub_rand) is an integer?
 
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     // Ensure the finality provider is registered
     // TODO: Use a raw query for performance and cost
     let _fp: FinalityProvider = deps
         .querier
         .query_wasm_smart(
-            CONFIG.load(deps.storage)?.staking,
+            &params.btc_staking_contract_address,
             &btc_staking::msg::QueryMsg::FinalityProvider {
                 btc_pk_hex: fp_pubkey_hex.to_string(),
             },
@@ -125,7 +128,7 @@ fn verify_commitment_signature(
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_finality_signature(
-    mut deps: DepsMut,
+    mut deps: DepsMut<BabylonQuery>,
     env: Env,
     fp_btc_pk_hex: &str,
     height: u64,
@@ -134,10 +137,11 @@ pub fn handle_finality_signature(
     block_app_hash: &[u8],
     signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     // Ensure the finality provider exists
-    let staking_addr = CONFIG.load(deps.storage)?.staking;
     let fp: FinalityProvider = deps.querier.query_wasm_smart(
-        staking_addr.clone(),
+        &params.btc_staking_contract_address,
         &btc_staking::msg::QueryMsg::FinalityProvider {
             btc_pk_hex: fp_btc_pk_hex.to_string(),
         },
@@ -171,7 +175,7 @@ pub fn handle_finality_signature(
     let fp: FinalityProviderInfo = deps
         .querier
         .query_wasm_smart(
-            staking_addr.clone(),
+            &params.btc_staking_contract_address,
             &btc_staking::msg::QueryMsg::FinalityProviderInfo {
                 btc_pk_hex: fp_btc_pk_hex.to_string(),
                 height: Some(height),
@@ -290,7 +294,7 @@ pub fn handle_finality_signature(
 /// `slash_finality_provider` slashes a finality provider with the given evidence including setting
 /// its voting power to zero, extracting its BTC SK, and emitting an event
 fn slash_finality_provider(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     fp_btc_pk_hex: &str,
     evidence: &Evidence,
 ) -> Result<(WasmMsg, Event), ContractError> {
@@ -312,7 +316,8 @@ fn slash_finality_provider(
         evidence: evidence.clone(),
     };
 
-    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
+    let params = get_babylon_sdk_params(&deps.querier)?;
+    let babylon_addr = &params.babylon_contract_address;
 
     let wasm_msg = WasmMsg::Execute {
         contract_addr: babylon_addr.to_string(),
@@ -392,7 +397,7 @@ fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
 }
 
 pub fn index_block(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     height: u64,
     app_hash: &[u8],
 ) -> Result<Event, ContractError> {
@@ -421,7 +426,7 @@ pub fn index_block(
 ///
 /// It must be invoked only after the BTC staking protocol is activated.
 pub fn tally_blocks(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     env: &Env,
     activated_height: u64,
 ) -> Result<(Option<BabylonMsg>, Vec<Event>), ContractError> {
@@ -485,6 +490,8 @@ pub fn tally_blocks(
         }
     }
 
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     // Compute block rewards for finalized blocks
     let msg = if finalized_blocks > 0 {
         let cfg = CONFIG.load(deps.storage)?;
@@ -492,7 +499,7 @@ pub fn tally_blocks(
         // Assemble mint message
         let mint_msg = BabylonMsg::MintRewards {
             amount: rewards,
-            recipient: env.contract.address.to_string(),
+            recipient: params.btc_staking_contract_address.into(),
         };
         Some(mint_msg)
     } else {
@@ -539,7 +546,7 @@ fn finalize_block(
 
 /// `compute_block_rewards` computes the block rewards for the finality providers
 fn compute_block_rewards(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     cfg: &Config,
     finalized_blocks: u64,
 ) -> Result<Coin, ContractError> {
@@ -567,13 +574,20 @@ const QUERY_LIMIT: Option<u32> = Some(30);
 /// `compute_active_finality_providers` sorts all finality providers, counts the total voting
 /// power of top finality providers, and records them in the contract state
 pub fn compute_active_finality_providers(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     height: u64,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
     let cfg = CONFIG.load(deps.storage)?;
     // Get all finality providers from the staking contract, filtered
-    let mut batch = list_fps_by_power(&cfg.staking, &deps.querier, None, QUERY_LIMIT)?;
+    let mut batch = list_fps_by_power(
+        &params.btc_staking_contract_address,
+        &deps.querier,
+        None,
+        QUERY_LIMIT,
+    )?;
 
     let mut finality_providers = vec![];
     let mut total_power: u64 = 0;
@@ -595,7 +609,12 @@ pub fn compute_active_finality_providers(
         total_power = running_total.last().copied().unwrap_or_default();
 
         // and get the next page
-        batch = list_fps_by_power(&cfg.staking, &deps.querier, last, QUERY_LIMIT)?;
+        batch = list_fps_by_power(
+            &params.btc_staking_contract_address,
+            &deps.querier,
+            last,
+            QUERY_LIMIT,
+        )?;
     }
 
     // TODO: Online FPs verification
@@ -609,7 +628,7 @@ pub fn compute_active_finality_providers(
 
 pub fn list_fps_by_power(
     staking_addr: &Addr,
-    querier: &QuerierWrapper,
+    querier: &QuerierWrapper<BabylonQuery>,
     start_after: Option<FinalityProviderInfo>,
     limit: Option<u32>,
 ) -> StdResult<Vec<FinalityProviderInfo>> {
@@ -622,7 +641,10 @@ pub fn list_fps_by_power(
 }
 
 /// `distribute_rewards` distributes rewards to finality providers who are in the active set at `height`
-pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractError> {
+pub fn distribute_rewards(
+    deps: &mut DepsMut<BabylonQuery>,
+    env: &Env,
+) -> Result<(), ContractError> {
     // Try to use the finality provider set at the previous height
     let active_fps = FP_SET.may_load(deps.storage, env.block.height - 1)?;
     // Short-circuit if there are no active finality providers

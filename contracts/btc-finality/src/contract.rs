@@ -1,4 +1,5 @@
 use babylon_apis::finality_api::SudoMsg;
+use babylon_bindings::query::{get_babylon_sdk_params, BabylonQuery};
 use babylon_bindings::BabylonMsg;
 use btc_staking::msg::ActivatedHeightResponse;
 #[cfg(not(feature = "library"))]
@@ -26,7 +27,7 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    mut deps: DepsMut<BabylonQuery>,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -39,8 +40,6 @@ pub fn instantiate(
     let config = Config {
         denom,
         blocks_per_year,
-        babylon: info.sender,
-        staking: Addr::unchecked("UNSET"), // To be set later, through `UpdateStaking`
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -57,7 +56,7 @@ pub fn instantiate(
 }
 
 /// Queries the chain's blocks per year using the mint Params Grpc query
-fn get_blocks_per_year(deps: &mut DepsMut) -> Result<u64, ContractError> {
+fn get_blocks_per_year(deps: &mut DepsMut<BabylonQuery>) -> Result<u64, ContractError> {
     let blocks_per_year;
     #[cfg(any(test, all(feature = "library", not(target_arch = "wasm32"))))]
     {
@@ -84,12 +83,16 @@ fn get_blocks_per_year(deps: &mut DepsMut) -> Result<u64, ContractError> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _reply: Reply) -> StdResult<Response> {
+pub fn reply(_deps: DepsMut<BabylonQuery>, _env: Env, _reply: Reply) -> StdResult<Response> {
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
+pub fn query(
+    deps: Deps<BabylonQuery>,
+    _env: Env,
+    msg: QueryMsg,
+) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
         QueryMsg::Params {} => Ok(to_json_binary(&queries::params(deps)?)?),
@@ -144,7 +147,7 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> StdResult<Response> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -191,7 +194,7 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(
-    mut deps: DepsMut,
+    mut deps: DepsMut<BabylonQuery>,
     env: Env,
     msg: SudoMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
@@ -205,16 +208,18 @@ pub fn sudo(
 }
 
 fn handle_update_staking(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     info: MessageInfo,
     staking_addr: String,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    let mut cfg = CONFIG.load(deps.storage)?;
-    if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+    let params = get_babylon_sdk_params(&deps.querier)?;
+
+    // ensure the sender is the Babylon contract
+    if info.sender != params.babylon_contract_address
+        && !ADMIN.is_admin(deps.as_ref(), &info.sender)?
+    {
         return Err(ContractError::Unauthorized {});
     }
-    cfg.staking = deps.api.addr_validate(&staking_addr)?;
-    CONFIG.save(deps.storage, &cfg)?;
 
     let attributes = vec![
         attr("action", "update_btc_staking"),
@@ -224,7 +229,10 @@ fn handle_update_staking(
     Ok(Response::new().add_attributes(attributes))
 }
 
-fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
+fn handle_begin_block(
+    deps: &mut DepsMut<BabylonQuery>,
+    env: Env,
+) -> Result<Response<BabylonMsg>, ContractError> {
     // Distribute rewards
     distribute_rewards(deps, &env)?;
 
@@ -237,7 +245,7 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 }
 
 fn handle_end_block(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     env: Env,
     _hash_hex: &str,
     app_hash_hex: &str,
@@ -246,7 +254,7 @@ fn handle_end_block(
     // finality provider has voting power, start indexing and tallying blocks
     let cfg = CONFIG.load(deps.storage)?;
     let mut res = Response::new();
-    let activated_height = get_activated_height(&cfg.staking, &deps.querier)?;
+    let activated_height = get_activated_height(&deps.querier)?;
     if activated_height > 0 {
         // Index the current block
         let ev = finality::index_block(deps, env.block.height, &hex::decode(app_hash_hex)?)?;
@@ -274,7 +282,7 @@ fn handle_end_block(
 }
 
 fn send_rewards_msg(
-    deps: &mut DepsMut,
+    deps: &mut DepsMut<BabylonQuery>,
     rewards: u128,
     cfg: &Config,
 ) -> Result<WasmMsg, ContractError> {
@@ -300,7 +308,9 @@ fn send_rewards_msg(
         fp_distribution: fp_rewards.clone(),
     };
     let wasm_msg = WasmMsg::Execute {
-        contract_addr: cfg.babylon.to_string(),
+        contract_addr: get_babylon_sdk_params(&deps.querier)?
+            .babylon_contract_address
+            .to_string(),
         msg: to_json_binary(&msg)?,
         funds: coins(rewards, cfg.denom.as_str()),
     };
@@ -312,10 +322,10 @@ fn send_rewards_msg(
     Ok(wasm_msg)
 }
 
-pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
+pub fn get_activated_height(querier: &QuerierWrapper<BabylonQuery>) -> StdResult<u64> {
     // TODO: Use a raw query
     let query = encode_smart_query(
-        staking_addr,
+        &get_babylon_sdk_params(querier)?.btc_staking_contract_address,
         &btc_staking::msg::QueryMsg::ActivatedHeight {},
     )?;
     let res: ActivatedHeightResponse = querier.query(&query)?;
@@ -335,11 +345,15 @@ pub(crate) fn encode_smart_query<Q: CustomQuery>(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    
+
     use super::*;
 
+    
+    use babylon_bindings_test::mock_dependencies;
     use cosmwasm_std::{
         from_json,
-        testing::{message_info, mock_dependencies, mock_env},
+        testing::{message_info, mock_env},
     };
     use cw_controllers::AdminResponse;
 
