@@ -507,7 +507,8 @@ pub(crate) mod tests {
     #[test]
     fn active_delegation_happy_path() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -516,7 +517,7 @@ pub(crate) mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -572,7 +573,8 @@ pub(crate) mod tests {
     #[test]
     fn undelegation_works() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -581,7 +583,7 @@ pub(crate) mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -671,7 +673,8 @@ pub(crate) mod tests {
     #[test]
     fn slashed_delegation_works() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -680,7 +683,7 @@ pub(crate) mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();

@@ -68,7 +68,8 @@ impl SuiteBuilder {
 
     #[track_caller]
     pub fn build(self) -> Suite {
-        let owner = Addr::unchecked("owner");
+        let owner =
+            Addr::unchecked("cosmwasm19mfs8tl4s396u7vqw9rrnsmrrtca5r66p7v8jvwdxvjn3shcmllqupdgxu");
 
         let mut app = BabylonApp::new_at_height(owner.as_str(), self.height.unwrap_or(1));
 
@@ -84,8 +85,9 @@ impl SuiteBuilder {
         let btc_finality_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_finality());
         let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
-        let staking_params = btc_staking::test_utils::staking_params();
-        let contract = app
+
+        // instantiate Babylon contract
+        let babylon_contract_addr = app
             .instantiate_contract(
                 contract_code_id,
                 owner.clone(),
@@ -106,12 +108,43 @@ impl SuiteBuilder {
             )
             .unwrap();
 
+        // instantiate BTC Staking contract
+        let staking_params = btc_staking::test_utils::staking_params();
+        let staking_contract_addr = app
+            .instantiate_contract(
+                btc_staking_code_id,
+                owner.clone(),
+                &btc_staking::msg::InstantiateMsg {
+                    admin: Some(owner.to_string()),
+                    params: Some(staking_params),
+                },
+                &[],
+                "btc-staking",
+                Some(owner.to_string()),
+            )
+            .unwrap();
+
+        // instantiate BTC Finality contract
+        let finality_contract_addr = app
+            .instantiate_contract(
+                btc_finality_code_id,
+                owner.clone(),
+                &crate::msg::InstantiateMsg {
+                    admin: Some(owner.to_string()),
+                    params: Some(crate::state::config::Params::default()),
+                },
+                &[],
+                "btc-finality",
+                Some(owner.to_string()),
+            )
+            .unwrap();
+
         Suite {
             app,
             code_id: contract_code_id,
-            babylon: contract,
-            staking: Addr::unchecked(CONTRACT1_ADDR),
-            finality: Addr::unchecked(CONTRACT2_ADDR),
+            babylon: babylon_contract_addr,
+            staking: staking_contract_addr,
+            finality: finality_contract_addr,
             owner,
         }
     }

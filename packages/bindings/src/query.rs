@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, ContractResult, CustomQuery, QuerierWrapper, StdError,
-    SystemResult,
+    from_json, to_json_binary, Addr, ContractResult, CustomQuery, QuerierWrapper, QueryRequest,
+    StdError, SystemResult,
 };
 
 #[cw_serde]
@@ -35,7 +35,7 @@ pub struct ParamsResponse {
 pub fn get_babylon_sdk_params(
     querier: &QuerierWrapper<BabylonQuery>,
 ) -> Result<ParamsResponse, StdError> {
-    let query = BabylonQuery::Params {};
+    let query = QueryRequest::Custom(BabylonQuery::Params {});
     let res = match querier.raw_query(&to_json_binary(&query)?) {
         SystemResult::Err(system_err) => Err(StdError::generic_err(format!(
             "Querier system error: {}",

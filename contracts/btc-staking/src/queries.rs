@@ -224,7 +224,8 @@ mod tests {
     #[test]
     fn test_finality_providers() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -233,7 +234,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -283,7 +284,8 @@ mod tests {
     #[test]
     fn test_delegations() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -292,7 +294,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -356,7 +358,8 @@ mod tests {
     #[test]
     fn test_active_delegations() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -365,7 +368,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -443,8 +446,8 @@ mod tests {
     #[test]
     fn test_delegations_by_fp() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
-
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
         let params = staking_params();
         instantiate(
             deps.as_mut(),
@@ -452,7 +455,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -502,7 +505,8 @@ mod tests {
     #[test]
     fn test_active_delegations_by_fp() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -511,7 +515,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -592,7 +596,8 @@ mod tests {
     #[test]
     fn test_fp_info() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let initial_env = mock_env_height(10);
 
@@ -603,7 +608,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -697,7 +702,8 @@ mod tests {
     #[test]
     fn test_fp_info_raw_query() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -706,7 +712,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
@@ -751,7 +757,8 @@ mod tests {
     #[test]
     fn test_fps_by_power() {
         let mut deps = mock_dependencies();
-        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let admin = deps.api.addr_make(CREATOR);
+        let info = message_info(&admin, &[]);
 
         let params = staking_params();
         instantiate(
@@ -760,7 +767,7 @@ mod tests {
             info.clone(),
             InstantiateMsg {
                 params: Some(params),
-                admin: None,
+                admin: Some(admin.to_string()),
             },
         )
         .unwrap();
