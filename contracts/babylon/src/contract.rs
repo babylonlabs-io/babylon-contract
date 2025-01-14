@@ -330,10 +330,7 @@ pub fn execute(
                         Ok(Response::new())
                     }
                 }
-                None => {
-                    // TODO: Send payload over the custom IBC channel for distribution
-                    Ok(Response::new())
-                }
+                None => Err(ContractError::IbcTransferInfoNotSet {}),
             }
         }
     }

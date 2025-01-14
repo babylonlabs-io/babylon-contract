@@ -43,6 +43,8 @@ pub enum ContractError {
     BtcFinalityNotSet {},
     #[error("Invalid configuration: {msg}")]
     InvalidConfig { msg: String },
+    #[error("IBC transfer info not set")]
+    IbcTransferInfoNotSet {},
 }
 
 #[derive(Error, Debug, PartialEq)]

@@ -621,8 +621,8 @@ pub fn list_fps_by_power(
     Ok(res.fps)
 }
 
-/// `distribute_rewards` distributes rewards to finality providers who are in the active set at `height`
-pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractError> {
+/// `distribute_rewards_fps` distributes rewards to finality providers who are in the active set at `height`
+pub fn distribute_rewards_fps(deps: &mut DepsMut, env: &Env) -> Result<(), ContractError> {
     // Try to use the finality provider set at the previous height
     let active_fps = FP_SET.may_load(deps.storage, env.block.height - 1)?;
     // Short-circuit if there are no active finality providers
@@ -662,4 +662,14 @@ pub fn distribute_rewards(deps: &mut DepsMut, env: &Env) -> Result<(), ContractE
         Ok::<Uint128, ContractError>(r + accumulated_rewards)
     })?;
     Ok(())
+}
+
+/// `distribute_rewards_delegators` distributes rewards to delegators of the finality providers
+pub fn distribute_rewards_delegators(
+    deps: &mut DepsMut,
+    total_rewards: u128,
+    config: &Config,
+) -> Result<(), ContractError> {
+    let _ = (deps, total_rewards, config);
+    todo!()
 }

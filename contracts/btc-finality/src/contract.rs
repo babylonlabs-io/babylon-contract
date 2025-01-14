@@ -1,5 +1,15 @@
+use crate::error::ContractError;
+use crate::finality::{
+    compute_active_finality_providers, distribute_rewards_delegators, distribute_rewards_fps,
+    handle_finality_signature, handle_public_randomness_commit,
+};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
+use crate::state::finality::{REWARDS, TOTAL_REWARDS};
+use crate::{finality, queries, state};
 use babylon_apis::finality_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
+use babylon_contract::msg::ibc::TransferInfoResponse;
 use btc_staking::msg::ActivatedHeightResponse;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -10,16 +20,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
-
-use crate::error::ContractError;
-use crate::finality::{
-    compute_active_finality_providers, distribute_rewards, handle_finality_signature,
-    handle_public_randomness_commit,
-};
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
-use crate::state::finality::{REWARDS, TOTAL_REWARDS};
-use crate::{finality, queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -226,7 +226,7 @@ fn handle_update_staking(
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
     // Distribute rewards
-    distribute_rewards(deps, &env)?;
+    distribute_rewards_fps(deps, &env)?;
 
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
@@ -264,10 +264,21 @@ fn handle_end_block(
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
         let rewards = TOTAL_REWARDS.load(deps.storage)?;
         if rewards.u128() > 0 {
-            let wasm_msg = send_rewards_msg(deps, rewards.u128(), &cfg)?;
-            res = res.add_message(wasm_msg);
-            // Zero out total rewards
-            TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
+            // Query the babylon contract for transfer info
+            let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
+                cfg.babylon.to_string(),
+                &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
+            )?;
+            // If set, send rewards to Babylon through the babylon contract
+            if transfer_info.is_some() {
+                let wasm_msg = send_rewards_msg(deps, rewards.u128(), &cfg)?;
+                res = res.add_message(wasm_msg);
+                // Zero out total rewards
+                TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
+            } else {
+                // Distribute rewards to delegators
+                distribute_rewards_delegators(deps, rewards.u128(), &cfg)?;
+            }
         }
     }
     Ok(res)
