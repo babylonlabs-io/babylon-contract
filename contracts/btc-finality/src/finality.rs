@@ -663,13 +663,3 @@ pub fn distribute_rewards_fps(deps: &mut DepsMut, env: &Env) -> Result<(), Contr
     })?;
     Ok(())
 }
-
-/// `distribute_rewards_delegators` distributes rewards to delegators of the finality providers
-pub fn distribute_rewards_delegators(
-    deps: &mut DepsMut,
-    total_rewards: u128,
-    config: &Config,
-) -> Result<(), ContractError> {
-    let _ = (deps, total_rewards, config);
-    todo!()
-}

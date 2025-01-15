@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::finality::{
-    compute_active_finality_providers, distribute_rewards_delegators, distribute_rewards_fps,
-    handle_finality_signature, handle_public_randomness_commit,
+    compute_active_finality_providers, distribute_rewards_fps, handle_finality_signature,
+    handle_public_randomness_commit,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
@@ -259,35 +259,52 @@ fn handle_end_block(
         res = res.add_events(events);
     }
 
-    // On an epoch boundary, send rewards to Babylon through the babylon contract
+    // On an epoch boundary, send rewards for distribution. Rewards are sent to Babylon if IBC
+    // transfer info is set, otherwise they are sent to the staking contract.
     let params = PARAMS.load(deps.storage)?;
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
         let rewards = TOTAL_REWARDS.load(deps.storage)?;
         if rewards.u128() > 0 {
-            // Query the babylon contract for transfer info
-            let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
-                cfg.babylon.to_string(),
-                &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
-            )?;
-            // If set, send rewards to Babylon through the babylon contract
-            if transfer_info.is_some() {
-                let wasm_msg = send_rewards_msg(deps, rewards.u128(), &cfg)?;
-                res = res.add_message(wasm_msg);
-                // Zero out total rewards
-                TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
-            } else {
-                // Distribute rewards to delegators
-                distribute_rewards_delegators(deps, rewards.u128(), &cfg)?;
-            }
+            let wasm_msg = distribute_rewards_msg(deps, rewards.u128(), &cfg)?;
+            res = res.add_message(wasm_msg);
+            // Zero out total rewards
+            TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
         }
     }
     Ok(res)
+}
+
+fn distribute_rewards_msg(
+    deps: &mut DepsMut,
+    rewards: u128,
+    cfg: &Config,
+) -> Result<WasmMsg, ContractError> {
+    // Query the babylon contract for transfer info
+    // TODO: Turn into a parameter set during instantiation to avoid query
+    let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
+        cfg.babylon.to_string(),
+        &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
+    )?;
+    let wasm_msg = match transfer_info {
+        Some(_) => {
+            // Babylon distribution. Send rewards to Babylon through the babylon contract
+            send_rewards_msg(deps, rewards, cfg, cfg.babylon.clone())?
+        }
+        None => {
+            // Local distribution. Send rewards to the staking contract
+            send_rewards_msg(deps, rewards, cfg, cfg.staking.clone())?
+        }
+    };
+    // Zero out total rewards
+    TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
+    Ok(wasm_msg)
 }
 
 fn send_rewards_msg(
     deps: &mut DepsMut,
     rewards: u128,
     cfg: &Config,
+    recipient: Addr,
 ) -> Result<WasmMsg, ContractError> {
     // Get the pending rewards distribution
     let fp_rewards = REWARDS
@@ -301,19 +318,32 @@ fn send_rewards_msg(
         })
         .map(|item| {
             let (fp_pubkey_hex, reward) = item?;
-            Ok(babylon_contract::msg::contract::RewardsDistribution {
+            Ok(babylon_apis::btc_staking_api::RewardsDistribution {
                 fp_pubkey_hex,
                 reward,
             })
         })
         .collect::<StdResult<Vec<_>>>()?;
-    let msg = babylon_contract::ExecuteMsg::SendRewards {
-        fp_distribution: fp_rewards.clone(),
-    };
-    let wasm_msg = WasmMsg::Execute {
-        contract_addr: cfg.babylon.to_string(),
-        msg: to_json_binary(&msg)?,
-        funds: coins(rewards, cfg.denom.as_str()),
+    let wasm_msg = if recipient == cfg.babylon {
+        let msg = babylon_contract::ExecuteMsg::SendRewards {
+            fp_distribution: fp_rewards.clone(),
+        };
+        WasmMsg::Execute {
+            contract_addr: recipient.into_string(),
+            msg: to_json_binary(&msg)?,
+            funds: coins(rewards, cfg.denom.as_str()),
+        }
+    } else if recipient == cfg.staking {
+        let msg = btc_staking::msg::ExecuteMsg::DistributeRewards {
+            fp_distribution: fp_rewards.clone(),
+        };
+        WasmMsg::Execute {
+            contract_addr: recipient.into_string(),
+            msg: to_json_binary(&msg)?,
+            funds: coins(rewards, cfg.denom.as_str()),
+        }
+    } else {
+        return Err(ContractError::InvalidRewardsRecipient {});
     };
     // Zero out individual rewards
     for reward in fp_rewards {

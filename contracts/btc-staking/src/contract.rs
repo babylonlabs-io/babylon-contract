@@ -121,6 +121,7 @@ pub fn execute(
             &unbonded_del,
         ),
         ExecuteMsg::Slash { fp_btc_pk_hex } => handle_slash_fp(deps, env, &info, &fp_btc_pk_hex),
+        ExecuteMsg::DistributeRewards { .. } => todo!(),
     }
 }
 
