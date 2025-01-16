@@ -162,7 +162,7 @@ pub fn finality_providers_by_power(
         .range(deps.storage, None, start, Descending)
         .take(limit)
         .map(|item| {
-            let (btc_pk_hex, FinalityProviderState { power }) = item?;
+            let (btc_pk_hex, FinalityProviderState { power, .. }) = item?;
             Ok(FinalityProviderInfo { btc_pk_hex, power })
         })
         .collect::<StdResult<Vec<_>>>()?;
@@ -735,7 +735,7 @@ mod tests {
         // Deserialize result
         let fp_state: FinalityProviderState = from_json(fp_state_raw).unwrap();
 
-        assert_eq!(fp_state, FinalityProviderState { power: 100 });
+        assert_eq!(fp_state.power, 100);
     }
 
     #[test]

@@ -12,7 +12,7 @@ use babylon_bindings::BabylonMsg;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::staking::{handle_btc_staking, handle_slash_fp};
+use crate::staking::{handle_btc_staking, handle_distribute_rewards, handle_slash_fp};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -121,7 +121,10 @@ pub fn execute(
             &unbonded_del,
         ),
         ExecuteMsg::Slash { fp_btc_pk_hex } => handle_slash_fp(deps, env, &info, &fp_btc_pk_hex),
-        ExecuteMsg::DistributeRewards { .. } => todo!(),
+        ExecuteMsg::DistributeRewards { fp_distribution } => {
+            let evts = handle_distribute_rewards(deps, &env, &info, &fp_distribution)?;
+            Ok(Response::new().add_events(evts))
+        }
     }
 }
 

@@ -62,6 +62,7 @@ mod instantiation {
             slashing_pk_script: String::from("76a914010101010101010101010101010101010101010188ab"),
             min_slashing_tx_fee_sat: 10000,
             slashing_rate: String::from("0.1"),
+            rewards_denom: "ubbnc".to_string(),
         };
         let staking_instantiation_msg = btc_staking::msg::InstantiateMsg {
             params: Some(params),

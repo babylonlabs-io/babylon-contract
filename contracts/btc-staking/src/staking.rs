@@ -2,10 +2,8 @@ use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
-use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Storage};
+use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Storage, Uint128, Uint256};
 use hex::ToHex;
-
-use std::str::FromStr;
 
 use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG, PARAMS};
@@ -17,15 +15,19 @@ use crate::validation::{
     verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
 };
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, RewardInfo, SlashedBtcDelegation,
     UnbondedBtcDelegation,
 };
+use cw_utils::must_pay;
+use std::str::FromStr;
 
 use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
 
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
+
+pub const DISTRIBUTION_POINTS_SCALE: Uint256 = Uint256::from_u128(1_000_000_000);
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -320,6 +322,64 @@ pub fn handle_slash_fp(
         return Err(ContractError::Unauthorized);
     }
     slash_finality_provider(deps, env, fp_btc_pk_hex)
+}
+
+pub fn handle_distribute_rewards(
+    mut deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    rewards: &[RewardInfo],
+) -> Result<Vec<Event>, ContractError> {
+    let params = PARAMS.load(deps.storage)?;
+
+    // TODO: Check that the sender is the finality contract (AML)
+
+    // Error if no proper funds to distribute
+    let amount = must_pay(info, &params.rewards_denom)?;
+
+    // Check that the total rewards match sent funds
+    let total_amount: Uint128 = rewards.iter().map(|r| r.reward).sum();
+    if total_amount != amount {
+        return Err(ContractError::InvalidRewardsAmount(amount, total_amount));
+    }
+
+    rewards
+        .iter()
+        .map(|reward_info| {
+            distribute_rewards(
+                &mut deps,
+                &reward_info.fp_pubkey_hex,
+                reward_info.reward,
+                env.block.height,
+            )
+        })
+        .collect()
+}
+
+fn distribute_rewards(
+    deps: &mut DepsMut,
+    fp: &str,
+    amount: Uint128,
+    height: u64,
+) -> Result<Event, ContractError> {
+    // Load fp distribution info
+    // TODO?: Use specific Distribution struct
+    let mut fp_distribution = fps().load(deps.storage, fp)?;
+
+    let total_stake = Uint256::from(fp_distribution.power);
+    let points_distributed =
+        Uint256::from(amount) * DISTRIBUTION_POINTS_SCALE + fp_distribution.points_leftover;
+    let points_per_stake = points_distributed / total_stake;
+
+    fp_distribution.points_leftover = points_distributed - points_per_stake * total_stake;
+    fp_distribution.points_per_stake += points_per_stake;
+
+    fps().save(deps.storage, fp, &fp_distribution, height)?;
+
+    let event = Event::new("distribute_rewards")
+        .add_attribute("fp", fp)
+        .add_attribute("amount", amount.to_string());
+    Ok(event)
 }
 
 /// btc_undelegate adds the signature of the unbonding tx signed by the staker to the given BTC

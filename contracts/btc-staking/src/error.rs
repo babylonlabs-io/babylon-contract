@@ -5,7 +5,7 @@ use thiserror::Error;
 use bitcoin::hashes::FromSliceError;
 use bitcoin::hex::HexToArrayError;
 
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
 
@@ -98,4 +98,6 @@ pub enum ContractError {
     SecretKeyExtractionError(String),
     #[error("Hash length error: {0}")]
     WrongHashLength(String),
+    #[error("Sent funds ({0}) don't match rewards to distribute {1}")]
+    InvalidRewardsAmount(Uint128, Uint128),
 }

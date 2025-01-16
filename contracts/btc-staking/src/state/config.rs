@@ -49,4 +49,5 @@ pub struct Params {
     /// expressed as a decimal (e.g. 0.5 for 50%).
     #[derivative(Default(value = "String::from(\"0.1\")"))]
     pub slashing_rate: String,
+    pub rewards_denom: String,
 }
