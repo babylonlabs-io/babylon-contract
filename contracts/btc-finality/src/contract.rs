@@ -318,7 +318,7 @@ fn send_rewards_msg(
         })
         .map(|item| {
             let (fp_pubkey_hex, reward) = item?;
-            Ok(babylon_apis::btc_staking_api::RewardsDistribution {
+            Ok(babylon_apis::btc_staking_api::RewardInfo {
                 fp_pubkey_hex,
                 reward,
             })

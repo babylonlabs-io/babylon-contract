@@ -30,12 +30,12 @@ pub enum ExecuteMsg {
     /// delegators
     DistributeRewards {
         /// `fp_distribution` is the list of finality providers and their rewards
-        fp_distribution: Vec<RewardsDistribution>,
+        fp_distribution: Vec<RewardInfo>,
     },
 }
 
 #[cw_serde]
-pub struct RewardsDistribution {
+pub struct RewardInfo {
     pub fp_pubkey_hex: String,
     pub reward: Uint128,
 }
