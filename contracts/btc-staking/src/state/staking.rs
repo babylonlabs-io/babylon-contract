@@ -218,8 +218,10 @@ pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 pub(crate) const BTC_DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> =
     Map::new("btc_delegations");
 /// Map of staking hashes by finality provider
+// TODO: Remove and use the delegations() map instead
 pub(crate) const FP_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("fp_delegations");
 /// Reverse map of finality providers by staking hash
+// TODO: Remove and use the delegations() reverse index instead
 pub(crate) const DELEGATION_FPS: Map<&[u8; HASH_SIZE], Vec<String>> = Map::new("delegation_fps");
 
 pub const FP_STATE_KEY: &str = "fp_state";
