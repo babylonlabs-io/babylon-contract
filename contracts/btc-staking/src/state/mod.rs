@@ -1,6 +1,7 @@
 pub mod config;
+pub mod delegations;
 pub mod staking;
 
-mod delegations;
+pub(crate) mod points_alignment;
+
 mod fp_index;
-mod points_alignment;

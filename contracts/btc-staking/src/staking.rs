@@ -25,7 +25,10 @@ use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
 
+use crate::state::{delegations, points_alignment};
+use crate::state::delegations::{delegations, Delegation};
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
+use crate::state::points_alignment::PointsAlignment;
 
 pub const DISTRIBUTION_POINTS_SCALE: Uint256 = Uint256::from_u128(1_000_000_000);
 
@@ -190,12 +193,40 @@ pub fn handle_active_delegation(
         delegation_fps.push(fp_btc_pk_hex.clone());
         DELEGATION_FPS.save(storage, staking_tx_hash.as_ref(), &delegation_fps)?;
 
+        // Load FP state
+        let mut fp_state = fps.load(storage, fp_btc_pk_hex)?;
         // Update aggregated voting power by FP
-        fps.update(storage, fp_btc_pk_hex, height, |fp_state| {
-            let mut fp_state = fp_state.unwrap_or_default();
-            fp_state.power = fp_state.power.saturating_add(active_delegation.total_sat);
-            Ok::<_, ContractError>(fp_state)
-        })?;
+        fp_state.power = fp_state.power.saturating_add(active_delegation.total_sat);
+
+        // Create delegation distribution info. Fail if it already exists
+        delegations().delegation.update(
+            storage,
+            (staking_tx_hash.as_ref(), fp_btc_pk_hex),
+            |del| {
+                match del {
+                    Some(_) => {
+                        return Err(ContractError::DelegationToFpAlreadyExists(
+                            staking_tx_hash.to_string(),
+                            fp_btc_pk_hex.to_string(),
+                        ))
+                    }
+                    None => {
+                        // Distribution alignment
+                        let mut points_alignment = PointsAlignment::new();
+                        points_alignment.stake_increased(active_delegation.total_sat, fp_state.points_per_stake);
+                        let delegation = Delegation {
+                            stake: active_delegation.total_sat,
+                            points_alignment,
+                            withdrawn_funds: Default::default(),
+                        };
+                        Ok::<_, ContractError>(delegation)
+                    }
+                }
+            },
+        )?;
+
+        // Save FP state
+        fps.save(storage, fp_btc_pk_hex, &fp_state, height)?;
 
         registered_fp = true;
     }
