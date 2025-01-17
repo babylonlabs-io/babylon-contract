@@ -25,10 +25,9 @@ use babylon_apis::Validate;
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
 
-use crate::state::{delegations, points_alignment};
 use crate::state::delegations::{delegations, Delegation};
-use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 use crate::state::points_alignment::PointsAlignment;
+use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 
 pub const DISTRIBUTION_POINTS_SCALE: Uint256 = Uint256::from_u128(1_000_000_000);
 
@@ -204,16 +203,18 @@ pub fn handle_active_delegation(
             (staking_tx_hash.as_ref(), fp_btc_pk_hex),
             |del| {
                 match del {
-                    Some(_) => {
-                        return Err(ContractError::DelegationToFpAlreadyExists(
-                            staking_tx_hash.to_string(),
-                            fp_btc_pk_hex.to_string(),
-                        ))
-                    }
+                    Some(_) => Err(ContractError::DelegationToFpAlreadyExists(
+                        staking_tx_hash.to_string(),
+                        fp_btc_pk_hex.to_string(),
+                    )),
                     None => {
                         // Distribution alignment
                         let mut points_alignment = PointsAlignment::new();
-                        points_alignment.stake_increased(active_delegation.total_sat, fp_state.points_per_stake);
+                        // FIXME: Needed? (unbonding is always full)
+                        points_alignment.stake_increased(
+                            active_delegation.total_sat,
+                            fp_state.points_per_stake,
+                        );
                         let delegation = Delegation {
                             stake: active_delegation.total_sat,
                             points_alignment,
@@ -277,13 +278,36 @@ fn handle_undelegation(
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
-    for fp in affected_fps {
-        fps.update(storage, &fp, height, |fp_state| {
-            let mut fp_state =
-                fp_state.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
-            fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
-            Ok::<_, ContractError>(fp_state)
-        })?;
+    for fp_pubkey_hex in affected_fps {
+        // Load FP state
+        let mut fp_state = fps
+            .load(storage, &fp_pubkey_hex)
+            .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.clone()))?;
+        // Update aggregated voting power by FP
+        fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+
+        // Load delegation
+        let mut delegation = delegations()
+            .delegation
+            .load(storage, (staking_tx_hash.as_ref(), &fp_pubkey_hex))?;
+
+        // Commit sub amount, saturating if slashed
+        delegation.stake = delegation.stake.saturating_sub(btc_del.total_sat);
+
+        // Distribution alignment
+        delegation
+            .points_alignment
+            .stake_decreased(btc_del.total_sat, fp_state.points_per_stake);
+
+        // Save delegation
+        delegations().delegation.save(
+            storage,
+            (staking_tx_hash.as_ref(), &fp_pubkey_hex),
+            &delegation,
+        )?;
+
+        // Save / update FP state
+        fps.save(storage, &fp_pubkey_hex, &fp_state, height)?;
     }
     // Record event that the BTC delegation becomes unbonded
     let unbonding_event = Event::new("btc_undelegation")

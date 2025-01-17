@@ -19,6 +19,7 @@ pub struct Delegation {
 
 pub struct DelegationIndexes<'a> {
     // Last type param defines the pk deserialization type
+    #[allow(clippy::type_complexity)]
     pub rev: MultiIndex<'a, (String, Vec<u8>), Delegation, (Vec<u8>, String)>,
 }
 
