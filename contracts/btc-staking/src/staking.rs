@@ -9,7 +9,7 @@ use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG, PARAMS};
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
-    DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
+    BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
 };
 use crate::validation::{
     verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
@@ -146,7 +146,7 @@ pub fn handle_active_delegation(
     let staking_tx_hash = staking_tx.txid();
 
     // Check staking tx is not duplicated
-    if DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
+    if BTC_DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
         return Err(ContractError::DelegationAlreadyExists(
             staking_tx_hash.to_string(),
         ));
@@ -205,7 +205,7 @@ pub fn handle_active_delegation(
     }
     // Add this BTC delegation
     let delegation = BtcDelegation::from(active_delegation);
-    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &delegation)?;
+    BTC_DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &delegation)?;
 
     // Store activated height, if first delegation
     if ACTIVATED_HEIGHT.may_load(storage)?.is_none() {
@@ -227,7 +227,7 @@ fn handle_undelegation(
     undelegation.validate()?;
 
     let staking_tx_hash = Txid::from_str(&undelegation.staking_tx_hash)?;
-    let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
+    let mut btc_del = BTC_DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
     // Ensure the BTC delegation is active
     if !btc_del.is_active() {
@@ -273,7 +273,7 @@ fn handle_slashed_delegation(
     delegation.validate()?;
 
     let staking_tx_hash = Txid::from_str(&delegation.staking_tx_hash)?;
-    let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
+    let mut btc_del = BTC_DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
     // Ensure the BTC delegation is active
     if !btc_del.is_active() {
@@ -300,7 +300,7 @@ fn handle_slashed_delegation(
 
     // Mark the delegation as slashed
     btc_del.slashed = true;
-    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &btc_del)?;
+    BTC_DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &btc_del)?;
 
     // Record event that the BTC delegation becomes unbonded due to slashing at this height
     let slashing_event = Event::new("btc_undelegation_slashed")
@@ -394,7 +394,7 @@ fn btc_undelegate(
     });
 
     // Set BTC delegation back to KV store
-    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
+    BTC_DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
 
     // TODO? Notify subscriber about this unbonded BTC delegation
     //  - Who are subscribers in this context?

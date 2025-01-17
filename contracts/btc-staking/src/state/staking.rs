@@ -214,9 +214,9 @@ impl From<btc_staking_api::SignatureInfo> for SignatureInfo {
 /// Finality providers by their BTC public key
 pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 
-/// Delegations by staking tx hash
-/// TODO: create a new DB object for BTC delegation
-pub(crate) const DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> = Map::new("delegations");
+/// Btc Delegations info, by staking tx hash
+pub(crate) const BTC_DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> =
+    Map::new("btc_delegations");
 /// Map of staking hashes by finality provider
 pub(crate) const FP_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("fp_delegations");
 /// Reverse map of finality providers by staking hash

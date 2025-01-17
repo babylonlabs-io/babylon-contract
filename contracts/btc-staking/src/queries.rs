@@ -17,7 +17,8 @@ use crate::msg::{
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
 use crate::state::staking::{
-    fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, DELEGATIONS, FPS, FP_DELEGATIONS,
+    fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, BTC_DELEGATIONS, FPS,
+    FP_DELEGATIONS,
 };
 
 pub fn config(deps: Deps) -> StdResult<Config> {
@@ -55,7 +56,7 @@ pub fn finality_providers(
 /// `staking_tx_hash_hex`: The (reversed) staking tx hash, in hex
 pub fn delegation(deps: Deps, staking_tx_hash_hex: String) -> Result<BtcDelegation, ContractError> {
     let staking_tx_hash = Txid::from_str(&staking_tx_hash_hex)?;
-    Ok(DELEGATIONS.load(deps.storage, staking_tx_hash.as_ref())?)
+    Ok(BTC_DELEGATIONS.load(deps.storage, staking_tx_hash.as_ref())?)
 }
 
 /// Get list of delegations.
@@ -75,7 +76,7 @@ pub fn delegations(
         .transpose()?;
     let start_after = start_after.as_ref().map(|s| s.as_ref());
     let start_after = start_after.map(Bound::exclusive);
-    let delegations = DELEGATIONS
+    let delegations = BTC_DELEGATIONS
         .range_raw(deps.storage, start_after, None, Order::Ascending)
         .filter(|item| {
             if let Ok((_, del)) = item {
@@ -120,7 +121,7 @@ pub fn active_delegations_by_fp(
     let tx_hashes = FP_DELEGATIONS.load(deps.storage, &btc_pk_hex)?;
     let delegations = tx_hashes
         .iter()
-        .map(|h| Ok(DELEGATIONS.load(deps.storage, Txid::from_slice(h)?.as_ref())?))
+        .map(|h| Ok(BTC_DELEGATIONS.load(deps.storage, Txid::from_slice(h)?.as_ref())?))
         .filter(|item| {
             if let Ok(del) = item {
                 !active || del.is_active()
