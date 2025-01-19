@@ -22,8 +22,8 @@ pub struct DelegationIndexes<'a> {
     // Last type param defines the pk deserialization type
     #[allow(clippy::type_complexity)]
     pub rev: MultiIndex<'a, (String, Vec<u8>), Delegation, (Vec<u8>, String)>,
-    // Delegations by staker
-    pub staker: MultiIndex<'a, CanonicalAddr, Delegation, (Vec<u8>, String)>,
+    // Delegations by staker's (raw, canonical) address
+    pub staker: MultiIndex<'a, Vec<u8>, Delegation, (Vec<u8>, String)>,
 }
 
 impl<'a> IndexList<Delegation> for DelegationIndexes<'a> {
@@ -56,7 +56,11 @@ impl<'a> Delegations<'a> {
                 storage_key,
                 fp_subkey,
             ),
-            staker: MultiIndex::new(|_, del| del.staker_addr.clone(), storage_key, staker_subkey),
+            staker: MultiIndex::new(
+                |_, del| del.staker_addr.to_vec(),
+                storage_key,
+                staker_subkey,
+            ),
         };
         let delegations = IndexedMap::new(storage_key, indexes);
 
