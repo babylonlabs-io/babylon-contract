@@ -1,13 +1,14 @@
 use crate::state::points_alignment::PointsAlignment;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Order, StdResult, Storage, Uint128};
+use cosmwasm_std::{CanonicalAddr, Order, StdResult, Storage, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, KeyDeserialize, MultiIndex};
 
 /// Single delegation related information - entry per `(staking hash, finality provider public key)`
 /// pair, including distribution alignment
 #[cw_serde]
-#[derive(Default)]
 pub struct Delegation {
+    /// The delegator's canonical address
+    pub staker_addr: CanonicalAddr,
     /// How many satoshis the user stakes in this delegation
     pub stake: u64,
     /// How many points should be added / subtracted from points calculated per delegation due to

@@ -21,7 +21,7 @@ use babylon_apis::btc_staking_api::{
 use cw_utils::must_pay;
 use std::str::FromStr;
 
-use babylon_apis::Validate;
+use babylon_apis::{to_canonical_addr, Validate};
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
 
@@ -163,6 +163,9 @@ pub fn handle_active_delegation(
     // 1) Its corresponding staking tx is k-deep.
     // 2) It receives a covenant signature.
 
+    // Get canonical address
+    let canonical_addr = to_canonical_addr(&active_delegation.staker_addr, "bbn")?;
+
     // Update delegations by registered finality provider
     let fps = fps();
     let mut registered_fp = false;
@@ -216,9 +219,10 @@ pub fn handle_active_delegation(
                             fp_state.points_per_stake,
                         );
                         let delegation = Delegation {
+                            staker_addr: canonical_addr.clone(),
                             stake: active_delegation.total_sat,
                             points_alignment,
-                            withdrawn_funds: Default::default(),
+                            withdrawn_funds: Uint128::zero(),
                         };
                         Ok::<_, ContractError>(delegation)
                     }
