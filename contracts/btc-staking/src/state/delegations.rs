@@ -22,6 +22,8 @@ pub struct DelegationIndexes<'a> {
     // Last type param defines the pk deserialization type
     #[allow(clippy::type_complexity)]
     pub rev: MultiIndex<'a, (String, Vec<u8>), Delegation, (Vec<u8>, String)>,
+    // Delegations by staker
+    pub staker: MultiIndex<'a, CanonicalAddr, Delegation, (Vec<u8>, String)>,
 }
 
 impl<'a> IndexList<Delegation> for DelegationIndexes<'a> {
@@ -40,7 +42,11 @@ impl<'a> Delegations<'a> {
         <(Vec<u8>, String)>::from_slice(pk).unwrap() // mustn't fail
     }
 
-    pub fn new(storage_key: &'static str, fp_subkey: &'static str) -> Self {
+    pub fn new(
+        storage_key: &'static str,
+        fp_subkey: &'static str,
+        staker_subkey: &'static str,
+    ) -> Self {
         let indexes = DelegationIndexes {
             rev: MultiIndex::new(
                 |pk, _| {
@@ -50,6 +56,7 @@ impl<'a> Delegations<'a> {
                 storage_key,
                 fp_subkey,
             ),
+            staker: MultiIndex::new(|_, del| del.staker_addr.clone(), storage_key, staker_subkey),
         };
         let delegations = IndexedMap::new(storage_key, indexes);
 
@@ -78,8 +85,9 @@ impl<'a> Delegations<'a> {
 
 const DELEGATIONS_KEY: &str = "delegations";
 const FP_SUBKEY: &str = "fp";
+const STAKER_SUBKEY: &str = "staker";
 
 /// Indexed map for delegations and finality providers.
 pub fn delegations<'a>() -> Delegations<'a> {
-    Delegations::new(DELEGATIONS_KEY, FP_SUBKEY)
+    Delegations::new(DELEGATIONS_KEY, FP_SUBKEY, STAKER_SUBKEY)
 }
