@@ -296,7 +296,7 @@ fn handle_undelegation(
             .delegation
             .load(storage, (staking_tx_hash.as_ref(), &fp_pubkey_hex))?;
 
-        // Commit sub amount, saturating if slashed
+        // Subtract amount, saturating if slashed
         delegation.stake = delegation.stake.saturating_sub(btc_del.total_sat);
 
         // Distribution alignment
@@ -353,10 +353,12 @@ fn handle_slashed_delegation(
         let mut fp_state = fps.load(storage, &fp)?;
         fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
 
+
         // Distribution alignment
         let mut delegation_distribution = delegations()
             .delegation
             .load(storage, (staking_tx_hash.as_ref(), &fp))?;
+        delegation_distribution.stake = delegation_distribution.stake.saturating_sub(btc_del.total_sat);
         delegation_distribution
             .points_alignment
             .stake_decreased(btc_del.total_sat, fp_state.points_per_stake);
