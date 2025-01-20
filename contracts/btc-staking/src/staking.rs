@@ -477,17 +477,23 @@ pub fn handle_withdraw_rewards(
         .delegation
         .idx
         .staker
-        .prefix(rcpt_canonical_addr.into())
+        .prefix((rcpt_canonical_addr.into(), fp_pubkey_hex.into()))
         .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<_>>>()?;
-    let amounts = stakes
-        .iter()
-        .map(|((staking_tx, _), _)| {
-            withdraw_delegation_reward(deps.branch(), staking_tx, fp_pubkey_hex)
-        })
-        .collect::<Result<Vec<_>, ContractError>>()?;
 
-    let amount = amounts.iter().sum::<Uint128>();
+    let mut amount = Uint128::zero();
+    for ((staking_tx_hash, _), mut delegation) in stakes {
+        let delegation_reward =
+            withdraw_delegation_reward(deps.branch(), &mut delegation, fp_pubkey_hex)?;
+        if !delegation_reward.is_zero() {
+            delegations().delegation.save(
+                deps.storage,
+                (&staking_tx_hash, fp_pubkey_hex),
+                &delegation,
+            )?;
+            amount += delegation_reward;
+        }
+    }
 
     if amount.is_zero() {
         return Err(ContractError::NoRewards);
@@ -512,32 +518,18 @@ pub fn handle_withdraw_rewards(
 
 pub fn withdraw_delegation_reward(
     deps: DepsMut,
-    staking_tx_hash: &[u8],
+    delegation: &mut Delegation,
     fp_pubkey_hex: &str,
 ) -> Result<Uint128, ContractError> {
-    // Load delegation.
-    let delegation = delegations()
-        .delegation
-        .may_load(deps.storage, (staking_tx_hash, fp_pubkey_hex))?;
-    // Skip if delegation does not exist
-    let mut delegation = match delegation {
-        Some(delegation) => delegation,
-        None => return Ok(Uint128::zero()),
-    };
-
     // Load FP state
     let fp_state = fps()
         .load(deps.storage, fp_pubkey_hex)
         .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.to_string()))?;
 
-    let amount = calculate_reward(&delegation, &fp_state)?;
+    let amount = calculate_reward(delegation, &fp_state)?;
 
     // Update withdrawn_funds to hold this transfer
     delegation.withdrawn_funds += amount;
-
-    delegations()
-        .delegation
-        .save(deps.storage, (staking_tx_hash, fp_pubkey_hex), &delegation)?;
     Ok(amount)
 }
 

@@ -19,11 +19,13 @@ pub struct Delegation {
 }
 
 pub struct DelegationIndexes<'a> {
-    // Last type param defines the pk deserialization type
+    // Delegations by finality provider's public key and staking hash.
+    // Last type params defines the pk deserialization type
     #[allow(clippy::type_complexity)]
     pub rev: MultiIndex<'a, (String, Vec<u8>), Delegation, (Vec<u8>, String)>,
-    // Delegations by staker's (raw, canonical) address
-    pub staker: MultiIndex<'a, Vec<u8>, Delegation, (Vec<u8>, String)>,
+    // Delegations by staker's (raw, canonical) address and finality provider's public key.
+    // Last type params defines the pk deserialization type
+    pub staker: MultiIndex<'a, (Vec<u8>, String), Delegation, (Vec<u8>, String)>,
 }
 
 impl<'a> IndexList<Delegation> for DelegationIndexes<'a> {
@@ -57,7 +59,10 @@ impl<'a> Delegations<'a> {
                 fp_subkey,
             ),
             staker: MultiIndex::new(
-                |_, del| del.staker_addr.to_vec(),
+                |pk, del| {
+                    let (_, fp) = Self::deserialize_pk(pk);
+                    (del.staker_addr.to_vec(), fp)
+                },
                 storage_key,
                 staker_subkey,
             ),
