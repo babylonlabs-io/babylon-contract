@@ -36,8 +36,8 @@ pub enum ExecuteMsg {
     /// staker, to withdraw rewards from BTC staking via the given FP.
     ///
     /// The optional `recipient` is the address on the Consumer side to receive the rewards.
-    /// If not provided, the rewards will be sent to the sender of this message.
-    /// Only the Babylon contract can set the recipient to a different address than the sender's.
+    /// If not provided, the rewards will be sent to the sender.
+    /// If the sender is the Babylon contract, recipient is required.
     WithdrawRewards {
         fp_pubkey_hex: String,
         recipient: Option<String>,
