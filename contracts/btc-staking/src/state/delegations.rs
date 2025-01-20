@@ -18,13 +18,13 @@ pub struct Delegation {
     pub withdrawn_funds: Uint128,
 }
 
+#[allow(clippy::type_complexity)]
 pub struct DelegationIndexes<'a> {
     // Delegations by finality provider's public key and staking hash.
-    // Last type params defines the pk deserialization type
-    #[allow(clippy::type_complexity)]
+    // Last type param defines the pk deserialization type
     pub rev: MultiIndex<'a, (String, Vec<u8>), Delegation, (Vec<u8>, String)>,
     // Delegations by staker's (raw, canonical) address and finality provider's public key.
-    // Last type params defines the pk deserialization type
+    // Last type param defines the pk deserialization type
     pub staker: MultiIndex<'a, (Vec<u8>, String), Delegation, (Vec<u8>, String)>,
 }
 

@@ -106,4 +106,6 @@ pub enum ContractError {
     InvalidRewardsAmount(Uint128, Uint128),
     #[error("No rewards to withdraw")]
     NoRewards,
+    #[error("No recipient address for rewards withdrawal provided")]
+    RecipientRequired,
 }
