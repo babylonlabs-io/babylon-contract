@@ -230,7 +230,6 @@ dependencies = [
  "cosmwasm-std",
  "hex",
  "sha2",
- "tendermint-proto",
  "thiserror",
 ]
 
