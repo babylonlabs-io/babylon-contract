@@ -66,7 +66,7 @@
               "description": "`fp_distribution` is the list of finality providers and their rewards",
               "type": "array",
               "items": {
-                "$ref": "#/definitions/RewardsDistribution"
+                "$ref": "#/definitions/RewardInfo"
               }
             }
           },
@@ -198,7 +198,7 @@
       },
       "additionalProperties": false
     },
-    "RewardsDistribution": {
+    "RewardInfo": {
       "type": "object",
       "required": [
         "fp_pubkey_hex",
