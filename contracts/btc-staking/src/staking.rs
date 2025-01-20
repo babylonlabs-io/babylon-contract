@@ -350,12 +350,24 @@ fn handle_slashed_delegation(
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
     for fp in affected_fps {
-        fps.update(storage, &fp, height, |fp_state| {
-            let mut fp_state =
-                fp_state.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
-            fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
-            Ok::<_, ContractError>(fp_state)
-        })?;
+        let mut fp_state = fps.load(storage, &fp)?;
+        fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+
+        // Distribution alignment
+        let mut delegation_distribution = delegations()
+            .delegation
+            .load(storage, (staking_tx_hash.as_ref(), &fp))?;
+        delegation_distribution
+            .points_alignment
+            .stake_decreased(btc_del.total_sat, fp_state.points_per_stake);
+        delegations().delegation.save(
+            storage,
+            (staking_tx_hash.as_ref(), &fp),
+            &delegation_distribution,
+        )?;
+
+        // Save FP state
+        fps.save(storage, &fp, &fp_state, height)?;
     }
 
     // Mark the delegation as slashed
