@@ -5,7 +5,7 @@ use thiserror::Error;
 use bitcoin::hashes::FromSliceError;
 use bitcoin::hex::HexToArrayError;
 
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{ConversionOverflowError, StdError, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
 
@@ -36,6 +36,8 @@ pub enum ContractError {
     HexError(#[from] FromHexError),
     #[error("EOTS error: {0}")]
     EotsError(#[from] eots::Error),
+    #[error("{0}")]
+    Conversion(#[from] ConversionOverflowError),
     #[error("{0}")]
     SecP256K1Error(String), // TODO: inherit errors from k256
     #[error("Unauthorized")]
@@ -102,4 +104,6 @@ pub enum ContractError {
     WrongHashLength(String),
     #[error("Sent funds ({0}) don't match rewards to distribute {1}")]
     InvalidRewardsAmount(Uint128, Uint128),
+    #[error("No rewards to withdraw")]
+    NoRewards,
 }
