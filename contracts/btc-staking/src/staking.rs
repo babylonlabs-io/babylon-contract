@@ -3,12 +3,14 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{
-    DepsMut, Env, Event, MessageInfo, Response, StdResult, Storage, Uint128, Uint256,
+    coin, BankMsg, DepsMut, Env, Event, MessageInfo, Response, StdResult, Storage, Uint128, Uint256,
 };
 use hex::ToHex;
 
 use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG, PARAMS};
+use crate::state::delegations::{delegations, Delegation};
+use crate::state::points_alignment::PointsAlignment;
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
     BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
@@ -23,13 +25,10 @@ use babylon_apis::btc_staking_api::{
 use babylon_apis::{to_canonical_addr, Validate};
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
+use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 use cosmwasm_std::Order::Ascending;
 use cw_utils::{must_pay, nonpayable};
 use std::str::FromStr;
-
-use crate::state::delegations::{delegations, Delegation};
-use crate::state::points_alignment::PointsAlignment;
-use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 
 pub const DISTRIBUTION_POINTS_SCALE: Uint256 = Uint256::from_u128(1_000_000_000);
 
@@ -443,16 +442,16 @@ fn distribute_rewards(
     Ok(event)
 }
 
-/// Withdraw rewards from BTC staking via given FP
+/// Withdraw rewards from BTC staking via given FP.
 ///
 /// The optional `recipient` is the address on the Consumer side to receive the rewards.
 /// If not provided, the rewards will be sent to the sender of this message
-pub fn withdraw_rewards(
+pub fn handle_withdraw_rewards(
     mut deps: DepsMut,
     info: &MessageInfo,
-    fp_pubkey_hex: String,
+    fp_pubkey_hex: &str,
     recipient: Option<String>,
-) -> Result<Response, ContractError> {
+) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(info)?;
 
     // Check that the sender is the Babylon contract (IBC routing) to use the optional recipient.
@@ -460,7 +459,7 @@ pub fn withdraw_rewards(
     let cfg = CONFIG.load(deps.storage)?;
     let rcpt_addr = match recipient {
         Some(recipient) => {
-            let rcpt_addr = deps.api.addr_validate(&*recipient)?;
+            let rcpt_addr = deps.api.addr_validate(&recipient)?;
             if info.sender == cfg.babylon || info.sender == rcpt_addr {
                 Ok(rcpt_addr)
             } else {
@@ -471,7 +470,7 @@ pub fn withdraw_rewards(
     }?;
 
     // Get recipient's canonical address
-    let rcpt_canonical_addr = deps.api.addr_canonicalize(&rcpt_addr.to_string())?;
+    let rcpt_canonical_addr = deps.api.addr_canonicalize(rcpt_addr.as_ref())?;
 
     // Iterate over map of delegations per (canonical) sender
     let stakes = delegations()
@@ -484,7 +483,7 @@ pub fn withdraw_rewards(
     let amounts = stakes
         .iter()
         .map(|((staking_tx, _), _)| {
-            withdraw_delegation_reward(deps.branch(), staking_tx, &fp_pubkey_hex)
+            withdraw_delegation_reward(deps.branch(), staking_tx, fp_pubkey_hex)
         })
         .collect::<Result<Vec<_>, ContractError>>()?;
 
@@ -493,11 +492,18 @@ pub fn withdraw_rewards(
     if amount.is_zero() {
         return Err(ContractError::NoRewards);
     }
-    // TODO: Create the bank packet
+
+    // Create the bank packet
+    let rewards_denom = PARAMS.load(deps.storage)?.rewards_denom;
+    let msg = BankMsg::Send {
+        to_address: rcpt_addr.to_string(),
+        amount: vec![coin(amount.u128(), rewards_denom)],
+    };
 
     let resp = Response::new()
+        .add_message(msg)
         .add_attribute("action", "withdraw_rewards")
-        .add_attribute("fp", &fp_pubkey_hex)
+        .add_attribute("fp", fp_pubkey_hex)
         .add_attribute("recipient", &rcpt_addr)
         .add_attribute("amount", amount.to_string());
 
@@ -505,14 +511,14 @@ pub fn withdraw_rewards(
 }
 
 pub fn withdraw_delegation_reward(
-    mut deps: DepsMut,
+    deps: DepsMut,
     staking_tx_hash: &[u8],
     fp_pubkey_hex: &str,
 ) -> Result<Uint128, ContractError> {
     // Load delegation.
     let delegation = delegations()
         .delegation
-        .may_load(deps.storage, (staking_tx_hash.as_ref(), &fp_pubkey_hex))?;
+        .may_load(deps.storage, (staking_tx_hash, fp_pubkey_hex))?;
     // Skip if delegation does not exist
     let mut delegation = match delegation {
         Some(delegation) => delegation,
@@ -521,7 +527,7 @@ pub fn withdraw_delegation_reward(
 
     // Load FP state
     let fp_state = fps()
-        .load(deps.storage, &fp_pubkey_hex)
+        .load(deps.storage, fp_pubkey_hex)
         .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.to_string()))?;
 
     let amount = calculate_reward(&delegation, &fp_state)?;
@@ -529,11 +535,9 @@ pub fn withdraw_delegation_reward(
     // Update withdrawn_funds to hold this transfer
     delegation.withdrawn_funds += amount;
 
-    delegations().delegation.save(
-        deps.storage,
-        (&staking_tx_hash, &fp_pubkey_hex),
-        &delegation,
-    )?;
+    delegations()
+        .delegation
+        .save(deps.storage, (staking_tx_hash, fp_pubkey_hex), &delegation)?;
     Ok(amount)
 }
 
