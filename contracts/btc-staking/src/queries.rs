@@ -4,7 +4,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::Txid;
 
 use cosmwasm_std::Order::Descending;
-use cosmwasm_std::{Deps, Order, StdResult};
+use cosmwasm_std::{coin, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 
 use babylon_apis::btc_staking_api::FinalityProvider;
@@ -12,10 +12,12 @@ use babylon_apis::btc_staking_api::FinalityProvider;
 use crate::error::ContractError;
 use crate::msg::{
     ActivatedHeightResponse, BtcDelegationsResponse, DelegationsByFPResponse, FinalityProviderInfo,
-    FinalityProvidersByPowerResponse, FinalityProvidersResponse,
+    FinalityProvidersByPowerResponse, FinalityProvidersResponse, PendingRewardsResponse,
 };
+use crate::staking::calculate_reward;
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
+use crate::state::delegations;
 use crate::state::staking::{
     fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, BTC_DELEGATIONS, FPS,
     FP_DELEGATIONS,
@@ -175,6 +177,33 @@ pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractE
     let activated_height = ACTIVATED_HEIGHT.may_load(deps.storage)?.unwrap_or_default();
     Ok(ActivatedHeightResponse {
         height: activated_height,
+    })
+}
+
+/// Returns how much rewards are to be withdrawn by particular user, from the particular
+/// validator staking
+pub fn pending_rewards(
+    deps: Deps,
+    user: String,
+    fp_pubkey_hex: String,
+) -> Result<PendingRewardsResponse, ContractError> {
+    let user_canonical_addr = deps.api.addr_canonicalize(&user)?;
+    let fp_state = fps().load(deps.storage, &fp_pubkey_hex)?;
+    let user_delegations = delegations::delegations()
+        .delegation
+        .idx
+        .staker
+        .prefix((user_canonical_addr.to_vec(), fp_pubkey_hex))
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    let mut amount = Uint128::zero();
+    for (_, delegation) in &user_delegations {
+        amount += calculate_reward(delegation, &fp_state)?;
+    }
+
+    let params = PARAMS.load(deps.storage)?;
+    Ok(PendingRewardsResponse {
+        rewards: coin(amount.u128(), params.rewards_denom),
     })
 }
 

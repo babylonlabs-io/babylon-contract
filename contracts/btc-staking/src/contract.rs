@@ -86,6 +86,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
             &queries::finality_providers_by_power(deps, start_after, limit)?,
         )?),
+        QueryMsg::PendingRewards {
+            user,
+            fp_pubkey_hex,
+        } => Ok(to_json_binary(&queries::pending_rewards(
+            deps,
+            user,
+            fp_pubkey_hex,
+        )?)?),
         QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
     }
 }

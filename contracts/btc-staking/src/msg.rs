@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Coin;
 #[cfg(not(target_arch = "wasm32"))]
 use {
     crate::state::config::Config, babylon_apis::btc_staking_api::ActiveBtcDelegation,
@@ -85,6 +86,10 @@ pub enum QueryMsg {
         start_after: Option<FinalityProviderInfo>,
         limit: Option<u32>,
     },
+    /// `PendingRewards` returns the pending rewards for a user on a finality provider.
+    /// The rewards are returned in the form of a Coin
+    #[returns(PendingRewardsResponse)]
+    PendingRewards { user: String, fp_pubkey_hex: String },
     /// `ActivatedHeight` returns the height at which the contract gets its first delegation, if any
     ///
     #[returns(ActivatedHeightResponse)]
@@ -124,4 +129,10 @@ pub struct FinalityProviderInfo {
 #[cw_serde]
 pub struct ActivatedHeightResponse {
     pub height: u64,
+}
+
+/// Response for the pending rewards on one FP
+#[cw_serde]
+pub struct PendingRewardsResponse {
+    pub rewards: Coin,
 }
