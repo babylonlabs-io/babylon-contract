@@ -211,14 +211,22 @@ pub fn pending_rewards(
 pub fn all_pending_rewards(
     deps: Deps,
     user: String,
-    start_after: Option<String>,
+    start_after: Option<PendingRewards>,
     limit: Option<u32>,
 ) -> Result<AllPendingRewardsResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let user_canonical_addr = deps.api.addr_canonicalize(&user)?;
 
-    // FIXME: `start_after` should include the staking tx hash along with the finality provider's pubkey
-    let bound = start_after.and_then(|fp| Bounder::exclusive_bound((fp, (vec![], "".into()))));
+    // `start_after` includes the staking tx hash along with the finality provider's pubkey
+    let bound = start_after.and_then(|pending_rewards| {
+        Bounder::exclusive_bound((
+            pending_rewards.fp_pubkey_hex.clone(),
+            (
+                pending_rewards.staking_tx_hash,
+                pending_rewards.fp_pubkey_hex,
+            ),
+        ))
+    });
 
     let params = PARAMS.load(deps.storage)?;
 
@@ -230,10 +238,11 @@ pub fn all_pending_rewards(
         .range(deps.storage, bound, None, Order::Ascending)
         .take(limit)
         .map(|item| {
-            let ((_, fp), delegation) = item?;
+            let ((staking_tx_hash, fp), delegation) = item?;
             let fp_state = fps().may_load(deps.storage, &fp)?.unwrap_or_default();
             let amount = calculate_reward(&delegation, &fp_state)?;
             Ok::<_, ContractError>(PendingRewards::new(
+                &staking_tx_hash,
                 fp,
                 amount.u128(),
                 &params.rewards_denom,

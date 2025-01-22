@@ -94,7 +94,7 @@ pub enum QueryMsg {
     #[returns(AllPendingRewardsResponse)]
     AllPendingRewards {
         user: String,
-        start_after: Option<String>,
+        start_after: Option<PendingRewards>,
         limit: Option<u32>,
     },
     /// `ActivatedHeight` returns the height at which the contract gets its first delegation, if any
@@ -152,14 +152,21 @@ pub struct AllPendingRewardsResponse {
 
 #[cw_serde]
 pub struct PendingRewards {
+    pub staking_tx_hash: Vec<u8>,
     pub fp_pubkey_hex: String,
     pub rewards: Coin,
 }
 
 impl PendingRewards {
-    pub fn new(fp_pubkey_hex: impl Into<String>, amount: u128, denom: impl Into<String>) -> Self {
+    pub fn new(
+        staking_tx_hash: &[u8],
+        fp_pubkey_hex: impl Into<String>,
+        amount: u128,
+        denom: impl Into<String>,
+    ) -> Self {
         Self {
             fp_pubkey_hex: fp_pubkey_hex.into(),
+            staking_tx_hash: staking_tx_hash.into(),
             rewards: coin(amount, denom),
         }
     }
