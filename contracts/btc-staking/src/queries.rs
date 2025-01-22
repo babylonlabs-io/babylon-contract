@@ -5,14 +5,15 @@ use bitcoin::Txid;
 
 use cosmwasm_std::Order::Descending;
 use cosmwasm_std::{coin, Deps, Order, StdResult, Uint128};
-use cw_storage_plus::Bound;
+use cw_storage_plus::{Bound, Bounder};
 
 use babylon_apis::btc_staking_api::FinalityProvider;
 
 use crate::error::ContractError;
 use crate::msg::{
-    ActivatedHeightResponse, BtcDelegationsResponse, DelegationsByFPResponse, FinalityProviderInfo,
-    FinalityProvidersByPowerResponse, FinalityProvidersResponse, PendingRewardsResponse,
+    ActivatedHeightResponse, AllPendingRewardsResponse, BtcDelegationsResponse,
+    DelegationsByFPResponse, FinalityProviderInfo, FinalityProvidersByPowerResponse,
+    FinalityProvidersResponse, PendingRewards, PendingRewardsResponse,
 };
 use crate::staking::calculate_reward;
 use crate::state::config::{Config, Params};
@@ -180,8 +181,7 @@ pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractE
     })
 }
 
-/// Returns how much rewards are to be withdrawn by particular user, from the particular
-/// validator staking
+/// Rewards to be withdrawn by a particular user, from a particular finality provider delegation's
 pub fn pending_rewards(
     deps: Deps,
     user: String,
@@ -205,6 +205,43 @@ pub fn pending_rewards(
     Ok(PendingRewardsResponse {
         rewards: coin(amount.u128(), params.rewards_denom),
     })
+}
+
+/// Rewards to be withdrawn by a particular user, over all finality providers.
+pub fn all_pending_rewards(
+    deps: Deps,
+    user: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<AllPendingRewardsResponse, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let user_canonical_addr = deps.api.addr_canonicalize(&user)?;
+
+    // FIXME: `start_after` should include the staking tx hash along with the finality provider's pubkey
+    let bound = start_after.and_then(|fp| Bounder::exclusive_bound((fp, (vec![], "".into()))));
+
+    let params = PARAMS.load(deps.storage)?;
+
+    let rewards: Vec<_> = delegations::delegations()
+        .delegation
+        .idx
+        .staker
+        .sub_prefix(user_canonical_addr.to_vec())
+        .range(deps.storage, bound, None, Order::Ascending)
+        .take(limit)
+        .map(|item| {
+            let ((_, fp), delegation) = item?;
+            let fp_state = fps().may_load(deps.storage, &fp)?.unwrap_or_default();
+            let amount = calculate_reward(&delegation, &fp_state)?;
+            Ok::<_, ContractError>(PendingRewards::new(
+                fp,
+                amount.u128(),
+                &params.rewards_denom,
+            ))
+        })
+        .collect::<Result<_, _>>()?;
+
+    Ok(AllPendingRewardsResponse { rewards })
 }
 
 #[cfg(test)]

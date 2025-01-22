@@ -94,6 +94,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
             user,
             fp_pubkey_hex,
         )?)?),
+        QueryMsg::AllPendingRewards {
+            user,
+            start_after,
+            limit,
+        } => Ok(to_json_binary(&queries::all_pending_rewards(
+            deps,
+            user,
+            start_after,
+            limit,
+        )?)?),
         QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
     }
 }
