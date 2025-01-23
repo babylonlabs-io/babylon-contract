@@ -405,12 +405,12 @@ pub fn handle_distribute_rewards(
     info: &MessageInfo,
     rewards: &[RewardInfo],
 ) -> Result<Vec<Event>, ContractError> {
-    let params = PARAMS.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
     // TODO: Check that the sender is the finality contract (AML)
 
     // Error if no proper funds to distribute
-    let amount = must_pay(info, &params.rewards_denom)?;
+    let amount = must_pay(info, &config.denom)?;
 
     // Check that the total rewards match sent funds
     let total_amount: Uint128 = rewards.iter().map(|r| r.reward).sum();
@@ -512,7 +512,7 @@ pub fn handle_withdraw_rewards(
     }
 
     // Create the bank packet
-    let rewards_denom = PARAMS.load(deps.storage)?.rewards_denom;
+    let rewards_denom = cfg.denom;
     let msg = BankMsg::Send {
         to_address: rcpt_addr.to_string(),
         amount: vec![coin(amount.u128(), rewards_denom)],

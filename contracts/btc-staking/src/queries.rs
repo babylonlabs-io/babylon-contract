@@ -202,9 +202,9 @@ pub fn pending_rewards(
         amount += calculate_reward(delegation, &fp_state)?;
     }
 
-    let params = PARAMS.load(deps.storage)?;
+    let cfg = CONFIG.load(deps.storage)?;
     Ok(PendingRewardsResponse {
-        rewards: coin(amount.u128(), params.rewards_denom),
+        rewards: coin(amount.u128(), cfg.denom),
     })
 }
 
@@ -229,7 +229,7 @@ pub fn all_pending_rewards(
         ))
     });
 
-    let params = PARAMS.load(deps.storage)?;
+    let cfg = CONFIG.load(deps.storage)?;
 
     let rewards: Vec<_> = delegations::delegations()
         .delegation
@@ -246,7 +246,7 @@ pub fn all_pending_rewards(
                 &staking_tx_hash,
                 fp,
                 amount.u128(),
-                &params.rewards_denom,
+                &cfg.denom,
             ))
         })
         .collect::<Result<_, _>>()?;

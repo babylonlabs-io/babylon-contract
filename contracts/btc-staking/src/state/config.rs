@@ -16,6 +16,7 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 #[cw_serde]
 pub struct Config {
     pub babylon: Addr,
+    pub denom: String,
 }
 
 /// Params define Consumer-selectable BTC staking parameters
@@ -49,5 +50,4 @@ pub struct Params {
     /// expressed as a decimal (e.g. 0.5 for 50%).
     #[derivative(Default(value = "String::from(\"0.1\")"))]
     pub slashing_rate: String,
-    pub rewards_denom: String,
 }

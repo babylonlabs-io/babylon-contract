@@ -260,7 +260,7 @@ fn handle_end_block(
     }
 
     // On an epoch boundary, send rewards for distribution. Rewards are sent to Babylon if IBC
-    // transfer info is set, otherwise they are sent to the staking contract.
+    // transfer info is set, otherwise they are sent to the staking contract
     let params = PARAMS.load(deps.storage)?;
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
         let rewards = TOTAL_REWARDS.load(deps.storage)?;
