@@ -181,7 +181,8 @@ pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractE
     })
 }
 
-/// Rewards to be withdrawn by a particular user, from a particular finality provider delegation's
+/// Rewards to be withdrawn by a particular user, from its delegations to a particular finality
+/// provider
 pub fn pending_rewards(
     deps: Deps,
     user: String,
@@ -207,7 +208,7 @@ pub fn pending_rewards(
     })
 }
 
-/// Rewards to be withdrawn by a particular user, over all finality providers.
+/// Rewards to be withdrawn by a particular user, over all of its delegations to finality providers.
 pub fn all_pending_rewards(
     deps: Deps,
     user: String,
