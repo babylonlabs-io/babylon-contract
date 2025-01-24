@@ -7,6 +7,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::finality::{REWARDS, TOTAL_REWARDS};
 use crate::{finality, queries, state};
+use babylon_apis::btc_staking_api::RewardInfo;
 use babylon_apis::finality_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::ibc::TransferInfoResponse;
@@ -265,8 +266,12 @@ fn handle_end_block(
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
         let rewards = TOTAL_REWARDS.load(deps.storage)?;
         if rewards.u128() > 0 {
-            let wasm_msg = distribute_rewards_msg(deps, rewards.u128(), &cfg)?;
+            let (fp_rewards, wasm_msg) = distribute_rewards_msg(deps, rewards.u128(), &cfg)?;
             res = res.add_message(wasm_msg);
+            // Zero out individual rewards
+            for reward in fp_rewards {
+                REWARDS.remove(deps.storage, &reward.fp_pubkey_hex);
+            }
             // Zero out total rewards
             TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
         }
@@ -278,14 +283,14 @@ fn distribute_rewards_msg(
     deps: &mut DepsMut,
     rewards: u128,
     cfg: &Config,
-) -> Result<WasmMsg, ContractError> {
+) -> Result<(Vec<RewardInfo>, WasmMsg), ContractError> {
     // Query the babylon contract for transfer info
     // TODO: Turn into a parameter set during instantiation to avoid query
     let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
         cfg.babylon.to_string(),
         &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
     )?;
-    let wasm_msg = match transfer_info {
+    let (fp_rewards, wasm_msg) = match transfer_info {
         Some(_) => {
             // Babylon distribution. Send rewards to Babylon through the babylon contract
             send_rewards_msg(deps, rewards, cfg, cfg.babylon.clone())?
@@ -295,9 +300,7 @@ fn distribute_rewards_msg(
             send_rewards_msg(deps, rewards, cfg, cfg.staking.clone())?
         }
     };
-    // Zero out total rewards
-    TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
-    Ok(wasm_msg)
+    Ok((fp_rewards, wasm_msg))
 }
 
 fn send_rewards_msg(
@@ -305,7 +308,7 @@ fn send_rewards_msg(
     rewards: u128,
     cfg: &Config,
     recipient: Addr,
-) -> Result<WasmMsg, ContractError> {
+) -> Result<(Vec<RewardInfo>, WasmMsg), ContractError> {
     // Get the pending rewards distribution
     let fp_rewards = REWARDS
         .range(deps.storage, None, None, Order::Ascending)
@@ -345,12 +348,7 @@ fn send_rewards_msg(
     } else {
         return Err(ContractError::InvalidRewardsRecipient {});
     };
-    // Zero out individual rewards
-    for reward in fp_rewards {
-        REWARDS.remove(deps.storage, &reward.fp_pubkey_hex);
-    }
-
-    Ok(wasm_msg)
+    Ok((fp_rewards, wasm_msg))
 }
 
 pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
