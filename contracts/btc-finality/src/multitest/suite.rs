@@ -2,7 +2,7 @@ use anyhow::Result as AnyResult;
 use derivative::Derivative;
 use hex::ToHex;
 
-use cosmwasm_std::{coin, to_json_binary, Addr, Coin};
+use cosmwasm_std::{to_json_binary, Addr, Coin};
 
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
@@ -81,18 +81,7 @@ impl SuiteBuilder {
         let finality_contract_addr = Addr::unchecked(CONTRACT2_ADDR);
 
         app.init_modules(|router, _api, storage| -> AnyResult<()> {
-            router
-                .bank
-                .init_balance(storage, &owner, self.init_funds)
-                .unwrap();
-            // Simulate rewards distribution over FPs, by setting a balance to the finality contract
-            // FIXME?: Use BankSudo::Mint instead of the custom MintRewards message
-            // to simulate minting of rewards in multi-test
-            router.bank.init_balance(
-                storage,
-                &finality_contract_addr,
-                vec![coin(1_000_000, "TOKEN")],
-            )
+            router.bank.init_balance(storage, &owner, self.init_funds)
         })
         .unwrap();
 

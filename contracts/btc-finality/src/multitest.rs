@@ -554,16 +554,15 @@ mod distribution {
 
         // Assert that rewards have been generated, sent to the staking contract, and
         // distributed among delegators
+        let rewards_denom = suite.get_btc_staking_config().denom;
         // Build staker address on the Consumer network
         let staker_addr_consumer = suite
             .to_consumer_addr(&Addr::unchecked(del1.staker_addr))
             .unwrap();
 
-        let staking_config = suite.get_btc_staking_config();
-
         let pending_rewards = suite.get_pending_delegator_rewards(staker_addr_consumer.as_str());
-        let rewards_denom = staking_config.denom;
         assert_eq!(pending_rewards.len(), 1);
+        println!("pending rewards: {:?}", pending_rewards);
         assert_eq!(pending_rewards[0].fp_pubkey_hex, pk_hex);
         assert_eq!(pending_rewards[0].rewards.denom, rewards_denom);
         assert!(pending_rewards[0].rewards.amount.u128() > 0);
