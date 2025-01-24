@@ -30,7 +30,7 @@ pub struct DelegationIndexes<'a> {
 
 impl<'a> IndexList<Delegation> for DelegationIndexes<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Delegation>> + '_> {
-        let v: Vec<&dyn Index<Delegation>> = vec![&self.rev];
+        let v: Vec<&dyn Index<Delegation>> = vec![&self.rev, &self.staker];
         Box::new(v.into_iter())
     }
 }
