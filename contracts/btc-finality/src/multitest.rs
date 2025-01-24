@@ -457,20 +457,30 @@ mod distribution {
             .with_height(initial_height)
             .build();
 
-        // Register one FP
+        // Register a couple FPs
         // NOTE: the test data ensures that pub rand commit / finality sig are
         // signed by the 1st FP
-        let new_fp = create_new_finality_provider(1);
+        let new_fp1 = create_new_finality_provider(1);
+        let new_fp2 = create_new_finality_provider(2);
 
         suite
-            .register_finality_providers(&[new_fp.clone()])
+            .register_finality_providers(&[new_fp1.clone(), new_fp2.clone()])
             .unwrap();
 
-        // Add a delegation, so that the finality provider has some power
+        // Add a couple delegations, so that the finality providers have some power
         let mut del1 = get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
+        println!("del1 staker addr: {:?}", del1.staker_addr);
+        println!("del1 total sat: {:?}", del1.total_sat);
+        let mut del2 = get_derived_btc_delegation(2, &[2]);
+        // Reduce its delegation amount so that the other FP can finalize blocks alone
+        del2.total_sat /= 3;
+        println!("del2 staker addr: {:?}", del2.staker_addr);
+        println!("del2 total sat: {:?}", del2.total_sat);
 
-        suite.add_delegations(&[del1.clone()]).unwrap();
+        suite
+            .add_delegations(&[del1.clone(), del2.clone()])
+            .unwrap();
 
         // Submit public randomness commitment for the FP and the involved heights
         suite
@@ -555,16 +565,33 @@ mod distribution {
         // Assert that rewards have been generated, sent to the staking contract, and
         // distributed among delegators
         let rewards_denom = suite.get_btc_staking_config().denom;
-        // Build staker address on the Consumer network
-        let staker_addr_consumer = suite
+        // Build staker 1 address on the Consumer network
+        let staker1_addr_consumer = suite
             .to_consumer_addr(&Addr::unchecked(del1.staker_addr))
             .unwrap();
 
-        let pending_rewards = suite.get_pending_delegator_rewards(staker_addr_consumer.as_str());
-        assert_eq!(pending_rewards.len(), 1);
-        println!("pending rewards: {:?}", pending_rewards);
-        assert_eq!(pending_rewards[0].fp_pubkey_hex, pk_hex);
-        assert_eq!(pending_rewards[0].rewards.denom, rewards_denom);
-        assert!(pending_rewards[0].rewards.amount.u128() > 0);
+        let pending_rewards_1 = suite.get_pending_delegator_rewards(staker1_addr_consumer.as_str());
+        assert_eq!(pending_rewards_1.len(), 1);
+        println!("pending rewards 1: {:?}", pending_rewards_1);
+        assert_eq!(pending_rewards_1[0].fp_pubkey_hex, pk_hex);
+        assert_eq!(pending_rewards_1[0].rewards.denom, rewards_denom);
+        assert!(pending_rewards_1[0].rewards.amount.u128() > 0);
+
+        // Build staker 2 address on the Consumer network
+        let staker2_addr_consumer = suite
+            .to_consumer_addr(&Addr::unchecked(del2.staker_addr))
+            .unwrap();
+
+        let pending_rewards_2 = suite.get_pending_delegator_rewards(staker2_addr_consumer.as_str());
+        assert_eq!(pending_rewards_2.len(), 1);
+        println!("pending rewards 2: {:?}", pending_rewards_2);
+        assert_eq!(pending_rewards_2[0].fp_pubkey_hex, new_fp2.btc_pk_hex);
+        assert_eq!(pending_rewards_2[0].rewards.denom, rewards_denom);
+        assert!(pending_rewards_2[0].rewards.amount.u128() > 0);
+
+        // Confirm that the distribution makes sense
+        let rewards_1 = pending_rewards_1[0].rewards.amount.u128() as u64;
+        let rewards_2 = pending_rewards_2[0].rewards.amount.u128() as u64;
+        assert_eq!(rewards_1 / rewards_2, del1.total_sat / del2.total_sat);
     }
 }
