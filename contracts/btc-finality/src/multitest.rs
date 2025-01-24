@@ -470,13 +470,9 @@ mod distribution {
         // Add a couple delegations, so that the finality providers have some power
         let mut del1 = get_derived_btc_delegation(1, &[1]);
         del1.fp_btc_pk_list = vec![pk_hex.clone()];
-        println!("del1 staker addr: {:?}", del1.staker_addr);
-        println!("del1 total sat: {:?}", del1.total_sat);
         let mut del2 = get_derived_btc_delegation(2, &[2]);
         // Reduce its delegation amount so that the other FP can finalize blocks alone
         del2.total_sat /= 3;
-        println!("del2 staker addr: {:?}", del2.staker_addr);
-        println!("del2 total sat: {:?}", del2.total_sat);
 
         suite
             .add_delegations(&[del1.clone(), del2.clone()])
@@ -572,7 +568,6 @@ mod distribution {
 
         let pending_rewards_1 = suite.get_pending_delegator_rewards(staker1_addr_consumer.as_str());
         assert_eq!(pending_rewards_1.len(), 1);
-        println!("pending rewards 1: {:?}", pending_rewards_1);
         assert_eq!(pending_rewards_1[0].fp_pubkey_hex, pk_hex);
         assert_eq!(pending_rewards_1[0].rewards.denom, rewards_denom);
         assert!(pending_rewards_1[0].rewards.amount.u128() > 0);
@@ -584,7 +579,6 @@ mod distribution {
 
         let pending_rewards_2 = suite.get_pending_delegator_rewards(staker2_addr_consumer.as_str());
         assert_eq!(pending_rewards_2.len(), 1);
-        println!("pending rewards 2: {:?}", pending_rewards_2);
         assert_eq!(pending_rewards_2[0].fp_pubkey_hex, new_fp2.btc_pk_hex);
         assert_eq!(pending_rewards_2[0].rewards.denom, rewards_denom);
         assert!(pending_rewards_2[0].rewards.amount.u128() > 0);
