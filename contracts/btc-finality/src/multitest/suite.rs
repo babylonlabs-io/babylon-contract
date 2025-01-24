@@ -7,13 +7,16 @@ use cosmwasm_std::{to_json_binary, Addr, Coin};
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider, NewFinalityProvider};
+use babylon_apis::error::StakingApiError;
 use babylon_apis::finality_api::{IndexedBlock, PubRandCommit};
-use babylon_apis::{btc_staking_api, finality_api};
+use babylon_apis::{btc_staking_api, finality_api, to_bech32_addr, to_canonical_addr};
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
 
-use btc_staking::msg::{ActivatedHeightResponse, FinalityProviderInfo};
+use btc_staking::msg::{
+    ActivatedHeightResponse, AllPendingRewardsResponse, FinalityProviderInfo, PendingRewards,
+};
 
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
@@ -145,6 +148,13 @@ pub struct Suite {
 }
 
 impl Suite {
+    pub fn to_consumer_addr(&self, bbn_addr: &Addr) -> Result<Addr, StakingApiError> {
+        let babylon_prefix = bbn_addr.as_str().split('1').collect::<Vec<_>>()[0];
+        let consumer_prefix = self.babylon.as_str().split('1').collect::<Vec<_>>()[0];
+        let addr_canonical = to_canonical_addr(bbn_addr.as_str(), babylon_prefix)?;
+        to_bech32_addr(consumer_prefix, &addr_canonical)
+    }
+
     #[allow(dead_code)]
     pub fn admin(&self) -> &str {
         self.owner.as_str()
@@ -170,10 +180,27 @@ impl Suite {
     }
 
     #[track_caller]
+    #[allow(dead_code)]
+    pub fn get_btc_staking_params(&self) -> btc_staking::state::config::Params {
+        self.app
+            .wrap()
+            .query_wasm_smart(self.staking.clone(), &btc_staking::msg::QueryMsg::Params {})
+            .unwrap()
+    }
+
+    #[track_caller]
     pub fn get_btc_finality_config(&self) -> crate::state::config::Config {
         self.app
             .wrap()
             .query_wasm_smart(self.finality.clone(), &crate::msg::QueryMsg::Config {})
+            .unwrap()
+    }
+
+    #[track_caller]
+    pub fn get_btc_finality_params(&self) -> crate::state::config::Params {
+        self.app
+            .wrap()
+            .query_wasm_smart(self.finality.clone(), &crate::msg::QueryMsg::Params {})
             .unwrap()
     }
 
@@ -386,5 +413,22 @@ impl Suite {
             },
             &[],
         )
+    }
+
+    #[track_caller]
+    pub fn get_pending_delegator_rewards(&self, staker: &str) -> Vec<PendingRewards> {
+        let rewards_response: AllPendingRewardsResponse = self
+            .app
+            .wrap()
+            .query_wasm_smart(
+                self.staking.clone(),
+                &btc_staking::msg::QueryMsg::AllPendingRewards {
+                    user: staker.into(),
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        rewards_response.rewards
     }
 }
