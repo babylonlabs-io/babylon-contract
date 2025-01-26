@@ -31,7 +31,7 @@ pub fn instantiate(
     let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
         babylon: info.sender,
-        denom
+        denom,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -149,9 +149,9 @@ pub fn execute(
         }
         ExecuteMsg::WithdrawRewards {
             fp_pubkey_hex,
-            recipient,
+            staker_addr,
         } => {
-            let res = handle_withdraw_rewards(deps, &info, &fp_pubkey_hex, recipient)?;
+            let res = handle_withdraw_rewards(deps, &info, &fp_pubkey_hex, staker_addr)?;
             Ok(res)
         }
     }

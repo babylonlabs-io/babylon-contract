@@ -459,37 +459,31 @@ fn distribute_rewards(
 
 /// Withdraw rewards from BTC staking via given FP.
 ///
-/// The optional `recipient` is the address on the Consumer side to receive the rewards.
-/// If not provided, rewards will be sent to the sender
+/// `staker_addr` is the Babylon address to receive the rewards.
+/// `fp_pubkey_hex` is the public key of the FP to withdraw rewards from.
+///
+/// This message has to be sent by the Babylon contract (i.e. from IBC routing)
 pub fn handle_withdraw_rewards(
     mut deps: DepsMut,
     info: &MessageInfo,
     fp_pubkey_hex: &str,
-    recipient: Option<String>,
+    staker_addr: String,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(info)?;
 
-    // Recipient's address must be a Consumer network address
-    let maybe_recipient = recipient.map(|r| deps.api.addr_validate(&r)).transpose()?;
-    // If the sender is the Babylon contract (IBC routing) recipient is required.
     let cfg = CONFIG.load(deps.storage)?;
-    let (staker_addr, rcpt_addr) = if info.sender == cfg.babylon {
-        let rcpt_addr = maybe_recipient.ok_or(ContractError::RecipientRequired)?;
-        (rcpt_addr.clone(), rcpt_addr)
-    } else {
-        let rcpt_addr = maybe_recipient.unwrap_or(info.sender.clone());
-        (info.sender.clone(), rcpt_addr)
-    };
+    if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+        return Err(ContractError::Unauthorized);
+    }
 
-    // Get staker canonical address
-    let rcpt_canonical_addr = deps.api.addr_canonicalize(staker_addr.as_ref())?;
+    let staker_canonical_addr = to_canonical_addr(&staker_addr, "bbn")?;
 
     // Iterate over map of delegations per (canonical) sender
     let stakes = delegations()
         .delegation
         .idx
         .staker
-        .prefix((rcpt_canonical_addr.into(), fp_pubkey_hex.into()))
+        .prefix((staker_canonical_addr.to_vec(), fp_pubkey_hex.into()))
         .range(deps.storage, None, None, Ascending)
         .collect::<StdResult<Vec<_>>>()?;
 
@@ -512,17 +506,18 @@ pub fn handle_withdraw_rewards(
     }
 
     // Create the bank packet
+    let recipient = deps.api.addr_humanize(&staker_canonical_addr)?;
     let rewards_denom = cfg.denom;
     let msg = BankMsg::Send {
-        to_address: rcpt_addr.to_string(),
+        to_address: recipient.to_string(),
         amount: vec![coin(amount.u128(), rewards_denom)],
     };
     let resp = Response::new()
         .add_message(msg)
         .add_attribute("action", "withdraw_rewards")
-        .add_attribute("staker", &staker_addr)
+        .add_attribute("staker", staker_addr)
         .add_attribute("fp", fp_pubkey_hex)
-        .add_attribute("recipient", &rcpt_addr)
+        .add_attribute("recipient", &recipient)
         .add_attribute("amount", amount.to_string());
     Ok(resp)
 }
