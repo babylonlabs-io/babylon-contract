@@ -10,7 +10,6 @@ use hex::ToHex;
 use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG, PARAMS};
 use crate::state::delegations::{delegations, Delegation};
-use crate::state::points_alignment::PointsAlignment;
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
     BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
@@ -213,16 +212,9 @@ pub fn handle_active_delegation(
                     )),
                     None => {
                         // Distribution alignment
-                        let mut points_alignment = PointsAlignment::new();
-                        // FIXME: Needed? (unbonding is always full)
-                        points_alignment.stake_increased(
-                            active_delegation.total_sat,
-                            fp_state.points_per_stake,
-                        );
                         let delegation = Delegation {
                             staker_addr: canonical_addr.clone(),
                             stake: active_delegation.total_sat,
-                            points_alignment,
                             withdrawn_funds: Uint128::zero(),
                         };
                         Ok::<_, ContractError>(delegation)
@@ -299,11 +291,6 @@ fn handle_undelegation(
         // Subtract amount, saturating if slashed
         delegation.stake = delegation.stake.saturating_sub(btc_del.total_sat);
 
-        // Distribution alignment
-        delegation
-            .points_alignment
-            .stake_decreased(btc_del.total_sat, fp_state.points_per_stake);
-
         // Save delegation
         delegations().delegation.save(
             storage,
@@ -360,9 +347,6 @@ fn handle_slashed_delegation(
         delegation_distribution.stake = delegation_distribution
             .stake
             .saturating_sub(btc_del.total_sat);
-        delegation_distribution
-            .points_alignment
-            .stake_decreased(btc_del.total_sat, fp_state.points_per_stake);
         delegations().delegation.save(
             storage,
             (staking_tx_hash.as_ref(), &fp),
@@ -546,7 +530,6 @@ pub(crate) fn calculate_reward(
 ) -> Result<Uint128, ContractError> {
     let points = fp_state.points_per_stake * Uint256::from(delegation.stake);
 
-    let points = delegation.points_alignment.align(points);
     let total = Uint128::try_from(points / DISTRIBUTION_POINTS_SCALE)?;
 
     Ok(total - delegation.withdrawn_funds)

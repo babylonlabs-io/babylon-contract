@@ -1,4 +1,3 @@
-use crate::state::points_alignment::PointsAlignment;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{CanonicalAddr, Order, StdResult, Storage, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, KeyDeserialize, MultiIndex};
@@ -11,9 +10,6 @@ pub struct Delegation {
     pub staker_addr: CanonicalAddr,
     /// How many satoshis the user stakes in this delegation
     pub stake: u64,
-    /// How many points should be added / subtracted from points calculated per delegation due to
-    /// delegation changes.
-    pub points_alignment: PointsAlignment,
     /// Rewards already withdrawn by this user
     pub withdrawn_funds: Uint128,
 }
