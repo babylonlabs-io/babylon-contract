@@ -107,16 +107,22 @@ impl<'a> Delegations<'a> {
         staking_tx_hash: Txid,
         fp_pubkey_hex: &str,
         delegation_stake: u64,
-    ) -> StdResult<()> {
-        let mut distribution = self
-            .delegation
-            .load(storage, (staking_tx_hash.as_ref(), fp_pubkey_hex))?;
-        distribution.stake = distribution.stake.saturating_sub(delegation_stake);
-        self.delegation.save(
+    ) -> Result<(), ContractError> {
+        self.delegation.update(
             storage,
             (staking_tx_hash.as_ref(), fp_pubkey_hex),
-            &distribution,
-        )
+            |del| match del {
+                Some(mut del) => {
+                    del.stake = del.stake.saturating_sub(delegation_stake);
+                    Ok(del)
+                }
+                None => Err(ContractError::DelegationToFpNotFound(
+                    staking_tx_hash.to_string(),
+                    fp_pubkey_hex.to_string(),
+                )),
+            },
+        )?;
+        Ok(())
     }
 
     pub fn delegations_by_fp(

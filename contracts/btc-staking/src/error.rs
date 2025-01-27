@@ -108,4 +108,6 @@ pub enum ContractError {
     NoRewards,
     #[error("No recipient address for rewards withdrawal provided")]
     RecipientRequired,
+    #[error("Delegation {0} to FP {1} not found")]
+    DelegationToFpNotFound(String, String),
 }
