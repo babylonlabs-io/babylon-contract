@@ -7,7 +7,7 @@ use cw_storage_plus::{Index, IndexList, IndexedMap, KeyDeserialize, MultiIndex};
 /// Single delegation related information - entry per `(staking hash, finality provider public key)`
 /// pair, including distribution alignment
 #[cw_serde]
-pub struct Delegation {
+pub struct DelegationDistribution {
     /// The delegator's canonical address
     pub staker_addr: CanonicalAddr,
     /// How many satoshis the user stakes in this delegation
@@ -20,21 +20,23 @@ pub struct Delegation {
 pub struct DelegationIndexes<'a> {
     // Delegations by finality provider's public key and staking hash.
     // Last type param defines the pk deserialization type
-    pub rev: MultiIndex<'a, (String, Vec<u8>), Delegation, (Vec<u8>, String)>,
+    pub rev: MultiIndex<'a, (String, Vec<u8>), DelegationDistribution, (Vec<u8>, String)>,
     // Delegations by staker's (raw, canonical) address and finality provider's public key.
     // Last type param defines the pk deserialization type
-    pub staker: MultiIndex<'a, (Vec<u8>, String), Delegation, (Vec<u8>, String)>,
+    pub staker: MultiIndex<'a, (Vec<u8>, String), DelegationDistribution, (Vec<u8>, String)>,
 }
 
-impl<'a> IndexList<Delegation> for DelegationIndexes<'a> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Delegation>> + '_> {
-        let v: Vec<&dyn Index<Delegation>> = vec![&self.rev, &self.staker];
+impl<'a> IndexList<DelegationDistribution> for DelegationIndexes<'a> {
+    fn get_indexes(
+        &'_ self,
+    ) -> Box<dyn Iterator<Item = &'_ dyn Index<DelegationDistribution>> + '_> {
+        let v: Vec<&dyn Index<DelegationDistribution>> = vec![&self.rev, &self.staker];
         Box::new(v.into_iter())
     }
 }
 
 pub struct Delegations<'a> {
-    pub delegation: IndexedMap<(&'a [u8], &'a str), Delegation, DelegationIndexes<'a>>,
+    pub delegation: IndexedMap<(&'a [u8], &'a str), DelegationDistribution, DelegationIndexes<'a>>,
 }
 
 impl<'a> Delegations<'a> {
@@ -89,7 +91,7 @@ impl<'a> Delegations<'a> {
                     )),
                     None => {
                         // Distribution alignment
-                        let delegation = Delegation {
+                        let delegation = DelegationDistribution {
                             staker_addr: staker_canonical_addr.clone(),
                             stake: delegation_stake,
                             withdrawn_funds: Uint128::zero(),
@@ -129,7 +131,7 @@ impl<'a> Delegations<'a> {
         &self,
         storage: &dyn Storage,
         fp: &str,
-    ) -> StdResult<Vec<(Vec<u8>, Delegation)>> {
+    ) -> StdResult<Vec<(Vec<u8>, DelegationDistribution)>> {
         self.delegation
             .idx
             .rev
@@ -139,7 +141,7 @@ impl<'a> Delegations<'a> {
                 let ((hash, _), del) = item?;
                 Ok((hash, del))
             })
-            .collect::<StdResult<Vec<(Vec<u8>, Delegation)>>>()
+            .collect::<StdResult<Vec<(Vec<u8>, DelegationDistribution)>>>()
     }
 }
 

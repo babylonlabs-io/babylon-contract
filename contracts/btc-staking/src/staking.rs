@@ -9,7 +9,7 @@ use hex::ToHex;
 
 use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG, PARAMS};
-use crate::state::delegations::{delegations, Delegation};
+use crate::state::delegations::{delegations, DelegationDistribution};
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
     BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
@@ -485,7 +485,7 @@ pub fn handle_withdraw_rewards(
 
 pub fn withdraw_delegation_reward(
     deps: DepsMut,
-    delegation: &mut Delegation,
+    delegation: &mut DelegationDistribution,
     fp_pubkey_hex: &str,
 ) -> Result<Uint128, ContractError> {
     // Load FP state
@@ -502,7 +502,7 @@ pub fn withdraw_delegation_reward(
 
 /// Calculates reward for the delegation and the corresponding FP distribution.
 pub(crate) fn calculate_reward(
-    delegation: &Delegation,
+    delegation: &DelegationDistribution,
     fp_state: &FinalityProviderState,
 ) -> Result<Uint128, ContractError> {
     let points = fp_state.points_per_stake * Uint256::from(delegation.stake);
