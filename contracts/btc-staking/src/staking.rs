@@ -201,26 +201,12 @@ pub fn handle_active_delegation(
         fp_state.power = fp_state.power.saturating_add(active_delegation.total_sat);
 
         // Create delegation distribution info. Fail if it already exists
-        delegations().delegation.update(
+        delegations().create_distribution(
             storage,
-            (staking_tx_hash.as_ref(), fp_btc_pk_hex),
-            |del| {
-                match del {
-                    Some(_) => Err(ContractError::DelegationToFpAlreadyExists(
-                        staking_tx_hash.to_string(),
-                        fp_btc_pk_hex.to_string(),
-                    )),
-                    None => {
-                        // Distribution alignment
-                        let delegation = Delegation {
-                            staker_addr: canonical_addr.clone(),
-                            stake: active_delegation.total_sat,
-                            withdrawn_funds: Uint128::zero(),
-                        };
-                        Ok::<_, ContractError>(delegation)
-                    }
-                }
-            },
+            staking_tx_hash,
+            fp_btc_pk_hex,
+            &canonical_addr,
+            active_delegation.total_sat,
         )?;
 
         // Save FP state

@@ -1,3 +1,5 @@
+use crate::error::ContractError;
+use bitcoin::Txid;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{CanonicalAddr, Order, StdResult, Storage, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, KeyDeserialize, MultiIndex};
@@ -68,6 +70,35 @@ impl<'a> Delegations<'a> {
         Self {
             delegation: delegations,
         }
+    }
+
+    pub fn create_distribution(
+        &mut self,
+        storage: &mut dyn Storage,
+        staking_tx_hash: Txid,
+        fp_btc_pk_hex: &str,
+        staker_canonical_addr: &CanonicalAddr,
+        delegation_stake: u64,
+    ) -> Result<(), ContractError> {
+        self.delegation
+            .update(storage, (staking_tx_hash.as_ref(), fp_btc_pk_hex), |del| {
+                match del {
+                    Some(_) => Err(ContractError::DelegationToFpAlreadyExists(
+                        staking_tx_hash.to_string(),
+                        fp_btc_pk_hex.to_string(),
+                    )),
+                    None => {
+                        // Distribution alignment
+                        let delegation = Delegation {
+                            staker_addr: staker_canonical_addr.clone(),
+                            stake: delegation_stake,
+                            withdrawn_funds: Uint128::zero(),
+                        };
+                        Ok::<_, ContractError>(delegation)
+                    }
+                }
+            })?;
+        Ok(())
     }
 
     pub fn delegations_by_fp(
