@@ -445,8 +445,6 @@ fn distribute_rewards(
 ///
 /// `staker_addr` is the Babylon address to receive the rewards.
 /// `fp_pubkey_hex` is the public key of the FP to withdraw rewards from.
-///
-/// This message has to be sent by the Babylon contract (i.e. from IBC routing)
 pub fn handle_withdraw_rewards(
     mut deps: DepsMut,
     info: &MessageInfo,
@@ -454,13 +452,9 @@ pub fn handle_withdraw_rewards(
     staker_addr: String,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(info)?;
+    let staker_canonical_addr = to_canonical_addr(&staker_addr, "bbn")?;
 
     let cfg = CONFIG.load(deps.storage)?;
-    if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
-        return Err(ContractError::Unauthorized);
-    }
-
-    let staker_canonical_addr = to_canonical_addr(&staker_addr, "bbn")?;
 
     // Iterate over map of delegations per (canonical) sender
     let stakes = delegations()
@@ -489,7 +483,9 @@ pub fn handle_withdraw_rewards(
         return Err(ContractError::NoRewards);
     }
 
-    // Create the bank packet
+    // Create the bank packet.
+    // Sends to the staker address on the Consumer.
+    // TODO: Send to the staker address on Babylon over IBC (ICS-020)
     let recipient = deps.api.addr_humanize(&staker_canonical_addr)?;
     let rewards_denom = cfg.denom;
     let msg = BankMsg::Send {
