@@ -101,6 +101,24 @@ impl<'a> Delegations<'a> {
         Ok(())
     }
 
+    pub fn reduce_distribution(
+        &mut self,
+        storage: &mut dyn Storage,
+        staking_tx_hash: Txid,
+        fp_pubkey_hex: &str,
+        delegation_stake: u64,
+    ) -> StdResult<()> {
+        let mut distribution = self
+            .delegation
+            .load(storage, (staking_tx_hash.as_ref(), fp_pubkey_hex))?;
+        distribution.stake = distribution.stake.saturating_sub(delegation_stake);
+        self.delegation.save(
+            storage,
+            (staking_tx_hash.as_ref(), fp_pubkey_hex),
+            &distribution,
+        )
+    }
+
     pub fn delegations_by_fp(
         &self,
         storage: &dyn Storage,

@@ -322,25 +322,20 @@ fn handle_slashed_delegation(
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
-    for fp in affected_fps {
-        let mut fp_state = fps.load(storage, &fp)?;
+    for fp_pubkey_hex in affected_fps {
+        let mut fp_state = fps.load(storage, &fp_pubkey_hex)?;
         fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
 
         // Distribution alignment
-        let mut delegation_distribution = delegations()
-            .delegation
-            .load(storage, (staking_tx_hash.as_ref(), &fp))?;
-        delegation_distribution.stake = delegation_distribution
-            .stake
-            .saturating_sub(btc_del.total_sat);
-        delegations().delegation.save(
+        delegations().reduce_distribution(
             storage,
-            (staking_tx_hash.as_ref(), &fp),
-            &delegation_distribution,
+            staking_tx_hash,
+            &fp_pubkey_hex,
+            btc_del.total_sat,
         )?;
 
         // Save FP state
-        fps.save(storage, &fp, &fp_state, height)?;
+        fps.save(storage, &fp_pubkey_hex, &fp_state, height)?;
     }
 
     // Mark the delegation as slashed
