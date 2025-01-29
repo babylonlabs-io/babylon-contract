@@ -152,10 +152,15 @@ pub struct Suite {
 
 impl Suite {
     pub fn to_consumer_addr(&self, bbn_addr: &Addr) -> Result<Addr, StakingApiError> {
-        let babylon_prefix = bbn_addr.as_str().split('1').collect::<Vec<_>>()[0];
-        let consumer_prefix = self.babylon.as_str().split('1').collect::<Vec<_>>()[0];
+        let babylon_prefix = Self::extract_prefix(bbn_addr);
+        let consumer_prefix = Self::extract_prefix(&self.babylon);
         let addr_canonical = to_canonical_addr(bbn_addr.as_str(), babylon_prefix)?;
         to_bech32_addr(consumer_prefix, &addr_canonical)
+    }
+
+    fn extract_prefix(addr: &Addr) -> &str {
+        let bech32_prefix = addr.as_str().split('1').collect::<Vec<_>>()[0];
+        bech32_prefix
     }
 
     #[allow(dead_code)]
