@@ -372,7 +372,10 @@ pub fn handle_distribute_rewards(
 ) -> Result<Vec<Event>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    // TODO: Check that the sender is the finality contract (AML)
+    // Check that the sender is the finality contract (AML)
+    if info.sender != config.finality {
+        return Err(ContractError::Unauthorized);
+    }
 
     // Error if no proper funds to distribute
     let amount = must_pay(info, &config.denom)?;
