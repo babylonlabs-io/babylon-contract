@@ -328,6 +328,8 @@ fn send_rewards_msg(
         })
         .collect::<StdResult<Vec<_>>>()?;
     let wasm_msg = if recipient == cfg.babylon {
+        // The rewards are sent to the Babylon contract, and the Babylon
+        // contract will send the rewards to the Babylon chain for distribution
         let msg = babylon_contract::ExecuteMsg::SendRewards {
             fp_distribution: fp_rewards.clone(),
         };
@@ -337,6 +339,7 @@ fn send_rewards_msg(
             funds: coins(rewards, cfg.denom.as_str()),
         }
     } else if recipient == cfg.staking {
+        // The rewards are sent to the BTC staking contract for distribution
         let msg = btc_staking::msg::ExecuteMsg::DistributeRewards {
             fp_distribution: fp_rewards.clone(),
         };
