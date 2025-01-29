@@ -16,6 +16,7 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 #[cw_serde]
 pub struct Config {
     pub babylon: Addr,
+    pub finality: Addr,
     pub denom: String,
 }
 

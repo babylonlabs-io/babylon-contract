@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
-    StdResult,
+    attr, to_json_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
+    Response, StdResult,
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
@@ -31,6 +31,7 @@ pub fn instantiate(
     let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
         babylon: info.sender,
+        finality: Addr::unchecked("UNSET"), // To be set later, through `UpdateFinality`
         denom,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -128,6 +129,7 @@ pub fn execute(
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, maybe_addr(api, admin)?)
             .map_err(Into::into),
+        ExecuteMsg::UpdateFinality { finality } => handle_update_finality(deps, info, finality),
         ExecuteMsg::BtcStaking {
             new_fp,
             active_del,
@@ -155,6 +157,26 @@ pub fn execute(
             Ok(res)
         }
     }
+}
+
+fn handle_update_finality(
+    deps: DepsMut,
+    info: MessageInfo,
+    finality_addr: String,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    let mut cfg = CONFIG.load(deps.storage)?;
+    if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+        return Err(ContractError::Unauthorized {});
+    }
+    cfg.finality = deps.api.addr_validate(&finality_addr)?;
+    CONFIG.save(deps.storage, &cfg)?;
+
+    let attributes = vec![
+        attr("action", "update_btc_finality"),
+        attr("finality", finality_addr),
+        attr("sender", info.sender),
+    ];
+    Ok(Response::new().add_attributes(attributes))
 }
 
 #[cfg(test)]
