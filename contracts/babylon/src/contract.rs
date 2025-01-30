@@ -97,7 +97,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &cfg)?;
 
     // Save the IBC transfer info
-    if let Some(transfer_info) = msg.transfer_info {
+    if let Some(transfer_info) = msg.ics20_info {
         IBC_TRANSFER.save(deps.storage, &transfer_info)?;
     }
 
@@ -368,7 +368,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: None,
+            ics20_info: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -391,7 +391,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: None,
+            ics20_info: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -427,7 +427,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: None,
+            ics20_info: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
