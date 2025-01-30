@@ -37,8 +37,6 @@ fn initialization() {
 
 mod instantiation {
     use super::*;
-    use crate::msg::ibc::Recipient;
-    use babylon_apis::{to_bech32_addr, to_module_canonical_addr};
     use cosmwasm_std::to_json_string;
 
     #[test]
@@ -103,33 +101,9 @@ mod instantiation {
     }
 
     #[test]
-    fn instantiate_ibc_transfer_module_addr_works() {
+    fn instantiate_ibc_ics20_works() {
         let suite = SuiteBuilder::new()
-            .with_ibc_transfer_info(
-                "channel-10",
-                Recipient::ModuleAddr("module-addr".to_string()),
-            )
-            .build();
-
-        // Confirm the transfer info has been set
-        let transfer_info = suite.get_transfer_info().unwrap();
-        assert_eq!(transfer_info.channel_id, "channel-10");
-        assert_eq!(
-            transfer_info.to_address,
-            to_bech32_addr("bbn", &to_module_canonical_addr("module-addr"))
-                .unwrap()
-                .to_string()
-        );
-        assert_eq!(transfer_info.address_type, "module");
-    }
-
-    #[test]
-    fn instantiate_ibc_transfer_contract_addr_works() {
-        let suite = SuiteBuilder::new()
-            .with_ibc_transfer_info(
-                "channel-10",
-                Recipient::ContractAddr("bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3".to_string()),
-            )
+            .with_ics20_info("channel-10", "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3")
             .build();
 
         // Confirm the transfer info has been set
@@ -139,7 +113,6 @@ mod instantiation {
             transfer_info.to_address,
             "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3".to_string()
         );
-        assert_eq!(transfer_info.address_type, "contract");
     }
 }
 
