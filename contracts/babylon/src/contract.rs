@@ -172,20 +172,33 @@ fn reply_init_finality_callback(
         cfg.btc_finality = Some(finality_addr.clone());
         Ok::<_, ContractError>(cfg)
     })?;
-    // Set the BTC staking contract address to the BTC finality contract
+    // Set the BTC finality contract address to the BTC staking contract
     let cfg = CONFIG.load(deps.storage)?;
-    let msg = finality_api::ExecuteMsg::UpdateStaking {
-        staking: cfg
-            .btc_staking
-            .ok_or(ContractError::BtcStakingNotSet {})?
+    let msg = btc_staking_api::ExecuteMsg::UpdateFinality {
+        finality: cfg
+            .btc_finality
+            .ok_or(ContractError::BtcFinalityNotSet {})?
             .to_string(),
     };
-    let wasm_msg = WasmMsg::Execute {
+    let staking_addr = cfg.btc_staking.ok_or(ContractError::BtcStakingNotSet {})?;
+    let wasm_msg_1 = WasmMsg::Execute {
+        contract_addr: staking_addr.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+
+    // Set the BTC staking contract address to the BTC finality contract
+    let msg = finality_api::ExecuteMsg::UpdateStaking {
+        staking: staking_addr.to_string(),
+    };
+    let wasm_msg_2 = WasmMsg::Execute {
         contract_addr: finality_addr.to_string(),
         msg: to_json_binary(&msg)?,
         funds: vec![],
     };
-    Ok(Response::new().add_message(wasm_msg))
+    Ok(Response::new()
+        .add_message(wasm_msg_1)
+        .add_message(wasm_msg_2))
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
@@ -330,10 +343,7 @@ pub fn execute(
                         Ok(Response::new())
                     }
                 }
-                None => {
-                    // TODO: Send payload over the custom IBC channel for distribution
-                    Ok(Response::new())
-                }
+                None => Err(ContractError::IbcTransferInfoNotSet {}),
             }
         }
     }

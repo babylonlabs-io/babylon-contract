@@ -98,4 +98,6 @@ pub enum ContractError {
     MissingBlocksPerYear {},
     #[error("Division by zero")]
     DivideByZero,
+    #[error("Invalid rewards recipient")]
+    InvalidRewardsRecipient {},
 }

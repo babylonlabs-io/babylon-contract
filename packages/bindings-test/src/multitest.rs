@@ -7,7 +7,7 @@ use std::ops::{Deref, DerefMut};
 use thiserror::Error;
 
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage};
-use cosmwasm_std::OwnedDeps;
+use cosmwasm_std::{CustomMsg, OwnedDeps};
 use std::marker::PhantomData;
 
 use cosmwasm_std::Order::Ascending;
@@ -16,7 +16,7 @@ use cosmwasm_std::{
     Storage, Timestamp,
 };
 use cw_multi_test::{
-    App, AppResponse, BankKeeper, BasicAppBuilder, CosmosRouter, Module, WasmKeeper,
+    App, AppResponse, BankKeeper, BankSudo, BasicAppBuilder, CosmosRouter, Module, WasmKeeper,
 };
 use cw_storage_plus::{Item, Map};
 
@@ -72,15 +72,15 @@ impl Module for BabylonModule {
 
     fn execute<ExecC, QueryC>(
         &self,
-        _api: &dyn Api,
-        _storage: &mut dyn Storage,
-        _router: &dyn CosmosRouter<ExecC = ExecC, QueryC = QueryC>,
-        _block: &BlockInfo,
+        api: &dyn Api,
+        storage: &mut dyn Storage,
+        router: &dyn CosmosRouter<ExecC = ExecC, QueryC = QueryC>,
+        block: &BlockInfo,
         _sender: Addr,
         msg: BabylonMsg,
     ) -> AnyResult<AppResponse>
     where
-        ExecC: Debug + Clone + PartialEq + JsonSchema + DeserializeOwned + 'static,
+        ExecC: Debug + Clone + PartialEq + JsonSchema + DeserializeOwned + CustomMsg,
         QueryC: CustomQuery + DeserializeOwned + 'static,
     {
         match msg {
@@ -88,8 +88,12 @@ impl Module for BabylonModule {
                 // FIXME? We don't do anything here
                 Ok(AppResponse::default())
             }
-            BabylonMsg::MintRewards { .. } => {
-                // FIXME? We don't do anything here
+            BabylonMsg::MintRewards { amount, recipient } => {
+                let mint_msg = BankSudo::Mint {
+                    to_address: recipient,
+                    amount: vec![amount],
+                };
+                router.sudo(api, storage, block, mint_msg.into())?;
                 Ok(AppResponse::default())
             }
             BabylonMsg::EquivocationEvidence { .. } => {

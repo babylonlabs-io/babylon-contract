@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{coin, Coin};
 #[cfg(not(target_arch = "wasm32"))]
 use {
     crate::state::config::Config, babylon_apis::btc_staking_api::ActiveBtcDelegation,
@@ -85,6 +86,17 @@ pub enum QueryMsg {
         start_after: Option<FinalityProviderInfo>,
         limit: Option<u32>,
     },
+    /// `PendingRewards` returns the pending rewards for a user on a finality provider.
+    /// The rewards are returned in the form of a Coin
+    #[returns(PendingRewardsResponse)]
+    PendingRewards { user: String, fp_pubkey_hex: String },
+    /// `AllPendingRewards` returns the pending rewards for a user on all finality providers.
+    #[returns(AllPendingRewardsResponse)]
+    AllPendingRewards {
+        user: String,
+        start_after: Option<PendingRewards>,
+        limit: Option<u32>,
+    },
     /// `ActivatedHeight` returns the height at which the contract gets its first delegation, if any
     ///
     #[returns(ActivatedHeightResponse)]
@@ -124,4 +136,38 @@ pub struct FinalityProviderInfo {
 #[cw_serde]
 pub struct ActivatedHeightResponse {
     pub height: u64,
+}
+
+/// Pending rewards on one FP
+#[cw_serde]
+pub struct PendingRewardsResponse {
+    pub rewards: Coin,
+}
+
+/// Pending rewards on all FPs
+#[cw_serde]
+pub struct AllPendingRewardsResponse {
+    pub rewards: Vec<PendingRewards>,
+}
+
+#[cw_serde]
+pub struct PendingRewards {
+    pub staking_tx_hash: Vec<u8>,
+    pub fp_pubkey_hex: String,
+    pub rewards: Coin,
+}
+
+impl PendingRewards {
+    pub fn new(
+        staking_tx_hash: &[u8],
+        fp_pubkey_hex: impl Into<String>,
+        amount: u128,
+        denom: impl Into<String>,
+    ) -> Self {
+        Self {
+            fp_pubkey_hex: fp_pubkey_hex.into(),
+            staking_tx_hash: staking_tx_hash.into(),
+            rewards: coin(amount, denom),
+        }
+    }
 }

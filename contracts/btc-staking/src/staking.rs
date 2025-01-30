@@ -2,30 +2,34 @@ use bitcoin::absolute::LockTime;
 use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
-use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Storage};
+use cosmwasm_std::{
+    coin, BankMsg, DepsMut, Env, Event, MessageInfo, Response, StdResult, Storage, Uint128, Uint256,
+};
 use hex::ToHex;
-
-use std::str::FromStr;
 
 use crate::error::ContractError;
 use crate::state::config::{ADMIN, CONFIG, PARAMS};
+use crate::state::delegations::{delegations, DelegationDistribution};
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
-    DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
+    BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
 };
 use crate::validation::{
     verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
 };
 use babylon_apis::btc_staking_api::{
-    ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, SlashedBtcDelegation,
+    ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, RewardInfo, SlashedBtcDelegation,
     UnbondedBtcDelegation,
 };
-
-use babylon_apis::Validate;
+use babylon_apis::{to_canonical_addr, Validate};
 use babylon_bindings::BabylonMsg;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
-
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
+use cosmwasm_std::Order::Ascending;
+use cw_utils::{must_pay, nonpayable};
+use std::str::FromStr;
+
+pub const DISTRIBUTION_POINTS_SCALE: Uint256 = Uint256::from_u128(1_000_000_000);
 
 /// handle_btc_staking handles the BTC staking operations
 pub fn handle_btc_staking(
@@ -144,7 +148,7 @@ pub fn handle_active_delegation(
     let staking_tx_hash = staking_tx.txid();
 
     // Check staking tx is not duplicated
-    if DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
+    if BTC_DELEGATIONS.has(storage, staking_tx_hash.as_ref()) {
         return Err(ContractError::DelegationAlreadyExists(
             staking_tx_hash.to_string(),
         ));
@@ -158,6 +162,9 @@ pub fn handle_active_delegation(
     // It will have voting power only when
     // 1) Its corresponding staking tx is k-deep.
     // 2) It receives a covenant signature.
+
+    // Get canonical address
+    let canonical_addr = to_canonical_addr(&active_delegation.staker_addr, "bbn")?;
 
     // Update delegations by registered finality provider
     let fps = fps();
@@ -188,12 +195,22 @@ pub fn handle_active_delegation(
         delegation_fps.push(fp_btc_pk_hex.clone());
         DELEGATION_FPS.save(storage, staking_tx_hash.as_ref(), &delegation_fps)?;
 
+        // Load FP state
+        let mut fp_state = fps.load(storage, fp_btc_pk_hex)?;
         // Update aggregated voting power by FP
-        fps.update(storage, fp_btc_pk_hex, height, |fp_state| {
-            let mut fp_state = fp_state.unwrap_or_default();
-            fp_state.power = fp_state.power.saturating_add(active_delegation.total_sat);
-            Ok::<_, ContractError>(fp_state)
-        })?;
+        fp_state.power = fp_state.power.saturating_add(active_delegation.total_sat);
+
+        // Create delegation distribution info. Fail if it already exists
+        delegations().create_distribution(
+            storage,
+            staking_tx_hash,
+            fp_btc_pk_hex,
+            &canonical_addr,
+            active_delegation.total_sat,
+        )?;
+
+        // Save FP state
+        fps.save(storage, fp_btc_pk_hex, &fp_state, height)?;
 
         registered_fp = true;
     }
@@ -203,7 +220,7 @@ pub fn handle_active_delegation(
     }
     // Add this BTC delegation
     let delegation = BtcDelegation::from(active_delegation);
-    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &delegation)?;
+    BTC_DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &delegation)?;
 
     // Store activated height, if first delegation
     if ACTIVATED_HEIGHT.may_load(storage)?.is_none() {
@@ -225,7 +242,7 @@ fn handle_undelegation(
     undelegation.validate()?;
 
     let staking_tx_hash = Txid::from_str(&undelegation.staking_tx_hash)?;
-    let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
+    let mut btc_del = BTC_DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
     // Ensure the BTC delegation is active
     if !btc_del.is_active() {
@@ -244,13 +261,31 @@ fn handle_undelegation(
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
-    for fp in affected_fps {
-        fps.update(storage, &fp, height, |fp_state| {
-            let mut fp_state =
-                fp_state.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
-            fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
-            Ok::<_, ContractError>(fp_state)
-        })?;
+    for fp_pubkey_hex in affected_fps {
+        // Load FP state
+        let mut fp_state = fps
+            .load(storage, &fp_pubkey_hex)
+            .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.clone()))?;
+        // Update aggregated voting power by FP
+        fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+
+        // Load delegation
+        let mut delegation = delegations()
+            .delegation
+            .load(storage, (staking_tx_hash.as_ref(), &fp_pubkey_hex))?;
+
+        // Subtract amount, saturating if slashed
+        delegation.stake = delegation.stake.saturating_sub(btc_del.total_sat);
+
+        // Save delegation
+        delegations().delegation.save(
+            storage,
+            (staking_tx_hash.as_ref(), &fp_pubkey_hex),
+            &delegation,
+        )?;
+
+        // Save / update FP state
+        fps.save(storage, &fp_pubkey_hex, &fp_state, height)?;
     }
     // Record event that the BTC delegation becomes unbonded
     let unbonding_event = Event::new("btc_undelegation")
@@ -271,7 +306,7 @@ fn handle_slashed_delegation(
     delegation.validate()?;
 
     let staking_tx_hash = Txid::from_str(&delegation.staking_tx_hash)?;
-    let mut btc_del = DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
+    let mut btc_del = BTC_DELEGATIONS.load(storage, staking_tx_hash.as_ref())?;
 
     // Ensure the BTC delegation is active
     if !btc_del.is_active() {
@@ -287,18 +322,25 @@ fn handle_slashed_delegation(
     // Discount the voting power from the affected finality providers
     let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
     let fps = fps();
-    for fp in affected_fps {
-        fps.update(storage, &fp, height, |fp_state| {
-            let mut fp_state =
-                fp_state.ok_or(ContractError::FinalityProviderNotFound(fp.clone()))?; // should never happen
-            fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
-            Ok::<_, ContractError>(fp_state)
-        })?;
+    for fp_pubkey_hex in affected_fps {
+        let mut fp_state = fps.load(storage, &fp_pubkey_hex)?;
+        fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+
+        // Distribution alignment
+        delegations().reduce_distribution(
+            storage,
+            staking_tx_hash,
+            &fp_pubkey_hex,
+            btc_del.total_sat,
+        )?;
+
+        // Save FP state
+        fps.save(storage, &fp_pubkey_hex, &fp_state, height)?;
     }
 
     // Mark the delegation as slashed
     btc_del.slashed = true;
-    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &btc_del)?;
+    BTC_DELEGATIONS.save(storage, staking_tx_hash.as_ref(), &btc_del)?;
 
     // Record event that the BTC delegation becomes unbonded due to slashing at this height
     let slashing_event = Event::new("btc_undelegation_slashed")
@@ -322,6 +364,157 @@ pub fn handle_slash_fp(
     slash_finality_provider(deps, env, fp_btc_pk_hex)
 }
 
+pub fn handle_distribute_rewards(
+    mut deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    rewards: &[RewardInfo],
+) -> Result<Vec<Event>, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+
+    // Check that the sender is the finality contract (AML)
+    if info.sender != config.finality {
+        return Err(ContractError::Unauthorized);
+    }
+
+    // Error if no proper funds to distribute
+    let amount = must_pay(info, &config.denom)?;
+
+    // Check that the total rewards match sent funds
+    let total_amount: Uint128 = rewards.iter().map(|r| r.reward).sum();
+    if total_amount != amount {
+        return Err(ContractError::InvalidRewardsAmount(amount, total_amount));
+    }
+
+    rewards
+        .iter()
+        .map(|reward_info| {
+            distribute_rewards(
+                &mut deps,
+                &reward_info.fp_pubkey_hex,
+                reward_info.reward,
+                env.block.height,
+            )
+        })
+        .collect()
+}
+
+fn distribute_rewards(
+    deps: &mut DepsMut,
+    fp: &str,
+    amount: Uint128,
+    height: u64,
+) -> Result<Event, ContractError> {
+    // Load fp distribution info
+    // TODO?: Use specific Distribution struct
+    let mut fp_distribution = fps().load(deps.storage, fp)?;
+
+    let total_stake = Uint256::from(fp_distribution.power);
+    let points_distributed =
+        Uint256::from(amount) * DISTRIBUTION_POINTS_SCALE + fp_distribution.points_leftover;
+    let points_per_stake = points_distributed / total_stake;
+
+    fp_distribution.points_leftover = points_distributed - points_per_stake * total_stake;
+    fp_distribution.points_per_stake += points_per_stake;
+
+    fps().save(deps.storage, fp, &fp_distribution, height)?;
+
+    let event = Event::new("distribute_rewards")
+        .add_attribute("fp", fp)
+        .add_attribute("amount", amount.to_string());
+    Ok(event)
+}
+
+/// Withdraw rewards from BTC staking via given FP.
+///
+/// `staker_addr` is the Babylon address to receive the rewards.
+/// `fp_pubkey_hex` is the public key of the FP to withdraw rewards from.
+pub fn handle_withdraw_rewards(
+    mut deps: DepsMut,
+    info: &MessageInfo,
+    fp_pubkey_hex: &str,
+    staker_addr: String,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    nonpayable(info)?;
+    let staker_canonical_addr = to_canonical_addr(&staker_addr, "bbn")?;
+
+    let cfg = CONFIG.load(deps.storage)?;
+
+    // Iterate over map of delegations per (canonical) sender
+    let stakes = delegations()
+        .delegation
+        .idx
+        .staker
+        .prefix((staker_canonical_addr.to_vec(), fp_pubkey_hex.into()))
+        .range(deps.storage, None, None, Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    let mut amount = Uint128::zero();
+    for ((staking_tx_hash, _), mut delegation) in stakes {
+        let delegation_reward =
+            withdraw_delegation_reward(deps.branch(), &mut delegation, fp_pubkey_hex)?;
+        if !delegation_reward.is_zero() {
+            delegations().delegation.save(
+                deps.storage,
+                (&staking_tx_hash, fp_pubkey_hex),
+                &delegation,
+            )?;
+            amount += delegation_reward;
+        }
+    }
+
+    if amount.is_zero() {
+        return Err(ContractError::NoRewards);
+    }
+
+    // Create the bank packet.
+    // Sends to the staker address on the Consumer.
+    // TODO: Send to the staker address on Babylon over IBC (ICS-020)
+    let recipient = deps.api.addr_humanize(&staker_canonical_addr)?;
+    let rewards_denom = cfg.denom;
+    let msg = BankMsg::Send {
+        to_address: recipient.to_string(),
+        amount: vec![coin(amount.u128(), rewards_denom)],
+    };
+    let resp = Response::new()
+        .add_message(msg)
+        .add_attribute("action", "withdraw_rewards")
+        .add_attribute("staker", staker_addr)
+        .add_attribute("fp", fp_pubkey_hex)
+        .add_attribute("recipient", &recipient)
+        .add_attribute("amount", amount.to_string());
+    Ok(resp)
+}
+
+pub fn withdraw_delegation_reward(
+    deps: DepsMut,
+    delegation: &mut DelegationDistribution,
+    fp_pubkey_hex: &str,
+) -> Result<Uint128, ContractError> {
+    // Load FP state
+    let fp_state = fps()
+        .load(deps.storage, fp_pubkey_hex)
+        .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.to_string()))?;
+
+    let amount = calculate_reward(delegation, &fp_state)?;
+
+    // Update withdrawn_funds to hold this transfer
+    delegation.withdrawn_funds += amount;
+    Ok(amount)
+}
+
+/// Calculates reward for the delegation and the corresponding FP distribution.
+pub(crate) fn calculate_reward(
+    delegation: &DelegationDistribution,
+    fp_state: &FinalityProviderState,
+) -> Result<Uint128, ContractError> {
+    let points = fp_state.points_per_stake * Uint256::from(delegation.stake);
+
+    let total = Uint128::try_from(points / DISTRIBUTION_POINTS_SCALE)?;
+
+    Ok(total - delegation.withdrawn_funds)
+}
+
 /// btc_undelegate adds the signature of the unbonding tx signed by the staker to the given BTC
 /// delegation
 fn btc_undelegate(
@@ -334,7 +527,7 @@ fn btc_undelegate(
     });
 
     // Set BTC delegation back to KV store
-    DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
+    BTC_DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
 
     // TODO? Notify subscriber about this unbonded BTC delegation
     //  - Who are subscribers in this context?

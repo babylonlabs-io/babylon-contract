@@ -1,4 +1,5 @@
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::Uint256;
 use cw_storage_plus::{IndexedSnapshotMap, Item, Map, MultiIndex, Strategy};
 
 use crate::state::fp_index::FinalityProviderIndexes;
@@ -213,12 +214,14 @@ impl From<btc_staking_api::SignatureInfo> for SignatureInfo {
 /// Finality providers by their BTC public key
 pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 
-/// Delegations by staking tx hash
-/// TODO: create a new DB object for BTC delegation
-pub(crate) const DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> = Map::new("delegations");
+/// Btc Delegations info, by staking tx hash
+pub(crate) const BTC_DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> =
+    Map::new("btc_delegations");
 /// Map of staking hashes by finality provider
+// TODO: Remove and use the delegations() map instead
 pub(crate) const FP_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("fp_delegations");
 /// Reverse map of finality providers by staking hash
+// TODO: Remove and use the delegations() reverse index instead
 pub(crate) const DELEGATION_FPS: Map<&[u8; HASH_SIZE], Vec<String>> = Map::new("delegation_fps");
 
 pub const FP_STATE_KEY: &str = "fp_state";
@@ -252,6 +255,16 @@ pub fn fps<'a>() -> IndexedSnapshotMap<&'a str, FinalityProviderState, FinalityP
 #[cw_serde]
 #[derive(Default)]
 pub struct FinalityProviderState {
-    /// Finality provider power, in satoshis
+    /// Finality provider power, in satoshis.
+    /// Total satoshis delegated to this finality provider by all users
+    //TODO?: Rename to `total_delegation`
     pub power: u64,
+    /// Points user is eligible to by single token delegation
+    //TODO: Rename to `delegation_points`
+    //TODO: Use Uint128
+    pub points_per_stake: Uint256,
+    /// Points which were not distributed previously
+    //TODO: Rename to `leftover_points`
+    //TODO: Use Uint128
+    pub points_leftover: Uint256,
 }

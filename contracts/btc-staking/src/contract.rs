@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply, Response,
-    StdResult,
+    attr, to_json_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
+    Response, StdResult,
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
@@ -12,7 +12,9 @@ use babylon_bindings::BabylonMsg;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::staking::{handle_btc_staking, handle_slash_fp};
+use crate::staking::{
+    handle_btc_staking, handle_distribute_rewards, handle_slash_fp, handle_withdraw_rewards,
+};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -26,8 +28,11 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(&info)?;
+    let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
         babylon: info.sender,
+        finality: Addr::unchecked("UNSET"), // To be set later, through `UpdateFinality`
+        denom,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -84,6 +89,24 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::FinalityProvidersByPower { start_after, limit } => Ok(to_json_binary(
             &queries::finality_providers_by_power(deps, start_after, limit)?,
         )?),
+        QueryMsg::PendingRewards {
+            user,
+            fp_pubkey_hex,
+        } => Ok(to_json_binary(&queries::pending_rewards(
+            deps,
+            user,
+            fp_pubkey_hex,
+        )?)?),
+        QueryMsg::AllPendingRewards {
+            user,
+            start_after,
+            limit,
+        } => Ok(to_json_binary(&queries::all_pending_rewards(
+            deps,
+            user,
+            start_after,
+            limit,
+        )?)?),
         QueryMsg::ActivatedHeight {} => Ok(to_json_binary(&queries::activated_height(deps)?)?),
     }
 }
@@ -106,6 +129,7 @@ pub fn execute(
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, maybe_addr(api, admin)?)
             .map_err(Into::into),
+        ExecuteMsg::UpdateFinality { finality } => handle_update_finality(deps, info, finality),
         ExecuteMsg::BtcStaking {
             new_fp,
             active_del,
@@ -121,7 +145,38 @@ pub fn execute(
             &unbonded_del,
         ),
         ExecuteMsg::Slash { fp_btc_pk_hex } => handle_slash_fp(deps, env, &info, &fp_btc_pk_hex),
+        ExecuteMsg::DistributeRewards { fp_distribution } => {
+            let evts = handle_distribute_rewards(deps, &env, &info, &fp_distribution)?;
+            Ok(Response::new().add_events(evts))
+        }
+        ExecuteMsg::WithdrawRewards {
+            fp_pubkey_hex,
+            staker_addr,
+        } => {
+            let res = handle_withdraw_rewards(deps, &info, &fp_pubkey_hex, staker_addr)?;
+            Ok(res)
+        }
     }
+}
+
+fn handle_update_finality(
+    deps: DepsMut,
+    info: MessageInfo,
+    finality_addr: String,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    let mut cfg = CONFIG.load(deps.storage)?;
+    if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+        return Err(ContractError::Unauthorized {});
+    }
+    cfg.finality = deps.api.addr_validate(&finality_addr)?;
+    CONFIG.save(deps.storage, &cfg)?;
+
+    let attributes = vec![
+        attr("action", "update_btc_finality"),
+        attr("finality", finality_addr),
+        attr("sender", info.sender),
+    ];
+    Ok(Response::new().add_attributes(attributes))
 }
 
 #[cfg(test)]

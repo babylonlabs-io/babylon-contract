@@ -1,10 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
 use cosmwasm_std::{Binary, StdError, StdResult};
 
 use babylon_apis::finality_api::Evidence;
 
 use crate::msg::btc_header::BtcHeader;
+use babylon_apis::btc_staking_api::RewardInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use {
     crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
@@ -119,14 +119,8 @@ pub enum ExecuteMsg {
     /// `SendRewards` is a message sent by the finality contract, to send rewards to Babylon
     SendRewards {
         /// `fp_distribution` is the list of finality providers and their rewards
-        fp_distribution: Vec<RewardsDistribution>,
+        fp_distribution: Vec<RewardInfo>,
     },
-}
-
-#[cw_serde]
-pub struct RewardsDistribution {
-    pub fp_pubkey_hex: String,
-    pub reward: Uint128,
 }
 
 #[cw_serde]

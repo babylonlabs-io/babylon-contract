@@ -1,5 +1,16 @@
+use crate::error::ContractError;
+use crate::finality::{
+    compute_active_finality_providers, distribute_rewards_fps, handle_finality_signature,
+    handle_public_randomness_commit,
+};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
+use crate::state::finality::{REWARDS, TOTAL_REWARDS};
+use crate::{finality, queries, state};
+use babylon_apis::btc_staking_api::RewardInfo;
 use babylon_apis::finality_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
+use babylon_contract::msg::ibc::TransferInfoResponse;
 use btc_staking::msg::ActivatedHeightResponse;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -10,16 +21,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::{maybe_addr, nonpayable};
-
-use crate::error::ContractError;
-use crate::finality::{
-    compute_active_finality_providers, distribute_rewards, handle_finality_signature,
-    handle_public_randomness_commit,
-};
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
-use crate::state::finality::{REWARDS, TOTAL_REWARDS};
-use crate::{finality, queries, state};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -226,7 +227,7 @@ fn handle_update_staking(
 
 fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMsg>, ContractError> {
     // Distribute rewards
-    distribute_rewards(deps, &env)?;
+    distribute_rewards_fps(deps, &env)?;
 
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
@@ -259,13 +260,18 @@ fn handle_end_block(
         res = res.add_events(events);
     }
 
-    // On an epoch boundary, send rewards to Babylon through the babylon contract
+    // On an epoch boundary, send rewards for distribution. Rewards are sent to Babylon if IBC
+    // transfer info is set, otherwise they are sent to the staking contract
     let params = PARAMS.load(deps.storage)?;
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
         let rewards = TOTAL_REWARDS.load(deps.storage)?;
         if rewards.u128() > 0 {
-            let wasm_msg = send_rewards_msg(deps, rewards.u128(), &cfg)?;
+            let (fp_rewards, wasm_msg) = distribute_rewards_msg(deps, rewards.u128(), &cfg)?;
             res = res.add_message(wasm_msg);
+            // Zero out individual rewards
+            for reward in fp_rewards {
+                REWARDS.remove(deps.storage, &reward.fp_pubkey_hex);
+            }
             // Zero out total rewards
             TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
         }
@@ -273,11 +279,36 @@ fn handle_end_block(
     Ok(res)
 }
 
+fn distribute_rewards_msg(
+    deps: &mut DepsMut,
+    rewards: u128,
+    cfg: &Config,
+) -> Result<(Vec<RewardInfo>, WasmMsg), ContractError> {
+    // Query the babylon contract for transfer info
+    // TODO: Turn into a parameter set during instantiation to avoid query
+    let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
+        cfg.babylon.to_string(),
+        &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
+    )?;
+    let (fp_rewards, wasm_msg) = match transfer_info {
+        Some(_) => {
+            // Babylon distribution. Send rewards to Babylon through the babylon contract
+            send_rewards_msg(deps, rewards, cfg, cfg.babylon.clone())?
+        }
+        None => {
+            // Local distribution. Send rewards to the staking contract
+            send_rewards_msg(deps, rewards, cfg, cfg.staking.clone())?
+        }
+    };
+    Ok((fp_rewards, wasm_msg))
+}
+
 fn send_rewards_msg(
     deps: &mut DepsMut,
     rewards: u128,
     cfg: &Config,
-) -> Result<WasmMsg, ContractError> {
+    recipient: Addr,
+) -> Result<(Vec<RewardInfo>, WasmMsg), ContractError> {
     // Get the pending rewards distribution
     let fp_rewards = REWARDS
         .range(deps.storage, None, None, Order::Ascending)
@@ -290,26 +321,37 @@ fn send_rewards_msg(
         })
         .map(|item| {
             let (fp_pubkey_hex, reward) = item?;
-            Ok(babylon_contract::msg::contract::RewardsDistribution {
+            Ok(babylon_apis::btc_staking_api::RewardInfo {
                 fp_pubkey_hex,
                 reward,
             })
         })
         .collect::<StdResult<Vec<_>>>()?;
-    let msg = babylon_contract::ExecuteMsg::SendRewards {
-        fp_distribution: fp_rewards.clone(),
+    let wasm_msg = if recipient == cfg.babylon {
+        // The rewards are sent to the Babylon contract, and the Babylon
+        // contract will send the rewards to the Babylon chain for distribution
+        let msg = babylon_contract::ExecuteMsg::SendRewards {
+            fp_distribution: fp_rewards.clone(),
+        };
+        WasmMsg::Execute {
+            contract_addr: recipient.into_string(),
+            msg: to_json_binary(&msg)?,
+            funds: coins(rewards, cfg.denom.as_str()),
+        }
+    } else if recipient == cfg.staking {
+        // The rewards are sent to the BTC staking contract for distribution
+        let msg = btc_staking::msg::ExecuteMsg::DistributeRewards {
+            fp_distribution: fp_rewards.clone(),
+        };
+        WasmMsg::Execute {
+            contract_addr: recipient.into_string(),
+            msg: to_json_binary(&msg)?,
+            funds: coins(rewards, cfg.denom.as_str()),
+        }
+    } else {
+        return Err(ContractError::InvalidRewardsRecipient {});
     };
-    let wasm_msg = WasmMsg::Execute {
-        contract_addr: cfg.babylon.to_string(),
-        msg: to_json_binary(&msg)?,
-        funds: coins(rewards, cfg.denom.as_str()),
-    };
-    // Zero out individual rewards
-    for reward in fp_rewards {
-        REWARDS.remove(deps.storage, &reward.fp_pubkey_hex);
-    }
-
-    Ok(wasm_msg)
+    Ok((fp_rewards, wasm_msg))
 }
 
 pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {

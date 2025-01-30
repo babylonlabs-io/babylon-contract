@@ -428,3 +428,167 @@ mod slashing {
         assert_eq!(fp.slashed_height, next_height);
     }
 }
+
+mod distribution {
+    use babylon_apis::finality_api::IndexedBlock;
+    use cosmwasm_std::{coin, Addr};
+    use test_utils::{
+        create_new_finality_provider, get_add_finality_sig, get_derived_btc_delegation,
+        get_pub_rand_value,
+    };
+
+    use crate::multitest::suite::SuiteBuilder;
+    use test_utils::get_public_randomness_commitment;
+
+    #[test]
+    fn distribution_works() {
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        // Read equivalent / consistent add finality signature test data
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+        let initial_funds = &[coin(10_000_000_000_000, "TOKEN")];
+
+        let mut suite = SuiteBuilder::new()
+            .with_funds(initial_funds)
+            .with_height(initial_height)
+            .build();
+
+        // Register a couple FPs
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp1 = create_new_finality_provider(1);
+        let new_fp2 = create_new_finality_provider(2);
+
+        suite
+            .register_finality_providers(&[new_fp1.clone(), new_fp2.clone()])
+            .unwrap();
+
+        // Add a couple delegations, so that the finality providers have some power
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+        let mut del2 = get_derived_btc_delegation(2, &[2]);
+        // Reduce its delegation amount so that the other FP can finalize blocks alone
+        del2.total_sat /= 3;
+
+        suite
+            .add_delegations(&[del1.clone(), del2.clone()])
+            .unwrap();
+
+        // Submit public randomness commitment for the FP and the involved heights
+        suite
+            .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
+            .unwrap();
+
+        // Call the begin-block sudo handler at the next height, for completeness
+        let next_height = initial_height + 1;
+        suite.app.advance_blocks(next_height - initial_height);
+        suite
+            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
+            .unwrap();
+
+        // Call the end-block sudo handler, so that the block is indexed in the store
+        suite
+            .call_end_block(&add_finality_signature.block_app_hash, next_height)
+            .unwrap();
+
+        // Submit a finality signature from that finality provider at next height (initial_height + 1)
+        let submit_height = next_height;
+        // Increase block height
+        let next_height = next_height + 1;
+        suite.app.advance_blocks(next_height - submit_height);
+        // Call the begin-block sudo handler at the next height, for completeness
+        suite
+            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
+            .unwrap();
+
+        let finality_signature = add_finality_signature.finality_sig.to_vec();
+        suite
+            .submit_finality_signature(
+                &pk_hex,
+                submit_height,
+                &pub_rand_one,
+                &proof,
+                &add_finality_signature.block_app_hash,
+                &finality_signature,
+            )
+            .unwrap();
+
+        // Call the end-block sudo handler for completeness / realism
+        suite
+            .call_end_block(&add_finality_signature.block_app_hash, next_height)
+            .unwrap();
+
+        // Call the next block begin blocker, to compute the active FP set
+        // FIXME: The second FP is on the active set, and (in the current impl)
+        // will get rewards without voting.
+        // After offline / inactive detection of FPs this wouldn't be so bad.
+        let next_height = next_height + 1;
+        suite.app.advance_blocks(1);
+        suite
+            .call_begin_block("deadbeef02".as_bytes(), next_height)
+            .unwrap();
+
+        // Call the next (final) block end blocker, to process the finality signatures
+        suite
+            .call_end_block("deadbeef02".as_bytes(), next_height)
+            .unwrap();
+
+        // Assert the canonical block has been indexed (and finalised)
+        let indexed_block = suite.get_indexed_block(submit_height);
+        assert_eq!(
+            indexed_block,
+            IndexedBlock {
+                height: submit_height,
+                app_hash: add_finality_signature.block_app_hash.to_vec(),
+                finalized: true,
+            }
+        );
+
+        // Call the begin / end blocker on an epoch boundary, so that the rewards handler
+        // is invoked
+        let finality_params = suite.get_btc_finality_params();
+        let finality_epoch = finality_params.epoch_length;
+        let next_epoch_height = (next_height / finality_epoch + 1) * finality_epoch;
+        suite.app.advance_blocks(next_epoch_height - next_height);
+        suite
+            .call_begin_block("deadbeef03".as_bytes(), next_epoch_height)
+            .unwrap();
+        suite
+            .call_end_block("deadbeef03".as_bytes(), next_epoch_height)
+            .unwrap();
+
+        // Assert that rewards have been generated, sent to the staking contract, and
+        // distributed among delegators
+        let rewards_denom = suite.get_btc_staking_config().denom;
+        // Build staker 1 address on the Consumer network
+        let staker1_addr_consumer = suite
+            .to_consumer_addr(&Addr::unchecked(del1.staker_addr))
+            .unwrap();
+
+        let pending_rewards_1 = suite.get_pending_delegator_rewards(staker1_addr_consumer.as_str());
+        assert_eq!(pending_rewards_1.len(), 1);
+        assert_eq!(pending_rewards_1[0].fp_pubkey_hex, pk_hex);
+        assert_eq!(pending_rewards_1[0].rewards.denom, rewards_denom);
+        assert!(pending_rewards_1[0].rewards.amount.u128() > 0);
+
+        // Build staker 2 address on the Consumer network
+        let staker2_addr_consumer = suite
+            .to_consumer_addr(&Addr::unchecked(del2.staker_addr))
+            .unwrap();
+
+        let pending_rewards_2 = suite.get_pending_delegator_rewards(staker2_addr_consumer.as_str());
+        assert_eq!(pending_rewards_2.len(), 1);
+        assert_eq!(pending_rewards_2[0].fp_pubkey_hex, new_fp2.btc_pk_hex);
+        assert_eq!(pending_rewards_2[0].rewards.denom, rewards_denom);
+        assert!(pending_rewards_2[0].rewards.amount.u128() > 0);
+
+        // Confirm that the distribution makes sense
+        let rewards_1 = pending_rewards_1[0].rewards.amount.u128() as u64;
+        let rewards_2 = pending_rewards_2[0].rewards.amount.u128() as u64;
+        assert_eq!(rewards_1 / rewards_2, del1.total_sat / del2.total_sat);
+    }
+}

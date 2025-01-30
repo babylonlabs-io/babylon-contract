@@ -5,7 +5,7 @@ use thiserror::Error;
 use bitcoin::hashes::FromSliceError;
 use bitcoin::hex::HexToArrayError;
 
-use cosmwasm_std::StdError;
+use cosmwasm_std::{ConversionOverflowError, StdError, Uint128};
 use cw_controllers::AdminError;
 use cw_utils::PaymentError;
 
@@ -37,6 +37,8 @@ pub enum ContractError {
     #[error("EOTS error: {0}")]
     EotsError(#[from] eots::Error),
     #[error("{0}")]
+    Conversion(#[from] ConversionOverflowError),
+    #[error("{0}")]
     SecP256K1Error(String), // TODO: inherit errors from k256
     #[error("Unauthorized")]
     Unauthorized,
@@ -50,6 +52,8 @@ pub enum ContractError {
     FinalityProviderNotFound(String),
     #[error("Staking tx hash already exists: {0}")]
     DelegationAlreadyExists(String),
+    #[error("Delegation with staking tx hash {0} already delegated to FP {1}")]
+    DelegationToFpAlreadyExists(String, String),
     #[error("BTC delegation is not active: {0}")]
     DelegationIsNotActive(String),
     #[error("Invalid covenant signature: {0}")]
@@ -98,4 +102,12 @@ pub enum ContractError {
     SecretKeyExtractionError(String),
     #[error("Hash length error: {0}")]
     WrongHashLength(String),
+    #[error("Sent funds ({0}) don't match rewards to distribute {1}")]
+    InvalidRewardsAmount(Uint128, Uint128),
+    #[error("No rewards to withdraw")]
+    NoRewards,
+    #[error("No recipient address for rewards withdrawal provided")]
+    RecipientRequired,
+    #[error("Delegation {0} to FP {1} not found")]
+    DelegationToFpNotFound(String, String),
 }

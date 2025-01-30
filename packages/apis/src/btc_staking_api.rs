@@ -4,7 +4,7 @@ use std::str::FromStr;
 /// The definitions here follow the same structure as the equivalent IBC protobuf message types,
 /// defined in `packages/proto/src/gen/babylon.btcstaking.v1.rs`
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Binary, Decimal};
+use cosmwasm_std::{Binary, Decimal, Uint128};
 
 /// Hash size in bytes
 pub const HASH_SIZE: usize = 32;
@@ -14,6 +14,9 @@ pub const HASH_SIZE: usize = 32;
 pub enum ExecuteMsg {
     /// Change the admin
     UpdateAdmin { admin: Option<String> },
+    /// Set the BTC finality addr.
+    /// Only admin or the babylon contract can set this
+    UpdateFinality { finality: String },
     /// BTC Staking operations
     BtcStaking {
         new_fp: Vec<NewFinalityProvider>,
@@ -26,6 +29,26 @@ pub enum ExecuteMsg {
     /// The Babylon contract will call this message to set the finality provider's staking power to
     /// zero when the finality provider is found to be malicious by the finality contract.
     Slash { fp_btc_pk_hex: String },
+    /// `DistributeRewards` is a message sent by the finality contract, to distribute rewards to
+    /// delegators
+    DistributeRewards {
+        /// `fp_distribution` is the list of finality providers and their rewards
+        fp_distribution: Vec<RewardInfo>,
+    },
+    /// `WithdrawRewards` is a message sent by the Babylon contract on behalf of the
+    /// staker, to withdraw rewards from BTC staking via the given FP.
+    ///
+    /// `staker_addr` is the address to claim the rewards.
+    WithdrawRewards {
+        fp_pubkey_hex: String,
+        staker_addr: String,
+    },
+}
+
+#[cw_serde]
+pub struct RewardInfo {
+    pub fp_pubkey_hex: String,
+    pub reward: Uint128,
 }
 
 #[cw_serde]
