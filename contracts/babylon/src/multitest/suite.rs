@@ -1,14 +1,13 @@
+use crate::msg::ibc::IbcIcs20Info;
 use crate::msg::ibc::TransferInfoResponse;
-use crate::msg::ibc::{IbcIcs20Info, Recipient};
 use anyhow::Result as AnyResult;
 use derivative::Derivative;
-
-use cosmwasm_std::{Addr, Binary, Empty};
-use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
+use cosmwasm_std::{Addr, Binary, Empty};
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use crate::msg::contract::{InstantiateMsg, QueryMsg};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
@@ -69,11 +68,10 @@ impl SuiteBuilder {
     }
 
     /// Sets the IBC transfer info
-    #[allow(dead_code)]
-    pub fn with_ibc_transfer_info(mut self, channel_id: &str, recipient: Recipient) -> Self {
+    pub fn with_ics20_info(mut self, channel_id: &str, recipient: &str) -> Self {
         let transfer_info = IbcIcs20Info {
             channel_id: channel_id.into(),
-            recipient,
+            to_address: recipient.to_string(),
         };
         self.transfer_info = Some(transfer_info);
         self

@@ -3,8 +3,8 @@ use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
     zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
 };
-use cosmwasm_schema::cw_serde;
 
+use crate::msg::ibc::IbcIcs20Info;
 use crate::state::config::CONFIG;
 use cosmwasm_std::{
     Binary, DepsMut, Env, Event, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannel,
@@ -21,13 +21,7 @@ pub const IBC_ORDERING: IbcOrder = IbcOrder::Ordered;
 pub const IBC_CHANNEL: Item<IbcChannel> = Item::new("ibc_channel");
 
 /// IBC transfer (ICS-020) channel settings
-#[cw_serde]
-pub struct TransferInfo {
-    pub channel_id: String,
-    pub to_address: String,
-    pub address_type: String,
-}
-pub const IBC_TRANSFER: Item<TransferInfo> = Item::new("ibc_transfer");
+pub const IBC_TRANSFER: Item<IbcIcs20Info> = Item::new("ibc_transfer");
 
 /// This is executed during the ChannelOpenInit and ChannelOpenTry
 /// of the IBC 4-step channel protocol
@@ -324,7 +318,7 @@ mod tests {
     use super::*;
     use crate::contract::instantiate;
     use crate::msg::contract::InstantiateMsg;
-    use crate::msg::ibc::{IbcIcs20Info, Recipient};
+    use crate::msg::ibc::IbcIcs20Info;
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_ibc_channel_open_try, MockApi, MockQuerier, MockStorage,
@@ -350,7 +344,7 @@ mod tests {
             consumer_description: None,
             transfer_info: Some(IbcIcs20Info {
                 channel_id: "channel-1".to_string(),
-                recipient: Recipient::ModuleAddr("zoneconcierge".to_string()),
+                to_address: "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3".to_string(),
             }),
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);

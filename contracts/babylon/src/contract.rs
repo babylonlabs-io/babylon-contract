@@ -5,11 +5,11 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::{must_pay, ParseReplyError};
 
-use babylon_apis::{btc_staking_api, finality_api, to_bech32_addr, to_module_canonical_addr};
+use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::ibc::{ibc_packet, packet_timeout, TransferInfo, IBC_CHANNEL, IBC_TRANSFER};
+use crate::ibc::{ibc_packet, packet_timeout, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
@@ -96,23 +96,9 @@ pub fn instantiate(
     // Save the config after potentially updating it
     CONFIG.save(deps.storage, &cfg)?;
 
-    // Format and save the IBC transfer info
+    // Save the IBC transfer info
     if let Some(transfer_info) = msg.transfer_info {
-        let (to_address, address_type) = match transfer_info.recipient {
-            crate::msg::ibc::Recipient::ContractAddr(addr) => (addr, "contract"),
-            crate::msg::ibc::Recipient::ModuleAddr(module) => (
-                to_bech32_addr("bbn", &to_module_canonical_addr(&module))?.to_string(),
-                "module",
-            ),
-        };
-        IBC_TRANSFER.save(
-            deps.storage,
-            &TransferInfo {
-                channel_id: transfer_info.channel_id,
-                to_address,
-                address_type: address_type.to_string(),
-            },
-        )?;
+        IBC_TRANSFER.save(deps.storage, &transfer_info)?;
     }
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -457,19 +443,6 @@ mod tests {
                 label: "BTC Finality".into(),
             }
             .into()
-        );
-    }
-
-    #[test]
-    fn test_module_address() {
-        // Example usage
-        let prefix = "bbn";
-        let module_name = "zoneconcierge";
-
-        let addr = to_bech32_addr(prefix, &to_module_canonical_addr(module_name)).unwrap();
-        assert_eq!(
-            addr.to_string(),
-            "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3"
         );
     }
 }
