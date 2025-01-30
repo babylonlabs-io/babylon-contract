@@ -324,7 +324,7 @@ mod tests {
     use super::*;
     use crate::contract::instantiate;
     use crate::msg::contract::InstantiateMsg;
-    use crate::msg::ibc::{IbcTransferInfo, Recipient};
+    use crate::msg::ibc::{IbcIcs20Info, Recipient};
     use cosmwasm_std::testing::message_info;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_ibc_channel_open_try, MockApi, MockQuerier, MockStorage,
@@ -348,7 +348,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: Some(IbcTransferInfo {
+            transfer_info: Some(IbcIcs20Info {
                 channel_id: "channel-1".to_string(),
                 recipient: Recipient::ModuleAddr("zoneconcierge".to_string()),
             }),

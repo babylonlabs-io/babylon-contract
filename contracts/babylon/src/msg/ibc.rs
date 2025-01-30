@@ -5,7 +5,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{StdError, StdResult};
 
 #[cw_serde]
-pub struct IbcTransferInfo {
+pub struct IbcIcs20Info {
     pub channel_id: String,
     pub recipient: Recipient,
 }
@@ -16,7 +16,7 @@ pub enum Recipient {
     ModuleAddr(String),
 }
 
-impl IbcTransferInfo {
+impl IbcIcs20Info {
     pub fn validate(&self) -> StdResult<()> {
         if self.channel_id.is_empty() {
             return Err(StdError::generic_err("Empty IBC channel id"));
