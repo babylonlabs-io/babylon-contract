@@ -52,7 +52,7 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
         btc_finality_code_id: None,
         btc_finality_msg: None,
         admin: None,
-        transfer_info: None,
+        ics20_info: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
@@ -108,7 +108,7 @@ fn instantiate_works() {
         btc_finality_code_id: None,
         btc_finality_msg: None,
         admin: None,
-        transfer_info: None,
+        ics20_info: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);

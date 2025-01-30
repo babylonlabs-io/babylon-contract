@@ -342,7 +342,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: Some(IbcIcs20Info {
+            ics20_info: Some(IbcIcs20Info {
                 channel_id: "channel-1".to_string(),
                 to_address: "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3".to_string(),
             }),
