@@ -55,7 +55,7 @@ pub struct InstantiateMsg {
     pub consumer_description: Option<String>,
     /// IBC information for ICS-020 rewards transfer.
     /// If not set, distributed rewards will be native to the Consumer
-    pub transfer_info: Option<crate::msg::ibc::IbcTransferInfo>,
+    pub transfer_info: Option<crate::msg::ibc::IbcIcs20Info>,
 }
 
 impl ContractMsg for InstantiateMsg {

@@ -1,5 +1,5 @@
 use crate::msg::ibc::TransferInfoResponse;
-use crate::msg::ibc::{IbcTransferInfo, Recipient};
+use crate::msg::ibc::{IbcIcs20Info, Recipient};
 use anyhow::Result as AnyResult;
 use derivative::Derivative;
 
@@ -45,7 +45,7 @@ pub struct SuiteBuilder {
     funds: Vec<(Addr, u128)>,
     staking_msg: Option<String>,
     finality_msg: Option<String>,
-    transfer_info: Option<IbcTransferInfo>,
+    transfer_info: Option<IbcIcs20Info>,
 }
 
 impl SuiteBuilder {
@@ -71,7 +71,7 @@ impl SuiteBuilder {
     /// Sets the IBC transfer info
     #[allow(dead_code)]
     pub fn with_ibc_transfer_info(mut self, channel_id: &str, recipient: Recipient) -> Self {
-        let transfer_info = IbcTransferInfo {
+        let transfer_info = IbcIcs20Info {
             channel_id: channel_id.into(),
             recipient,
         };
