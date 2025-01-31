@@ -97,7 +97,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &cfg)?;
 
     // Save the IBC transfer info
-    if let Some(transfer_info) = msg.ics20_info {
+    if let Some(transfer_info) = msg.ics20_channel_id {
         IBC_TRANSFER.save(deps.storage, &transfer_info)?;
     }
 
@@ -302,10 +302,10 @@ pub fn execute(
             // Route to babylon over IBC, if available
             let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
             match transfer_info {
-                Some(transfer_info) => {
+                Some(ics20_channel_id) => {
                     // Construct the transfer message
                     let ibc_msg = IbcMsg::Transfer {
-                        channel_id: transfer_info.channel_id,
+                        channel_id: ics20_channel_id,
                         to_address,
                         amount: info.funds[0].clone(),
                         timeout: packet_timeout(&env),
@@ -364,7 +364,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            ics20_info: None,
+            ics20_channel_id: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -387,7 +387,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            ics20_info: None,
+            ics20_channel_id: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -423,7 +423,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            ics20_info: None,
+            ics20_channel_id: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
