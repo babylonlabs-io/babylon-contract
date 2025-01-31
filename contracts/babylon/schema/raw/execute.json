@@ -48,6 +48,32 @@
         }
       },
       "additionalProperties": false
+<<<<<<< HEAD
+=======
+    },
+    {
+      "description": "`SendRewards` is a message sent by the staking contract, to send rewards to the Babylon chain",
+      "type": "object",
+      "required": [
+        "send_rewards"
+      ],
+      "properties": {
+        "send_rewards": {
+          "type": "object",
+          "required": [
+            "to_address"
+          ],
+          "properties": {
+            "to_address": {
+              "description": "`to_address` is the address on the Babylon chain to send the rewards to",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+>>>>>>> 37fca3d (Update schemas)
     }
   ],
   "definitions": {
