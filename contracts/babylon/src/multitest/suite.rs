@@ -1,4 +1,3 @@
-use crate::msg::ibc::IbcIcs20Info;
 use crate::msg::ibc::TransferInfoResponse;
 use anyhow::Result as AnyResult;
 use derivative::Derivative;
@@ -44,7 +43,7 @@ pub struct SuiteBuilder {
     funds: Vec<(Addr, u128)>,
     staking_msg: Option<String>,
     finality_msg: Option<String>,
-    transfer_info: Option<IbcIcs20Info>,
+    ics20_channel_id: Option<String>,
 }
 
 impl SuiteBuilder {
@@ -68,12 +67,8 @@ impl SuiteBuilder {
     }
 
     /// Sets the IBC transfer info
-    pub fn with_ics20_info(mut self, channel_id: &str, recipient: &str) -> Self {
-        let transfer_info = IbcIcs20Info {
-            channel_id: channel_id.into(),
-            to_address: recipient.to_string(),
-        };
-        self.transfer_info = Some(transfer_info);
+    pub fn with_ics20_channel(mut self, channel_id: &str) -> Self {
+        self.ics20_channel_id = Some(channel_id.to_owned());
         self
     }
 
@@ -115,7 +110,7 @@ impl SuiteBuilder {
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
-                    ics20_info: self.transfer_info,
+                    ics20_channel_id: self.ics20_channel_id,
                 },
                 &[],
                 "babylon",

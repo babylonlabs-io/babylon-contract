@@ -54,7 +54,7 @@ pub struct InstantiateMsg {
     pub consumer_description: Option<String>,
     /// IBC information for ICS-020 rewards transfer.
     /// If not set, distributed rewards will be native to the Consumer
-    pub ics20_info: Option<crate::msg::ibc::IbcIcs20Info>,
+    pub ics20_channel_id: Option<String>,
 }
 
 impl ContractMsg for InstantiateMsg {
@@ -86,8 +86,10 @@ impl ContractMsg for InstantiateMsg {
             }
         }
 
-        if let Some(transfer_info) = &self.ics20_info {
-            transfer_info.validate()?;
+        if let Some(channel_id) = &self.ics20_channel_id {
+            if channel_id.trim().is_empty() {
+                return Err(StdError::generic_err("ICS-020 channel_id cannot be empty"));
+            }
         }
 
         Ok(())
@@ -172,7 +174,6 @@ pub enum QueryMsg {
     CzHeader { height: u64 },
     /// TransferInfo returns the IBC transfer information stored in the contract
     /// for ICS-020 rewards transfer.
-    /// If not set, distributed rewards are native to the Consumer
-    #[returns(crate::msg::ibc::TransferInfoResponse)]
+    #[returns(Option<String>)]
     TransferInfo {},
 }

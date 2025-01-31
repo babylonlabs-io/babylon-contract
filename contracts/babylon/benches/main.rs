@@ -54,7 +54,7 @@ pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
         btc_finality_code_id: None,
         btc_finality_msg: None,
         admin: None,
-        ics20_info: None,
+        ics20_channel_id: None,
     };
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
