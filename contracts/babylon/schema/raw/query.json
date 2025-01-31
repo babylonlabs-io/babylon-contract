@@ -243,7 +243,7 @@
       "additionalProperties": false
     },
     {
-      "description": "TransferInfo returns the IBC transfer information stored in the contract for ICS-020 rewards transfer. If not set, distributed rewards are native to the Consumer",
+      "description": "TransferInfo returns the IBC transfer information stored in the contract for ICS-020 rewards transfer.",
       "type": "object",
       "required": [
         "transfer_info"
