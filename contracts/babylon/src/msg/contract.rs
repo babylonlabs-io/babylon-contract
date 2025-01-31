@@ -4,7 +4,6 @@ use cosmwasm_std::{Binary, StdError, StdResult};
 use babylon_apis::finality_api::Evidence;
 
 use crate::msg::btc_header::BtcHeader;
-use babylon_apis::btc_staking_api::RewardInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use {
     crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
@@ -116,10 +115,11 @@ pub enum ExecuteMsg {
     /// This will be forwarded over IBC to the Babylon side for propagation to other Consumers, and
     /// Babylon itself
     Slashing { evidence: Evidence },
-    /// `SendRewards` is a message sent by the finality contract, to send rewards to Babylon
+    /// `SendRewards` is a message sent by the staking contract, to send rewards to the Babylon
+    /// chain
     SendRewards {
-        /// `fp_distribution` is the list of finality providers and their rewards
-        fp_distribution: Vec<RewardInfo>,
+        /// `to_address` is the address on the Babylon chain to send the rewards to
+        to_address: String,
     },
 }
 
