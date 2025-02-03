@@ -510,12 +510,11 @@ fn send_rewards_msg(
             // Consumer withdrawal.
             // Send rewards to the staker address on the Consumer
             let recipient = deps.api.addr_humanize(staker_canonical_addr)?.to_string();
-            let msg = BankMsg::Send {
+            let bank_msg = BankMsg::Send {
                 to_address: recipient.clone(),
                 amount: vec![coin(amount.u128(), cfg.denom)],
             };
-            let wasm_msg = CosmosMsg::Bank(msg);
-            (recipient, wasm_msg)
+            (recipient, CosmosMsg::Bank(bank_msg))
         }
         Some(ics20_channel_id) => {
             // Babylon withdrawal.
