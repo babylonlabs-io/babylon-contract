@@ -117,12 +117,6 @@ pub enum ExecuteMsg {
     /// This will be forwarded over IBC to the Babylon side for propagation to other Consumers, and
     /// Babylon itself
     Slashing { evidence: Evidence },
-    /// `SendRewards` is a message sent by the staking contract, to send rewards to the Babylon
-    /// chain
-    SendRewards {
-        /// `to_address` is the address on the Babylon chain to send the rewards to
-        to_address: String,
-    },
 }
 
 #[cw_serde]
