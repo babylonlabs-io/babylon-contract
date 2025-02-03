@@ -3,8 +3,8 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{
-    coin, to_json_binary, BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, MessageInfo,
-    Response, StdResult, Storage, Uint128, Uint256, WasmMsg,
+    coin, BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, IbcMsg, MessageInfo, Response,
+    StdResult, Storage, Uint128, Uint256,
 };
 use hex::ToHex;
 
@@ -24,6 +24,7 @@ use babylon_apis::btc_staking_api::{
 };
 use babylon_apis::{to_canonical_addr, Validate};
 use babylon_bindings::BabylonMsg;
+use babylon_contract::ibc::packet_timeout;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 use babylon_contract::msg::ibc::TransferInfoResponse;
@@ -433,6 +434,7 @@ fn distribute_rewards(
 /// `fp_pubkey_hex` is the public key of the FP to withdraw rewards from.
 pub fn handle_withdraw_rewards(
     mut deps: DepsMut,
+    env: &Env,
     info: &MessageInfo,
     fp_pubkey_hex: &str,
     staker_addr: String,
@@ -469,8 +471,14 @@ pub fn handle_withdraw_rewards(
         return Err(ContractError::NoRewards);
     }
 
-    let (recipient, wasm_msg) =
-        send_rewards_msg(&deps, &staker_addr, &staker_canonical_addr, cfg, amount)?;
+    let (recipient, wasm_msg) = send_rewards_msg(
+        &deps,
+        env,
+        &staker_addr,
+        &staker_canonical_addr,
+        cfg,
+        amount,
+    )?;
     let resp = Response::new()
         .add_message(wasm_msg)
         .add_attribute("action", "withdraw_rewards")
@@ -483,6 +491,7 @@ pub fn handle_withdraw_rewards(
 
 fn send_rewards_msg(
     deps: &DepsMut,
+    env: &Env,
     staker_addr: &str,
     staker_canonical_addr: &CanonicalAddr,
     cfg: Config,
@@ -496,7 +505,7 @@ fn send_rewards_msg(
     )?;
 
     // Create the bank / routing packet
-    let (recipient, wasm_msg) = match transfer_info {
+    let (recipient, cosmos_msg) = match transfer_info {
         None => {
             // Consumer withdrawal.
             // Send rewards to the staker address on the Consumer
@@ -508,23 +517,21 @@ fn send_rewards_msg(
             let wasm_msg = CosmosMsg::Bank(msg);
             (recipient, wasm_msg)
         }
-        Some(_) => {
+        Some(ics20_channel_id) => {
             // Babylon withdrawal.
-            // Send rewards to the staker address on Babylon, through the babylon contract (ICS-020
-            // transfer)
-            let recipient = staker_addr.to_string();
-            let msg = babylon_contract::msg::contract::ExecuteMsg::SendRewards {
-                to_address: recipient.clone(),
+            // Send rewards to the staker address on Babylon (ICS-020 transfer)
+            let ibc_msg = IbcMsg::Transfer {
+                channel_id: ics20_channel_id,
+                to_address: staker_addr.to_string(),
+                amount: coin(amount.u128(), cfg.denom),
+                timeout: packet_timeout(env),
+                memo: None,
             };
-            let wasm_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: cfg.babylon.to_string(),
-                msg: to_json_binary(&msg)?,
-                funds: vec![coin(amount.u128(), cfg.denom)],
-            });
-            (recipient, wasm_msg)
+
+            (staker_addr.to_string(), CosmosMsg::Ibc(ibc_msg))
         }
     };
-    Ok((recipient, wasm_msg))
+    Ok((recipient, cosmos_msg))
 }
 
 pub fn withdraw_delegation_reward(
