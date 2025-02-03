@@ -372,7 +372,6 @@ pub(crate) mod tests {
         match resp {
             ExecuteMsg::BtcHeaders { headers } => headers,
             ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
-            ExecuteMsg::SendRewards { .. } => unreachable!("unexpected send rewards message"),
         }
     }
 

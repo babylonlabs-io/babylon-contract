@@ -1,15 +1,15 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo, QueryResponse,
-    Reply, Response, SubMsg, SubMsgResponse, WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
+    Response, SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_utils::{must_pay, ParseReplyError};
+use cw_utils::ParseReplyError;
 
 use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::ibc::{ibc_packet, packet_timeout, IBC_CHANNEL, IBC_TRANSFER};
+use crate::ibc::{ibc_packet, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
@@ -289,44 +289,6 @@ pub fn execute(
 
             // TODO: Add events
             Ok(res)
-        }
-        ExecuteMsg::SendRewards { to_address } => {
-            let cfg = CONFIG.load(deps.storage)?;
-            // Assert the funds are there
-            must_pay(&info, &cfg.denom)?;
-            // Assert the sender is right
-            let btc_staking = cfg.btc_staking.ok_or(ContractError::BtcStakingNotSet {})?;
-            if info.sender != btc_staking {
-                return Err(ContractError::Unauthorized {});
-            }
-            // Route to babylon over IBC, if available
-            let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
-            match transfer_info {
-                Some(ics20_channel_id) => {
-                    // Construct the transfer message
-                    let ibc_msg = IbcMsg::Transfer {
-                        channel_id: ics20_channel_id,
-                        to_address,
-                        amount: info.funds[0].clone(),
-                        timeout: packet_timeout(&env),
-                        memo: None,
-                    };
-
-                    // Send packet only if we are IBC enabled
-                    // TODO: send in test code when multi-test can handle it
-                    #[cfg(not(any(test, feature = "library")))]
-                    {
-                        // TODO: Add events
-                        Ok(Response::new().add_message(ibc_msg))
-                    }
-                    #[cfg(any(test, feature = "library"))]
-                    {
-                        let _ = ibc_msg;
-                        Ok(Response::new())
-                    }
-                }
-                None => Err(ContractError::IbcTransferInfoNotSet {}),
-            }
         }
     }
 }
