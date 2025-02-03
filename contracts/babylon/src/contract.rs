@@ -1,15 +1,15 @@
 use cosmwasm_std::{
-    to_json_binary, to_json_string, Addr, Binary, Deps, DepsMut, Empty, Env, IbcMsg, MessageInfo,
-    QueryResponse, Reply, Response, SubMsg, SubMsgResponse, WasmMsg,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, QueryResponse, Reply,
+    Response, SubMsg, SubMsgResponse, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_utils::{must_pay, ParseReplyError};
+use cw_utils::ParseReplyError;
 
-use babylon_apis::{btc_staking_api, finality_api, to_bech32_addr, to_module_canonical_addr};
+use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
 
 use crate::error::ContractError;
-use crate::ibc::{ibc_packet, packet_timeout, TransferInfo, IBC_CHANNEL, IBC_TRANSFER};
+use crate::ibc::{ibc_packet, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
@@ -96,23 +96,9 @@ pub fn instantiate(
     // Save the config after potentially updating it
     CONFIG.save(deps.storage, &cfg)?;
 
-    // Format and save the IBC transfer info
-    if let Some(transfer_info) = msg.transfer_info {
-        let (to_address, address_type) = match transfer_info.recipient {
-            crate::msg::ibc::Recipient::ContractAddr(addr) => (addr, "contract"),
-            crate::msg::ibc::Recipient::ModuleAddr(module) => (
-                to_bech32_addr("bbn", &to_module_canonical_addr(&module))?.to_string(),
-                "module",
-            ),
-        };
-        IBC_TRANSFER.save(
-            deps.storage,
-            &TransferInfo {
-                channel_id: transfer_info.channel_id,
-                to_address,
-                address_type: address_type.to_string(),
-            },
-        )?;
+    // Save the IBC transfer info
+    if let Some(transfer_info) = msg.ics20_channel_id {
+        IBC_TRANSFER.save(deps.storage, &transfer_info)?;
     }
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -304,48 +290,6 @@ pub fn execute(
             // TODO: Add events
             Ok(res)
         }
-        ExecuteMsg::SendRewards { fp_distribution } => {
-            let cfg = CONFIG.load(deps.storage)?;
-            // Assert the funds are there
-            must_pay(&info, &cfg.denom)?;
-            // Assert the sender is right
-            let btc_finality = cfg
-                .btc_finality
-                .ok_or(ContractError::BtcFinalityNotSet {})?;
-            if info.sender != btc_finality {
-                return Err(ContractError::Unauthorized {});
-            }
-            // Route to babylon over IBC, if available
-            let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
-            match transfer_info {
-                Some(transfer_info) => {
-                    // Build the payload
-                    let payload_msg = to_json_string(&fp_distribution)?;
-                    // Construct the transfer message
-                    let ibc_msg = IbcMsg::Transfer {
-                        channel_id: transfer_info.channel_id,
-                        to_address: transfer_info.to_address,
-                        amount: info.funds[0].clone(),
-                        timeout: packet_timeout(&env),
-                        memo: Some(payload_msg),
-                    };
-
-                    // Send packet only if we are IBC enabled
-                    // TODO: send in test code when multi-test can handle it
-                    #[cfg(not(any(test, feature = "library")))]
-                    {
-                        // TODO: Add events
-                        Ok(Response::new().add_message(ibc_msg))
-                    }
-                    #[cfg(any(test, feature = "library"))]
-                    {
-                        let _ = ibc_msg;
-                        Ok(Response::new())
-                    }
-                }
-                None => Err(ContractError::IbcTransferInfoNotSet {}),
-            }
-        }
     }
 }
 
@@ -382,7 +326,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: None,
+            ics20_channel_id: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -405,7 +349,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: None,
+            ics20_channel_id: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -441,7 +385,7 @@ mod tests {
             admin: None,
             consumer_name: None,
             consumer_description: None,
-            transfer_info: None,
+            ics20_channel_id: None,
         };
         let info = message_info(&deps.api.addr_make(CREATOR), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -457,19 +401,6 @@ mod tests {
                 label: "BTC Finality".into(),
             }
             .into()
-        );
-    }
-
-    #[test]
-    fn test_module_address() {
-        // Example usage
-        let prefix = "bbn";
-        let module_name = "zoneconcierge";
-
-        let addr = to_bech32_addr(prefix, &to_module_canonical_addr(module_name)).unwrap();
-        assert_eq!(
-            addr.to_string(),
-            "bbn1wdptld6nw2plxzf0w62gqc60tlw5kypzej89y3"
         );
     }
 }

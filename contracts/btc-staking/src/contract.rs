@@ -153,7 +153,7 @@ pub fn execute(
             fp_pubkey_hex,
             staker_addr,
         } => {
-            let res = handle_withdraw_rewards(deps, &info, &fp_pubkey_hex, staker_addr)?;
+            let res = handle_withdraw_rewards(deps, &env, &info, &fp_pubkey_hex, staker_addr)?;
             Ok(res)
         }
     }

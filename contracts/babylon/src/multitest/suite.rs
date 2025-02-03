@@ -1,14 +1,12 @@
 use crate::msg::ibc::TransferInfoResponse;
-use crate::msg::ibc::{IbcTransferInfo, Recipient};
 use anyhow::Result as AnyResult;
 use derivative::Derivative;
-
-use cosmwasm_std::{Addr, Binary, Empty};
-use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
+use cosmwasm_std::{Addr, Binary, Empty};
+use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use crate::msg::contract::{InstantiateMsg, QueryMsg};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
@@ -45,7 +43,7 @@ pub struct SuiteBuilder {
     funds: Vec<(Addr, u128)>,
     staking_msg: Option<String>,
     finality_msg: Option<String>,
-    transfer_info: Option<IbcTransferInfo>,
+    ics20_channel_id: Option<String>,
 }
 
 impl SuiteBuilder {
@@ -69,13 +67,8 @@ impl SuiteBuilder {
     }
 
     /// Sets the IBC transfer info
-    #[allow(dead_code)]
-    pub fn with_ibc_transfer_info(mut self, channel_id: &str, recipient: Recipient) -> Self {
-        let transfer_info = IbcTransferInfo {
-            channel_id: channel_id.into(),
-            recipient,
-        };
-        self.transfer_info = Some(transfer_info);
+    pub fn with_ics20_channel(mut self, channel_id: &str) -> Self {
+        self.ics20_channel_id = Some(channel_id.to_owned());
         self
     }
 
@@ -117,7 +110,7 @@ impl SuiteBuilder {
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
-                    transfer_info: self.transfer_info,
+                    ics20_channel_id: self.ics20_channel_id,
                 },
                 &[],
                 "babylon",

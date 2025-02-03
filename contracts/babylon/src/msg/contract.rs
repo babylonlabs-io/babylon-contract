@@ -4,7 +4,6 @@ use cosmwasm_std::{Binary, StdError, StdResult};
 use babylon_apis::finality_api::Evidence;
 
 use crate::msg::btc_header::BtcHeader;
-use babylon_apis::btc_staking_api::RewardInfo;
 #[cfg(not(target_arch = "wasm32"))]
 use {
     crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
@@ -55,7 +54,7 @@ pub struct InstantiateMsg {
     pub consumer_description: Option<String>,
     /// IBC information for ICS-020 rewards transfer.
     /// If not set, distributed rewards will be native to the Consumer
-    pub transfer_info: Option<crate::msg::ibc::IbcTransferInfo>,
+    pub ics20_channel_id: Option<String>,
 }
 
 impl ContractMsg for InstantiateMsg {
@@ -87,8 +86,10 @@ impl ContractMsg for InstantiateMsg {
             }
         }
 
-        if let Some(transfer_info) = &self.transfer_info {
-            transfer_info.validate()?;
+        if let Some(channel_id) = &self.ics20_channel_id {
+            if channel_id.trim().is_empty() {
+                return Err(StdError::generic_err("ICS-020 channel_id cannot be empty"));
+            }
         }
 
         Ok(())
@@ -116,11 +117,6 @@ pub enum ExecuteMsg {
     /// This will be forwarded over IBC to the Babylon side for propagation to other Consumers, and
     /// Babylon itself
     Slashing { evidence: Evidence },
-    /// `SendRewards` is a message sent by the finality contract, to send rewards to Babylon
-    SendRewards {
-        /// `fp_distribution` is the list of finality providers and their rewards
-        fp_distribution: Vec<RewardInfo>,
-    },
 }
 
 #[cw_serde]
@@ -172,7 +168,6 @@ pub enum QueryMsg {
     CzHeader { height: u64 },
     /// TransferInfo returns the IBC transfer information stored in the contract
     /// for ICS-020 rewards transfer.
-    /// If not set, distributed rewards are native to the Consumer
-    #[returns(crate::msg::ibc::TransferInfoResponse)]
+    #[returns(Option<String>)]
     TransferInfo {},
 }

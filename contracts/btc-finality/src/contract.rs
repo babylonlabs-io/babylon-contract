@@ -10,7 +10,6 @@ use crate::{finality, queries, state};
 use babylon_apis::btc_staking_api::RewardInfo;
 use babylon_apis::finality_api::SudoMsg;
 use babylon_bindings::BabylonMsg;
-use babylon_contract::msg::ibc::TransferInfoResponse;
 use btc_staking::msg::ActivatedHeightResponse;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -260,13 +259,13 @@ fn handle_end_block(
         res = res.add_events(events);
     }
 
-    // On an epoch boundary, send rewards for distribution. Rewards are sent to Babylon if IBC
-    // transfer info is set, otherwise they are sent to the staking contract
+    // On an epoch boundary, send rewards for distribution.
+    // Rewards are sent to the staking contract for distribution over delegators
     let params = PARAMS.load(deps.storage)?;
     if env.block.height > 0 && env.block.height % params.epoch_length == 0 {
         let rewards = TOTAL_REWARDS.load(deps.storage)?;
         if rewards.u128() > 0 {
-            let (fp_rewards, wasm_msg) = distribute_rewards_msg(deps, rewards.u128(), &cfg)?;
+            let (fp_rewards, wasm_msg) = send_rewards_msg(deps, rewards.u128(), &cfg)?;
             res = res.add_message(wasm_msg);
             // Zero out individual rewards
             for reward in fp_rewards {
@@ -279,35 +278,10 @@ fn handle_end_block(
     Ok(res)
 }
 
-fn distribute_rewards_msg(
-    deps: &mut DepsMut,
-    rewards: u128,
-    cfg: &Config,
-) -> Result<(Vec<RewardInfo>, WasmMsg), ContractError> {
-    // Query the babylon contract for transfer info
-    // TODO: Turn into a parameter set during instantiation to avoid query
-    let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
-        cfg.babylon.to_string(),
-        &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
-    )?;
-    let (fp_rewards, wasm_msg) = match transfer_info {
-        Some(_) => {
-            // Babylon distribution. Send rewards to Babylon through the babylon contract
-            send_rewards_msg(deps, rewards, cfg, cfg.babylon.clone())?
-        }
-        None => {
-            // Local distribution. Send rewards to the staking contract
-            send_rewards_msg(deps, rewards, cfg, cfg.staking.clone())?
-        }
-    };
-    Ok((fp_rewards, wasm_msg))
-}
-
 fn send_rewards_msg(
     deps: &mut DepsMut,
     rewards: u128,
     cfg: &Config,
-    recipient: Addr,
 ) -> Result<(Vec<RewardInfo>, WasmMsg), ContractError> {
     // Get the pending rewards distribution
     let fp_rewards = REWARDS
@@ -327,29 +301,14 @@ fn send_rewards_msg(
             })
         })
         .collect::<StdResult<Vec<_>>>()?;
-    let wasm_msg = if recipient == cfg.babylon {
-        // The rewards are sent to the Babylon contract, and the Babylon
-        // contract will send the rewards to the Babylon chain for distribution
-        let msg = babylon_contract::ExecuteMsg::SendRewards {
-            fp_distribution: fp_rewards.clone(),
-        };
-        WasmMsg::Execute {
-            contract_addr: recipient.into_string(),
-            msg: to_json_binary(&msg)?,
-            funds: coins(rewards, cfg.denom.as_str()),
-        }
-    } else if recipient == cfg.staking {
-        // The rewards are sent to the BTC staking contract for distribution
-        let msg = btc_staking::msg::ExecuteMsg::DistributeRewards {
-            fp_distribution: fp_rewards.clone(),
-        };
-        WasmMsg::Execute {
-            contract_addr: recipient.into_string(),
-            msg: to_json_binary(&msg)?,
-            funds: coins(rewards, cfg.denom.as_str()),
-        }
-    } else {
-        return Err(ContractError::InvalidRewardsRecipient {});
+    // The rewards are sent to the BTC staking contract for further distribution
+    let msg = btc_staking::msg::ExecuteMsg::DistributeRewards {
+        fp_distribution: fp_rewards.clone(),
+    };
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: cfg.staking.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: coins(rewards, cfg.denom.as_str()),
     };
     Ok((fp_rewards, wasm_msg))
 }

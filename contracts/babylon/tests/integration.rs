@@ -52,7 +52,7 @@ fn setup() -> Instance<MockApi, MockStorage, MockQuerier> {
         btc_finality_code_id: None,
         btc_finality_msg: None,
         admin: None,
-        transfer_info: None,
+        ics20_channel_id: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();
@@ -77,7 +77,6 @@ fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
     match resp {
         ExecuteMsg::BtcHeaders { headers } => headers,
         ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
-        ExecuteMsg::SendRewards { .. } => unreachable!("unexpected send rewards message"),
     }
 }
 
@@ -108,7 +107,7 @@ fn instantiate_works() {
         btc_finality_code_id: None,
         btc_finality_msg: None,
         admin: None,
-        transfer_info: None,
+        ics20_channel_id: None,
     };
     let info = message_info(&Addr::unchecked(CREATOR), &[]);
     let res: ContractResult<Response> = instantiate(&mut deps, mock_env(), info, msg);
