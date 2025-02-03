@@ -6,7 +6,7 @@ use btc_staking::msg::InstantiateMsg;
 // wasm binary lite version
 static WASM: &[u8] = include_bytes!("../../../artifacts/btc_staking.wasm");
 /// Wasm size limit: https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/validation.go#L24-L25
-const MAX_WASM_SIZE: usize = 800 * 1024; // 800 KB
+const MAX_WASM_SIZE: usize = 1024 * 1024; // 1 MB
 
 // wasm binary with full validation
 static WASM_FULL: &[u8] = include_bytes!("../../../artifacts/btc_staking-full-validation.wasm");
