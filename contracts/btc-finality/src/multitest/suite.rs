@@ -163,6 +163,11 @@ impl Suite {
         bech32_prefix
     }
 
+    #[track_caller]
+    pub fn get_balance(&self, addr: &Addr, denom: &str) -> Coin {
+        self.app.wrap().query_balance(addr, denom).unwrap()
+    }
+
     #[allow(dead_code)]
     pub fn admin(&self) -> &str {
         self.owner.as_str()
@@ -438,5 +443,22 @@ impl Suite {
             )
             .unwrap();
         rewards_response.rewards
+    }
+
+    #[track_caller]
+    pub fn withdraw_rewards(
+        &mut self,
+        fp_pubkey_hex: &str,
+        staker: &str,
+    ) -> anyhow::Result<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked("anyone"),
+            self.staking.clone(),
+            &btc_staking::msg::ExecuteMsg::WithdrawRewards {
+                fp_pubkey_hex: fp_pubkey_hex.to_owned(),
+                staker_addr: staker.to_owned(),
+            },
+            &[],
+        )
     }
 }

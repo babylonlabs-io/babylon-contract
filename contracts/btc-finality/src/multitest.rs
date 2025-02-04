@@ -566,7 +566,7 @@ mod distribution {
         let rewards_denom = suite.get_btc_staking_config().denom;
         // Build staker 1 address on the Consumer network
         let staker1_addr_consumer = suite
-            .to_consumer_addr(&Addr::unchecked(del1.staker_addr))
+            .to_consumer_addr(&Addr::unchecked(del1.staker_addr.clone()))
             .unwrap();
 
         let pending_rewards_1 = suite.get_pending_delegator_rewards(staker1_addr_consumer.as_str());
@@ -587,8 +587,32 @@ mod distribution {
         assert!(pending_rewards_2[0].rewards.amount.u128() > 0);
 
         // Confirm that the distribution makes sense
-        let rewards_1 = pending_rewards_1[0].rewards.amount.u128() as u64;
-        let rewards_2 = pending_rewards_2[0].rewards.amount.u128() as u64;
-        assert_eq!(rewards_1 / rewards_2, del1.total_sat / del2.total_sat);
+        let rewards_1 = pending_rewards_1[0].rewards.amount.u128();
+        let rewards_2 = pending_rewards_2[0].rewards.amount.u128();
+        assert_eq!(
+            rewards_1 / rewards_2,
+            del1.total_sat as u128 / del2.total_sat as u128
+        );
+
+        // Withdrawing rewards
+        // Trying to withdraw the rewards with a Consumer address should fail
+        let res = suite.withdraw_rewards(&new_fp1.btc_pk_hex, staker1_addr_consumer.as_ref());
+        assert!(res.is_err());
+
+        // Trying to withdraw the rewards with a Babylon address should work
+        suite
+            .withdraw_rewards(&new_fp1.btc_pk_hex, &del1.staker_addr)
+            .unwrap();
+
+        // Rewards have been transferred
+        let pending_rewards_1 = suite.get_pending_delegator_rewards(staker1_addr_consumer.as_str());
+        assert_eq!(pending_rewards_1.len(), 1);
+        assert_eq!(pending_rewards_1[0].rewards.amount.u128(), 0);
+
+        // Rewards are now in the staker Consumer's address balance
+        println!("Staker 1 iconsumer address: {}", staker1_addr_consumer);
+        println!("Rewards denom: {}", rewards_denom);
+        let consumer_balance = suite.get_balance(&staker1_addr_consumer, &rewards_denom);
+        assert_eq!(consumer_balance.amount.u128(), rewards_1);
     }
 }
