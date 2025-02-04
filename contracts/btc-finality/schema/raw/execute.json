@@ -26,6 +26,28 @@
       "additionalProperties": false
     },
     {
+      "description": "Set the BTC finality addr. Only admin or the babylon contract can set this",
+      "type": "object",
+      "required": [
+        "update_finality"
+      ],
+      "properties": {
+        "update_finality": {
+          "type": "object",
+          "required": [
+            "finality"
+          ],
+          "properties": {
+            "finality": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "BTC Staking operations",
       "type": "object",
       "required": [
@@ -120,7 +142,7 @@
       "additionalProperties": false
     },
     {
-      "description": "`WithdrawRewards` is a message sent by the staker, or the Babylon contract on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\nThe optional `recipient` is the address on the Consumer side to receive the rewards. If not provided, the rewards will be sent to the sender of this message. Only the Babylon contract can set the recipient to a different address than the sender's.",
+      "description": "`WithdrawRewards` is a message sent by the Babylon contract on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\n`staker_addr` is the address to claim the rewards.",
       "type": "object",
       "required": [
         "withdraw_rewards"
@@ -129,17 +151,15 @@
         "withdraw_rewards": {
           "type": "object",
           "required": [
-            "fp_pubkey_hex"
+            "fp_pubkey_hex",
+            "staker_addr"
           ],
           "properties": {
             "fp_pubkey_hex": {
               "type": "string"
             },
-            "recipient": {
-              "type": [
-                "string",
-                "null"
-              ]
+            "staker_addr": {
+              "type": "string"
             }
           },
           "additionalProperties": false
