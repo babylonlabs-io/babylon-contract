@@ -436,7 +436,7 @@ impl Suite {
             .query_wasm_smart(
                 self.staking.clone(),
                 &btc_staking::msg::QueryMsg::AllPendingRewards {
-                    user: staker.into(),
+                    staker_addr: staker.into(),
                     start_after: None,
                     limit: None,
                 },
