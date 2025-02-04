@@ -62,7 +62,8 @@ pub fn verify_transaction_sig_with_output(
     schnorr::verify_digest(pub_key, &sighash, signature).map_err(Error::BitcoinError)
 }
 
-/// enc_verify_transaction_sig_with_output verifies the validity of a Schnorr adaptor signature for a given transaction
+/// `enc_verify_transaction_sig_with_output` verifies the validity of a Schnorr adaptor signature
+/// for a given transaction
 pub fn enc_verify_transaction_sig_with_output(
     transaction: &Transaction,
     funding_output: &TxOut,
