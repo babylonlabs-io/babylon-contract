@@ -86,14 +86,19 @@ pub enum QueryMsg {
         start_after: Option<FinalityProviderInfo>,
         limit: Option<u32>,
     },
-    /// `PendingRewards` returns the pending rewards for a user on a finality provider.
-    /// The rewards are returned in the form of a Coin
+    /// `PendingRewards` returns the pending rewards for a staker on a finality provider.
+    /// The staker address must be its Babylon delegator address.
+    /// The rewards are returned in the form of a Coin.
     #[returns(PendingRewardsResponse)]
-    PendingRewards { user: String, fp_pubkey_hex: String },
-    /// `AllPendingRewards` returns the pending rewards for a user on all finality providers.
+    PendingRewards {
+        staker_addr: String,
+        fp_pubkey_hex: String,
+    },
+    /// `AllPendingRewards` returns the pending rewards for a staker on all finality providers.
+    /// The staker address must be its Babylon delegator address.
     #[returns(AllPendingRewardsResponse)]
     AllPendingRewards {
-        user: String,
+        staker_addr: String,
         start_after: Option<PendingRewards>,
         limit: Option<u32>,
     },

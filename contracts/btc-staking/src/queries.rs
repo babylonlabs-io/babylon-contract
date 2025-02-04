@@ -7,8 +7,6 @@ use cosmwasm_std::Order::Descending;
 use cosmwasm_std::{coin, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::{Bound, Bounder};
 
-use babylon_apis::btc_staking_api::FinalityProvider;
-
 use crate::error::ContractError;
 use crate::msg::{
     ActivatedHeightResponse, AllPendingRewardsResponse, BtcDelegationsResponse,
@@ -23,6 +21,8 @@ use crate::state::staking::{
     fps, BtcDelegation, FinalityProviderState, ACTIVATED_HEIGHT, BTC_DELEGATIONS, FPS,
     FP_DELEGATIONS,
 };
+use babylon_apis::btc_staking_api::FinalityProvider;
+use babylon_apis::to_canonical_addr;
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -181,14 +181,14 @@ pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractE
     })
 }
 
-/// Rewards to be withdrawn by a particular user, from its delegations to a particular finality
+/// Rewards to be withdrawn by a particular staker, from its delegations to a particular finality
 /// provider
 pub fn pending_rewards(
     deps: Deps,
-    user: String,
+    staker_addr: String,
     fp_pubkey_hex: String,
 ) -> Result<PendingRewardsResponse, ContractError> {
-    let user_canonical_addr = deps.api.addr_canonicalize(&user)?;
+    let user_canonical_addr = to_canonical_addr(&staker_addr, "bbn")?;
     let fp_state = fps().load(deps.storage, &fp_pubkey_hex)?;
     let user_delegations = delegations::delegations()
         .delegation
@@ -208,15 +208,16 @@ pub fn pending_rewards(
     })
 }
 
-/// Rewards to be withdrawn by a particular user, over all of its delegations to finality providers.
+/// Rewards to be withdrawn by a particular staker, over all of its delegations to finality
+/// providers.
 pub fn all_pending_rewards(
     deps: Deps,
-    user: String,
+    staker_addr: String,
     start_after: Option<PendingRewards>,
     limit: Option<u32>,
 ) -> Result<AllPendingRewardsResponse, ContractError> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let user_canonical_addr = deps.api.addr_canonicalize(&user)?;
+    let user_canonical_addr = to_canonical_addr(&staker_addr, "bbn")?;
 
     // `start_after` includes the staking tx hash along with the finality provider's pubkey
     let bound = start_after.and_then(|pending_rewards| {
