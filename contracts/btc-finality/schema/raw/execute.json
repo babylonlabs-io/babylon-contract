@@ -143,10 +143,14 @@
     },
     {
 <<<<<<< HEAD
+<<<<<<< HEAD
       "description": "`WithdrawRewards` is a message sent by the Babylon contract on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\n`staker_addr` is the address to claim the rewards.",
 =======
       "description": "`WithdrawRewards` is a message sent by anyone on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\n`staker_addr` is both the address to claim and receive the rewards",
 >>>>>>> 37fca3d (Update schemas)
+=======
+      "description": "`WithdrawRewards` is a message sent by anyone on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\n`staker_addr` is both the address to claim and receive the rewards. It's a Babylon address. If rewards are to be sent to a Consumer address, the staker's equivalent address in that chain will be computed and used.",
+>>>>>>> fbd3b31 (Update schema)
       "type": "object",
       "required": [
         "withdraw_rewards"

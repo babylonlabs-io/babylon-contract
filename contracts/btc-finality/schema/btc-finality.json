@@ -232,10 +232,14 @@
       },
       {
 <<<<<<< HEAD
+<<<<<<< HEAD
         "description": "`WithdrawRewards` is a message sent by the Babylon contract on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\n`staker_addr` is the address to claim the rewards.",
 =======
         "description": "`WithdrawRewards` is a message sent by anyone on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\n`staker_addr` is both the address to claim and receive the rewards",
 >>>>>>> 37fca3d (Update schemas)
+=======
+        "description": "`WithdrawRewards` is a message sent by anyone on behalf of the staker, to withdraw rewards from BTC staking via the given FP.\n\n`staker_addr` is both the address to claim and receive the rewards. It's a Babylon address. If rewards are to be sent to a Consumer address, the staker's equivalent address in that chain will be computed and used.",
+>>>>>>> fbd3b31 (Update schema)
         "type": "object",
         "required": [
           "withdraw_rewards"
@@ -919,7 +923,7 @@
         "additionalProperties": false
       },
       {
-        "description": "`PendingRewards` returns the pending rewards for a user on a finality provider. The rewards are returned in the form of a Coin",
+        "description": "`PendingRewards` returns the pending rewards for a staker on a finality provider. The staker address must be its Babylon delegator address. The rewards are returned in the form of a Coin.",
         "type": "object",
         "required": [
           "pending_rewards"
@@ -929,13 +933,13 @@
             "type": "object",
             "required": [
               "fp_pubkey_hex",
-              "user"
+              "staker_addr"
             ],
             "properties": {
               "fp_pubkey_hex": {
                 "type": "string"
               },
-              "user": {
+              "staker_addr": {
                 "type": "string"
               }
             },
@@ -945,7 +949,7 @@
         "additionalProperties": false
       },
       {
-        "description": "`AllPendingRewards` returns the pending rewards for a user on all finality providers.",
+        "description": "`AllPendingRewards` returns the pending rewards for a staker on all finality providers. The staker address must be its Babylon delegator address.",
         "type": "object",
         "required": [
           "all_pending_rewards"
@@ -954,7 +958,7 @@
           "all_pending_rewards": {
             "type": "object",
             "required": [
-              "user"
+              "staker_addr"
             ],
             "properties": {
               "limit": {
@@ -965,6 +969,9 @@
                 "format": "uint32",
                 "minimum": 0.0
               },
+              "staker_addr": {
+                "type": "string"
+              },
               "start_after": {
                 "anyOf": [
                   {
@@ -974,9 +981,6 @@
                     "type": "null"
                   }
                 ]
-              },
-              "user": {
-                "type": "string"
               }
             },
             "additionalProperties": false

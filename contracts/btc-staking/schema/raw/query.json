@@ -241,7 +241,7 @@
       "additionalProperties": false
     },
     {
-      "description": "`PendingRewards` returns the pending rewards for a user on a finality provider. The rewards are returned in the form of a Coin",
+      "description": "`PendingRewards` returns the pending rewards for a staker on a finality provider. The staker address must be its Babylon delegator address. The rewards are returned in the form of a Coin.",
       "type": "object",
       "required": [
         "pending_rewards"
@@ -251,13 +251,13 @@
           "type": "object",
           "required": [
             "fp_pubkey_hex",
-            "user"
+            "staker_addr"
           ],
           "properties": {
             "fp_pubkey_hex": {
               "type": "string"
             },
-            "user": {
+            "staker_addr": {
               "type": "string"
             }
           },
@@ -267,7 +267,7 @@
       "additionalProperties": false
     },
     {
-      "description": "`AllPendingRewards` returns the pending rewards for a user on all finality providers.",
+      "description": "`AllPendingRewards` returns the pending rewards for a staker on all finality providers. The staker address must be its Babylon delegator address.",
       "type": "object",
       "required": [
         "all_pending_rewards"
@@ -276,7 +276,7 @@
         "all_pending_rewards": {
           "type": "object",
           "required": [
-            "user"
+            "staker_addr"
           ],
           "properties": {
             "limit": {
@@ -287,6 +287,9 @@
               "format": "uint32",
               "minimum": 0.0
             },
+            "staker_addr": {
+              "type": "string"
+            },
             "start_after": {
               "anyOf": [
                 {
@@ -296,9 +299,6 @@
                   "type": "null"
                 }
               ]
-            },
-            "user": {
-              "type": "string"
             }
           },
           "additionalProperties": false
