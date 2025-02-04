@@ -450,6 +450,7 @@ impl Suite {
         &mut self,
         fp_pubkey_hex: &str,
         staker: &str,
+        babylon_rewards: bool,
     ) -> anyhow::Result<AppResponse> {
         self.app.execute_contract(
             Addr::unchecked("anyone"),
@@ -457,6 +458,7 @@ impl Suite {
             &btc_staking::msg::ExecuteMsg::WithdrawRewards {
                 fp_pubkey_hex: fp_pubkey_hex.to_owned(),
                 staker_addr: staker.to_owned(),
+                babylon_rewards,
             },
             &[],
         )

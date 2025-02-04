@@ -593,12 +593,13 @@ mod distribution {
 
         // Withdrawing rewards
         // Trying to withdraw the rewards with a Consumer address should fail
-        let res = suite.withdraw_rewards(&new_fp1.btc_pk_hex, staker1_addr_consumer.as_ref());
+        let res =
+            suite.withdraw_rewards(&new_fp1.btc_pk_hex, staker1_addr_consumer.as_ref(), false);
         assert!(res.is_err());
 
         // Trying to withdraw the rewards with a Babylon address should work
         suite
-            .withdraw_rewards(&new_fp1.btc_pk_hex, &staker1_addr)
+            .withdraw_rewards(&new_fp1.btc_pk_hex, &staker1_addr, false)
             .unwrap();
 
         // Rewards have been transferred out of the staking contract
