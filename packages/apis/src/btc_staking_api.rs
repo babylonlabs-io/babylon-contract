@@ -38,12 +38,15 @@ pub enum ExecuteMsg {
     /// `WithdrawRewards` is a message sent by anyone on behalf of the
     /// staker, to withdraw rewards from BTC staking via the given FP.
     ///
-    /// `staker_addr` is both the address to claim and receive the rewards.
-    /// It's a Babylon address. If rewards are to be sent to a Consumer address, the
-    /// staker's equivalent address in that chain will be computed and used.
+    /// `staker_addr` is the address to claim from, and receive the rewards. It's a Babylon address.
+    /// If rewards are to be sent to a Consumer address (`babylon_rewards` is false), the staker's
+    /// equivalent address in that chain will be computed and used.
+    /// If `babylon_rewards` is true, the rewards will be sent to the staker's Babylon address over
+    /// IBC, using the ICS-20 transfer protocol.
     WithdrawRewards {
         fp_pubkey_hex: String,
         staker_addr: String,
+        babylon_rewards: bool,
     },
 }
 

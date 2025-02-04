@@ -110,4 +110,6 @@ pub enum ContractError {
     RecipientRequired,
     #[error("Delegation {0} to FP {1} not found")]
     DelegationToFpNotFound(String, String),
+    #[error("Required ICS-20 transfer info is not set")]
+    TransferInfoNotFound,
 }

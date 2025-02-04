@@ -430,14 +430,17 @@ fn distribute_rewards(
 
 /// Withdraw rewards from BTC staking via given FP.
 ///
-/// `staker_addr` is the Babylon address to receive the rewards.
+/// `staker_addr` is the Babylon address to claim the rewards.
 /// `fp_pubkey_hex` is the public key of the FP to withdraw rewards from.
+/// `babylon_rewards` is a flag to indicate whether the rewards are to be sent to Babylon or the
+/// Consumer.
 pub fn handle_withdraw_rewards(
     mut deps: DepsMut,
     env: &Env,
     info: &MessageInfo,
     fp_pubkey_hex: &str,
     staker_addr: String,
+    babylon_rewards: bool,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     nonpayable(info)?;
     let staker_canonical_addr = to_canonical_addr(&staker_addr, "bbn")?;
@@ -478,6 +481,7 @@ pub fn handle_withdraw_rewards(
         &staker_canonical_addr,
         cfg,
         amount,
+        babylon_rewards,
     )?;
     let resp = Response::new()
         .add_message(wasm_msg)
@@ -496,17 +500,11 @@ fn send_rewards_msg(
     staker_canonical_addr: &CanonicalAddr,
     cfg: Config,
     amount: Uint128,
+    babylon_rewards: bool,
 ) -> Result<(String, CosmosMsg<BabylonMsg>), ContractError> {
-    // Query the babylon contract for transfer info
-    // TODO: Turn into a parameter set during instantiation to avoid query
-    let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
-        cfg.babylon.to_string(),
-        &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
-    )?;
-
     // Create the bank / routing packet
-    let (recipient, cosmos_msg) = match transfer_info {
-        None => {
+    let (recipient, cosmos_msg) = match babylon_rewards {
+        false => {
             // Consumer withdrawal.
             // Send rewards to the staker address on the Consumer
             let recipient = deps.api.addr_humanize(staker_canonical_addr)?.to_string();
@@ -516,8 +514,17 @@ fn send_rewards_msg(
             };
             (recipient, CosmosMsg::Bank(bank_msg))
         }
-        Some(ics20_channel_id) => {
+        true => {
             // Babylon withdrawal.
+            // Query the babylon contract for transfer info
+            // TODO: Turn into a parameter set during instantiation, to avoid query
+            let Some(ics20_channel_id): TransferInfoResponse = deps.querier.query_wasm_smart(
+                cfg.babylon.to_string(),
+                &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
+            )?
+            else {
+                return Err(ContractError::TransferInfoNotFound);
+            };
             // Send rewards to the staker address on Babylon (ICS-020 transfer)
             let ibc_msg = IbcMsg::Transfer {
                 channel_id: ics20_channel_id,

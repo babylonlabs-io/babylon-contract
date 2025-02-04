@@ -152,8 +152,16 @@ pub fn execute(
         ExecuteMsg::WithdrawRewards {
             fp_pubkey_hex,
             staker_addr,
+            babylon_rewards,
         } => {
-            let res = handle_withdraw_rewards(deps, &env, &info, &fp_pubkey_hex, staker_addr)?;
+            let res = handle_withdraw_rewards(
+                deps,
+                &env,
+                &info,
+                &fp_pubkey_hex,
+                staker_addr,
+                babylon_rewards,
+            )?;
             Ok(res)
         }
     }
