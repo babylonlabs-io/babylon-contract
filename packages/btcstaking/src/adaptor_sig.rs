@@ -104,8 +104,10 @@ impl AdaptorSignature {
             return Err(Error::PointAtInfinity("expected R'".to_string()));
         }
 
-        // Ensure expected R'.y is even
-        if expected_r_hat.y_is_odd().into() {
+        // Ensure R.y is even
+        let r = self.r;
+        let r = r.to_affine();
+        if r.y_is_odd().into() {
             return Err(Error::PointWithOddY("expected R'".to_string()));
         }
 
