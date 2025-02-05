@@ -81,9 +81,13 @@ pub struct FinalityProvider {
     /// jailed defines whether the finality provider is jailed
     #[prost(bool, tag="8")]
     pub jailed: bool,
+    /// highest_voted_height is the highest height for which the
+    /// finality provider has voted
+    #[prost(uint32, tag="9")]
+    pub highest_voted_height: u32,
     /// consumer_id is the ID of the consumer the finality provider is operating on.
     /// If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.
-    #[prost(string, tag="9")]
+    #[prost(string, tag="10")]
     pub consumer_id: ::prost::alloc::string::String,
 }
 /// BTCDelegation defines a BTC delegation
@@ -152,6 +156,10 @@ pub struct BtcDelegation {
     /// version of the params used to validate the delegation
     #[prost(uint32, tag="16")]
     pub params_version: u32,
+    /// btc_tip_height is the height of the BTC light client tip at the time of
+    /// the delegation creation
+    #[prost(uint32, tag="17")]
+    pub btc_tip_height: u32,
 }
 /// DelegatorUnbondingInfo contains the information about transaction which spent
 /// the staking output. It contains:
@@ -275,9 +283,10 @@ pub struct Params {
     #[prost(string, tag="9")]
     pub slashing_rate: ::prost::alloc::string::String,
     /// PARAMETERS COVERING UNBONDING
-    /// min_unbonding_time is the minimum time for unbonding transaction timelock in BTC blocks
+    /// unbonding_time is the exact unbonding time required from unbonding transaction
+    /// it must be larger than `checkpoint_finalization_timeout` from `btccheckpoint` module
     #[prost(uint32, tag="10")]
-    pub min_unbonding_time_blocks: u32,
+    pub unbonding_time_blocks: u32,
     /// unbonding_fee exact fee required for unbonding transaction
     #[prost(int64, tag="11")]
     pub unbonding_fee_sat: i64,
@@ -295,6 +304,9 @@ pub struct Params {
     /// setting it to 0 means allow list is disabled
     #[prost(uint64, tag="14")]
     pub allow_list_expiration_height: u64,
+    /// btc_activation_height is the btc height from which parameters are activated (inclusive)
+    #[prost(uint32, tag="15")]
+    pub btc_activation_height: u32,
 }
 /// BTCStakingIBCPacket is an IBC packet sent from Babylon to a consumer
 /// It carries a set of events related to BTC staking for a given consumer

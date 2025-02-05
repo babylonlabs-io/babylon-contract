@@ -39,7 +39,6 @@
         "covenant_pks",
         "covenant_quorum",
         "min_slashing_tx_fee_sat",
-        "rewards_denom",
         "slashing_pk_script",
         "slashing_rate"
       ],
@@ -70,9 +69,6 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        },
-        "rewards_denom": {
-          "type": "string"
         },
         "slashing_pk_script": {
           "description": "`slashing_pk_script` is the pk script that the slashed BTC goes to. The pk script is in string format on Bitcoin.",
