@@ -241,15 +241,7 @@
       "additionalProperties": false
     },
     {
-<<<<<<< HEAD
-<<<<<<< HEAD
       "description": "`PendingRewards` returns the pending rewards for a staker on a finality provider. The staker address must be its Babylon delegator address. The rewards are returned in the form of a Coin.",
-=======
-      "description": "`PendingRewards` returns the pending rewards for a user on a finality provider. The rewards are returned in the form of a Coin",
->>>>>>> 37fca3d (Update schemas)
-=======
-      "description": "`PendingRewards` returns the pending rewards for a staker on a finality provider. The staker address must be its Babylon delegator address. The rewards are returned in the form of a Coin.",
->>>>>>> fbd3b31 (Update schema)
       "type": "object",
       "required": [
         "pending_rewards"
@@ -259,29 +251,13 @@
           "type": "object",
           "required": [
             "fp_pubkey_hex",
-<<<<<<< HEAD
-<<<<<<< HEAD
             "staker_addr"
-=======
-            "user"
->>>>>>> 37fca3d (Update schemas)
-=======
-            "staker_addr"
->>>>>>> fbd3b31 (Update schema)
           ],
           "properties": {
             "fp_pubkey_hex": {
               "type": "string"
             },
-<<<<<<< HEAD
-<<<<<<< HEAD
             "staker_addr": {
-=======
-            "user": {
->>>>>>> 37fca3d (Update schemas)
-=======
-            "staker_addr": {
->>>>>>> fbd3b31 (Update schema)
               "type": "string"
             }
           },
@@ -291,15 +267,7 @@
       "additionalProperties": false
     },
     {
-<<<<<<< HEAD
-<<<<<<< HEAD
       "description": "`AllPendingRewards` returns the pending rewards for a staker on all finality providers. The staker address must be its Babylon delegator address.",
-=======
-      "description": "`AllPendingRewards` returns the pending rewards for a user on all finality providers.",
->>>>>>> 37fca3d (Update schemas)
-=======
-      "description": "`AllPendingRewards` returns the pending rewards for a staker on all finality providers. The staker address must be its Babylon delegator address.",
->>>>>>> fbd3b31 (Update schema)
       "type": "object",
       "required": [
         "all_pending_rewards"
@@ -308,15 +276,7 @@
         "all_pending_rewards": {
           "type": "object",
           "required": [
-<<<<<<< HEAD
-<<<<<<< HEAD
             "staker_addr"
-=======
-            "user"
->>>>>>> 37fca3d (Update schemas)
-=======
-            "staker_addr"
->>>>>>> fbd3b31 (Update schema)
           ],
           "properties": {
             "limit": {
@@ -327,18 +287,9 @@
               "format": "uint32",
               "minimum": 0.0
             },
-<<<<<<< HEAD
-<<<<<<< HEAD
             "staker_addr": {
               "type": "string"
             },
-=======
->>>>>>> 37fca3d (Update schemas)
-=======
-            "staker_addr": {
-              "type": "string"
-            },
->>>>>>> fbd3b31 (Update schema)
             "start_after": {
               "anyOf": [
                 {
@@ -348,15 +299,6 @@
                   "type": "null"
                 }
               ]
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-            },
-            "user": {
-              "type": "string"
->>>>>>> 37fca3d (Update schemas)
-=======
->>>>>>> fbd3b31 (Update schema)
             }
           },
           "additionalProperties": false
