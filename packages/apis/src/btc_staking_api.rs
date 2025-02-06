@@ -35,10 +35,12 @@ pub enum ExecuteMsg {
         /// `fp_distribution` is the list of finality providers and their rewards
         fp_distribution: Vec<RewardInfo>,
     },
-    /// `WithdrawRewards` is a message sent by the Babylon contract on behalf of the
+    /// `WithdrawRewards` is a message sent by anyone on behalf of the
     /// staker, to withdraw rewards from BTC staking via the given FP.
     ///
-    /// `staker_addr` is the address to claim the rewards.
+    /// `staker_addr` is both the address to claim and receive the rewards.
+    /// It's a Babylon address. If rewards are to be sent to a Consumer address, the
+    /// staker's equivalent address in that chain will be computed and used.
     WithdrawRewards {
         fp_pubkey_hex: String,
         staker_addr: String,

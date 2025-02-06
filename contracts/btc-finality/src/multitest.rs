@@ -441,7 +441,7 @@ mod distribution {
     use test_utils::get_public_randomness_commitment;
 
     #[test]
-    fn distribution_works() {
+    fn distribution_consumer_withdrawal_works() {
         // Read public randomness commitment test data
         let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
         let pub_rand_one = get_pub_rand_value();
@@ -565,30 +565,49 @@ mod distribution {
         // distributed among delegators
         let rewards_denom = suite.get_btc_staking_config().denom;
         // Build staker 1 address on the Consumer network
+        let staker1_addr = del1.staker_addr;
         let staker1_addr_consumer = suite
-            .to_consumer_addr(&Addr::unchecked(del1.staker_addr))
+            .to_consumer_addr(&Addr::unchecked(staker1_addr.clone()))
             .unwrap();
+        let staker2_addr = del2.staker_addr;
 
-        let pending_rewards_1 = suite.get_pending_delegator_rewards(staker1_addr_consumer.as_str());
+        let pending_rewards_1 = suite.get_pending_delegator_rewards(&staker1_addr);
         assert_eq!(pending_rewards_1.len(), 1);
         assert_eq!(pending_rewards_1[0].fp_pubkey_hex, pk_hex);
         assert_eq!(pending_rewards_1[0].rewards.denom, rewards_denom);
         assert!(pending_rewards_1[0].rewards.amount.u128() > 0);
 
-        // Build staker 2 address on the Consumer network
-        let staker2_addr_consumer = suite
-            .to_consumer_addr(&Addr::unchecked(del2.staker_addr))
-            .unwrap();
-
-        let pending_rewards_2 = suite.get_pending_delegator_rewards(staker2_addr_consumer.as_str());
+        let pending_rewards_2 = suite.get_pending_delegator_rewards(staker2_addr.as_str());
         assert_eq!(pending_rewards_2.len(), 1);
         assert_eq!(pending_rewards_2[0].fp_pubkey_hex, new_fp2.btc_pk_hex);
         assert_eq!(pending_rewards_2[0].rewards.denom, rewards_denom);
         assert!(pending_rewards_2[0].rewards.amount.u128() > 0);
 
         // Confirm that the distribution makes sense
-        let rewards_1 = pending_rewards_1[0].rewards.amount.u128() as u64;
-        let rewards_2 = pending_rewards_2[0].rewards.amount.u128() as u64;
-        assert_eq!(rewards_1 / rewards_2, del1.total_sat / del2.total_sat);
+        let rewards_1 = pending_rewards_1[0].rewards.amount.u128();
+        let rewards_2 = pending_rewards_2[0].rewards.amount.u128();
+        assert_eq!(
+            rewards_1 / rewards_2,
+            del1.total_sat as u128 / del2.total_sat as u128
+        );
+
+        // Withdrawing rewards
+        // Trying to withdraw the rewards with a Consumer address should fail
+        let res = suite.withdraw_rewards(&new_fp1.btc_pk_hex, staker1_addr_consumer.as_ref());
+        assert!(res.is_err());
+
+        // Trying to withdraw the rewards with a Babylon address should work
+        suite
+            .withdraw_rewards(&new_fp1.btc_pk_hex, &staker1_addr)
+            .unwrap();
+
+        // Rewards have been transferred out of the staking contract
+        let pending_rewards_1 = suite.get_pending_delegator_rewards(staker1_addr.as_str());
+        assert_eq!(pending_rewards_1.len(), 1);
+        assert_eq!(pending_rewards_1[0].rewards.amount.u128(), 0);
+
+        // And are now in the staker (Consumer's) balance
+        let consumer_balance = suite.get_balance(&staker1_addr_consumer, &rewards_denom);
+        assert_eq!(consumer_balance.amount.u128(), rewards_1);
     }
 }

@@ -3,12 +3,13 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{
-    coin, BankMsg, DepsMut, Env, Event, MessageInfo, Response, StdResult, Storage, Uint128, Uint256,
+    coin, BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, IbcMsg, MessageInfo, Response,
+    StdResult, Storage, Uint128, Uint256,
 };
 use hex::ToHex;
 
 use crate::error::ContractError;
-use crate::state::config::{ADMIN, CONFIG, PARAMS};
+use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::delegations::{delegations, DelegationDistribution};
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
@@ -23,8 +24,10 @@ use babylon_apis::btc_staking_api::{
 };
 use babylon_apis::{to_canonical_addr, Validate};
 use babylon_bindings::BabylonMsg;
+use babylon_contract::ibc::packet_timeout;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
+use babylon_contract::msg::ibc::TransferInfoResponse;
 use cosmwasm_std::Order::Ascending;
 use cw_utils::{must_pay, nonpayable};
 use std::str::FromStr;
@@ -431,6 +434,7 @@ fn distribute_rewards(
 /// `fp_pubkey_hex` is the public key of the FP to withdraw rewards from.
 pub fn handle_withdraw_rewards(
     mut deps: DepsMut,
+    env: &Env,
     info: &MessageInfo,
     fp_pubkey_hex: &str,
     staker_addr: String,
@@ -467,23 +471,68 @@ pub fn handle_withdraw_rewards(
         return Err(ContractError::NoRewards);
     }
 
-    // Create the bank packet.
-    // Sends to the staker address on the Consumer.
-    // TODO: Send to the staker address on Babylon over IBC (ICS-020)
-    let recipient = deps.api.addr_humanize(&staker_canonical_addr)?;
-    let rewards_denom = cfg.denom;
-    let msg = BankMsg::Send {
-        to_address: recipient.to_string(),
-        amount: vec![coin(amount.u128(), rewards_denom)],
-    };
+    let (recipient, wasm_msg) = send_rewards_msg(
+        &deps,
+        env,
+        &staker_addr,
+        &staker_canonical_addr,
+        cfg,
+        amount,
+    )?;
     let resp = Response::new()
-        .add_message(msg)
+        .add_message(wasm_msg)
         .add_attribute("action", "withdraw_rewards")
         .add_attribute("staker", staker_addr)
         .add_attribute("fp", fp_pubkey_hex)
-        .add_attribute("recipient", &recipient)
+        .add_attribute("recipient", recipient)
         .add_attribute("amount", amount.to_string());
     Ok(resp)
+}
+
+/// `send_rewards_msg` sends the rewards to either the staker address on the Consumer or on Babylon,
+/// depending on the ICS-20 transfer info queried from the Babylon contract.
+fn send_rewards_msg(
+    deps: &DepsMut,
+    env: &Env,
+    staker_addr: &str,
+    staker_canonical_addr: &CanonicalAddr,
+    cfg: Config,
+    amount: Uint128,
+) -> Result<(String, CosmosMsg<BabylonMsg>), ContractError> {
+    // Query the babylon contract for transfer info
+    // TODO: Turn into a parameter set during instantiation to avoid query
+    let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
+        cfg.babylon.to_string(),
+        &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
+    )?;
+
+    // Create the corresponding bank or transfer packet
+    let (recipient, cosmos_msg) = match transfer_info {
+        None => {
+            // Consumer withdrawal.
+            // Send rewards to the staker address on the Consumer
+            let recipient = deps.api.addr_humanize(staker_canonical_addr)?.to_string();
+            let bank_msg = BankMsg::Send {
+                to_address: recipient.clone(),
+                amount: vec![coin(amount.u128(), cfg.denom)],
+            };
+            (recipient, CosmosMsg::Bank(bank_msg))
+        }
+        Some(ics20_channel_id) => {
+            // Babylon withdrawal.
+            // Send rewards to the staker address on Babylon (ICS-020 transfer)
+            let ibc_msg = IbcMsg::Transfer {
+                channel_id: ics20_channel_id,
+                to_address: staker_addr.to_string(),
+                amount: coin(amount.u128(), cfg.denom),
+                timeout: packet_timeout(env),
+                memo: None,
+            };
+
+            (staker_addr.to_string(), CosmosMsg::Ibc(ibc_msg))
+        }
+    };
+    Ok((recipient, cosmos_msg))
 }
 
 pub fn withdraw_delegation_reward(

@@ -114,7 +114,7 @@ impl SuiteBuilder {
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
-                    transfer_info: None,
+                    ics20_channel_id: None,
                 },
                 &[],
                 "babylon",
@@ -161,6 +161,11 @@ impl Suite {
     fn extract_prefix(addr: &Addr) -> &str {
         let bech32_prefix = addr.as_str().split('1').collect::<Vec<_>>()[0];
         bech32_prefix
+    }
+
+    #[track_caller]
+    pub fn get_balance(&self, addr: &Addr, denom: &str) -> Coin {
+        self.app.wrap().query_balance(addr, denom).unwrap()
     }
 
     #[allow(dead_code)]
@@ -431,12 +436,29 @@ impl Suite {
             .query_wasm_smart(
                 self.staking.clone(),
                 &btc_staking::msg::QueryMsg::AllPendingRewards {
-                    user: staker.into(),
+                    staker_addr: staker.into(),
                     start_after: None,
                     limit: None,
                 },
             )
             .unwrap();
         rewards_response.rewards
+    }
+
+    #[track_caller]
+    pub fn withdraw_rewards(
+        &mut self,
+        fp_pubkey_hex: &str,
+        staker: &str,
+    ) -> anyhow::Result<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked("anyone"),
+            self.staking.clone(),
+            &btc_staking::msg::ExecuteMsg::WithdrawRewards {
+                fp_pubkey_hex: fp_pubkey_hex.to_owned(),
+                staker_addr: staker.to_owned(),
+            },
+            &[],
+        )
     }
 }

@@ -90,20 +90,20 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
             &queries::finality_providers_by_power(deps, start_after, limit)?,
         )?),
         QueryMsg::PendingRewards {
-            user,
+            staker_addr,
             fp_pubkey_hex,
         } => Ok(to_json_binary(&queries::pending_rewards(
             deps,
-            user,
+            staker_addr,
             fp_pubkey_hex,
         )?)?),
         QueryMsg::AllPendingRewards {
-            user,
+            staker_addr,
             start_after,
             limit,
         } => Ok(to_json_binary(&queries::all_pending_rewards(
             deps,
-            user,
+            staker_addr,
             start_after,
             limit,
         )?)?),
@@ -153,7 +153,7 @@ pub fn execute(
             fp_pubkey_hex,
             staker_addr,
         } => {
-            let res = handle_withdraw_rewards(deps, &info, &fp_pubkey_hex, staker_addr)?;
+            let res = handle_withdraw_rewards(deps, &env, &info, &fp_pubkey_hex, staker_addr)?;
             Ok(res)
         }
     }

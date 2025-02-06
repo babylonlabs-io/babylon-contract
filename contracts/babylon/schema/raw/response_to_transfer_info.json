@@ -1,35 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Nullable_TransferInfo",
-  "anyOf": [
-    {
-      "$ref": "#/definitions/TransferInfo"
-    },
-    {
-      "type": "null"
-    }
-  ],
-  "definitions": {
-    "TransferInfo": {
-      "description": "IBC transfer (ICS-020) channel settings",
-      "type": "object",
-      "required": [
-        "address_type",
-        "channel_id",
-        "to_address"
-      ],
-      "properties": {
-        "address_type": {
-          "type": "string"
-        },
-        "channel_id": {
-          "type": "string"
-        },
-        "to_address": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    }
-  }
+  "title": "Nullable_String",
+  "type": [
+    "string",
+    "null"
+  ]
 }
