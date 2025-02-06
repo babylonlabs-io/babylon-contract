@@ -278,6 +278,7 @@ fn handle_end_block(
     Ok(res)
 }
 
+// Sends rewards to the staking contract for distribution over delegators
 fn send_rewards_msg(
     deps: &mut DepsMut,
     rewards: u128,

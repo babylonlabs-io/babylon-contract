@@ -489,6 +489,8 @@ pub fn handle_withdraw_rewards(
     Ok(resp)
 }
 
+/// `send_rewards_msg` sends the rewards to either the staker address on the Consumer or on Babylon,
+/// depending on the ICS-20 transfer info queried from the Babylon contract.
 fn send_rewards_msg(
     deps: &DepsMut,
     env: &Env,
@@ -504,7 +506,7 @@ fn send_rewards_msg(
         &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
     )?;
 
-    // Create the bank / routing packet
+    // Create the corresponding bank or transfer packet
     let (recipient, cosmos_msg) = match transfer_info {
         None => {
             // Consumer withdrawal.
