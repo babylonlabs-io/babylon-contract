@@ -220,7 +220,7 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
 name = "babylon-apis"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "babylon-bitcoin",
  "babylon-merkle",
@@ -258,7 +258,7 @@ dependencies = [
 
 [[package]]
 name = "babylon-bitcoin"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "bitcoin",
  "cosmwasm-std",
@@ -273,7 +273,7 @@ dependencies = [
 
 [[package]]
 name = "babylon-btcstaking"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "babylon-bitcoin",
  "babylon-proto",
@@ -291,7 +291,7 @@ dependencies = [
 
 [[package]]
 name = "babylon-contract"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -326,7 +326,7 @@ dependencies = [
 
 [[package]]
 name = "babylon-merkle"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -340,7 +340,7 @@ dependencies = [
 
 [[package]]
 name = "babylon-proto"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "bitvec",
  "cosmos-sdk-proto",
@@ -508,7 +508,7 @@ dependencies = [
 
 [[package]]
 name = "btc-finality"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "anybuf",
  "anyhow",
@@ -544,7 +544,7 @@ dependencies = [
 
 [[package]]
 name = "btc-staking"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "babylon-apis",
  "babylon-bindings",
@@ -1514,7 +1514,7 @@ dependencies = [
 
 [[package]]
 name = "eots"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "hex",
  "k256",
@@ -2108,7 +2108,7 @@ checksum = "b410bbe7e14ab526a0e86877eb47c6996a2bd7746f027ba551028c925390e4e9"
 
 [[package]]
 name = "op-finality-gadget"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "anybuf",
  "anyhow",
@@ -3064,7 +3064,7 @@ dependencies = [
 
 [[package]]
 name = "test-utils"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "babylon-apis",
  "babylon-bitcoin",

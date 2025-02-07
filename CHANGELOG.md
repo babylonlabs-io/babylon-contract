@@ -2,7 +2,29 @@
 
 ## [Unreleased](https://github.com/babylonlabs-io/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.11.0...HEAD)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.12.0...HEAD)
+
+## [v0.12.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.12.0) (2025-02-07)
+
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.11.0-rc.1...v0.12.0)
+
+**Closed issues:**
+
+- Native rewards distribution protocol [\#102](https://github.com/babylonlabs-io/babylon-contract/issues/102)
+- Fix borken protobuf generation [\#101](https://github.com/babylonlabs-io/babylon-contract/issues/101)
+
+**Merged pull requests:**
+
+- F/sync protos [\#108](https://github.com/babylonlabs-io/babylon-contract/pull/108) ([maurolacy](https://github.com/maurolacy))
+- F/rewards claiming babylon [\#106](https://github.com/babylonlabs-io/babylon-contract/pull/106) ([maurolacy](https://github.com/maurolacy))
+- F/rewards distribution consumer [\#104](https://github.com/babylonlabs-io/babylon-contract/pull/104) ([maurolacy](https://github.com/maurolacy))
+- feat: op consumer chain slashing \(2/2\) [\#98](https://github.com/babylonlabs-io/babylon-contract/pull/98) ([parketh](https://github.com/parketh))
+- F/rewards distribution 2 [\#97](https://github.com/babylonlabs-io/babylon-contract/pull/97) ([maurolacy](https://github.com/maurolacy))
+- F/rewards distribution send [\#96](https://github.com/babylonlabs-io/babylon-contract/pull/96) ([maurolacy](https://github.com/maurolacy))
+- chore: use query\_grpc from cosmwasm\_std [\#93](https://github.com/babylonlabs-io/babylon-contract/pull/93) ([lesterli](https://github.com/lesterli))
+- feat: op consumer chain slashing \(1/2\) [\#92](https://github.com/babylonlabs-io/babylon-contract/pull/92) ([parketh](https://github.com/parketh))
+- Rm auto register 2 [\#89](https://github.com/babylonlabs-io/babylon-contract/pull/89) ([maurolacy](https://github.com/maurolacy))
+- fix: bump contract and permissioned integration [\#87](https://github.com/babylonlabs-io/babylon-contract/pull/87) ([SebastianElvis](https://github.com/SebastianElvis))
 
 ## [v0.11.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.11.0) (2024-11-19)
 
