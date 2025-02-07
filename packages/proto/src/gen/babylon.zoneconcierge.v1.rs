@@ -148,17 +148,16 @@ pub struct ProofFinalizedChainInfo {
     #[prost(message, repeated, tag="3")]
     pub proof_epoch_submitted: ::prost::alloc::vec::Vec<super::super::btccheckpoint::v1::TransactionInfo>,
 }
-/// ZoneconciergePacketData is the message that defines the IBC packets of
-/// ZoneConcierge
+/// OutboundPacket represents packets sent from Babylon to other chains
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ZoneconciergePacketData {
+pub struct OutboundPacket {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="zoneconcierge_packet_data::Packet", tags="1, 2, 3")]
-    pub packet: ::core::option::Option<zoneconcierge_packet_data::Packet>,
+    #[prost(oneof="outbound_packet::Packet", tags="1, 2")]
+    pub packet: ::core::option::Option<outbound_packet::Packet>,
 }
-/// Nested message and enum types in `ZoneconciergePacketData`.
-pub mod zoneconcierge_packet_data {
+/// Nested message and enum types in `OutboundPacket`.
+pub mod outbound_packet {
     /// packet is the actual message carried in the IBC packet
     #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Oneof)]
@@ -167,7 +166,23 @@ pub mod zoneconcierge_packet_data {
         BtcTimestamp(super::BtcTimestamp),
         #[prost(message, tag="2")]
         BtcStaking(super::super::super::btcstaking::v1::BtcStakingIbcPacket),
-        #[prost(message, tag="3")]
+    }
+}
+/// InboundPacket represents packets received by Babylon from other chains
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InboundPacket {
+    /// packet is the actual message carried in the IBC packet
+    #[prost(oneof="inbound_packet::Packet", tags="1")]
+    pub packet: ::core::option::Option<inbound_packet::Packet>,
+}
+/// Nested message and enum types in `InboundPacket`.
+pub mod inbound_packet {
+    /// packet is the actual message carried in the IBC packet
+    #[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Packet {
+        #[prost(message, tag="1")]
         ConsumerSlashing(super::ConsumerSlashingIbcPacket),
     }
 }
