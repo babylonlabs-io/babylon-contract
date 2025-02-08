@@ -26,7 +26,7 @@ pub struct DelegationIndexes<'a> {
     pub staker: MultiIndex<'a, (Vec<u8>, String), DelegationDistribution, (Vec<u8>, String)>,
 }
 
-impl<'a> IndexList<DelegationDistribution> for DelegationIndexes<'a> {
+impl IndexList<DelegationDistribution> for DelegationIndexes<'_> {
     fn get_indexes(
         &'_ self,
     ) -> Box<dyn Iterator<Item = &'_ dyn Index<DelegationDistribution>> + '_> {
@@ -39,7 +39,7 @@ pub struct Delegations<'a> {
     pub delegation: IndexedMap<(&'a [u8], &'a str), DelegationDistribution, DelegationIndexes<'a>>,
 }
 
-impl<'a> Delegations<'a> {
+impl Delegations<'_> {
     fn deserialize_pk(pk: &[u8]) -> (Vec<u8>, String) {
         <(Vec<u8>, String)>::from_slice(pk).unwrap() // mustn't fail
     }
