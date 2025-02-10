@@ -1,9 +1,7 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    BtcTimestamp, 
-    OutboundPacket,
-    outbound_packet::Packet as OutboundPacketType,
+    outbound_packet::Packet as OutboundPacketType, BtcTimestamp, OutboundPacket,
 };
 
 use crate::state::config::CONFIG;
@@ -128,10 +126,8 @@ pub fn ibc_packet_receive(
     (|| {
         let packet = msg.packet;
         let caller = packet.dest.channel_id;
-        let packet_data =
-            OutboundPacket::decode(packet.data.as_slice()).map_err(|e| {
-                StdError::generic_err(format!("failed to decode OutboundPacket: {e}"))
-            })?;
+        let packet_data = OutboundPacket::decode(packet.data.as_slice())
+            .map_err(|e| StdError::generic_err(format!("failed to decode OutboundPacket: {e}")))?;
         let outbound_packet = packet_data
             .packet
             .ok_or(StdError::generic_err("empty IBC packet"))?;
@@ -163,9 +159,7 @@ pub(crate) mod ibc_packet {
     use babylon_apis::finality_api::Evidence;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
     use babylon_proto::babylon::zoneconcierge::v1::{
-        InboundPacket,
-        inbound_packet::Packet as InboundPacketType,
-        ConsumerSlashingIbcPacket,
+        inbound_packet::Packet as InboundPacketType, ConsumerSlashingIbcPacket, InboundPacket,
     };
     use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
@@ -275,7 +269,7 @@ pub(crate) mod ibc_packet {
                         canonical_finality_sig: evidence.canonical_finality_sig.to_vec().into(),
                         fork_finality_sig: evidence.fork_finality_sig.to_vec().into(),
                     }),
-                }
+                },
             )),
         };
         let msg = IbcMsg::SendPacket {
