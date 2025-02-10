@@ -564,11 +564,7 @@ mod distribution {
         // Assert that rewards have been generated, sent to the staking contract, and
         // distributed among delegators
         let rewards_denom = suite.get_btc_staking_config().denom;
-        // Build staker 1 address on the Consumer network
         let staker1_addr = del1.staker_addr;
-        let staker1_addr_consumer = suite
-            .to_consumer_addr(&Addr::unchecked(staker1_addr.clone()))
-            .unwrap();
         let staker2_addr = del2.staker_addr;
 
         let pending_rewards_1 = suite.get_pending_delegator_rewards(&staker1_addr);
@@ -593,6 +589,10 @@ mod distribution {
 
         // Withdrawing rewards
         // Trying to withdraw the rewards with a Consumer address should fail
+        // Build staker 1 address on the Consumer network
+        let staker1_addr_consumer = suite
+            .to_consumer_addr(&Addr::unchecked(staker1_addr.clone()))
+            .unwrap();
         let res = suite.withdraw_rewards(&new_fp1.btc_pk_hex, staker1_addr_consumer.as_ref());
         assert!(res.is_err());
 
