@@ -15,7 +15,8 @@ types:
     - babylon.zoneconcierge.v1.ProofFinalizedChainInfo
     - babylon.zoneconcierge.v1.FinalizedChainInfo
     - babylon.zoneconcierge.v1.QueryFinalizedChainsInfoResponse
-    - babylon.zoneconcierge.v1.ZoneconciergePacketData
+    - babylon.zoneconcierge.v1.OutboundPacket
+    - babylon.zoneconcierge.v1.InboundPacket
     - babylon.zoneconcierge.v1.BTCTimestamp
     - babylon.btcstaking.v1.FinalityProvider
     - babylon.btcstaking.v1.BTCDelegation

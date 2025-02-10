@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    zoneconcierge_packet_data::Packet, BtcTimestamp, ZoneconciergePacketData,
+    outbound_packet::Packet as OutboundPacketType, BtcTimestamp, OutboundPacket,
 };
 
 use crate::state::config::CONFIG;
@@ -123,33 +123,26 @@ pub fn ibc_packet_receive(
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
-    // put this in a closure so we can convert all error responses into acknowledgements
     (|| {
         let packet = msg.packet;
-        // which local channel did this packet come on
         let caller = packet.dest.channel_id;
-        let zc_packet_data =
-            ZoneconciergePacketData::decode(packet.data.as_slice()).map_err(|e| {
-                StdError::generic_err(format!("failed to decode ZoneconciergePacketData: {e}"))
-            })?;
-        let zc_packet = zc_packet_data
+        let packet_data = OutboundPacket::decode(packet.data.as_slice())
+            .map_err(|e| StdError::generic_err(format!("failed to decode OutboundPacket: {e}")))?;
+        let outbound_packet = packet_data
             .packet
             .ok_or(StdError::generic_err("empty IBC packet"))?;
-        match zc_packet {
-            Packet::BtcTimestamp(btc_ts) => ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts),
-            Packet::BtcStaking(btc_staking) => {
+        match outbound_packet {
+            OutboundPacketType::BtcTimestamp(btc_ts) => {
+                ibc_packet::handle_btc_timestamp(deps, caller, &btc_ts)
+            }
+            OutboundPacketType::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
             }
-            Packet::ConsumerSlashing(_) => Err(StdError::generic_err(
-                "ConsumerSlashing packet should not be received",
-            )),
         }
     })()
     .or_else(|e| {
-        // we try to capture all app-level errors and convert them into
-        // acknowledgement packets that contain an error code.
         Ok(
-            IbcReceiveResponse::new(StdAck::error(format!("invalid packet: {e}"))) // TODO: design error ack format
+            IbcReceiveResponse::new(StdAck::error(format!("invalid packet: {e}")))
                 .add_event(Event::new("ibc").add_attribute("packet", "receive")),
         )
     })
@@ -165,8 +158,9 @@ pub(crate) mod ibc_packet {
     };
     use babylon_apis::finality_api::Evidence;
     use babylon_proto::babylon::btcstaking::v1::BtcStakingIbcPacket;
-    use babylon_proto::babylon::zoneconcierge::v1::zoneconcierge_packet_data::Packet::ConsumerSlashing;
-    use babylon_proto::babylon::zoneconcierge::v1::ConsumerSlashingIbcPacket;
+    use babylon_proto::babylon::zoneconcierge::v1::{
+        inbound_packet::Packet as InboundPacketType, ConsumerSlashingIbcPacket, InboundPacket,
+    };
     use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
     pub fn handle_btc_timestamp(
@@ -263,18 +257,20 @@ pub(crate) mod ibc_packet {
         channel: &IbcChannel,
         evidence: &Evidence,
     ) -> Result<IbcMsg, ContractError> {
-        let packet = ZoneconciergePacketData {
-            packet: Some(ConsumerSlashing(ConsumerSlashingIbcPacket {
-                evidence: Some(babylon_proto::babylon::finality::v1::Evidence {
-                    fp_btc_pk: evidence.fp_btc_pk.to_vec().into(),
-                    block_height: evidence.block_height,
-                    pub_rand: evidence.pub_rand.to_vec().into(),
-                    canonical_app_hash: evidence.canonical_app_hash.to_vec().into(),
-                    fork_app_hash: evidence.fork_app_hash.to_vec().into(),
-                    canonical_finality_sig: evidence.canonical_finality_sig.to_vec().into(),
-                    fork_finality_sig: evidence.fork_finality_sig.to_vec().into(),
-                }),
-            })),
+        let packet = InboundPacket {
+            packet: Some(InboundPacketType::ConsumerSlashing(
+                ConsumerSlashingIbcPacket {
+                    evidence: Some(babylon_proto::babylon::finality::v1::Evidence {
+                        fp_btc_pk: evidence.fp_btc_pk.to_vec().into(),
+                        block_height: evidence.block_height,
+                        pub_rand: evidence.pub_rand.to_vec().into(),
+                        canonical_app_hash: evidence.canonical_app_hash.to_vec().into(),
+                        fork_app_hash: evidence.fork_app_hash.to_vec().into(),
+                        canonical_finality_sig: evidence.canonical_finality_sig.to_vec().into(),
+                        fork_finality_sig: evidence.fork_finality_sig.to_vec().into(),
+                    }),
+                },
+            )),
         };
         let msg = IbcMsg::SendPacket {
             channel_id: channel.endpoint.channel_id.clone(),
