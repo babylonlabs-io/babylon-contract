@@ -2,7 +2,15 @@
 
 ## [Unreleased](https://github.com/babylonlabs-io/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.12.0...HEAD)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.13.0...HEAD)
+
+## [v0.13.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.13.0) (2025-02-11)
+
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.12.0-rc.0...v0.13.0)
+
+**Merged pull requests:**
+
+- feat: improve IBC packet structure [\#110](https://github.com/babylonlabs-io/babylon-contract/pull/110) ([gusin13](https://github.com/gusin13))
 
 ## [v0.12.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.12.0) (2025-02-07)
 
