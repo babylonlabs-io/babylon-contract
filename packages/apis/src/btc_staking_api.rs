@@ -42,8 +42,8 @@ pub enum ExecuteMsg {
     /// It's a Babylon address. If rewards are to be sent to a Consumer address, the
     /// staker's equivalent address in that chain will be computed and used.
     WithdrawRewards {
-        fp_pubkey_hex: String,
         staker_addr: String,
+        fp_pubkey_hex: String,
     },
 }
 
