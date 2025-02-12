@@ -155,7 +155,6 @@ pub fn ibc_packet_receive(
 pub(crate) mod ibc_packet {
     use super::*;
     use crate::state::config::CONFIG;
-    use crate::state::btc_light_client;
     use babylon_apis::btc_staking_api::SlashedBtcDelegation;
     use babylon_apis::btc_staking_api::{
         ActiveBtcDelegation, NewFinalityProvider, UnbondedBtcDelegation,
@@ -262,18 +261,21 @@ pub(crate) mod ibc_packet {
         btc_headers: &BtcHeaders,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
         deps.api.debug(&format!("CONTRACT: Received BTC headers: {:?}", btc_headers));
-        
-        if btc_light_client::is_initialized(deps.storage) {
-            btc_light_client::handle_btc_headers_from_babylon(deps.storage, &btc_headers.headers)
-                .map_err(|e| StdError::generic_err(format!("failed to handle BTC headers from Babylon: {e}")))?;
-        } else {
-            btc_light_client::init(deps.storage, &btc_headers.headers)
-                .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
+        let storage = deps.storage;
+        let cfg = CONFIG.load(storage)?;
+
+        let msg_option = crate::state::handle_btc_headers(storage, btc_headers)?;
+
+        let mut resp: IbcReceiveResponse<BabylonMsg> =
+            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
+        resp = resp.add_attribute("action", "receive_btc_headers");
+
+        if let Some(msg) = msg_option {
+            if cfg.notify_cosmos_zone {
+                resp = resp.add_message(msg);
+            }
         }
-    
-        let resp = IbcReceiveResponse::new(StdAck::success(vec![]))
-            .add_attribute("action", "handle_btc_headers");
-    
+
         Ok(resp)
     }
 
