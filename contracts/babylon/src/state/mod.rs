@@ -21,13 +21,15 @@ pub fn handle_btc_timestamp(
     btc_ts: &BtcTimestamp,
 ) -> Result<Option<BabylonMsg>, StdError> {
     // extract and init/handle BTC headers
-    let btc_headers = &btc_ts.btc_headers;
+    let btc_headers = btc_ts.btc_headers.as_ref()
+        .ok_or_else(|| StdError::generic_err("btc_headers is None"))?;
+
     if btc_light_client::is_initialized(storage) {
-        btc_light_client::handle_btc_headers_from_babylon(storage, btc_headers).map_err(|e| {
+        btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers).map_err(|e| {
             StdError::generic_err(format!("failed to handle BTC headers from Babylon: {e}"))
         })?;
     } else {
-        btc_light_client::init(storage, btc_headers)
+        btc_light_client::init(storage, &btc_headers.headers)
             .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
     }
 
