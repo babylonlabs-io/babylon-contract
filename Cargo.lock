@@ -315,6 +315,7 @@ dependencies = [
  "derivative",
  "hex",
  "ics23",
+ "ics23-commitment",
  "pbjson-types",
  "prost 0.11.9",
  "sha2",
@@ -1804,6 +1805,17 @@ dependencies = [
  "ripemd",
  "sha2",
  "sha3",
+]
+
+[[package]]
+name = "ics23-commitment"
+version = "0.13.0"
+dependencies = [
+ "anyhow",
+ "ics23",
+ "prost 0.11.9",
+ "tendermint-proto",
+ "thiserror",
 ]
 
 [[package]]

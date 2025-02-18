@@ -1,5 +1,5 @@
-use crate::utils::ics23_commitment::error::CommitmentError;
-use crate::utils::ics23_commitment::specs::ProofSpecs;
+use crate::error::CommitmentError;
+use crate::specs::ProofSpecs;
 use ics23::commitment_proof::Proof;
 use ics23::{calculate_existence_root, verify_membership, CommitmentProof};
 
