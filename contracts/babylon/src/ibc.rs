@@ -281,7 +281,7 @@ pub(crate) mod ibc_packet {
     }
 }
 
-const DEFAULT_TIMEOUT: u64 = 10 * 60;
+const DEFAULT_TIMEOUT: u64 = 24 * 60 * 60; // 24 hours
 
 pub fn packet_timeout(env: &Env) -> IbcTimeout {
     let timeout = env.block.time.plus_seconds(DEFAULT_TIMEOUT);
