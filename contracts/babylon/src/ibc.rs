@@ -110,9 +110,9 @@ pub fn ibc_channel_close(
     // TODO: erase all contract state upon closing the channel
 }
 
-/// Invoked when an IBC packet is received
-/// We decode the contents of the packet and if it matches one of the packets we support
-/// execute the relevant function, otherwise return an error.
+/// Invoked when an IBC packet is received.
+/// We decode the contents of the packet and if it matches one of the packets we support, execute
+/// the relevant function, otherwise return an error.
 /// NOTE: In its current form, this method does not modify state.
 /// If we want to modify state here, we have to follow the techniques outlined here:
 /// https://github.com/CosmWasm/cosmwasm/blob/main/IBC.md#acknowledging-errors
