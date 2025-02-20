@@ -260,7 +260,6 @@ pub(crate) mod ibc_packet {
         _caller: String,
         btc_headers: &BtcHeaders,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        deps.api.debug(&format!("CONTRACT: Received BTC headers: {:?}", btc_headers));
         let storage = deps.storage;
         let cfg = CONFIG.load(storage)?;
 
