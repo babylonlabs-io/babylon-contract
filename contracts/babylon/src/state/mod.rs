@@ -86,6 +86,10 @@ pub fn handle_btc_headers(
         btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers)
             .map_err(|e| StdError::generic_err(format!("failed to handle BTC headers: {e}")))?;
     } else {
+        // TODO: Two issues to fix:
+        // 1. Remove init logic once BSN base BTC header is set during contract instantiation
+        // 2. Babylon to send headers from BSN base to tip instead of last w+1 headers
+        // See: https://github.com/babylonlabs-io/babylon-contract/issues/114
         btc_light_client::init(storage, &btc_headers.headers)
             .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
     }
