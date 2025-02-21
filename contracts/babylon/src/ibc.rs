@@ -112,12 +112,7 @@ pub fn ibc_channel_close(
 
 /// Invoked when an IBC packet is received.
 /// We decode the contents of the packet and if it matches one of the packets we support, execute
-/// the relevant function, otherwise return an error.
-/// NOTE: In its current form, this method does not modify state.
-/// If we want to modify state here, we have to follow the techniques outlined here:
-/// https://github.com/CosmWasm/cosmwasm/blob/main/IBC.md#acknowledging-errors
-/// That's because we want to send an ACK for the packet regardless if there's an error or not,
-/// but in the case of an error, we do not want the state to be committed.
+/// the relevant function, otherwise return an IBC Ack error.
 pub fn ibc_packet_receive(
     deps: DepsMut,
     _env: Env,
