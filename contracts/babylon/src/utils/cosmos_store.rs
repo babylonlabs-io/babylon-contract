@@ -1,4 +1,4 @@
-use crate::utils::ics23_commitment::merkle::convert_tm_proto_to_ics_merkle_proof;
+use ics23_commitment::merkle::convert_tm_proto_to_ics_merkle_proof;
 
 // the below keys are hard-coded for now. They have to be consistent with the Babylon repo.
 // TODO: integration tests for ensuring they are the same, or parametrise them upon instantiation
@@ -43,7 +43,7 @@ pub fn verify_store(
         .map_err(|err|format!("failed to convert tendermint_proto::crypto::ProofOps to ibc::core::ics23_commitment::merkle::MerkleProof: {err:?}"))?;
 
     // construct values for verifying Merkle proofs
-    let specs = crate::utils::ics23_commitment::specs::ProofSpecs::default();
+    let specs = ics23_commitment::specs::ProofSpecs::default();
     let merkle_root = root.to_vec();
     let merkle_keys = vec![module_key.to_vec(), key.to_vec()];
 

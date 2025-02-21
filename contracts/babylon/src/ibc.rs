@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    outbound_packet::Packet as OutboundPacketType, BtcTimestamp, OutboundPacket,
+    outbound_packet::Packet as OutboundPacketType, BtcTimestamp, OutboundPacket, BtcHeaders,
 };
 
 use crate::state::config::CONFIG;
@@ -133,6 +133,9 @@ pub fn ibc_packet_receive(
             OutboundPacketType::BtcStaking(btc_staking) => {
                 ibc_packet::handle_btc_staking(deps, caller, &btc_staking)
             }
+            OutboundPacketType::BtcHeaders(btc_headers) => {
+                ibc_packet::handle_btc_headers(deps, caller, &btc_headers)
+            }
         }
     })()
     .or_else(|e| {
@@ -243,6 +246,29 @@ pub(crate) mod ibc_packet {
         resp = resp.add_message(wasm_msg);
         // add attribute to response
         resp = resp.add_attribute("action", "receive_btc_staking");
+
+        Ok(resp)
+    }
+
+    pub fn handle_btc_headers(
+        deps: DepsMut,
+        _caller: String,
+        btc_headers: &BtcHeaders,
+    ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
+        let storage = deps.storage;
+        let cfg = CONFIG.load(storage)?;
+
+        let msg_option = crate::state::handle_btc_headers(storage, btc_headers)?;
+
+        let mut resp: IbcReceiveResponse<BabylonMsg> =
+            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
+        resp = resp.add_attribute("action", "receive_btc_headers");
+
+        if let Some(msg) = msg_option {
+            if cfg.notify_cosmos_zone {
+                resp = resp.add_message(msg);
+            }
+        }
 
         Ok(resp)
     }
