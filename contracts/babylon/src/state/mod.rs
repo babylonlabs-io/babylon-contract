@@ -1,8 +1,7 @@
 //! state is the module that manages smart contract's system state
 use cosmwasm_std::{StdError, Storage};
 
-use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
-
+use babylon_proto::babylon::zoneconcierge::v1::{BtcTimestamp, BtcHeaders};
 use crate::bindings::msg_btc_finalized_header;
 use babylon_bindings::BabylonMsg;
 
@@ -21,13 +20,15 @@ pub fn handle_btc_timestamp(
     btc_ts: &BtcTimestamp,
 ) -> Result<Option<BabylonMsg>, StdError> {
     // extract and init/handle BTC headers
-    let btc_headers = &btc_ts.btc_headers;
+    let btc_headers = btc_ts.btc_headers.as_ref()
+        .ok_or_else(|| StdError::generic_err("btc_headers is None"))?;
+
     if btc_light_client::is_initialized(storage) {
-        btc_light_client::handle_btc_headers_from_babylon(storage, btc_headers).map_err(|e| {
+        btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers).map_err(|e| {
             StdError::generic_err(format!("failed to handle BTC headers from Babylon: {e}"))
         })?;
     } else {
-        btc_light_client::init(storage, btc_headers)
+        btc_light_client::init(storage, &btc_headers.headers)
             .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
     }
 
@@ -74,5 +75,24 @@ pub fn handle_btc_timestamp(
         return Ok(Some(msg));
     }
 
+    Ok(None)
+}
+
+pub fn handle_btc_headers(
+    storage: &mut dyn Storage,
+    btc_headers: &BtcHeaders,
+) -> Result<Option<BabylonMsg>, StdError> {
+    if btc_light_client::is_initialized(storage) {
+        btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers)
+            .map_err(|e| StdError::generic_err(format!("failed to handle BTC headers: {e}")))?;
+    } else {
+        // TODO: Two issues to fix:
+        // 1. Remove init logic once BSN base BTC header is set during contract instantiation
+        // 2. Babylon to send headers from BSN base to tip instead of last w+1 headers
+        // See: https://github.com/babylonlabs-io/babylon-contract/issues/114
+        btc_light_client::init(storage, &btc_headers.headers)
+            .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
+    }
+    
     Ok(None)
 }

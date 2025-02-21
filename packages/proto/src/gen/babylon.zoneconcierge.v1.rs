@@ -153,7 +153,7 @@ pub struct ProofFinalizedChainInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OutboundPacket {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="outbound_packet::Packet", tags="1, 2")]
+    #[prost(oneof="outbound_packet::Packet", tags="1, 2, 3")]
     pub packet: ::core::option::Option<outbound_packet::Packet>,
 }
 /// Nested message and enum types in `OutboundPacket`.
@@ -166,6 +166,8 @@ pub mod outbound_packet {
         BtcTimestamp(super::BtcTimestamp),
         #[prost(message, tag="2")]
         BtcStaking(super::super::super::btcstaking::v1::BtcStakingIbcPacket),
+        #[prost(message, tag="3")]
+        BtcHeaders(super::BtcHeaders),
     }
 }
 /// InboundPacket represents packets received by Babylon from other chains
@@ -186,6 +188,14 @@ pub mod inbound_packet {
         ConsumerSlashing(super::ConsumerSlashingIbcPacket),
     }
 }
+/// BTCHeaders contains BTC headers that have been verified and inserted into Babylon's BTC light client
+/// These headers are forwarded to consumer chains to keep their light clients in sync with Babylon
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BtcHeaders {
+    #[prost(message, repeated, tag="1")]
+    pub headers: ::prost::alloc::vec::Vec<super::super::btclightclient::v1::BtcHeaderInfo>,
+}
 /// BTCTimestamp is a BTC timestamp that carries information of a BTC-finalised epoch
 /// It includes a number of BTC headers, a raw checkpoint, an epoch metadata, and
 /// a CZ header if there exists CZ headers checkpointed to this epoch.
@@ -204,8 +214,8 @@ pub struct BtcTimestamp {
     /// - the block AFTER the common ancestor of BTC tip at epoch `lastFinalizedEpoch-1` and BTC tip at epoch `lastFinalizedEpoch`
     /// - BTC tip at epoch `lastFinalizedEpoch`
     /// where `lastFinalizedEpoch` is the last finalised epoch in Babylon
-    #[prost(message, repeated, tag="2")]
-    pub btc_headers: ::prost::alloc::vec::Vec<super::super::btclightclient::v1::BtcHeaderInfo>,
+    #[prost(message, optional, tag="2")]
+    pub btc_headers: ::core::option::Option<BtcHeaders>,
     //
     // Data for Babylon epoch chain
 
