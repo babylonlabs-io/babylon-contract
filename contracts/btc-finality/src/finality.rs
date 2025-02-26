@@ -26,6 +26,7 @@ use std::ops::Mul;
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
+    env: &Env,
     fp_pubkey_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -76,9 +77,11 @@ pub fn handle_public_randomness_commit(
     }
 
     // All good, store the given public randomness commitment
+    let params = PARAMS.load(deps.storage)?;
     let pr_commit = PubRandCommit {
         start_height,
         num_pub_rand,
+        epoch_num: env.block.height % params.epoch_length, // FIXME: Use Babylon epoch length
         commitment: commitment.to_vec(),
     };
 

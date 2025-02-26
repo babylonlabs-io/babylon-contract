@@ -62,6 +62,7 @@ pub fn handle_public_randomness_commit(
     let pr_commit = PubRandCommit {
         start_height,
         num_pub_rand,
+        epoch_num: 0,
         commitment: commitment.to_vec(),
     };
 
@@ -396,27 +397,10 @@ pub(crate) mod tests {
     use cosmwasm_std::{from_json, testing::message_info};
     use std::collections::HashMap;
 
-    use babylon_apis::finality_api::PubRandCommit;
-    use hex::ToHex;
     use test_utils::{
-        get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_commit, get_pub_rand_value,
+        get_add_finality_sig, get_add_finality_sig_2, get_pub_rand_value,
+        get_public_randomness_commitment,
     };
-
-    /// Get public randomness public key, commitment, and signature information
-    ///
-    /// Signature is a Schnorr signature over the commitment
-    pub(crate) fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
-        let pub_rand_commitment_msg = get_pub_rand_commit();
-        (
-            pub_rand_commitment_msg.fp_btc_pk.encode_hex(),
-            PubRandCommit {
-                start_height: pub_rand_commitment_msg.start_height,
-                num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
-                commitment: pub_rand_commitment_msg.commitment.to_vec(),
-            },
-            pub_rand_commitment_msg.sig.to_vec(),
-        )
-    }
 
     #[test]
     fn verify_commitment_signature_works() {
