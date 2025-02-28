@@ -13,14 +13,14 @@ use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::delegations::{delegations, DelegationDistribution};
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
-    BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS,
+    BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS, EXPIRY_BTC_HEIGHT_INDEX,
 };
 use crate::validation::{
     verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
 };
 use babylon_apis::btc_staking_api::{
     ActiveBtcDelegation, FinalityProvider, NewFinalityProvider, RewardInfo, SlashedBtcDelegation,
-    UnbondedBtcDelegation,
+    UnbondedBtcDelegation, HASH_SIZE,
 };
 use babylon_apis::{to_canonical_addr, Validate};
 use babylon_bindings::BabylonMsg;
@@ -229,6 +229,18 @@ pub fn handle_active_delegation(
     if ACTIVATED_HEIGHT.may_load(storage)?.is_none() {
         ACTIVATED_HEIGHT.save(storage, &(height + 1))?; // Active from the next block onwards
     }
+
+    // Index the delegation by its end height
+    EXPIRY_BTC_HEIGHT_INDEX.update(
+        storage, 
+        delegation.end_height,
+        |existing| -> Result<_, ContractError> {
+            let mut dels = existing.unwrap_or_default();
+            let hash_bytes: [u8; HASH_SIZE] = *staking_tx_hash.as_ref();  // Explicit type annotation
+            dels.push(hash_bytes);
+            Ok(dels)
+        }
+    )?;
 
     // TODO: Emit corresponding events
 
