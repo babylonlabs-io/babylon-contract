@@ -228,12 +228,20 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
     // Distribute rewards
     distribute_rewards_fps(deps, &env)?;
 
+    let cfg = CONFIG.load(deps.storage)?;
+    let msg = btc_staking::msg::ExecuteMsg::ExpiredDelegations {};
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: cfg.staking.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
     compute_active_finality_providers(deps, env.block.height, max_active_fps)?;
 
     // TODO: Add events
-    Ok(Response::new())
+    Ok(Response::new().add_message(wasm_msg))
 }
 
 fn handle_end_block(

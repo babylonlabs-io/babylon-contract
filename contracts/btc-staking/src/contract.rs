@@ -13,7 +13,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::staking::{
-    handle_btc_staking, handle_distribute_rewards, handle_slash_fp, handle_withdraw_rewards,
+    handle_btc_staking, handle_distribute_rewards, handle_expired_delegations, handle_slash_fp, handle_withdraw_rewards, 
 };
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 
@@ -154,6 +154,10 @@ pub fn execute(
             staker_addr,
         } => {
             let res = handle_withdraw_rewards(deps, &env, &info, &fp_pubkey_hex, staker_addr)?;
+            Ok(res)
+        }
+        ExecuteMsg::ExpiredDelegations {} => {
+            let res = handle_expired_delegations(deps, env, &info)?;
             Ok(res)
         }
     }

@@ -45,6 +45,9 @@ pub enum ExecuteMsg {
         staker_addr: String,
         fp_pubkey_hex: String,
     },
+    /// `ExpiredDelegations` is a message sent by the finality contract, to process expired
+    /// delegations
+    ExpiredDelegations {},
 }
 
 #[cw_serde]

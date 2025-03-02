@@ -4,7 +4,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{
     coin, BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, IbcMsg, MessageInfo, Response,
-    StdResult, Storage, Uint128, Uint256,
+    StdResult, Storage, Uint128, Uint256, Order,
 };
 use hex::ToHex;
 
@@ -274,34 +274,7 @@ fn handle_undelegation(
     btc_undelegate(storage, &staking_tx_hash, &mut btc_del)?;
 
     // Discount the voting power from the affected finality providers
-    let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash.as_ref())?;
-    let fps = fps();
-    for fp_pubkey_hex in affected_fps {
-        // Load FP state
-        let mut fp_state = fps
-            .load(storage, &fp_pubkey_hex)
-            .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.clone()))?;
-        // Update aggregated voting power by FP
-        fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
-
-        // Load delegation
-        let mut delegation = delegations()
-            .delegation
-            .load(storage, (staking_tx_hash.as_ref(), &fp_pubkey_hex))?;
-
-        // Subtract amount, saturating if slashed
-        delegation.stake = delegation.stake.saturating_sub(btc_del.total_sat);
-
-        // Save delegation
-        delegations().delegation.save(
-            storage,
-            (staking_tx_hash.as_ref(), &fp_pubkey_hex),
-            &delegation,
-        )?;
-
-        // Save / update FP state
-        fps.save(storage, &fp_pubkey_hex, &fp_state, height)?;
-    }
+    update_delegation_power(storage, height, staking_tx_hash.as_ref(), &btc_del)?;
     // Record event that the BTC delegation becomes unbonded
     let unbonding_event = Event::new("btc_undelegation")
         .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
@@ -377,6 +350,84 @@ pub fn handle_slash_fp(
         return Err(ContractError::Unauthorized);
     }
     slash_finality_provider(deps, env, fp_btc_pk_hex)
+}
+
+pub fn handle_expired_delegations(
+    deps: DepsMut,
+    env: Env,
+    info: &MessageInfo,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    // Check that the sender is the finality contract (AML)
+    if info.sender != config.finality {
+        return Err(ContractError::Unauthorized);
+    }
+
+    // get latest BTC tip height
+    let tip_height: u32 = get_btc_tip_height(&deps)?;
+
+    // Get all heights that have expired delegations
+    let heights: Vec<u32> = EXPIRY_BTC_HEIGHT_INDEX
+    .keys(deps.storage, None, None, Order::Ascending)
+    .filter(|h| h.as_ref().map_or(false, |&h| h <= tip_height))
+    .collect::<StdResult<Vec<_>>>()?;
+
+    // Process all expired heights (all heights less than or equal to current)
+    for btc_height in heights {
+        if let Some(expired_dels) = EXPIRY_BTC_HEIGHT_INDEX.may_load(deps.storage, btc_height)? {
+            for staking_tx_hash in expired_dels {
+                // check if the delegation is active
+                let btc_del = BTC_DELEGATIONS.load(deps.storage, &staking_tx_hash)?;
+                if btc_del.is_active() {
+                    update_delegation_power(deps.storage, env.block.height, &staking_tx_hash, &btc_del)?;      
+                }
+            }
+            // Clean up processed height from index
+            EXPIRY_BTC_HEIGHT_INDEX.remove(deps.storage, btc_height);
+        }
+    }
+
+    Ok(Response::new())
+}
+
+fn update_delegation_power(
+    storage: &mut dyn Storage,
+    height: u64,
+    staking_tx_hash: &[u8; HASH_SIZE],
+    btc_del: &BtcDelegation,
+) -> Result<(), ContractError> {
+    let affected_fps = DELEGATION_FPS.load(storage, staking_tx_hash)?;
+    let fps = fps();
+    
+    for fp_pubkey_hex in affected_fps {
+        // Load FP state
+        let mut fp_state = fps
+            .load(storage, &fp_pubkey_hex)
+            .map_err(|_| ContractError::FinalityProviderNotFound(fp_pubkey_hex.clone()))?;
+            
+        // Update aggregated voting power by FP
+        fp_state.power = fp_state.power.saturating_sub(btc_del.total_sat);
+
+        // Load delegation
+        let mut delegation = delegations()
+            .delegation
+            .load(storage, (staking_tx_hash, &fp_pubkey_hex))?;
+
+        // Subtract amount, saturating if slashed
+        delegation.stake = delegation.stake.saturating_sub(btc_del.total_sat);
+
+        // Save delegation
+        delegations().delegation.save(
+            storage,
+            (staking_tx_hash, &fp_pubkey_hex),
+            &delegation,
+        )?;
+
+        // Save / update FP state
+        fps.save(storage, &fp_pubkey_hex, &fp_state, height)?;
+    }
+
+    Ok(())
 }
 
 pub fn handle_distribute_rewards(

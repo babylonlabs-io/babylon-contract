@@ -4,7 +4,10 @@ use bitcoin::hashes::Hash;
 use bitcoin::Txid;
 
 use cosmwasm_std::Order::Descending;
-use cosmwasm_std::{coin, Deps, Order, StdResult, Uint128};
+use cosmwasm_std::{
+    Addr, CustomQuery, Deps, Order, QuerierWrapper, QueryRequest,
+    StdResult, Uint128, WasmQuery, coin, to_json_binary
+};
 use cw_storage_plus::{Bound, Bounder};
 
 use crate::error::ContractError;
@@ -23,6 +26,8 @@ use crate::state::staking::{
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::to_canonical_addr;
+use babylon_contract::msg::btc_header::BtcHeaderResponse;
+use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -179,6 +184,25 @@ pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractE
     Ok(ActivatedHeightResponse {
         height: activated_height,
     })
+}
+
+pub fn get_btc_tip_height(babylon_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u32> {
+    let res: BtcHeaderResponse = querier.query_wasm_smart(
+        babylon_addr,
+        &BabylonQueryMsg::BtcTipHeader {},
+    )?;
+    Ok(res.height) 
+}
+
+pub(crate) fn encode_smart_query<Q: CustomQuery>(
+    addr: &Addr,
+    msg: &babylon_contract::msg::btc_header::BtcHeaderResponse,
+) -> StdResult<QueryRequest<Q>> {
+    Ok(WasmQuery::Smart {
+        contract_addr: addr.to_string(),
+        msg: to_json_binary(&msg)?,
+    }
+    .into())
 }
 
 /// Rewards to be withdrawn by a particular staker, from its delegations to a particular finality
