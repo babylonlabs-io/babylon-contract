@@ -134,3 +134,176 @@ pub fn get_headers(
 
     Ok(headers)
 }
+pub fn init(storage: &mut dyn Storage, headers: &[BtcHeaderInfo]) -> StdResult<()> {
+    // Save headers
+    insert_headers(storage, headers)?;
+
+    // Save base header and tip
+    set_base_header(storage, &headers[0])?;
+    set_tip(storage, headers.last().unwrap())?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::{get_btc_lc_fork_headers, get_btc_lc_headers, mock_storage, setup};
+
+    #[test]
+    fn btc_lc_works() {
+        let mut storage = mock_storage();
+        let w = setup(&mut storage);
+
+        let test_headers = get_btc_lc_headers();
+
+        // testing initialisation with w+1 headers
+        let test_init_headers: &[BtcHeaderInfo] = &test_headers[0..(w + 1) as usize];
+        init(&mut storage, test_init_headers).unwrap();
+
+        ensure_base_and_tip(&storage, test_init_headers);
+
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, test_init_headers);
+
+        // handling subsequent headers
+        let test_new_headers = &test_headers[(w + 1) as usize..test_headers.len()];
+        insert_headers(&mut storage, test_new_headers).unwrap();
+
+        // ensure tip is set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all new headers are correctly inserted
+        ensure_headers(&storage, test_new_headers);
+    }
+
+    #[track_caller]
+    fn ensure_headers(storage: &dyn Storage, headers: &[BtcHeaderInfo]) {
+        for header_expected in headers {
+            let header_actual = get_header(storage, header_expected.height).unwrap();
+            assert_eq!(*header_expected, header_actual);
+            let header_by_hash =
+                get_header_by_hash(storage, header_expected.hash.as_ref()).unwrap();
+            assert_eq!(*header_expected, header_by_hash);
+        }
+    }
+
+    #[track_caller]
+    fn ensure_base_and_tip(storage: &dyn Storage, test_init_headers: &[BtcHeaderInfo]) {
+        // ensure the base header is set
+        let base_expected = test_init_headers.first().unwrap();
+        let base_actual = get_base_header(storage).unwrap();
+        assert_eq!(*base_expected, base_actual);
+        // ensure the tip header is set
+        let tip_expected = test_init_headers.last().unwrap();
+        let tip_actual = get_tip(storage).unwrap();
+        assert_eq!(*tip_expected, tip_actual);
+    }
+
+    // Must match `forkHeaderHeight` in datagen/main.go
+    const FORK_HEADER_HEIGHT: u32 = 90;
+
+    #[test]
+    fn btc_lc_fork_accepted() {
+        let mut storage = mock_storage();
+        setup(&mut storage);
+
+        let test_headers = get_btc_lc_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_btc_lc_fork_headers();
+
+        // handling fork headers
+        insert_headers(&mut storage, &test_fork_headers).unwrap();
+
+        // ensure the base header is unchanged
+        let base_expected = test_headers.first().unwrap();
+        let base_actual = get_base_header(&storage).unwrap();
+        assert_eq!(*base_expected, base_actual);
+        // ensure the tip header is set to the last fork header
+        let tip_expected = test_fork_headers.last().unwrap();
+        let tip_actual = get_tip(&storage).unwrap();
+        assert_eq!(*tip_expected, tip_actual);
+
+        // ensure all initial headers are still inserted
+        ensure_headers(&storage, &test_headers[..FORK_HEADER_HEIGHT as usize]);
+
+        // ensure all forked headers are correctly inserted
+        ensure_headers(&storage, &test_fork_headers);
+    }
+
+    #[test]
+    fn btc_lc_fork_invalid() {
+        let mut storage = mock_storage();
+        setup(&mut storage);
+
+        let test_headers = get_btc_lc_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_btc_lc_fork_headers();
+
+        // Make the fork headers invalid
+        let mut invalid_fork_headers = test_fork_headers.clone();
+        invalid_fork_headers.push(test_fork_headers.last().unwrap().clone());
+
+        // handling invalid fork headers
+        let res = insert_headers(&mut storage, &invalid_fork_headers);
+        assert!(res.is_err());
+
+        // ensure base and tip are unchanged
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure that all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+    }
+
+    #[test]
+    fn btc_lc_fork_invalid_height() {
+        let mut storage = mock_storage();
+        setup(&mut storage);
+
+        let test_headers = get_btc_lc_headers();
+
+        // initialize with all headers
+        init(&mut storage, &test_headers).unwrap();
+
+        // ensure base and tip are set
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+
+        // get fork headers
+        let test_fork_headers = get_btc_lc_fork_headers();
+
+        // Make the fork headers invalid due to one of the headers having the wrong height
+        let mut invalid_fork_headers = test_fork_headers.clone();
+        let mut wrong_header = invalid_fork_headers.last().unwrap().clone();
+        let height = wrong_header.height;
+        wrong_header.height += 1;
+        let len = invalid_fork_headers.len();
+        invalid_fork_headers[len - 1] = wrong_header;
+
+        // handling invalid fork headers
+        let res = insert_headers(&mut storage, &invalid_fork_headers);
+        assert!(res.is_err());
+
+        // ensure base and tip are unchanged
+        ensure_base_and_tip(&storage, &test_headers);
+        // ensure that all headers are correctly inserted
+        ensure_headers(&storage, &test_headers);
+    }
+}
