@@ -335,10 +335,7 @@ mod tests {
 
     use super::*;
     use babylon_bitcoin::chain_params::Network;
-    use cosmwasm_std::{
-        from_json,
-        testing::{mock_dependencies, MockStorage},
-    };
+    use cosmwasm_std::{from_json, testing::mock_dependencies};
     use test_utils::{get_btc_lc_fork_headers, get_btc_lc_fork_msg, get_btc_lc_headers};
 
     pub(crate) fn setup(storage: &mut dyn Storage) -> u32 {
@@ -351,11 +348,6 @@ mod tests {
         };
         CONFIG.save(storage, &cfg).unwrap();
         w
-    }
-
-    pub(crate) fn mock_storage() -> MockStorage {
-        let deps = mock_dependencies();
-        deps.storage
     }
 
     fn get_fork_msg_test_headers() -> Vec<BtcHeader> {
