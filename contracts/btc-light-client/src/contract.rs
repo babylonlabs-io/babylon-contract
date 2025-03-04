@@ -86,7 +86,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             reverse,
         } => {
             let headers = get_headers(deps.storage, start_after, limit, reverse)?;
-            to_json_binary(&BtcHeadersResponse::try_from(headers.as_slice())?)?
+            to_json_binary(&BtcHeadersResponse::try_from(headers)?)?
         }
     };
     Ok(result)
