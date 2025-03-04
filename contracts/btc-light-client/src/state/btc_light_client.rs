@@ -292,7 +292,6 @@ mod tests {
         // Make the fork headers invalid due to one of the headers having the wrong height
         let mut invalid_fork_headers = test_fork_headers.clone();
         let mut wrong_header = invalid_fork_headers.last().unwrap().clone();
-        let height = wrong_header.height;
         wrong_header.height += 1;
         let len = invalid_fork_headers.len();
         invalid_fork_headers[len - 1] = wrong_header;

@@ -44,6 +44,7 @@ pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
         btc_confirmation_depth: 10,
+        checkpoint_finalization_timeout: 2,
     };
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();

@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, StdError, StdResult};
+use cosmwasm_std::{StdError, StdResult};
 
 use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
 
@@ -7,6 +7,7 @@ use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
 pub struct InstantiateMsg {
     pub network: babylon_bitcoin::chain_params::Network,
     pub btc_confirmation_depth: u32,
+    pub checkpoint_finalization_timeout: u32,
 }
 
 impl InstantiateMsg {
@@ -14,6 +15,11 @@ impl InstantiateMsg {
         if self.btc_confirmation_depth == 0 {
             return Err(StdError::generic_err(
                 "BTC confirmation depth must be greater than 0",
+            ));
+        }
+        if self.checkpoint_finalization_timeout == 0 {
+            return Err(StdError::generic_err(
+                "Checkpoint finalization timeout must be greater than 0",
             ));
         }
         Ok(())

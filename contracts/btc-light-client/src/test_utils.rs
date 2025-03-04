@@ -12,6 +12,7 @@ pub(crate) fn setup(storage: &mut dyn Storage) -> u32 {
     let cfg = Config {
         network: Network::Regtest,
         btc_confirmation_depth: 1,
+        checkpoint_finalization_timeout: w,
     };
     CONFIG.save(storage, &cfg).unwrap();
     w

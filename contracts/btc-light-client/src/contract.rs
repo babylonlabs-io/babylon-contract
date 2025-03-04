@@ -1,11 +1,10 @@
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
 };
 use cw2::set_contract_version;
 
 use babylon_bindings::BabylonMsg;
 use babylon_bitcoin::{chain_params, BlockHash};
-use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 
 use crate::error::ContractError;
 use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
@@ -33,6 +32,7 @@ pub fn instantiate(
     let cfg = Config {
         network: msg.network,
         btc_confirmation_depth: msg.btc_confirmation_depth,
+        checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
