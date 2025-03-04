@@ -12,6 +12,7 @@ use crate::msg::QueryMsg;
 pub mod contract;
 pub mod error;
 pub mod msg;
+pub mod queries;
 pub mod state;
 pub mod utils;
 

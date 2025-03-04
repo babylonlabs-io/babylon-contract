@@ -2,18 +2,14 @@ use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInf
 use cw2::set_contract_version;
 
 use babylon_bindings::BabylonMsg;
-use babylon_bitcoin::{chain_params, BlockHash};
 
 use crate::error::ContractError;
-use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
+use crate::msg::btc_header::BtcHeader;
 use crate::msg::contract::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::btc_light_client::{
-    get_base_header, get_header, get_header_by_hash, get_headers, get_tip, insert_headers,
-    is_initialized, set_base_header, set_tip,
+    get_tip, handle_btc_headers_from_babylon, init, is_initialized,
 };
 use crate::state::config::{Config, CONFIG};
-use crate::utils::btc_light_client::{total_work, verify_headers, zero_work};
-use std::str::FromStr;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -62,39 +58,31 @@ pub fn execute(
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
-    let result = match msg {
-        QueryMsg::BtcBaseHeader {} => {
-            let header = get_base_header(deps.storage)?;
-            to_json_binary(&BtcHeaderResponse::try_from(&header)?)?
-        }
-        QueryMsg::BtcTipHeader {} => {
-            let header = get_tip(deps.storage)?;
-            to_json_binary(&BtcHeaderResponse::try_from(&header)?)?
-        }
-        QueryMsg::BtcHeader { height } => {
-            let header = get_header(deps.storage, height)?;
-            to_json_binary(&BtcHeaderResponse::try_from(&header)?)?
-        }
+    use crate::queries::btc_header::*;
+
+    match msg {
+        QueryMsg::BtcBaseHeader {} => Ok(to_json_binary(&btc_base_header(&deps)?)?),
+        QueryMsg::BtcTipHeader {} => Ok(to_json_binary(&btc_tip_header(&deps)?)?),
+        QueryMsg::BtcHeader { height } => Ok(to_json_binary(&btc_header(&deps, height)?)?),
         QueryMsg::BtcHeaderByHash { hash } => {
-            let hash = BlockHash::from_str(&hash).map_err(ContractError::HashError)?;
-            let header = get_header_by_hash(deps.storage, hash.as_ref())?;
-            to_json_binary(&BtcHeaderResponse::try_from(&header)?)?
+            Ok(to_json_binary(&btc_header_by_hash(&deps, &hash)?)?)
         }
         QueryMsg::BtcHeaders {
             start_after,
             limit,
             reverse,
-        } => {
-            let headers = get_headers(deps.storage, start_after, limit, reverse)?;
-            to_json_binary(&BtcHeadersResponse::try_from(headers)?)?
-        }
-    };
-    Ok(result)
+        } => Ok(to_json_binary(&btc_headers(
+            &deps,
+            start_after,
+            limit,
+            reverse,
+        )?)?),
+    }
 }
 
 fn init_btc_light_client(
     deps: DepsMut,
-    headers: Vec<BtcHeader>,
+    headers: Vec<crate::msg::btc_header::BtcHeader>,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Check if the BTC light client has been initialized
     if is_initialized(deps.storage) {
@@ -109,26 +97,22 @@ fn init_btc_light_client(
 
     // Convert headers to BtcHeaderInfo
     let mut btc_headers = Vec::with_capacity(headers.len());
-    let mut prev_work = zero_work();
+    let mut prev_work = crate::utils::btc_light_client::zero_work();
     for (i, header) in headers.iter().enumerate() {
         let btc_header_info = header.to_btc_header_info(i as u32, prev_work)?;
-        prev_work = total_work(&btc_header_info)?;
+        prev_work = crate::utils::btc_light_client::total_work(&btc_header_info)?;
         btc_headers.push(btc_header_info);
     }
 
     // Verify headers
-    verify_headers(
-        &chain_params::get_chain_params(cfg.network),
+    crate::utils::btc_light_client::verify_headers(
+        &babylon_bitcoin::chain_params::get_chain_params(cfg.network),
         &btc_headers[0],
         &btc_headers[1..],
     )?;
 
     // Save headers
-    insert_headers(deps.storage, &btc_headers)?;
-
-    // Save base header and tip
-    set_base_header(deps.storage, &btc_headers[0])?;
-    set_tip(deps.storage, btc_headers.last().unwrap())?;
+    init(deps.storage, &btc_headers)?;
 
     Ok(Response::new().add_attribute("action", "init_btc_light_client"))
 }
@@ -147,25 +131,22 @@ fn update_btc_light_client(
 
     // Convert headers to BtcHeaderInfo
     let mut btc_headers = Vec::with_capacity(headers.len());
-    let mut prev_work = total_work(&tip)?;
+    let mut prev_work = crate::utils::btc_light_client::total_work(&tip)?;
     for (i, header) in headers.iter().enumerate() {
         let btc_header_info = header.to_btc_header_info(tip.height + i as u32 + 1, prev_work)?;
-        prev_work = total_work(&btc_header_info)?;
+        prev_work = crate::utils::btc_light_client::total_work(&btc_header_info)?;
         btc_headers.push(btc_header_info);
     }
 
     // Verify headers
-    verify_headers(
-        &chain_params::get_chain_params(CONFIG.load(deps.storage)?.network),
+    crate::utils::btc_light_client::verify_headers(
+        &babylon_bitcoin::chain_params::get_chain_params(CONFIG.load(deps.storage)?.network),
         &tip,
         &btc_headers,
     )?;
 
     // Save headers
-    insert_headers(deps.storage, &btc_headers)?;
-
-    // Update tip
-    set_tip(deps.storage, btc_headers.last().unwrap())?;
+    handle_btc_headers_from_babylon(deps.storage, &btc_headers)?;
 
     Ok(Response::new().add_attribute("action", "update_btc_light_client"))
 }
