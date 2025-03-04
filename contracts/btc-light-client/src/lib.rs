@@ -13,8 +13,6 @@ pub mod contract;
 pub mod error;
 pub mod msg;
 pub mod state;
-#[cfg(test)]
-mod test_utils;
 pub mod utils;
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -147,8 +147,29 @@ pub fn init(storage: &mut dyn Storage, headers: &[BtcHeaderInfo]) -> StdResult<(
 
 #[cfg(test)]
 mod tests {
+    use crate::state::{Config, CONFIG};
+
     use super::*;
-    use crate::test_utils::{get_btc_lc_fork_headers, get_btc_lc_headers, mock_storage, setup};
+    use babylon_bitcoin::chain_params::Network;
+    use cosmwasm_std::testing::{mock_dependencies, MockStorage};
+    use test_utils::{get_btc_lc_fork_headers, get_btc_lc_headers};
+
+    pub(crate) fn setup(storage: &mut dyn Storage) -> u32 {
+        // set config first
+        let w: u32 = 2;
+        let cfg = Config {
+            network: Network::Regtest,
+            btc_confirmation_depth: 1,
+            checkpoint_finalization_timeout: w,
+        };
+        CONFIG.save(storage, &cfg).unwrap();
+        w
+    }
+
+    pub(crate) fn mock_storage() -> MockStorage {
+        let deps = mock_dependencies();
+        deps.storage
+    }
 
     #[test]
     fn btc_lc_works() {
