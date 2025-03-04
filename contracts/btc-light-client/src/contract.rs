@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
 use babylon_bindings::BabylonMsg;
@@ -59,7 +57,7 @@ pub fn execute(
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
         ExecuteMsg::InitBtcLightClient { headers } => init_btc_light_client(deps, headers),
-        ExecuteMsg::UpdateBtcLightClient { headers } => update_btc_light_client(deps, headers),
+        ExecuteMsg::BtcHeaders { headers } => update_btc_light_client(deps, headers),
     }
 }
 

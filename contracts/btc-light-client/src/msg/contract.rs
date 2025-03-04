@@ -31,7 +31,7 @@ pub enum ExecuteMsg {
     /// Initialize the BTC light client with a list of consecutive headers
     InitBtcLightClient { headers: Vec<BtcHeader> },
     /// Update the BTC light client with a list of consecutive headers
-    UpdateBtcLightClient { headers: Vec<BtcHeader> },
+    BtcHeaders { headers: Vec<BtcHeader> },
 }
 
 #[cw_serde]

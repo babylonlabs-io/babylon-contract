@@ -84,7 +84,7 @@ fn bench_btc_light_client(c: &mut Criterion) {
         let headers_len = test_headers.len();
         let mut i = 1;
         b.iter(|| {
-            let benchmark_msg = ExecuteMsg::UpdateBtcLightClient {
+            let benchmark_msg = ExecuteMsg::BtcHeaders {
                 headers: test_headers[i..=i + 1].to_owned(),
             };
             execute::<_, _, _, _, BabylonMsg>(&mut deps, env.clone(), info.clone(), benchmark_msg)
@@ -101,7 +101,7 @@ fn bench_btc_light_client(c: &mut Criterion) {
         b.iter_custom(|iter| {
             let mut gas_used = 0;
             for _ in 0..iter {
-                let benchmark_msg = ExecuteMsg::UpdateBtcLightClient {
+                let benchmark_msg = ExecuteMsg::BtcHeaders {
                     headers: test_headers[i..=i + 1].to_owned(),
                 };
                 let gas_before = deps.get_gas_left();
@@ -131,7 +131,7 @@ fn bench_btc_light_client(c: &mut Criterion) {
         b.iter_custom(|iter| {
             let mut gas_used = 0;
             for _ in 0..iter {
-                let benchmark_msg = ExecuteMsg::UpdateBtcLightClient {
+                let benchmark_msg = ExecuteMsg::BtcHeaders {
                     headers: test_headers[i..=i + 1].to_owned(),
                 };
                 let gas_before = deps.get_gas_left();
