@@ -71,8 +71,8 @@ pub struct PubRandCommit {
     pub start_height: u64,
     /// `num_pub_rand` is the number of committed public randomness
     pub num_pub_rand: u64,
-    /// `epoch_num` defines the epoch number that the commit falls into
-    pub epoch_num: u64,
+    /// `height` defines the height that the commit was submitted
+    pub height: u64,
     /// `commitment` is the value of the commitment.
     /// Currently, it's the root of the Merkle tree constructed by the public randomness
     pub commitment: Bytes,

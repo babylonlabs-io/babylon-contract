@@ -77,11 +77,10 @@ pub fn handle_public_randomness_commit(
     }
 
     // All good, store the given public randomness commitment
-    let params = PARAMS.load(deps.storage)?;
     let pr_commit = PubRandCommit {
         start_height,
         num_pub_rand,
-        epoch_num: env.block.height % params.epoch_length, // FIXME: Use Babylon epoch length
+        height: env.block.height,
         commitment: commitment.to_vec(),
     };
 

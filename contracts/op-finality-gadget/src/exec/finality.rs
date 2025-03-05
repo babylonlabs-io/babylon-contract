@@ -23,6 +23,7 @@ use k256::sha2::{Digest, Sha256};
 // Most logic copied from contracts/btc-staking/src/finality.rs
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
+    env: &Env,
     fp_pubkey_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -62,7 +63,7 @@ pub fn handle_public_randomness_commit(
     let pr_commit = PubRandCommit {
         start_height,
         num_pub_rand,
-        epoch_num: 0,
+        height: env.block.height,
         commitment: commitment.to_vec(),
     };
 
