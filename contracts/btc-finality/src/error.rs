@@ -100,4 +100,6 @@ pub enum ContractError {
     DivideByZero,
     #[error("Invalid rewards recipient")]
     InvalidRewardsRecipient {},
+    #[error("{0}")]
+    PubRandCommitNotBTCTimestamped(String),
 }

@@ -3,6 +3,7 @@ use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::{Bound, Map};
 
 use crate::error::ContractError;
+use crate::state::finality::LAST_HEIGHT;
 use babylon_apis::finality_api::PubRandCommit;
 
 /// Map of public randomness commitments by fp and block height
@@ -39,6 +40,34 @@ pub fn get_pub_rand_commit_for_height(
     } else {
         Ok(res[0].clone())
     }
+}
+
+// `get_timestamped_pub_rand_commit_for_height` finds the public randomness commitment that includes
+// the given height for the given finality provider
+pub fn get_timestamped_pub_rand_commit_for_height(
+    storage: &dyn Storage,
+    fp_btc_pk_hex: &str,
+    height: u64,
+) -> Result<PubRandCommit, ContractError> {
+    let pr_commit = get_pub_rand_commit_for_height(storage, fp_btc_pk_hex, height)?;
+
+    // Ensure the finality provider's last randomness commit is already finalised by BTC
+    // timestamping.
+    // We have set height to 0 at instantiation, so this can only be a programming error
+    let finalized_height = LAST_HEIGHT.load(storage)?;
+    if finalized_height == 0 {
+        return Err(ContractError::PubRandCommitNotBTCTimestamped(
+            "No finalized height yet".into(),
+        ));
+    }
+    if finalized_height < pr_commit.height {
+        return Err(ContractError::PubRandCommitNotBTCTimestamped(format!(
+            "The finality provider {0} last committed height: {1}, last finalized height: {2}",
+            fp_btc_pk_hex, pr_commit.height, finalized_height
+        )));
+    }
+
+    Ok(pr_commit)
 }
 
 pub fn get_first_pub_rand_commit(
