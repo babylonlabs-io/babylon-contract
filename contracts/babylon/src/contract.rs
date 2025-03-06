@@ -18,13 +18,13 @@ use crate::state::config::{Config, CONFIG};
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REPLY_ID_INSTANTIATE_STAKING: u64 = 2;
-const REPLY_ID_INSTANTIATE_FINALITY: u64 = 3;
+const REPLY_ID_INSTANTIATE_LIGHT_CLIENT: u64 = 2;
+const REPLY_ID_INSTANTIATE_STAKING: u64 = 3;
+const REPLY_ID_INSTANTIATE_FINALITY: u64 = 4;
 
-/// When we instantiate the Babylon contract, it will optionally instantiate a BTC staking
-/// contract – if its code id is provided – to work with it for BTC re-staking support,
-/// as they both need references to each other.
-/// The admin of the BTC staking contract is taken as an explicit argument.
+/// When we instantiate the Babylon contract, it will optionally instantiate a BTC light client
+/// contract first – if its code id is provided – followed by BTC staking and finality contracts
+/// if their code ids are provided.
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -41,14 +41,28 @@ pub fn instantiate(
         btc_confirmation_depth: msg.btc_confirmation_depth,
         checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
         notify_cosmos_zone: msg.notify_cosmos_zone,
-        btc_staking: None, // Will be set in `reply` if `btc_staking_code_id` is provided
-        btc_finality: None, // Will be set in `reply` if `btc_finality_code_id` is provided
+        btc_light_client: None, // Will be set in `reply` if `btc_light_client_code_id` is provided
+        btc_staking: None,      // Will be set in `reply` if `btc_staking_code_id` is provided
+        btc_finality: None,     // Will be set in `reply` if `btc_finality_code_id` is provided
         consumer_name: None,
         consumer_description: None,
         denom,
     };
 
     let mut res = Response::new().add_attribute("action", "instantiate");
+
+    if let Some(btc_light_client_code_id) = msg.btc_light_client_code_id {
+        // Instantiate BTC light client contract first
+        let init_msg = WasmMsg::Instantiate {
+            admin: msg.admin.clone(),
+            code_id: btc_light_client_code_id,
+            msg: msg.btc_light_client_msg.unwrap_or(Binary::from(b"{}")),
+            funds: vec![],
+            label: "BTC Light Client".into(),
+        };
+        let init_msg = SubMsg::reply_on_success(init_msg, REPLY_ID_INSTANTIATE_LIGHT_CLIENT);
+        res = res.add_submessage(init_msg);
+    }
 
     if let Some(btc_staking_code_id) = msg.btc_staking_code_id {
         // Update config with consumer information
@@ -111,6 +125,9 @@ pub fn reply(
     reply: Reply,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match reply.id {
+        REPLY_ID_INSTANTIATE_LIGHT_CLIENT => {
+            reply_init_callback_light_client(deps, reply.result.unwrap())
+        }
         REPLY_ID_INSTANTIATE_STAKING => reply_init_callback_staking(deps, reply.result.unwrap()),
         REPLY_ID_INSTANTIATE_FINALITY => reply_init_finality_callback(deps, reply.result.unwrap()),
         _ => Err(ContractError::InvalidReplyId(reply.id)),
@@ -131,6 +148,20 @@ fn reply_init_get_contract_address(reply: SubMsgResponse) -> Result<Addr, Contra
     Err(ContractError::ParseReply(ParseReplyError::ParseFailure(
         "Cannot parse contract address".to_string(),
     )))
+}
+
+/// Store BTC light client address
+fn reply_init_callback_light_client(
+    deps: DepsMut,
+    reply: SubMsgResponse,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // Try to get contract address from events in reply
+    let addr = reply_init_get_contract_address(reply)?;
+    CONFIG.update(deps.storage, |mut cfg| {
+        cfg.btc_light_client = Some(addr);
+        Ok::<_, ContractError>(cfg)
+    })?;
+    Ok(Response::new())
 }
 
 /// Store BTC staking address
@@ -319,6 +350,8 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
+            btc_light_client_code_id: None,
+            btc_light_client_msg: None,
             btc_staking_code_id: None,
             btc_staking_msg: None,
             btc_finality_code_id: None,
@@ -334,6 +367,81 @@ mod tests {
     }
 
     #[test]
+    fn instantiate_light_client_works() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            network: babylon_bitcoin::chain_params::Network::Regtest,
+            babylon_tag: "01020304".to_string(),
+            btc_confirmation_depth: 10,
+            checkpoint_finalization_timeout: 100,
+            notify_cosmos_zone: false,
+            btc_light_client_code_id: Some(1),
+            btc_light_client_msg: None,
+            btc_staking_code_id: None,
+            btc_staking_msg: None,
+            btc_finality_code_id: None,
+            btc_finality_msg: None,
+            admin: None,
+            consumer_name: None,
+            consumer_description: None,
+            ics20_channel_id: None,
+        };
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(1, res.messages.len());
+        assert_eq!(REPLY_ID_INSTANTIATE_LIGHT_CLIENT, res.messages[0].id);
+        assert_eq!(
+            res.messages[0].msg,
+            WasmMsg::Instantiate {
+                admin: None,
+                code_id: 1,
+                msg: Binary::from(b"{}"),
+                funds: vec![],
+                label: "BTC Light Client".into(),
+            }
+            .into()
+        );
+    }
+
+    #[test]
+    fn instantiate_light_client_params_works() {
+        let mut deps = mock_dependencies();
+        let params = r#"{"network":"testnet","btc_confirmation_depth":6,"checkpoint_finalization_timeout":100}"#;
+        let msg = InstantiateMsg {
+            network: babylon_bitcoin::chain_params::Network::Regtest,
+            babylon_tag: "01020304".to_string(),
+            btc_confirmation_depth: 10,
+            checkpoint_finalization_timeout: 100,
+            notify_cosmos_zone: false,
+            btc_light_client_code_id: Some(1),
+            btc_light_client_msg: Some(Binary::from(params.as_bytes())),
+            btc_staking_code_id: None,
+            btc_staking_msg: None,
+            btc_finality_code_id: None,
+            btc_finality_msg: None,
+            admin: None,
+            consumer_name: None,
+            consumer_description: None,
+            ics20_channel_id: None,
+        };
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(1, res.messages.len());
+        assert_eq!(REPLY_ID_INSTANTIATE_LIGHT_CLIENT, res.messages[0].id);
+        assert_eq!(
+            res.messages[0].msg,
+            WasmMsg::Instantiate {
+                admin: None,
+                code_id: 1,
+                msg: Binary::from(params.as_bytes()),
+                funds: vec![],
+                label: "BTC Light Client".into(),
+            }
+            .into()
+        );
+    }
+
+    #[test]
     fn instantiate_finality_works() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
@@ -342,6 +450,8 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
+            btc_light_client_code_id: None,
+            btc_light_client_msg: None,
             btc_staking_code_id: None,
             btc_staking_msg: None,
             btc_finality_code_id: Some(2),
@@ -378,6 +488,8 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
+            btc_light_client_code_id: None,
+            btc_light_client_msg: None,
             btc_staking_code_id: None,
             btc_staking_msg: None,
             btc_finality_code_id: Some(2),

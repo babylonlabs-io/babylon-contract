@@ -49,6 +49,8 @@ pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
         btc_confirmation_depth: 10,
         checkpoint_finalization_timeout: 1,
         notify_cosmos_zone: false,
+        btc_light_client_code_id: None,
+        btc_light_client_msg: None,
         btc_staking_code_id: None,
         btc_staking_msg: None,
         btc_finality_code_id: None,

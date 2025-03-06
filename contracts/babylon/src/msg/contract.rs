@@ -33,6 +33,12 @@ pub struct InstantiateMsg {
     /// NOTE: If set to true, then the Cosmos zone needs to integrate the corresponding message handler
     /// as well
     pub notify_cosmos_zone: bool,
+    /// If set, this will instantiate a BTC light client contract
+    pub btc_light_client_code_id: Option<u64>,
+    /// If set, this will define the instantiation message for the BTC light client contract.
+    /// This message is opaque to the Babylon contract, and depends on the specific light client
+    /// being instantiated
+    pub btc_light_client_msg: Option<Binary>,
     /// If set, this will instantiate a BTC staking contract for BTC re-staking
     pub btc_staking_code_id: Option<u64>,
     /// If set, this will define the instantiation message for the BTC staking contract.

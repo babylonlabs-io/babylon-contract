@@ -9,8 +9,17 @@ use cosmwasm_std::{Addr, Binary, Empty};
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use crate::msg::contract::{InstantiateMsg, QueryMsg};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
+use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR, CONTRACT3_ADDR};
 use crate::state::config::Config;
+
+fn contract_btc_light_client() -> Box<dyn Contract<BabylonMsg>> {
+    let contract = ContractWrapper::new(
+        btc_light_client::contract::execute,
+        btc_light_client::contract::instantiate,
+        btc_light_client::contract::query,
+    );
+    Box::new(contract)
+}
 
 fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
@@ -41,6 +50,7 @@ fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
 #[derivative(Default = "new")]
 pub struct SuiteBuilder {
     funds: Vec<(Addr, u128)>,
+    light_client_msg: Option<String>,
     staking_msg: Option<String>,
     finality_msg: Option<String>,
     ics20_channel_id: Option<String>,
@@ -51,6 +61,12 @@ impl SuiteBuilder {
     #[allow(dead_code)]
     pub fn with_funds(mut self, addr: &str, amount: u128) -> Self {
         self.funds.push((Addr::unchecked(addr), amount));
+        self
+    }
+
+    /// Sets the light client contract instantiation message
+    pub fn with_light_client_msg(mut self, msg: &str) -> Self {
+        self.light_client_msg = Some(msg.into());
         self
     }
 
@@ -85,12 +101,17 @@ impl SuiteBuilder {
         app.init_modules(|_router, _api, _storage| -> AnyResult<()> { Ok(()) })
             .unwrap();
 
+        let btc_light_client_code_id =
+            app.store_code_with_creator(owner.clone(), contract_btc_light_client());
         let btc_staking_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_staking());
         let btc_finality_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_finality());
         let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
 
+        let light_client_msg = self
+            .light_client_msg
+            .map(|msg| Binary::from(msg.as_bytes()));
         let staking_msg = self.staking_msg.map(|msg| Binary::from(msg.as_bytes()));
         let finality_msg = self.finality_msg.map(|msg| Binary::from(msg.as_bytes()));
         let contract = app
@@ -103,6 +124,8 @@ impl SuiteBuilder {
                     btc_confirmation_depth: 1,
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
+                    btc_light_client_code_id: Some(btc_light_client_code_id),
+                    btc_light_client_msg: light_client_msg,
                     btc_staking_code_id: Some(btc_staking_code_id),
                     btc_staking_msg: staking_msg,
                     btc_finality_code_id: Some(btc_finality_code_id),
@@ -154,10 +177,18 @@ impl Suite {
     }
 
     #[track_caller]
+    pub fn get_btc_light_client_config(&self) -> btc_light_client::state::config::Config {
+        self.app
+            .wrap()
+            .query_wasm_smart(CONTRACT1_ADDR, &btc_light_client::msg::QueryMsg::Config {})
+            .unwrap()
+    }
+
+    #[track_caller]
     pub fn get_btc_staking_config(&self) -> btc_staking::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(CONTRACT1_ADDR, &btc_staking::msg::QueryMsg::Config {})
+            .query_wasm_smart(CONTRACT2_ADDR, &btc_staking::msg::QueryMsg::Config {})
             .unwrap()
     }
 
@@ -165,7 +196,7 @@ impl Suite {
     pub fn get_btc_finality_config(&self) -> btc_finality::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(CONTRACT2_ADDR, &btc_finality::msg::QueryMsg::Config {})
+            .query_wasm_smart(CONTRACT3_ADDR, &btc_finality::msg::QueryMsg::Config {})
             .unwrap()
     }
 

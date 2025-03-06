@@ -21,6 +21,15 @@ use btc_staking::msg::{
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 
+fn contract_btc_light_client() -> Box<dyn Contract<BabylonMsg>> {
+    let contract = ContractWrapper::new(
+        btc_light_client::contract::execute,
+        btc_light_client::contract::instantiate,
+        btc_light_client::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn contract_btc_staking() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
         btc_staking::contract::execute,
@@ -85,6 +94,8 @@ impl SuiteBuilder {
         })
         .unwrap();
 
+        let btc_light_client_code_id =
+            app.store_code_with_creator(owner.clone(), contract_btc_light_client());
         let btc_staking_code_id =
             app.store_code_with_creator(owner.clone(), contract_btc_staking());
         let btc_finality_code_id =
@@ -101,6 +112,8 @@ impl SuiteBuilder {
                     btc_confirmation_depth: 1,
                     checkpoint_finalization_timeout: 10,
                     notify_cosmos_zone: false,
+                    btc_light_client_code_id: Some(btc_light_client_code_id),
+                    btc_light_client_msg: None,
                     btc_staking_code_id: Some(btc_staking_code_id),
                     btc_staking_msg: Some(
                         to_json_binary(&btc_staking::msg::InstantiateMsg {

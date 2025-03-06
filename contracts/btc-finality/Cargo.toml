@@ -37,6 +37,7 @@ babylon-bitcoin       = { path = "../../packages/bitcoin" }
 eots                  = { path = "../../packages/eots" }
 
 babylon-contract      = { path = "../babylon", features = [ "library" ] }
+btc-light-client      = { path = "../btc-light-client", features = [ "library" ] }
 btc-staking           = { path = "../btc-staking", features = [ "library" ] }
 
 anybuf           = { workspace = true }

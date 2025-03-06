@@ -61,6 +61,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     use crate::queries::btc_header::*;
 
     match msg {
+        QueryMsg::Config {} => Ok(to_json_binary(&CONFIG.load(deps.storage)?)?),
         QueryMsg::BtcBaseHeader {} => Ok(to_json_binary(&btc_base_header(&deps)?)?),
         QueryMsg::BtcTipHeader {} => Ok(to_json_binary(&btc_tip_header(&deps)?)?),
         QueryMsg::BtcHeader { height } => Ok(to_json_binary(&btc_header(&deps, height)?)?),

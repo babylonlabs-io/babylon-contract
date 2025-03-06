@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    outbound_packet::Packet as OutboundPacketType, BtcTimestamp, OutboundPacket, BtcHeaders,
+    outbound_packet::Packet as OutboundPacketType, BtcHeaders, BtcTimestamp, OutboundPacket,
 };
 
 use crate::state::config::CONFIG;
@@ -350,6 +350,8 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
+            btc_light_client_code_id: None,
+            btc_light_client_msg: None,
             btc_staking_code_id: None,
             btc_staking_msg: None,
             btc_finality_code_id: None,

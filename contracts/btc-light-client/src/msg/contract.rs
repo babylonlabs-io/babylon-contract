@@ -2,6 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{StdError, StdResult};
 
 use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
+use crate::state::config::Config;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -51,4 +52,6 @@ pub enum QueryMsg {
         limit: Option<u32>,
         reverse: Option<bool>,
     },
+    #[returns(Config)]
+    Config {},
 }
