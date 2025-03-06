@@ -544,6 +544,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "btc-light-client"
+version = "0.13.0"
+dependencies = [
+ "anyhow",
+ "assert_matches",
+ "babylon-apis",
+ "babylon-bindings",
+ "babylon-bindings-test",
+ "babylon-bitcoin",
+ "babylon-proto",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-vm",
+ "criterion",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "derivative",
+ "hex",
+ "prost 0.11.9",
+ "serde",
+ "test-utils",
+ "thiserror",
+ "thousands",
+]
+
+[[package]]
 name = "btc-staking"
 version = "0.13.0"
 dependencies = [
