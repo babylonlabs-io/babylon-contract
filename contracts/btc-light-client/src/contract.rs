@@ -7,7 +7,7 @@ use crate::error::ContractError;
 use crate::msg::btc_header::BtcHeader;
 use crate::msg::contract::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::btc_light_client::{
-    get_tip, handle_btc_headers_from_babylon, init, is_initialized,
+    handle_btc_headers_from_user, init_from_user, is_initialized,
 };
 use crate::state::config::{Config, CONFIG};
 
@@ -52,8 +52,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        ExecuteMsg::InitBtcLightClient { headers } => init_btc_light_client(deps, headers),
-        ExecuteMsg::BtcHeaders { headers } => update_btc_light_client(deps, headers),
+        ExecuteMsg::BtcHeaders { headers } => handle_btc_headers(deps, headers),
     }
 }
 
@@ -81,73 +80,22 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     }
 }
 
-fn init_btc_light_client(
-    deps: DepsMut,
-    headers: Vec<crate::msg::btc_header::BtcHeader>,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    // Check if the BTC light client has been initialized
-    if is_initialized(deps.storage) {
-        return Err(ContractError::InitError {});
-    }
-
-    // Check if there are enough headers
-    let cfg = CONFIG.load(deps.storage)?;
-    if headers.len() < cfg.btc_confirmation_depth as usize {
-        return Err(ContractError::InitErrorLength(cfg.btc_confirmation_depth));
-    }
-
-    // Convert headers to BtcHeaderInfo
-    let mut btc_headers = Vec::with_capacity(headers.len());
-    let mut prev_work = crate::utils::btc_light_client::zero_work();
-    for (i, header) in headers.iter().enumerate() {
-        let btc_header_info = header.to_btc_header_info(i as u32, prev_work)?;
-        prev_work = crate::utils::btc_light_client::total_work(&btc_header_info)?;
-        btc_headers.push(btc_header_info);
-    }
-
-    // Verify headers
-    crate::utils::btc_light_client::verify_headers(
-        &babylon_bitcoin::chain_params::get_chain_params(cfg.network),
-        &btc_headers[0],
-        &btc_headers[1..],
-    )?;
-
-    // Save headers
-    init(deps.storage, &btc_headers)?;
-
-    Ok(Response::new().add_attribute("action", "init_btc_light_client"))
-}
-
-fn update_btc_light_client(
+fn handle_btc_headers(
     deps: DepsMut,
     headers: Vec<BtcHeader>,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Check if the BTC light client has been initialized
     if !is_initialized(deps.storage) {
-        return Err(ContractError::InitError {});
+        // Check if there are enough headers for initialization
+        let cfg = CONFIG.load(deps.storage)?;
+        if headers.len() < cfg.btc_confirmation_depth as usize {
+            return Err(ContractError::InitErrorLength(cfg.btc_confirmation_depth));
+        }
+
+        init_from_user(deps.storage, &headers)?;
+        Ok(Response::new().add_attribute("action", "init_btc_light_client"))
+    } else {
+        handle_btc_headers_from_user(deps.storage, &headers)?;
+        Ok(Response::new().add_attribute("action", "update_btc_light_client"))
     }
-
-    // Get the current tip
-    let tip = get_tip(deps.storage)?;
-
-    // Convert headers to BtcHeaderInfo
-    let mut btc_headers = Vec::with_capacity(headers.len());
-    let mut prev_work = crate::utils::btc_light_client::total_work(&tip)?;
-    for (i, header) in headers.iter().enumerate() {
-        let btc_header_info = header.to_btc_header_info(tip.height + i as u32 + 1, prev_work)?;
-        prev_work = crate::utils::btc_light_client::total_work(&btc_header_info)?;
-        btc_headers.push(btc_header_info);
-    }
-
-    // Verify headers
-    crate::utils::btc_light_client::verify_headers(
-        &babylon_bitcoin::chain_params::get_chain_params(CONFIG.load(deps.storage)?.network),
-        &tip,
-        &btc_headers,
-    )?;
-
-    // Save headers
-    handle_btc_headers_from_babylon(deps.storage, &btc_headers)?;
-
-    Ok(Response::new().add_attribute("action", "update_btc_light_client"))
 }

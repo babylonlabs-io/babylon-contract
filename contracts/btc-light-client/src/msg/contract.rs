@@ -29,9 +29,9 @@ impl InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Initialize the BTC light client with a list of consecutive headers
-    InitBtcLightClient { headers: Vec<BtcHeader> },
-    /// Update the BTC light client with a list of consecutive headers
+    /// Add BTC headers to the light client. If not initialized, this will initialize
+    /// the light client with the provided headers. Otherwise, it will update the
+    /// existing chain with the new headers.
     BtcHeaders { headers: Vec<BtcHeader> },
 }
 

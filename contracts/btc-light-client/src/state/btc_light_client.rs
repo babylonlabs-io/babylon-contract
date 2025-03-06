@@ -355,7 +355,6 @@ mod tests {
         let resp: ExecuteMsg = from_json(testdata).unwrap();
         match resp {
             ExecuteMsg::BtcHeaders { headers } => headers,
-            ExecuteMsg::InitBtcLightClient { .. } => unreachable!("unexpected init message"),
         }
     }
 
