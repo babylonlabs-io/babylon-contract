@@ -166,11 +166,9 @@ pub(crate) mod ibc_packet {
         _caller: String,
         btc_ts: &BtcTimestamp,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
-
+        let cfg = CONFIG.load(deps.storage)?;
         // handle the BTC timestamp, i.e., verify the BTC timestamp and update the contract state
-        let msg_option = crate::state::handle_btc_timestamp(storage, btc_ts)?;
+        let msg_option = crate::state::handle_btc_timestamp(deps, btc_ts)?;
 
         // construct response
         let mut resp: IbcReceiveResponse<BabylonMsg> =
@@ -255,20 +253,13 @@ pub(crate) mod ibc_packet {
         _caller: String,
         btc_headers: &BtcHeaders,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
-
-        let msg_option = crate::state::handle_btc_headers(storage, btc_headers)?;
+        // Submit headers to BTC light client
+        crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
+            .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
 
         let mut resp: IbcReceiveResponse<BabylonMsg> =
             IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
         resp = resp.add_attribute("action", "receive_btc_headers");
-
-        if let Some(msg) = msg_option {
-            if cfg.notify_cosmos_zone {
-                resp = resp.add_message(msg);
-            }
-        }
 
         Ok(resp)
     }

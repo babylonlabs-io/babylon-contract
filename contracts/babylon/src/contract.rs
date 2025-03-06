@@ -14,6 +14,7 @@ use crate::ibc::{ibc_packet, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::config::{Config, CONFIG};
+use crate::utils::btc_light_client_executor::submit_headers;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -228,22 +229,6 @@ fn reply_init_finality_callback(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::Config {} => Ok(to_json_binary(&queries::config(deps)?)?),
-        QueryMsg::BtcBaseHeader {} => Ok(to_json_binary(&queries::btc_base_header(deps)?)?),
-        QueryMsg::BtcTipHeader {} => Ok(to_json_binary(&queries::btc_tip_header(deps)?)?),
-        QueryMsg::BtcHeader { height } => Ok(to_json_binary(&queries::btc_header(deps, height)?)?),
-        QueryMsg::BtcHeaderByHash { hash } => {
-            Ok(to_json_binary(&queries::btc_header_by_hash(deps, &hash)?)?)
-        }
-        QueryMsg::BtcHeaders {
-            start_after,
-            limit,
-            reverse,
-        } => Ok(to_json_binary(&queries::btc_headers(
-            deps,
-            start_after,
-            limit,
-            reverse,
-        )?)?),
         QueryMsg::BabylonBaseEpoch {} => Ok(to_json_binary(&queries::babylon_base_epoch(deps)?)?),
         QueryMsg::BabylonLastEpoch {} => Ok(to_json_binary(&queries::babylon_last_epoch(deps)?)?),
         QueryMsg::BabylonEpoch { epoch_number } => Ok(to_json_binary(&queries::babylon_epoch(
@@ -275,17 +260,6 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        ExecuteMsg::BtcHeaders {
-            headers: btc_headers,
-        } => {
-            if btc_light_client::is_initialized(deps.storage) {
-                btc_light_client::handle_btc_headers_from_user(deps.storage, &btc_headers)?;
-            } else {
-                btc_light_client::init_from_user(deps.storage, &btc_headers)?;
-            }
-            // TODO: Add events
-            Ok(Response::new())
-        }
         ExecuteMsg::Slashing { evidence } => {
             // This is an internal routing message from the `btc_finality` contract
             let cfg = CONFIG.load(deps.storage)?;

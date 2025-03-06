@@ -4,7 +4,7 @@
 use prost::Message;
 use tendermint_proto::crypto::ProofOps;
 
-use cosmwasm_std::{StdResult, Storage};
+use cosmwasm_std::{Deps, DepsMut, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
 
 use babylon_proto::babylon::epoching::v1::Epoch;
@@ -52,12 +52,12 @@ pub fn get_cz_header(
 /// - The Babylon tx carrying this header is included in a Babylon block
 /// - The Babylon block's AppHash is committed to the AppHashRoot of the epoch
 fn verify_cz_header(
-    storage: &mut dyn Storage,
+    deps: Deps,
     cz_header: &IndexedHeader,
     epoch: &Epoch,
     proof_cz_header_in_epoch: &ProofOps,
 ) -> Result<(), error::CZHeaderChainError> {
-    let _cfg = CONFIG.load(storage)?;
+    let _cfg = CONFIG.load(deps.storage)?;
 
     // check if the corresponding CZ header is in the Babylon epoch
     utils::cz_header_chain::verify_cz_header_in_epoch(cz_header, epoch, proof_cz_header_in_epoch)?;
@@ -69,24 +69,24 @@ fn verify_cz_header(
     Ok(())
 }
 
-fn insert_cz_header(storage: &mut dyn Storage, cz_header: &IndexedHeader) -> StdResult<()> {
+fn insert_cz_header(deps: &mut DepsMut, cz_header: &IndexedHeader) -> StdResult<()> {
     // insert indexed header
     let cz_header_bytes = cz_header.encode_to_vec();
-    CZ_HEADERS.save(storage, cz_header.height, &cz_header_bytes)?;
+    CZ_HEADERS.save(deps.storage, cz_header.height, &cz_header_bytes)?;
 
     // update last finalised header
-    set_last_cz_header(storage, cz_header)
+    set_last_cz_header(deps.storage, cz_header)
 }
 
 // TODO: unit test
 pub fn handle_cz_header(
-    storage: &mut dyn Storage,
+    mut deps: DepsMut,
     cz_header: &IndexedHeader,
     epoch: &Epoch,
     proof_cz_header_in_epoch: &ProofOps,
 ) -> Result<(), error::CZHeaderChainError> {
-    verify_cz_header(storage, cz_header, epoch, proof_cz_header_in_epoch)?;
-    insert_cz_header(storage, cz_header)?;
+    verify_cz_header(deps.as_ref(), cz_header, epoch, proof_cz_header_in_epoch)?;
+    insert_cz_header(&mut deps, cz_header)?;
 
     Ok(())
 }

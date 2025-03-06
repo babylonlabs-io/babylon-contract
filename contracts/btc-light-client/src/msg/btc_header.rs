@@ -199,6 +199,13 @@ impl TryFrom<Vec<BtcHeaderInfo>> for BtcHeadersResponse {
         })
     }
 }
+/// Try to convert from Vec<BtcHeaderInfo> to Vec<BtcHeader>
+pub fn btc_headers_from_info(headers: &[BtcHeaderInfo]) -> Result<Vec<BtcHeader>, ContractError> {
+    headers
+        .iter()
+        .map(BtcHeader::try_from)
+        .collect::<Result<Vec<_>, ContractError>>()
+}
 
 /// Try to convert from `&BtcHeaderInfo` to/into `BtcHeaderResponse`
 impl TryFrom<&BtcHeaderInfo> for BtcHeaderResponse {
