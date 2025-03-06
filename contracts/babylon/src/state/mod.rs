@@ -1,9 +1,9 @@
 //! state is the module that manages smart contract's system state
 use cosmwasm_std::{StdError, Storage};
 
-use babylon_proto::babylon::zoneconcierge::v1::{BtcTimestamp, BtcHeaders};
 use crate::bindings::msg_btc_finalized_header;
 use babylon_bindings::BabylonMsg;
+use babylon_proto::babylon::zoneconcierge::v1::{BtcHeaders, BtcTimestamp};
 
 pub mod babylon_epoch_chain;
 pub mod btc_light_client;
@@ -20,13 +20,15 @@ pub fn handle_btc_timestamp(
     btc_ts: &BtcTimestamp,
 ) -> Result<Option<BabylonMsg>, StdError> {
     // extract and init/handle BTC headers
-    let btc_headers = btc_ts.btc_headers.as_ref()
+    let btc_headers = btc_ts
+        .btc_headers
+        .as_ref()
         .ok_or_else(|| StdError::generic_err("btc_headers is None"))?;
 
     if btc_light_client::is_initialized(storage) {
-        btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers).map_err(|e| {
-            StdError::generic_err(format!("failed to handle BTC headers from Babylon: {e}"))
-        })?;
+        btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers).map_err(
+            |e| StdError::generic_err(format!("failed to handle BTC headers from Babylon: {e}")),
+        )?;
     } else {
         btc_light_client::init(storage, &btc_headers.headers)
             .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
@@ -93,6 +95,6 @@ pub fn handle_btc_headers(
         btc_light_client::init(storage, &btc_headers.headers)
             .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
     }
-    
+
     Ok(None)
 }

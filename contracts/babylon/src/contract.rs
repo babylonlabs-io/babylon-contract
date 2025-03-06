@@ -7,12 +7,12 @@ use cw_utils::ParseReplyError;
 
 use babylon_apis::{btc_staking_api, finality_api};
 use babylon_bindings::BabylonMsg;
+use btc_light_client::msg::contract::InstantiateMsg as BtcLightClientInstantiateMsg;
 
 use crate::error::ContractError;
 use crate::ibc::{ibc_packet, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
-use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -52,11 +52,18 @@ pub fn instantiate(
     let mut res = Response::new().add_attribute("action", "instantiate");
 
     if let Some(btc_light_client_code_id) = msg.btc_light_client_code_id {
+        let btc_lc_init_msg = BtcLightClientInstantiateMsg {
+            network: msg.network.clone(),
+            btc_confirmation_depth: msg.btc_confirmation_depth,
+            checkpoint_finalization_timeout: msg.checkpoint_finalization_timeout,
+        };
         // Instantiate BTC light client contract first
         let init_msg = WasmMsg::Instantiate {
             admin: msg.admin.clone(),
             code_id: btc_light_client_code_id,
-            msg: msg.btc_light_client_msg.unwrap_or(Binary::from(b"{}")),
+            msg: msg
+                .btc_light_client_msg
+                .unwrap_or(to_json_binary(&btc_lc_init_msg)?),
             funds: vec![],
             label: "BTC Light Client".into(),
         };
