@@ -5,8 +5,8 @@ use bitcoin::Txid;
 
 use cosmwasm_std::Order::Descending;
 use cosmwasm_std::{
-    Addr, CustomQuery, Deps, Order, QuerierWrapper, QueryRequest,
-    StdResult, Uint128, WasmQuery, coin, to_json_binary
+    Addr, Deps, Order, QuerierWrapper,
+    StdResult, Uint128, coin
 };
 use cw_storage_plus::{Bound, Bounder};
 
@@ -194,16 +194,16 @@ pub fn get_btc_tip_height(babylon_addr: &Addr, querier: &QuerierWrapper) -> StdR
     Ok(res.height) 
 }
 
-pub(crate) fn encode_smart_query<Q: CustomQuery>(
-    addr: &Addr,
-    msg: &babylon_contract::msg::btc_header::BtcHeaderResponse,
-) -> StdResult<QueryRequest<Q>> {
-    Ok(WasmQuery::Smart {
-        contract_addr: addr.to_string(),
-        msg: to_json_binary(&msg)?,
-    }
-    .into())
-}
+// pub(crate) fn encode_smart_query<Q: CustomQuery>(
+//     addr: &Addr,
+//     msg: &babylon_contract::msg::btc_header::BtcHeaderResponse,
+// ) -> StdResult<QueryRequest<Q>> {
+//     Ok(WasmQuery::Smart {
+//         contract_addr: addr.to_string(),
+//         msg: to_json_binary(&msg)?,
+//     }
+//     .into())
+// }
 
 /// Rewards to be withdrawn by a particular staker, from its delegations to a particular finality
 /// provider
