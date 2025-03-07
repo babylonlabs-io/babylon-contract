@@ -500,6 +500,7 @@
           "type": "object",
           "required": [
             "commitment",
+            "height",
             "num_pub_rand",
             "start_height"
           ],
@@ -512,6 +513,12 @@
                 "format": "uint8",
                 "minimum": 0.0
               }
+            },
+            "height": {
+              "description": "`height` defines the height that the commit was submitted",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             },
             "num_pub_rand": {
               "description": "`num_pub_rand` is the number of committed public randomness",
@@ -552,6 +559,7 @@
           "type": "object",
           "required": [
             "commitment",
+            "height",
             "num_pub_rand",
             "start_height"
           ],
@@ -564,6 +572,12 @@
                 "format": "uint8",
                 "minimum": 0.0
               }
+            },
+            "height": {
+              "description": "`height` defines the height that the commit was submitted",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             },
             "num_pub_rand": {
               "description": "`num_pub_rand` is the number of committed public randomness",
