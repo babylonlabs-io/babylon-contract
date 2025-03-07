@@ -21,6 +21,8 @@ use btc_staking::msg::{
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
 use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 
+const BTC_LIGHT_CLIENT_ADDR: &str = "contract_btc_light_client";
+
 fn contract_btc_light_client() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
         btc_light_client::contract::execute,
@@ -86,6 +88,7 @@ impl SuiteBuilder {
 
         let _block_info = app.block_info();
 
+        let btc_light_client_addr = Addr::unchecked(BTC_LIGHT_CLIENT_ADDR);
         let staking_contract_addr = Addr::unchecked(CONTRACT1_ADDR);
         let finality_contract_addr = Addr::unchecked(CONTRACT2_ADDR);
 
@@ -139,6 +142,7 @@ impl SuiteBuilder {
             app,
             code_id: contract_code_id,
             babylon: contract,
+            btc_light_client: btc_light_client_addr,
             staking: staking_contract_addr,
             finality: finality_contract_addr,
             owner,
@@ -155,6 +159,8 @@ pub struct Suite {
     code_id: u64,
     /// Babylon contract address
     pub babylon: Addr,
+    /// BTC Light Client contract address
+    pub btc_light_client: Addr,
     /// Staking contract address
     pub staking: Addr,
     /// Finality contract address
