@@ -236,7 +236,7 @@ pub fn handle_active_delegation(
         delegation.end_height,
         |existing| -> Result<_, ContractError> {
             let mut dels = existing.unwrap_or_default();
-            let hash_bytes: [u8; HASH_SIZE] = *staking_tx_hash.as_ref();  // Explicit type annotation
+            let hash_bytes: [u8; HASH_SIZE] = *staking_tx_hash.as_ref();
             dels.push(hash_bytes);
             Ok(dels)
         }

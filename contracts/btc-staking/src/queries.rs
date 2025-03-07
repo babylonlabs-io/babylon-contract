@@ -194,17 +194,6 @@ pub fn get_btc_tip_height(babylon_addr: &Addr, querier: &QuerierWrapper) -> StdR
     Ok(res.height) 
 }
 
-// pub(crate) fn encode_smart_query<Q: CustomQuery>(
-//     addr: &Addr,
-//     msg: &babylon_contract::msg::btc_header::BtcHeaderResponse,
-// ) -> StdResult<QueryRequest<Q>> {
-//     Ok(WasmQuery::Smart {
-//         contract_addr: addr.to_string(),
-//         msg: to_json_binary(&msg)?,
-//     }
-//     .into())
-// }
-
 /// Rewards to be withdrawn by a particular staker, from its delegations to a particular finality
 /// provider
 pub fn pending_rewards(
