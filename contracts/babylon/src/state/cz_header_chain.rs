@@ -4,7 +4,7 @@
 use prost::Message;
 use tendermint_proto::crypto::ProofOps;
 
-use cosmwasm_std::{Deps, DepsMut, StdResult, Storage};
+use cosmwasm_std::{Deps, DepsMut, StdResult};
 use cw_storage_plus::{Item, Map};
 
 use babylon_proto::babylon::epoching::v1::Epoch;

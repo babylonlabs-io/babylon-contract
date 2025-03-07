@@ -1,13 +1,13 @@
 //! babylon_epoch_chain is the storage for the chain of **finalised** Babylon epochs.
 //! It maintains a chain of finalised Babylon epochs.
 //! NOTE: the Babylon epoch chain is always finalised, i.e. w-deep on BTC.
-use babylon_bitcoin::{BlockHash, BlockHeader};
+use babylon_bitcoin::BlockHeader;
 
-use btc_light_client::msg::btc_header::{BtcHeader, BtcHeaderResponse};
+use btc_light_client::msg::btc_header::BtcHeaderResponse;
 use prost::Message;
 use std::cmp::min;
 
-use cosmwasm_std::{Deps, DepsMut, StdError, StdResult, Storage};
+use cosmwasm_std::{Deps, DepsMut, StdError, StdResult};
 use cw_storage_plus::{Item, Map};
 
 use babylon_proto::babylon::btccheckpoint::v1::TransactionInfo;
@@ -126,7 +126,7 @@ fn verify_epoch_and_checkpoint(
                 .ok_or(BabylonEpochChainError::EmptyTxKey {})?;
             let btc_header_hash = hex::encode(&tx_key.hash);
             let btc_header_info = query_header_by_hash(deps, &btc_header_hash)
-                .map_err(|e| BabylonEpochChainError::BTCHeaderDecodeError {})?;
+                .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;
             Ok(btc_header_info)
         })
         .collect::<Result<Vec<BtcHeaderResponse>, BabylonEpochChainError>>()?
@@ -158,7 +158,7 @@ fn verify_epoch_and_checkpoint(
     // Convert BtcHeaderResponse array into BlockHeader vec
     let btc_block_headers: [BlockHeader; NUM_BTC_TXS] = btc_headers
         .iter()
-        .map(|header| BlockHeader::try_from(header))
+        .map(BlockHeader::try_from)
         .collect::<Result<Vec<BlockHeader>, BtcLightclientError>>()?
         .try_into()
         .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;

@@ -19,7 +19,7 @@ use btc_staking::msg::{
 };
 
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
-use crate::multitest::{CONTRACT0_ADDR, CONTRACT1_ADDR, CONTRACT2_ADDR, CONTRACT3_ADDR, USER_ADDR};
+use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR, CONTRACT3_ADDR, USER_ADDR};
 
 fn contract_btc_light_client() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(

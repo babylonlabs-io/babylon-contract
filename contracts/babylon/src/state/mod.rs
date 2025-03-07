@@ -1,5 +1,5 @@
 //! state is the module that manages smart contract's system state
-use cosmwasm_std::{DepsMut, StdError, Storage};
+use cosmwasm_std::{DepsMut, StdError};
 
 use crate::bindings::msg_btc_finalized_header;
 use babylon_bindings::BabylonMsg;
@@ -29,7 +29,7 @@ pub fn handle_btc_timestamp(
     // extract and init/handle Babylon epoch chain
     let (epoch, raw_ckpt, proof_epoch_sealed, txs_info) =
         babylon_epoch_chain::extract_data_from_btc_ts(btc_ts)?;
-    if babylon_epoch_chain::is_initialized(&deps) {
+    if babylon_epoch_chain::is_initialized(deps) {
         babylon_epoch_chain::handle_epoch_and_checkpoint(
             deps,
             epoch,
