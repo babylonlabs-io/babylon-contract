@@ -178,6 +178,7 @@ fn handle_begin_block(
 ) -> Result<Response<BabylonMsg>, ContractError> {    
     process_expired_btc_delegations(deps, env)?;
     
+    // TODO: Add events
     Ok(Response::new())
 }
 

@@ -356,41 +356,60 @@ pub fn process_expired_btc_delegations(
     deps: DepsMut,
     env: Env,
 ) -> Result<Response<BabylonMsg>, ContractError> {    
-    // TODO: Currently if no BTC headers exist, the tip will be empty and query fails.
-    // However, when we insert BSN base BTC header during instantiate, that will ensure 
-    // the tip can never be empty as the tip will be at most the base header.
-    // We should propagate this error instead of silently returning.
-    // See https://github.com/babylonlabs-io/babylon-contract/issues/114
+    // Get the current BTC tip height
     let tip_height = match get_btc_tip_height(&deps) {
         Ok(height) => height,
         Err(e) => {
+            // TODO: Currently if no BTC headers exist, the tip will be empty and query fails.
+            // However, when we insert BSN base BTC header during instantiate, that will ensure 
+            // the tip can never be empty as the tip will be at most the base header.
+            // We should propagate this error instead of silently returning.
+            // See https://github.com/babylonlabs-io/babylon-contract/issues/114
             deps.api.debug(&format!("Failed to get BTC tip height: {}", e));
-            return Ok(Response::default())
+            return Ok(Response::new()
+                .add_attribute("action", "process_expired_delegations")
+                .add_attribute("result", "skipped")
+                .add_attribute("reason", "no_btc_tip"))
         }
     };
 
-    // Get all heights that have expired delegations
+    // Get all heights that have expired delegations (heights <= current tip height)
+    // We filter for heights that are less than or equal to the current BTC tip height
+    // as these delegations have now expired
     let heights: Vec<u32> = BTC_DELEGATION_EXPIRY_INDEX
-    .keys(deps.storage, None, None, Order::Ascending)
-    .filter(|h| h.as_ref().map_or(false, |&h| h <= tip_height))
-    .collect::<StdResult<Vec<_>>>()?;
+        .keys(deps.storage, None, None, Order::Ascending)
+        .filter(|h| h.as_ref().map_or(false, |&h| h <= tip_height))
+        .collect::<StdResult<Vec<_>>>()?;
 
-    // Process all expired heights (all heights less than or equal to current)
+    // If no expired delegations are found, return early
+    if heights.is_empty() {
+        return Ok(Response::new()
+            .add_attribute("action", "process_expired_delegations")
+            .add_attribute("result", "no_action")
+            .add_attribute("reason", "no_expired_delegations"))
+    }
+
+    // Process all expired heights (all heights less than or equal to current tip)
     for btc_height in heights {
         if let Some(expired_dels) = BTC_DELEGATION_EXPIRY_INDEX.may_load(deps.storage, btc_height)? {
             for staking_tx_hash in expired_dels {
-                // check if the delegation is active
                 let btc_del = BTC_DELEGATIONS.load(deps.storage, &staking_tx_hash)?;
+
+                // Only process active delegations
                 if btc_del.is_active() {
+                    // Update delegation power
                     update_delegation_power(deps.storage, env.block.height, &staking_tx_hash, &btc_del)?;      
                 }
             }
-            // Clean up processed height from index
+            
+            // Remove the processed height from the index to avoid reprocessing
             BTC_DELEGATION_EXPIRY_INDEX.remove(deps.storage, btc_height);
         }
     }
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("action", "process_expired_delegations")
+        .add_attribute("result", "success"))
 }
 
 fn update_delegation_power(
