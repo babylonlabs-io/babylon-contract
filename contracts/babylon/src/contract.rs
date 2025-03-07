@@ -14,7 +14,6 @@ use crate::ibc::{ibc_packet, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::config::{Config, CONFIG};
-use crate::utils::btc_light_client_executor::submit_headers;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -354,11 +353,14 @@ mod tests {
     #[test]
     fn instantiate_light_client_works() {
         let mut deps = mock_dependencies();
+        let net = babylon_bitcoin::chain_params::Network::Regtest;
+        let k = 10;
+        let w = 100;
         let msg = InstantiateMsg {
-            network: babylon_bitcoin::chain_params::Network::Regtest,
+            network: net.clone(),
             babylon_tag: "01020304".to_string(),
-            btc_confirmation_depth: 10,
-            checkpoint_finalization_timeout: 100,
+            btc_confirmation_depth: k,
+            checkpoint_finalization_timeout: w,
             notify_cosmos_zone: false,
             btc_light_client_code_id: Some(1),
             btc_light_client_msg: None,
@@ -380,7 +382,12 @@ mod tests {
             WasmMsg::Instantiate {
                 admin: None,
                 code_id: 1,
-                msg: Binary::from(b"{}"),
+                msg: to_json_binary(&BtcLightClientInstantiateMsg {
+                    network: net.clone(),
+                    btc_confirmation_depth: k,
+                    checkpoint_finalization_timeout: w,
+                })
+                .unwrap(),
                 funds: vec![],
                 label: "BTC Light Client".into(),
             }

@@ -5,10 +5,14 @@ use suite::SuiteBuilder;
 
 // Some multi-test default settings
 // TODO: Replace these with their address generators
-const CONTRACT0_ADDR: &str = "cosmwasm19mfs8tl4s396u7vqw9rrnsmrrtca5r66p7v8jvwdxvjn3shcmllqupdgxu";
+// Babylon contract
+const CONTRACT0_ADDR: &str = "cosmwasm1nnzavhgqucflnjpkmstm9ld9d54ywcgep0ej2em8lxaqcm0tuugspxy2zj";
+// BTC Light Client contract
 const CONTRACT1_ADDR: &str = "cosmwasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s8jef58";
+// BTC Staking contract
 const CONTRACT2_ADDR: &str = "cosmwasm1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqt8utkp";
-const CONTRACT3_ADDR: &str = "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdum6l3wrwqwax8qts0zj9qp";
+// BTC Finality contract
+const CONTRACT3_ADDR: &str = "cosmwasm17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsnuzwl9";
 
 #[test]
 fn initialization() {

@@ -19,9 +19,7 @@ use btc_staking::msg::{
 };
 
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
-
-const BTC_LIGHT_CLIENT_ADDR: &str = "contract_btc_light_client";
+use crate::multitest::{CONTRACT0_ADDR, CONTRACT1_ADDR, CONTRACT2_ADDR, CONTRACT3_ADDR, USER_ADDR};
 
 fn contract_btc_light_client() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
@@ -88,9 +86,9 @@ impl SuiteBuilder {
 
         let _block_info = app.block_info();
 
-        let btc_light_client_addr = Addr::unchecked(BTC_LIGHT_CLIENT_ADDR);
-        let staking_contract_addr = Addr::unchecked(CONTRACT1_ADDR);
-        let finality_contract_addr = Addr::unchecked(CONTRACT2_ADDR);
+        let btc_light_client_addr = Addr::unchecked(CONTRACT1_ADDR);
+        let staking_contract_addr = Addr::unchecked(CONTRACT2_ADDR);
+        let finality_contract_addr = Addr::unchecked(CONTRACT3_ADDR);
 
         app.init_modules(|router, _api, storage| -> AnyResult<()> {
             router.bank.init_balance(storage, &owner, self.init_funds)
@@ -358,7 +356,7 @@ impl Suite {
         pubrand_signature: &[u8],
     ) -> anyhow::Result<AppResponse> {
         self.app.execute_contract(
-            Addr::unchecked("anyone"),
+            Addr::unchecked(USER_ADDR),
             self.finality.clone(),
             &finality_api::ExecuteMsg::CommitPublicRandomness {
                 fp_pubkey_hex: pk_hex.to_string(),
@@ -433,7 +431,7 @@ impl Suite {
         self.app.set_block(block);
 
         self.app.execute_contract(
-            Addr::unchecked("anyone"),
+            Addr::unchecked(USER_ADDR),
             self.finality.clone(),
             &finality_api::ExecuteMsg::SubmitFinalitySignature {
                 fp_pubkey_hex: pk_hex.to_string(),
@@ -471,7 +469,7 @@ impl Suite {
         staker: &str,
     ) -> anyhow::Result<AppResponse> {
         self.app.execute_contract(
-            Addr::unchecked("anyone"),
+            Addr::unchecked(USER_ADDR),
             self.staking.clone(),
             &btc_staking::msg::ExecuteMsg::WithdrawRewards {
                 fp_pubkey_hex: fp_pubkey_hex.to_owned(),
