@@ -4,7 +4,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{
     coin, BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, IbcMsg, MessageInfo, Response,
-    StdResult, Storage, Uint128, Uint256, Order, Api,
+    StdResult, Storage, Uint128, Uint256, Order,
 };
 use hex::ToHex;
 

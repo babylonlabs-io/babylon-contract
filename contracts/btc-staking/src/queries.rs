@@ -5,7 +5,7 @@ use bitcoin::Txid;
 
 use cosmwasm_std::Order::Descending;
 use cosmwasm_std::{
-    Addr, Deps, Order, QuerierWrapper,
+    Deps, Order,
     StdResult, Uint128, coin
 };
 use cw_storage_plus::{Bound, Bounder};
@@ -26,8 +26,6 @@ use crate::state::staking::{
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::to_canonical_addr;
-use babylon_contract::msg::btc_header::BtcHeaderResponse;
-use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
