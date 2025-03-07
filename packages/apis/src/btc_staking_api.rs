@@ -405,7 +405,7 @@ pub struct UnbondedBtcDelegation {
 pub enum SudoMsg {
     /// The SDK should call SudoMsg::BeginBlock{} once per block (in BeginBlock).
     /// It allows the staking module to index the BTC height, and update the power
-    /// distribution of the active Finality Providers.
+    /// distribution of Finality Providers.
     BeginBlock {
         hash_hex: String,
         app_hash_hex: String,
