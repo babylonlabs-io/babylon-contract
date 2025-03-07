@@ -186,14 +186,6 @@ pub fn activated_height(deps: Deps) -> Result<ActivatedHeightResponse, ContractE
     })
 }
 
-pub fn get_btc_tip_height(babylon_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u32> {
-    let res: BtcHeaderResponse = querier.query_wasm_smart(
-        babylon_addr,
-        &BabylonQueryMsg::BtcTipHeader {},
-    )?;
-    Ok(res.height) 
-}
-
 /// Rewards to be withdrawn by a particular staker, from its delegations to a particular finality
 /// provider
 pub fn pending_rewards(
