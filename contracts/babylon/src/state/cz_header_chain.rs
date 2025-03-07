@@ -15,6 +15,7 @@ use crate::{error, utils};
 
 pub const CZ_HEADERS: Map<u64, Vec<u8>> = Map::new("cz_headers");
 pub const CZ_HEADER_LAST: Item<Vec<u8>> = Item::new("cz_header_last");
+pub const CZ_HEIGHT_LAST: Item<u64> = Item::new("cz_height_last");
 
 // getter/setter for last finalised CZ header
 pub fn get_last_cz_header(
@@ -27,9 +28,18 @@ pub fn get_last_cz_header(
         .map_err(error::CZHeaderChainError::DecodeError)
 }
 
+// Getter/setter for last finalised CZ height
+// Zero means no finalised CZ header yet
+pub fn get_last_cz_height(storage: &dyn Storage) -> StdResult<u64> {
+    Ok(CZ_HEIGHT_LAST.may_load(storage)?.unwrap_or_default())
+}
+
 fn set_last_cz_header(storage: &mut dyn Storage, last_cz_header: &IndexedHeader) -> StdResult<()> {
     let last_cz_header_bytes = &last_cz_header.encode_to_vec();
-    CZ_HEADER_LAST.save(storage, last_cz_header_bytes)
+    CZ_HEADER_LAST
+        .save(storage, last_cz_header_bytes)
+        // Save the height of the last finalised CZ header in passing as well
+        .and(CZ_HEIGHT_LAST.save(storage, &last_cz_header.height))
 }
 
 /// get_cz_header gets a CZ header of a given height

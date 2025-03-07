@@ -8,6 +8,7 @@ use crate::msg::btc_header::BtcHeader;
 use {
     crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
     crate::msg::cz_header::CzHeaderResponse,
+    crate::msg::cz_header::CzHeightResponse,
     crate::msg::epoch::EpochResponse,
     crate::state::config::Config,
 };
@@ -163,6 +164,9 @@ pub enum QueryMsg {
     /// CzLastHeader returns the last CZ epoch stored in the contract
     #[returns(CzHeaderResponse)]
     CzLastHeader {},
+    /// CzLastHeight returns the last CZ height stored in the contract
+    #[returns(CzHeightResponse)]
+    CzLastHeight {},
     /// CzHeader returns the CZ header stored in the contract, by CZ height.
     #[returns(CzHeaderResponse)]
     CzHeader { height: u64 },

@@ -216,6 +216,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
             &queries::babylon_checkpoint(deps, epoch_number)?,
         )?),
         QueryMsg::CzLastHeader {} => Ok(to_json_binary(&queries::cz_last_header(deps)?)?),
+        QueryMsg::CzLastHeight {} => Ok(to_json_binary(&queries::cz_last_height(deps)?)?),
         QueryMsg::CzHeader { height } => Ok(to_json_binary(&queries::cz_header(deps, height)?)?),
         QueryMsg::TransferInfo {} => Ok(to_json_binary(&queries::transfer_info(deps)?)?),
     }
