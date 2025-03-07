@@ -31,7 +31,7 @@ pub fn get_last_cz_header(
 // Getter/setter for last finalised CZ height
 // Zero means no finalised CZ header yet
 pub fn get_last_cz_height(storage: &dyn Storage) -> StdResult<u64> {
-    Ok(CZ_HEIGHT_LAST.may_load(storage)?.unwrap_or_default())
+    CZ_HEIGHT_LAST.load(storage)
 }
 
 fn set_last_cz_header(storage: &mut dyn Storage, last_cz_header: &IndexedHeader) -> StdResult<()> {
