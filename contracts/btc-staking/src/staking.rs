@@ -25,9 +25,8 @@ use babylon_apis::btc_staking_api::{
 use babylon_apis::{to_canonical_addr, Validate};
 use babylon_bindings::BabylonMsg;
 use babylon_contract::ibc::packet_timeout;
-use babylon_contract::msg::btc_header::BtcHeaderResponse;
-use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 use babylon_contract::msg::ibc::TransferInfoResponse;
+use btc_light_client::msg::btc_header::BtcHeaderResponse;
 use cosmwasm_std::Order::Ascending;
 use cw_utils::{must_pay, nonpayable};
 use std::str::FromStr;
@@ -629,15 +628,16 @@ pub(crate) fn slash_finality_provider(
     Ok(Response::new())
 }
 
-/// get_btc_tip_height queries the Babylon contract for the latest BTC tip height
+/// get_btc_tip_height queries the BTC light client for the latest BTC tip height
 fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
-    // Get the BTC tip from the babylon contract through a raw query
-    let babylon_addr = CONFIG.load(deps.storage)?.babylon;
+    // Get the BTC light client address from config
+    let btc_light_client_addr = CONFIG.load(deps.storage)?.btc_light_client;
 
-    // Query the Babylon contract
-    // TODO: use a raw query for performance / efficiency
-    let query_msg = BabylonQueryMsg::BtcTipHeader {};
-    let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(babylon_addr, &query_msg)?;
+    // Query the BTC light client for the tip header
+    let query_msg = btc_light_client::msg::contract::QueryMsg::BtcTipHeader {};
+    let tip: BtcHeaderResponse = deps
+        .querier
+        .query_wasm_smart(btc_light_client_addr, &query_msg)?;
 
     Ok(tip.height)
 }

@@ -15,12 +15,12 @@ pub fn config(deps: Deps) -> StdResult<Config> {
 }
 
 pub fn babylon_base_epoch(deps: Deps) -> Result<EpochResponse, BabylonEpochChainError> {
-    let epoch = get_base_epoch(deps.storage)?;
+    let epoch = get_base_epoch(deps)?;
     Ok(EpochResponse::from(&epoch))
 }
 
 pub fn babylon_last_epoch(deps: Deps) -> Result<EpochResponse, BabylonEpochChainError> {
-    let epoch = get_last_finalized_epoch(deps.storage)?;
+    let epoch = get_last_finalized_epoch(deps)?;
     Ok(EpochResponse::from(&epoch))
 }
 
@@ -28,7 +28,7 @@ pub fn babylon_epoch(
     deps: Deps,
     epoch_number: u64,
 ) -> Result<EpochResponse, BabylonEpochChainError> {
-    let epoch = get_epoch(deps.storage, epoch_number)?;
+    let epoch = get_epoch(deps, epoch_number)?;
     Ok(EpochResponse::from(&epoch))
 }
 
@@ -36,161 +36,21 @@ pub fn babylon_checkpoint(
     deps: Deps,
     epoch_number: u64,
 ) -> Result<CheckpointResponse, BabylonEpochChainError> {
-    let raw_checkpoint = get_checkpoint(deps.storage, epoch_number)?;
+    let raw_checkpoint = get_checkpoint(deps, epoch_number)?;
     Ok(CheckpointResponse::from(&raw_checkpoint))
 }
 
 pub fn cz_last_header(deps: Deps) -> Result<CzHeaderResponse, CZHeaderChainError> {
-    let header = get_last_cz_header(deps.storage)?;
+    let header = get_last_cz_header(deps)?;
     Ok(CzHeaderResponse::from(&header))
 }
 
 pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZHeaderChainError> {
-    let header = get_cz_header(deps.storage, height)?;
+    let header = get_cz_header(deps, height)?;
     Ok(CzHeaderResponse::from(&header))
 }
 
 pub(crate) fn transfer_info(deps: Deps) -> Result<TransferInfoResponse, ContractError> {
     let transfer_info = IBC_TRANSFER.may_load(deps.storage)?;
     Ok(transfer_info)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::state::btc_light_client::{init, tests::setup};
-    use cosmwasm_std::testing::mock_dependencies;
-    use test_utils::get_btc_lc_headers;
-
-    #[test]
-    fn btc_headers_work() {
-        let mut deps = mock_dependencies();
-        setup(deps.as_mut().storage);
-
-        let test_headers = get_btc_lc_headers();
-
-        init(deps.as_mut().storage, &test_headers).unwrap();
-
-        // get headers
-        let headers = btc_headers(deps.as_ref(), None, None, None)
-            .unwrap()
-            .headers;
-        assert_eq!(headers.len(), 10); // default limit
-
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(header, &TryFrom::try_from(&test_headers[i]).unwrap());
-        }
-
-        // get next 5 headers
-        let headers = btc_headers(
-            deps.as_ref(),
-            Some(headers.last().unwrap().height),
-            Some(5),
-            None,
-        )
-        .unwrap()
-        .headers;
-        assert_eq!(headers.len(), 5);
-
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(header, &TryFrom::try_from(&test_headers[i + 10]).unwrap());
-        }
-
-        // get next 30 headers
-        let headers = btc_headers(
-            deps.as_ref(),
-            Some(headers.last().unwrap().height),
-            Some(100),
-            None,
-        )
-        .unwrap()
-        .headers;
-        assert_eq!(headers.len(), 30); // max limit
-
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(header, &TryFrom::try_from(&test_headers[i + 15]).unwrap());
-        }
-
-        // get the last headers
-        let headers = btc_headers(deps.as_ref(), Some(90), Some(30), None)
-            .unwrap()
-            .headers;
-
-        assert_eq!(headers.len(), 10); // no more headers than that
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(header, &TryFrom::try_from(&test_headers[i + 90]).unwrap());
-        }
-    }
-
-    #[test]
-    fn btc_headers_reverse_order_work() {
-        let mut deps = mock_dependencies();
-        crate::state::btc_light_client::tests::setup(deps.as_mut().storage);
-
-        let test_headers = get_btc_lc_headers();
-
-        init(deps.as_mut().storage, &test_headers).unwrap();
-
-        // get headers in reverse order
-        let headers = btc_headers(deps.as_ref(), None, None, Some(true))
-            .unwrap()
-            .headers;
-        assert_eq!(headers.len(), 10); // default limit
-
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(
-                header,
-                &TryFrom::try_from(&test_headers[100 - i - 1]).unwrap()
-            );
-        }
-
-        // get previous 5 headers
-        let headers = btc_headers(
-            deps.as_ref(),
-            Some(headers.last().unwrap().height),
-            Some(5),
-            Some(true),
-        )
-        .unwrap()
-        .headers;
-        assert_eq!(headers.len(), 5);
-
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(
-                header,
-                &TryFrom::try_from(&test_headers[100 - 10 - i - 1]).unwrap()
-            );
-        }
-
-        // get previous 30 headers
-        let headers = btc_headers(
-            deps.as_ref(),
-            Some(headers.last().unwrap().height),
-            Some(100),
-            Some(true),
-        )
-        .unwrap()
-        .headers;
-        assert_eq!(headers.len(), 30); // max limit
-
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(
-                header,
-                &TryFrom::try_from(&test_headers[100 - 15 - i - 1]).unwrap()
-            );
-        }
-
-        // get the first ten headers
-        let headers = btc_headers(deps.as_ref(), Some(11), Some(30), Some(true))
-            .unwrap()
-            .headers;
-
-        assert_eq!(headers.len(), 10); // no more headers than that
-        for (i, header) in headers.iter().enumerate() {
-            assert_eq!(
-                header,
-                &TryFrom::try_from(&test_headers[100 - 90 - i - 1]).unwrap()
-            );
-        }
-    }
 }

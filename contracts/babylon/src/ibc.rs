@@ -114,7 +114,7 @@ pub fn ibc_channel_close(
 /// We decode the contents of the packet and if it matches one of the packets we support, execute
 /// the relevant function, otherwise return an IBC Ack error.
 pub fn ibc_packet_receive(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
@@ -162,7 +162,7 @@ pub(crate) mod ibc_packet {
     use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
     pub fn handle_btc_timestamp(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_ts: &BtcTimestamp,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
@@ -189,12 +189,11 @@ pub(crate) mod ibc_packet {
     }
 
     pub fn handle_btc_staking(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_staking: &BtcStakingIbcPacket,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
+        let cfg = CONFIG.load(deps.storage)?;
 
         // Route the packet to the btc-staking contract
         let btc_staking_addr = cfg
@@ -249,7 +248,7 @@ pub(crate) mod ibc_packet {
     }
 
     pub fn handle_btc_headers(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_headers: &BtcHeaders,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {

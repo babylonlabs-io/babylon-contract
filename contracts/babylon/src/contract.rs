@@ -199,7 +199,11 @@ fn reply_init_finality_callback(
     })?;
     // Set the BTC finality contract address to the BTC staking contract
     let cfg = CONFIG.load(deps.storage)?;
-    let msg = btc_staking_api::ExecuteMsg::UpdateFinality {
+    let msg = btc_staking_api::ExecuteMsg::UpdateContractAddresses {
+        btc_light_client: cfg
+            .btc_light_client
+            .ok_or(ContractError::BtcLightClientNotSet {})?
+            .to_string(),
         finality: cfg
             .btc_finality
             .ok_or(ContractError::BtcFinalityNotSet {})?

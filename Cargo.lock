@@ -585,6 +585,7 @@ dependencies = [
  "babylon-merkle",
  "babylon-proto",
  "bitcoin",
+ "btc-light-client",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-vm",

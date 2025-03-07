@@ -327,7 +327,7 @@ pub fn handle_btc_headers_from_user(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use crate::{
         state::{Config, CONFIG},
         ExecuteMsg,

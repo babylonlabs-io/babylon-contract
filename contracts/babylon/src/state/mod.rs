@@ -15,7 +15,7 @@ pub mod cz_header_chain;
 /// newly finalised CZ header, or None if this BTC timestamp does not carry
 /// a newly finalised CZ header.
 pub fn handle_btc_timestamp(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     btc_ts: &BtcTimestamp,
 ) -> Result<Option<BabylonMsg>, StdError> {
     // extract and init/handle BTC headers
@@ -29,9 +29,9 @@ pub fn handle_btc_timestamp(
     // extract and init/handle Babylon epoch chain
     let (epoch, raw_ckpt, proof_epoch_sealed, txs_info) =
         babylon_epoch_chain::extract_data_from_btc_ts(btc_ts)?;
-    if babylon_epoch_chain::is_initialized(deps.storage) {
+    if babylon_epoch_chain::is_initialized(&deps) {
         babylon_epoch_chain::handle_epoch_and_checkpoint(
-            deps.storage,
+            deps,
             epoch,
             raw_ckpt,
             proof_epoch_sealed,
@@ -41,10 +41,9 @@ pub fn handle_btc_timestamp(
             StdError::generic_err(format!("failed to handle Babylon epoch from Babylon: {e}"))
         })?;
     } else {
-        babylon_epoch_chain::init(deps.storage, epoch, raw_ckpt, proof_epoch_sealed, &txs_info)
-            .map_err(|e| {
-                StdError::generic_err(format!("failed to initialize Babylon epoch: {e}"))
-            })?;
+        babylon_epoch_chain::init(deps, epoch, raw_ckpt, proof_epoch_sealed, &txs_info).map_err(
+            |e| StdError::generic_err(format!("failed to initialize Babylon epoch: {e}")),
+        )?;
     }
 
     // try to extract and handle CZ header
@@ -73,10 +72,10 @@ pub fn handle_btc_timestamp(
 }
 
 pub fn handle_btc_headers(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     btc_headers: &BtcHeaders,
 ) -> Result<Option<BabylonMsg>, StdError> {
-    crate::utils::btc_light_client_executor::submit_headers(deps, btc_headers.headers)
+    crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
         .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
 
     Ok(None)

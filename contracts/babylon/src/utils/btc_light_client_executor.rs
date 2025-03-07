@@ -8,7 +8,7 @@ use cosmwasm_std::{to_json_binary, DepsMut, Response, WasmMsg};
 
 /// Submit BTC headers to the light client
 pub fn submit_headers(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     headers: &[BtcHeaderInfo],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;

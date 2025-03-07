@@ -105,6 +105,19 @@ impl TryFrom<&BtcHeaderInfoResponse> for BtcHeader {
     }
 }
 
+/// Try to convert BtcHeaderResponse to/into BlockHeader
+impl TryFrom<&BtcHeaderResponse> for BlockHeader {
+    type Error = ContractError;
+    fn try_from(header_response: &BtcHeaderResponse) -> Result<Self, Self::Error> {
+        let btc_header: BtcHeader = header_response
+            .clone()
+            .header
+            .try_into()
+            .map_err(|_| ContractError::BTCHeaderDecodeError {})?;
+        BlockHeader::try_from(&btc_header)
+    }
+}
+
 /// Try to convert BtcHeaderInfoResponse to/into BtcHeader
 impl TryFrom<BtcHeaderInfoResponse> for BtcHeader {
     type Error = ContractError;

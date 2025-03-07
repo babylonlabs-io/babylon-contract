@@ -17,29 +17,24 @@ pub const CZ_HEADERS: Map<u64, Vec<u8>> = Map::new("cz_headers");
 pub const CZ_HEADER_LAST: Item<Vec<u8>> = Item::new("cz_header_last");
 
 // getter/setter for last finalised CZ header
-pub fn get_last_cz_header(
-    storage: &dyn Storage,
-) -> Result<IndexedHeader, error::CZHeaderChainError> {
+pub fn get_last_cz_header(deps: Deps) -> Result<IndexedHeader, error::CZHeaderChainError> {
     let last_cz_header_bytes = CZ_HEADER_LAST
-        .load(storage)
+        .load(deps.storage)
         .map_err(|_| error::CZHeaderChainError::NoCZHeader {})?;
     IndexedHeader::decode(last_cz_header_bytes.as_slice())
         .map_err(error::CZHeaderChainError::DecodeError)
 }
 
-fn set_last_cz_header(storage: &mut dyn Storage, last_cz_header: &IndexedHeader) -> StdResult<()> {
+fn set_last_cz_header(deps: &mut DepsMut, last_cz_header: &IndexedHeader) -> StdResult<()> {
     let last_cz_header_bytes = &last_cz_header.encode_to_vec();
-    CZ_HEADER_LAST.save(storage, last_cz_header_bytes)
+    CZ_HEADER_LAST.save(deps.storage, last_cz_header_bytes)
 }
 
 /// get_cz_header gets a CZ header of a given height
-pub fn get_cz_header(
-    storage: &dyn Storage,
-    height: u64,
-) -> Result<IndexedHeader, error::CZHeaderChainError> {
+pub fn get_cz_header(deps: Deps, height: u64) -> Result<IndexedHeader, error::CZHeaderChainError> {
     // try to find the indexed header at the given height
     let cz_header_bytes = CZ_HEADERS
-        .load(storage, height)
+        .load(deps.storage, height)
         .map_err(|_| error::CZHeaderChainError::CZHeaderNotFoundError { height })?;
 
     // try to decode the indexed_header
@@ -75,18 +70,18 @@ fn insert_cz_header(deps: &mut DepsMut, cz_header: &IndexedHeader) -> StdResult<
     CZ_HEADERS.save(deps.storage, cz_header.height, &cz_header_bytes)?;
 
     // update last finalised header
-    set_last_cz_header(deps.storage, cz_header)
+    set_last_cz_header(deps, cz_header)
 }
 
 // TODO: unit test
 pub fn handle_cz_header(
-    mut deps: DepsMut,
+    deps: &mut DepsMut,
     cz_header: &IndexedHeader,
     epoch: &Epoch,
     proof_cz_header_in_epoch: &ProofOps,
 ) -> Result<(), error::CZHeaderChainError> {
     verify_cz_header(deps.as_ref(), cz_header, epoch, proof_cz_header_in_epoch)?;
-    insert_cz_header(&mut deps, cz_header)?;
+    insert_cz_header(deps, cz_header)?;
 
     Ok(())
 }

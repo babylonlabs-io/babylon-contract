@@ -7,6 +7,9 @@ use crate::error::ContractError;
 use crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse};
 use crate::state::{get_base_header, get_header, get_header_by_hash, get_headers, get_tip};
 
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
+
 pub fn btc_base_header(deps: &Deps) -> Result<BtcHeaderResponse, ContractError> {
     let header = get_base_header(deps.storage)?;
     BtcHeaderResponse::try_from(&header)
@@ -34,7 +37,8 @@ pub fn btc_headers(
     limit: Option<u32>,
     reverse: Option<bool>,
 ) -> Result<BtcHeadersResponse, ContractError> {
-    let headers = get_headers(deps.storage, start_after, limit, reverse)?;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
+    let headers = get_headers(deps.storage, start_after, Some(limit), reverse)?;
     BtcHeadersResponse::try_from(headers)
 }
 
