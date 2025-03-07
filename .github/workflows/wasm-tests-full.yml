@@ -1,7 +1,8 @@
 name: babylonchain/babylon-contract/wasm-tests
 on:
-  push:
-    branches: [ "main" ]
+  pull_request:
+    branches:
+      - '**'
 env:
   CARGO_TERM_COLOR: always
   WORKSPACE: "/home/runner/work/babylon-contract/babylon-contract"

@@ -9,7 +9,7 @@ use cosmwasm_std::{Addr, Binary, Empty};
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use crate::msg::contract::{InstantiateMsg, QueryMsg};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR, CONTRACT3_ADDR};
+use crate::multitest::{BTC_LIGHT_CLIENT_CONTRACT_ADDR, BTC_STAKING_CONTRACT_ADDR, BTC_FINALITY_CONTRACT_ADDR};
 use crate::state::config::Config;
 
 fn contract_btc_light_client() -> Box<dyn Contract<BabylonMsg>> {
@@ -180,7 +180,7 @@ impl Suite {
     pub fn get_btc_light_client_config(&self) -> btc_light_client::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(CONTRACT1_ADDR, &btc_light_client::msg::QueryMsg::Config {})
+            .query_wasm_smart(BTC_LIGHT_CLIENT_CONTRACT_ADDR, &btc_light_client::msg::QueryMsg::Config {})
             .unwrap()
     }
 
@@ -188,7 +188,7 @@ impl Suite {
     pub fn get_btc_staking_config(&self) -> btc_staking::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(CONTRACT2_ADDR, &btc_staking::msg::QueryMsg::Config {})
+            .query_wasm_smart(BTC_STAKING_CONTRACT_ADDR, &btc_staking::msg::QueryMsg::Config {})
             .unwrap()
     }
 
@@ -196,7 +196,7 @@ impl Suite {
     pub fn get_btc_finality_config(&self) -> btc_finality::state::config::Config {
         self.app
             .wrap()
-            .query_wasm_smart(CONTRACT3_ADDR, &btc_finality::msg::QueryMsg::Config {})
+            .query_wasm_smart(BTC_FINALITY_CONTRACT_ADDR, &btc_finality::msg::QueryMsg::Config {})
             .unwrap()
     }
 

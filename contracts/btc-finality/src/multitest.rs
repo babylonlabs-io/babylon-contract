@@ -6,13 +6,17 @@ use suite::SuiteBuilder;
 // Some multi-test default settings
 // TODO: Replace these with their address generators
 // Babylon contract
-const CONTRACT0_ADDR: &str = "cosmwasm1nnzavhgqucflnjpkmstm9ld9d54ywcgep0ej2em8lxaqcm0tuugspxy2zj";
+const BABYLON_CONTRACT_ADDR: &str =
+    "cosmwasm1nnzavhgqucflnjpkmstm9ld9d54ywcgep0ej2em8lxaqcm0tuugspxy2zj";
 // BTC Light Client contract
-const CONTRACT1_ADDR: &str = "cosmwasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s8jef58";
+const BTC_LIGHT_CLIENT_CONTRACT_ADDR: &str =
+    "cosmwasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s8jef58";
 // BTC Staking contract
-const CONTRACT2_ADDR: &str = "cosmwasm1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqt8utkp";
+const BTC_STAKING_CONTRACT_ADDR: &str =
+    "cosmwasm1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqt8utkp";
 // BTC Finality contract
-const CONTRACT3_ADDR: &str = "cosmwasm17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsnuzwl9";
+const BTC_FINALITY_CONTRACT_ADDR: &str =
+    "cosmwasm17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsnuzwl9";
 
 const USER_ADDR: &str = "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdum6l3wrwqwax8qts0zj9qp";
 
@@ -27,18 +31,30 @@ mod instantiation {
         let config = suite.get_babylon_config();
         assert_eq!(
             config.btc_light_client,
-            Some(Addr::unchecked(CONTRACT1_ADDR))
+            Some(Addr::unchecked(BTC_LIGHT_CLIENT_CONTRACT_ADDR))
         );
         // Confirm the btc-staking contract has been instantiated and set
-        assert_eq!(config.btc_staking, Some(Addr::unchecked(CONTRACT2_ADDR)));
+        assert_eq!(
+            config.btc_staking,
+            Some(Addr::unchecked(BTC_STAKING_CONTRACT_ADDR))
+        );
         // Confirm the btc-finality contract has been instantiated and set
-        assert_eq!(config.btc_finality, Some(Addr::unchecked(CONTRACT3_ADDR)));
+        assert_eq!(
+            config.btc_finality,
+            Some(Addr::unchecked(BTC_FINALITY_CONTRACT_ADDR))
+        );
         // Check that the btc-staking contract was initialized correctly
         let btc_staking_config = suite.get_btc_staking_config();
-        assert_eq!(btc_staking_config.babylon, Addr::unchecked(CONTRACT0_ADDR));
+        assert_eq!(
+            btc_staking_config.babylon,
+            Addr::unchecked(BABYLON_CONTRACT_ADDR)
+        );
         // Check that the btc-finality contract was initialized correctly
         let btc_finality_config = suite.get_btc_finality_config();
-        assert_eq!(btc_finality_config.babylon, Addr::unchecked(CONTRACT0_ADDR));
+        assert_eq!(
+            btc_finality_config.babylon,
+            Addr::unchecked(BABYLON_CONTRACT_ADDR)
+        );
     }
 }
 
@@ -125,7 +141,7 @@ mod finality {
         assert_eq!(1, res.events.len());
         assert_eq!(
             res.events[0],
-            Event::new("sudo").add_attribute("_contract_address", CONTRACT3_ADDR)
+            Event::new("sudo").add_attribute("_contract_address", BTC_FINALITY_CONTRACT_ADDR)
         );
 
         // Call the end-block sudo handler(s), so that the block is indexed in the store
@@ -135,12 +151,12 @@ mod finality {
         assert_eq!(2, res.events.len());
         assert_eq!(
             res.events[0],
-            Event::new("sudo").add_attribute("_contract_address", CONTRACT3_ADDR)
+            Event::new("sudo").add_attribute("_contract_address", BTC_FINALITY_CONTRACT_ADDR)
         );
         assert_eq!(
             res.events[1],
             Event::new("wasm-index_block")
-                .add_attribute("_contract_address", CONTRACT3_ADDR)
+                .add_attribute("_contract_address", BTC_FINALITY_CONTRACT_ADDR)
                 .add_attribute("module", "finality")
                 .add_attribute("last_height", (initial_height + 1).to_string())
         );
@@ -244,19 +260,19 @@ mod finality {
         assert_eq!(3, res.events.len());
         assert_eq!(
             res.events[0],
-            Event::new("sudo").add_attribute("_contract_address", CONTRACT3_ADDR)
+            Event::new("sudo").add_attribute("_contract_address", BTC_FINALITY_CONTRACT_ADDR)
         );
         assert_eq!(
             res.events[1],
             Event::new("wasm-index_block")
-                .add_attribute("_contract_address", CONTRACT3_ADDR)
+                .add_attribute("_contract_address", BTC_FINALITY_CONTRACT_ADDR)
                 .add_attribute("module", "finality")
                 .add_attribute("last_height", submit_height.to_string())
         );
         assert_eq!(
             res.events[2],
             Event::new("wasm-finalize_block")
-                .add_attribute("_contract_address", CONTRACT3_ADDR)
+                .add_attribute("_contract_address", BTC_FINALITY_CONTRACT_ADDR)
                 .add_attribute("module", "finality")
                 .add_attribute("finalized_height", submit_height.to_string())
         );

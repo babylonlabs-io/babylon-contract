@@ -19,7 +19,7 @@ use btc_staking::msg::{
 };
 
 use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR, CONTRACT3_ADDR, USER_ADDR};
+use crate::multitest::{BTC_LIGHT_CLIENT_CONTRACT_ADDR, BTC_STAKING_CONTRACT_ADDR, BTC_FINALITY_CONTRACT_ADDR, USER_ADDR};
 
 fn contract_btc_light_client() -> Box<dyn Contract<BabylonMsg>> {
     let contract = ContractWrapper::new(
@@ -86,9 +86,9 @@ impl SuiteBuilder {
 
         let _block_info = app.block_info();
 
-        let btc_light_client_addr = Addr::unchecked(CONTRACT1_ADDR);
-        let staking_contract_addr = Addr::unchecked(CONTRACT2_ADDR);
-        let finality_contract_addr = Addr::unchecked(CONTRACT3_ADDR);
+        let btc_light_client_addr = Addr::unchecked(BTC_LIGHT_CLIENT_CONTRACT_ADDR);
+        let staking_contract_addr = Addr::unchecked(BTC_STAKING_CONTRACT_ADDR);
+        let finality_contract_addr = Addr::unchecked(BTC_FINALITY_CONTRACT_ADDR);
 
         app.init_modules(|router, _api, storage| -> AnyResult<()> {
             router.bank.init_balance(storage, &owner, self.init_funds)
