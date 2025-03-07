@@ -5,7 +5,7 @@ use crate::finality::{
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
-use crate::state::finality::{LAST_HEIGHT, REWARDS, TOTAL_REWARDS};
+use crate::state::finality::{REWARDS, TOTAL_REWARDS};
 use crate::{finality, queries, state};
 use babylon_apis::btc_staking_api::RewardInfo;
 use babylon_apis::finality_api::SudoMsg;
@@ -51,7 +51,6 @@ pub fn instantiate(
     PARAMS.save(deps.storage, &params)?;
     // initialize storage, so no issue when reading for the first time
     TOTAL_REWARDS.save(deps.storage, &Uint128::zero())?;
-    LAST_HEIGHT.save(deps.storage, &0)?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new().add_attribute("action", "instantiate"))

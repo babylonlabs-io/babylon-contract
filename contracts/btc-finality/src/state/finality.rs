@@ -14,9 +14,6 @@ pub const BLOCKS: Map<u64, IndexedBlock> = Map::new("blocks");
 /// Next height to finalise
 pub const NEXT_HEIGHT: Item<u64> = Item::new("next_height");
 
-/// Last finalized height
-pub const LAST_HEIGHT: Item<u64> = Item::new("last_height");
-
 /// `FP_SET` is the calculated list of the active finality providers by height
 pub const FP_SET: Map<u64, Vec<FinalityProviderInfo>> = Map::new("fp_set");
 

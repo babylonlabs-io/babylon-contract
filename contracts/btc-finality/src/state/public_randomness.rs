@@ -1,10 +1,11 @@
 use cosmwasm_std::Order::{Ascending, Descending};
-use cosmwasm_std::{StdResult, Storage};
+use cosmwasm_std::{Deps, StdResult, Storage};
 use cw_storage_plus::{Bound, Map};
 
 use crate::error::ContractError;
-use crate::state::finality::LAST_HEIGHT;
+use crate::state::config::CONFIG;
 use babylon_apis::finality_api::PubRandCommit;
+use babylon_contract::msg::cz_header::CzHeaderResponse;
 
 /// Map of public randomness commitments by fp and block height
 pub const PUB_RAND_COMMITS: Map<(&str, u64), PubRandCommit> = Map::new("fp_pub_rand_commit");
@@ -45,16 +46,15 @@ pub fn get_pub_rand_commit_for_height(
 // `get_timestamped_pub_rand_commit_for_height` finds the public randomness commitment that includes
 // the given height for the given finality provider
 pub fn get_timestamped_pub_rand_commit_for_height(
-    storage: &dyn Storage,
+    deps: &Deps,
     fp_btc_pk_hex: &str,
     height: u64,
 ) -> Result<PubRandCommit, ContractError> {
-    let pr_commit = get_pub_rand_commit_for_height(storage, fp_btc_pk_hex, height)?;
+    let pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
 
-    // Ensure the finality provider's last randomness commit is already finalised by BTC
-    // timestamping.
-    // We have set height to 0 at instantiation, so this can only be a programming error
-    let finalized_height = LAST_HEIGHT.load(storage)?;
+    // Ensure the finality provider's corresponding randomness commitment is already finalised by
+    // BTC timestamping
+    let finalized_height = get_last_finalized_height(deps)?;
     if finalized_height == 0 {
         return Err(ContractError::PubRandCommitNotBTCTimestamped(
             "No finalized height yet".into(),
@@ -84,6 +84,18 @@ pub fn get_last_pub_rand_commit(
 ) -> Result<Option<PubRandCommit>, ContractError> {
     let res = get_pub_rand_commit(storage, fp_btc_pk_hex, None, Some(1), Some(true))?;
     Ok(res.into_iter().next())
+}
+
+pub fn get_last_finalized_height(deps: &Deps) -> Result<u64, ContractError> {
+    let cfg = CONFIG.load(deps.storage)?;
+    // Query the last finalized height for the CZ / BSN from the babylon contract
+    // TODO: Use a specialized (only the last height) raw query for performance and efficiency
+    let cz_last_header: CzHeaderResponse = deps.querier.query_wasm_smart(
+        cfg.babylon,
+        &babylon_contract::msg::contract::QueryMsg::CzLastHeader {},
+    )?;
+
+    Ok(cz_last_header.height)
 }
 
 // Settings for pagination
