@@ -45,9 +45,6 @@ pub enum ExecuteMsg {
         staker_addr: String,
         fp_pubkey_hex: String,
     },
-    /// `ExpiredDelegations` is a message sent by the finality contract, to process expired
-    /// delegations
-    ExpiredDelegations {},
 }
 
 #[cw_serde]
@@ -401,4 +398,16 @@ pub struct UnbondedBtcDelegation {
     /// unbonding_tx_sig is the signature on the unbonding tx signed by the BTC delegator
     /// It proves that the BTC delegator wants to unbond
     pub unbonding_tx_sig: Binary,
+}
+
+
+#[cw_serde]
+pub enum SudoMsg {
+    /// The SDK should call SudoMsg::BeginBlock{} once per block (in BeginBlock).
+    /// It allows the staking module to index the BTC height, and update the power
+    /// distribution of the active Finality Providers.
+    BeginBlock {
+        hash_hex: String,
+        app_hash_hex: String,
+    },
 }

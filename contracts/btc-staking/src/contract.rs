@@ -13,8 +13,9 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::staking::{
-    handle_btc_staking, handle_distribute_rewards, handle_expired_delegations, handle_slash_fp, handle_withdraw_rewards, 
+    handle_btc_staking, handle_distribute_rewards, process_expired_btc_delegations, handle_slash_fp, handle_withdraw_rewards, 
 };
+use babylon_apis::btc_staking_api::SudoMsg;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -156,11 +157,28 @@ pub fn execute(
             let res = handle_withdraw_rewards(deps, &env, &info, &fp_pubkey_hex, staker_addr)?;
             Ok(res)
         }
-        ExecuteMsg::ExpiredDelegations {} => {
-            let res = handle_expired_delegations(deps, env, &info)?;
-            Ok(res)
-        }
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn sudo(
+    deps: DepsMut,
+    env: Env,
+    msg: SudoMsg,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    match msg {
+        SudoMsg::BeginBlock { .. } => handle_begin_block(deps, env),
+    }
+}
+
+
+fn handle_begin_block(
+    deps: DepsMut,
+    env: Env,
+) -> Result<Response<BabylonMsg>, ContractError> {    
+    process_expired_btc_delegations(deps, env)?;
+    
+    Ok(Response::new())
 }
 
 fn handle_update_finality(

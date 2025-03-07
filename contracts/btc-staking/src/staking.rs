@@ -4,7 +4,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{
     coin, BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, IbcMsg, MessageInfo, Response,
-    StdResult, Storage, Uint128, Uint256, Order,
+    StdResult, Storage, Uint128, Uint256, Order, Api,
 };
 use hex::ToHex;
 
@@ -13,7 +13,7 @@ use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::delegations::{delegations, DelegationDistribution};
 use crate::state::staking::{
     fps, BtcDelegation, DelegatorUnbondingInfo, FinalityProviderState, ACTIVATED_HEIGHT,
-    BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS, EXPIRY_BTC_HEIGHT_INDEX,
+    BTC_DELEGATIONS, DELEGATION_FPS, FPS, FP_DELEGATIONS, BTC_DELEGATION_EXPIRY_INDEX,
 };
 use crate::validation::{
     verify_active_delegation, verify_new_fp, verify_slashed_delegation, verify_undelegation,
@@ -231,7 +231,7 @@ pub fn handle_active_delegation(
     }
 
     // Index the delegation by its end height
-    EXPIRY_BTC_HEIGHT_INDEX.update(
+    BTC_DELEGATION_EXPIRY_INDEX.update(
         storage, 
         delegation.end_height,
         |existing| -> Result<_, ContractError> {
@@ -352,29 +352,32 @@ pub fn handle_slash_fp(
     slash_finality_provider(deps, env, fp_btc_pk_hex)
 }
 
-pub fn handle_expired_delegations(
+pub fn process_expired_btc_delegations(
     deps: DepsMut,
     env: Env,
-    info: &MessageInfo,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    // Check that the sender is the finality contract (AML)
-    if info.sender != config.finality {
-        return Err(ContractError::Unauthorized);
-    }
-
-    // get latest BTC tip height
-    let tip_height: u32 = get_btc_tip_height(&deps)?;
+) -> Result<Response<BabylonMsg>, ContractError> {    
+    // TODO: Currently if no BTC headers exist, the tip will be empty and query fails.
+    // However, when we insert BSN base BTC header during instantiate, that will ensure 
+    // the tip can never be empty as the tip will be at most the base header.
+    // We should propagate this error instead of silently returning.
+    // See https://github.com/babylonlabs-io/babylon-contract/issues/114
+    let tip_height = match get_btc_tip_height(&deps) {
+        Ok(height) => height,
+        Err(e) => {
+            deps.api.debug(&format!("Failed to get BTC tip height: {}", e));
+            return Ok(Response::default())
+        }
+    };
 
     // Get all heights that have expired delegations
-    let heights: Vec<u32> = EXPIRY_BTC_HEIGHT_INDEX
+    let heights: Vec<u32> = BTC_DELEGATION_EXPIRY_INDEX
     .keys(deps.storage, None, None, Order::Ascending)
     .filter(|h| h.as_ref().map_or(false, |&h| h <= tip_height))
     .collect::<StdResult<Vec<_>>>()?;
 
     // Process all expired heights (all heights less than or equal to current)
     for btc_height in heights {
-        if let Some(expired_dels) = EXPIRY_BTC_HEIGHT_INDEX.may_load(deps.storage, btc_height)? {
+        if let Some(expired_dels) = BTC_DELEGATION_EXPIRY_INDEX.may_load(deps.storage, btc_height)? {
             for staking_tx_hash in expired_dels {
                 // check if the delegation is active
                 let btc_del = BTC_DELEGATIONS.load(deps.storage, &staking_tx_hash)?;
@@ -383,7 +386,7 @@ pub fn handle_expired_delegations(
                 }
             }
             // Clean up processed height from index
-            EXPIRY_BTC_HEIGHT_INDEX.remove(deps.storage, btc_height);
+            BTC_DELEGATION_EXPIRY_INDEX.remove(deps.storage, btc_height);
         }
     }
 

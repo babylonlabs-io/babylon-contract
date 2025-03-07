@@ -214,8 +214,8 @@ impl From<btc_staking_api::SignatureInfo> for SignatureInfo {
 /// Finality providers by their BTC public key
 pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 
-// Map of expiry_btc_height -> Vec<staking_tx_hash>
-pub const EXPIRY_BTC_HEIGHT_INDEX: Map<u32, Vec<[u8; HASH_SIZE]>> = Map::new("expiry_btc_height_index");
+/// Maps a BTC height to a list of staking transaction hashes that expire at that height
+pub const BTC_DELEGATION_EXPIRY_INDEX: Map<u32, Vec<[u8; HASH_SIZE]>> = Map::new("btc_delegation_expiry_index");
 
 /// Btc Delegations info, by staking tx hash
 pub(crate) const BTC_DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> =
