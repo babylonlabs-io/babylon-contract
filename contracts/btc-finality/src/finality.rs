@@ -207,8 +207,6 @@ pub fn handle_finality_signature(
         _ => {}
     }
 
-    // Find the public randomness commitment for this height from this finality provider
-    // let pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
     // Find the timestamped public randomness commitment for this height from this finality provider
     let pr_commit =
         get_timestamped_pub_rand_commit_for_height(&deps.as_ref(), fp_btc_pk_hex, height)?;
