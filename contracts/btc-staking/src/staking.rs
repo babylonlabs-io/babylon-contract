@@ -274,7 +274,7 @@ fn handle_undelegation(
     btc_undelegate(storage, &staking_tx_hash, &mut btc_del)?;
 
     // Discount the voting power from the affected finality providers
-    update_delegation_power(storage, height, staking_tx_hash.as_ref(), &btc_del)?;
+    discount_delegation_power(storage, height, staking_tx_hash.as_ref(), &btc_del)?;
     // Record event that the BTC delegation becomes unbonded
     let unbonding_event = Event::new("btc_undelegation")
         .add_attribute("staking_tx_hash", staking_tx_hash.to_string())
@@ -398,7 +398,7 @@ pub fn process_expired_btc_delegations(
                 // Only process active delegations
                 if btc_del.is_active() {
                     // Update delegation power
-                    update_delegation_power(deps.storage, env.block.height, &staking_tx_hash, &btc_del)?;      
+                    discount_delegation_power(deps.storage, env.block.height, &staking_tx_hash, &btc_del)?;      
                 }
             }
             
@@ -412,7 +412,7 @@ pub fn process_expired_btc_delegations(
         .add_attribute("result", "success"))
 }
 
-fn update_delegation_power(
+fn discount_delegation_power(
     storage: &mut dyn Storage,
     height: u64,
     staking_tx_hash: &[u8; HASH_SIZE],
