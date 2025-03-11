@@ -171,11 +171,17 @@ pub fn sudo(
     }
 }
 
-
+// Handles the BeginBlock sudo message from the Consumer chain's x/babylon module.
 fn handle_begin_block(
     deps: DepsMut,
     env: Env,
 ) -> Result<Response<BabylonMsg>, ContractError> {    
+    // This function processes expired BTC delegations in the begin blocker of the staking contract.
+    // While this could also be done in the finality contract's begin blocker, it would require an 
+    // inter-contract call to the staking contract. Due to how CosmWasm handles state changes 
+    // (they only take effect at the end of the call execution in the caller's context), this would
+    // create ordering issues. To avoid these complications and minimize inter-contract calls,
+    // we process expired delegations directly in the staking contract's begin blocker.
     process_expired_btc_delegations(deps, env)?;
     
     // TODO: Add events
