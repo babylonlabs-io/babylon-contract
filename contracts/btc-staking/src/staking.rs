@@ -3,10 +3,11 @@ use bitcoin::consensus::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::{Transaction, Txid};
 use cosmwasm_std::{
-    coin, BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, IbcMsg, MessageInfo, Response,
-    StdResult, Storage, Uint128, Uint256, Order,
+    BankMsg, CanonicalAddr, CosmosMsg, DepsMut, Env, Event, IbcMsg, MessageInfo,
+    Order, Response, StdResult, Storage, Uint128, Uint256, coin,
 };
 use hex::ToHex;
+use cw_storage_plus::Bound;
 
 use crate::error::ContractError;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
@@ -28,7 +29,6 @@ use babylon_contract::ibc::packet_timeout;
 use babylon_contract::msg::btc_header::BtcHeaderResponse;
 use babylon_contract::msg::contract::QueryMsg as BabylonQueryMsg;
 use babylon_contract::msg::ibc::TransferInfoResponse;
-use cosmwasm_std::Order::Ascending;
 use cw_utils::{must_pay, nonpayable};
 use std::str::FromStr;
 
@@ -374,11 +374,14 @@ pub fn process_expired_btc_delegations(
     };
 
     // Get all heights that have expired delegations (heights <= current tip height)
-    // We filter for heights that are less than or equal to the current BTC tip height
-    // as these delegations have now expired
+    // Use a bounded range query to efficiently load only the heights we need
     let heights: Vec<u32> = BTC_DELEGATION_EXPIRY_INDEX
-        .keys(deps.storage, None, None, Order::Ascending)
-        .filter(|h| h.as_ref().map_or(false, |&h| h <= tip_height))
+        .keys(
+            deps.storage,
+            None,                               // min bound (start from lowest height)
+            Some(Bound::inclusive(tip_height)), // max bound (up to current tip height)
+            Order::Ascending
+        )
         .collect::<StdResult<Vec<_>>>()?;
 
     // If no expired delegations are found, return early
@@ -535,7 +538,7 @@ pub fn handle_withdraw_rewards(
         .idx
         .staker
         .prefix((staker_canonical_addr.to_vec(), fp_pubkey_hex.into()))
-        .range(deps.storage, None, None, Ascending)
+        .range(deps.storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
 
     let mut amount = Uint128::zero();
