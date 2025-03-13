@@ -4,7 +4,10 @@ use bitcoin::hashes::Hash;
 use bitcoin::Txid;
 
 use cosmwasm_std::Order::Descending;
-use cosmwasm_std::{coin, Deps, Order, StdResult, Uint128};
+use cosmwasm_std::{
+    Deps, Order,
+    StdResult, Uint128, coin
+};
 use cw_storage_plus::{Bound, Bounder};
 
 use crate::error::ContractError;

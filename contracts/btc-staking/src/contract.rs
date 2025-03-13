@@ -13,8 +13,9 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::staking::{
-    handle_btc_staking, handle_distribute_rewards, handle_slash_fp, handle_withdraw_rewards,
+    handle_btc_staking, handle_distribute_rewards, process_expired_btc_delegations, handle_slash_fp, handle_withdraw_rewards, 
 };
+use babylon_apis::btc_staking_api::SudoMsg;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -157,6 +158,34 @@ pub fn execute(
             Ok(res)
         }
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn sudo(
+    deps: DepsMut,
+    env: Env,
+    msg: SudoMsg,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    match msg {
+        SudoMsg::BeginBlock { .. } => handle_begin_block(deps, env),
+    }
+}
+
+// Handles the BeginBlock sudo message from the Consumer chain's x/babylon module.
+fn handle_begin_block(
+    deps: DepsMut,
+    env: Env,
+) -> Result<Response<BabylonMsg>, ContractError> {    
+    // This function processes expired BTC delegations in the begin blocker of the staking contract.
+    // While this could also be done in the finality contract's begin blocker, it would require an 
+    // inter-contract call to the staking contract. Due to how CosmWasm handles state changes 
+    // (they only take effect at the end of the call execution in the caller's context), this would
+    // create ordering issues. To avoid these complications and minimize inter-contract calls,
+    // we process expired delegations directly in the staking contract's begin blocker.
+    process_expired_btc_delegations(deps, env)?;
+    
+    // TODO: Add events
+    Ok(Response::new())
 }
 
 fn handle_update_finality(

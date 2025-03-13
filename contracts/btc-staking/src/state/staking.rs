@@ -214,6 +214,15 @@ impl From<btc_staking_api::SignatureInfo> for SignatureInfo {
 /// Finality providers by their BTC public key
 pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 
+/// TODO: Replace with IndexedMap for better efficiency
+/// This current implementation stores all delegation hashes for a height in a single Vec,
+/// which becomes inefficient as the number of delegations per height grows.
+/// A better approach would be to use an IndexedMap with a MultiIndex on end_height,
+/// allowing more efficient queries and updates without loading the entire vector.
+/// 
+/// Maps a BTC height to a list of staking transaction hashes that expire at that height
+pub const BTC_DELEGATION_EXPIRY_INDEX: Map<u32, Vec<[u8; HASH_SIZE]>> = Map::new("btc_delegation_expiry_index");
+
 /// Btc Delegations info, by staking tx hash
 pub(crate) const BTC_DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> =
     Map::new("btc_delegations");
