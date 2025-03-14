@@ -32,6 +32,7 @@ pub fn instantiate(
     nonpayable(&info)?;
     let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
+        btc_light_client: Addr::unchecked("UNSET"), // To be set later, through `UpdateFinality`
         babylon: info.sender,
         finality: Addr::unchecked("UNSET"), // To be set later, through `UpdateFinality`
         denom,
@@ -131,7 +132,10 @@ pub fn execute(
         ExecuteMsg::UpdateAdmin { admin } => ADMIN
             .execute_update_admin(deps, info, maybe_addr(api, admin)?)
             .map_err(Into::into),
-        ExecuteMsg::UpdateFinality { finality } => handle_update_finality(deps, info, finality),
+        ExecuteMsg::UpdateContractAddresses {
+            btc_light_client,
+            finality,
+        } => handle_update_contract_addresses(deps, info, btc_light_client, finality),
         ExecuteMsg::BtcStaking {
             new_fp,
             active_del,
@@ -182,20 +186,23 @@ fn handle_begin_block(deps: DepsMut, env: Env) -> Result<Response<BabylonMsg>, C
     Ok(Response::new())
 }
 
-fn handle_update_finality(
+fn handle_update_contract_addresses(
     deps: DepsMut,
     info: MessageInfo,
+    btc_light_client_addr: String,
     finality_addr: String,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     let mut cfg = CONFIG.load(deps.storage)?;
     if info.sender != cfg.babylon && !ADMIN.is_admin(deps.as_ref(), &info.sender)? {
         return Err(ContractError::Unauthorized {});
     }
+    cfg.btc_light_client = deps.api.addr_validate(&btc_light_client_addr)?;
     cfg.finality = deps.api.addr_validate(&finality_addr)?;
     CONFIG.save(deps.storage, &cfg)?;
 
     let attributes = vec![
-        attr("action", "update_btc_finality"),
+        attr("action", "update_contract_addresses"),
+        attr("btc_light_client", btc_light_client_addr),
         attr("finality", finality_addr),
         attr("sender", info.sender),
     ];
@@ -319,5 +326,78 @@ pub mod tests {
 
         // Use assert_admin to verify that the admin was updated correctly
         ADMIN.assert_admin(deps.as_ref(), &new_admin).unwrap();
+    }
+
+    #[test]
+    fn test_update_contract_addresses() {
+        let mut deps = mock_dependencies();
+        let init_admin = deps.api.addr_make(INIT_ADMIN);
+
+        // Create an InstantiateMsg with admin
+        let instantiate_msg = InstantiateMsg {
+            params: None,
+            admin: Some(init_admin.to_string()),
+        };
+
+        let info = message_info(&deps.api.addr_make(CREATOR), &[]);
+
+        // Call instantiate
+        instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
+
+        const BABYLON_CONTRACT_ADDR: &str =
+            "cosmwasm19mfs8tl4s396u7vqw9rrnsmrrtca5r66p7v8jvwdxvjn3shcmllqupdgxu";
+        const BTC_LIGHT_CLIENT_CONTRACT_ADDR: &str =
+            "cosmwasm14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s8jef58";
+
+        // Try to update addresses with non-admin/non-babylon
+        let non_admin_info = message_info(&deps.api.addr_make("non_admin"), &[]);
+        let update_msg = ExecuteMsg::UpdateContractAddresses {
+            btc_light_client: BABYLON_CONTRACT_ADDR.to_string(),
+            finality: BTC_LIGHT_CLIENT_CONTRACT_ADDR.to_string(),
+        };
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            non_admin_info,
+            update_msg.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(err, ContractError::Unauthorized {});
+
+        // Update with admin
+        let admin_info = message_info(&init_admin, &[]);
+        let res = execute(deps.as_mut(), mock_env(), admin_info, update_msg).unwrap();
+        assert_eq!(4, res.attributes.len());
+
+        // Verify config was updated
+        let config = queries::config(deps.as_ref()).unwrap();
+        assert_eq!(
+            config.finality,
+            Addr::unchecked(BTC_LIGHT_CLIENT_CONTRACT_ADDR)
+        );
+        assert_eq!(
+            config.btc_light_client,
+            Addr::unchecked(BABYLON_CONTRACT_ADDR)
+        );
+
+        // Update with babylon
+        let babylon_info = message_info(&deps.api.addr_make(CREATOR), &[]);
+        let update_msg = ExecuteMsg::UpdateContractAddresses {
+            btc_light_client: BABYLON_CONTRACT_ADDR.to_string(),
+            finality: BTC_LIGHT_CLIENT_CONTRACT_ADDR.to_string(),
+        };
+        let res = execute(deps.as_mut(), mock_env(), babylon_info, update_msg).unwrap();
+        assert_eq!(4, res.attributes.len());
+
+        // Verify config was updated again
+        let config = queries::config(deps.as_ref()).unwrap();
+        assert_eq!(
+            config.finality,
+            Addr::unchecked(BTC_LIGHT_CLIENT_CONTRACT_ADDR)
+        );
+        assert_eq!(
+            config.btc_light_client,
+            Addr::unchecked(BABYLON_CONTRACT_ADDR)
+        );
     }
 }

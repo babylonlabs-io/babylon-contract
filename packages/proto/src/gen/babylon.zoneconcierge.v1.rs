@@ -4,35 +4,35 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexedHeader {
     /// consumer_id is the unique ID of the consumer
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub consumer_id: ::prost::alloc::string::String,
     /// hash is the hash of this header
-    #[prost(bytes="bytes", tag="2")]
+    #[prost(bytes = "bytes", tag = "2")]
     pub hash: ::prost::bytes::Bytes,
     /// height is the height of this header on CZ ledger
     /// (hash, height) jointly provides the position of the header on CZ ledger
-    #[prost(uint64, tag="3")]
+    #[prost(uint64, tag = "3")]
     pub height: u64,
     /// time is the timestamp of this header on CZ ledger
     /// it is needed for CZ to unbond all mature validators/delegations
     /// before this timestamp when this header is BTC-finalised
-    #[prost(message, optional, tag="4")]
+    #[prost(message, optional, tag = "4")]
     pub time: ::core::option::Option<::pbjson_types::Timestamp>,
     /// babylon_header_hash is the hash of the babylon block that includes this CZ
     /// header
-    #[prost(bytes="bytes", tag="5")]
+    #[prost(bytes = "bytes", tag = "5")]
     pub babylon_header_hash: ::prost::bytes::Bytes,
     /// babylon_header_height is the height of the babylon block that includes this CZ
     /// header
-    #[prost(uint64, tag="6")]
+    #[prost(uint64, tag = "6")]
     pub babylon_header_height: u64,
     /// epoch is the epoch number of this header on Babylon ledger
-    #[prost(uint64, tag="7")]
+    #[prost(uint64, tag = "7")]
     pub babylon_epoch: u64,
     /// babylon_tx_hash is the hash of the tx that includes this header
     /// (babylon_block_height, babylon_tx_hash) jointly provides the position of
     /// the header on Babylon ledger
-    #[prost(bytes="bytes", tag="8")]
+    #[prost(bytes = "bytes", tag = "8")]
     pub babylon_tx_hash: ::prost::bytes::Bytes,
 }
 /// Forks is a list of non-canonical `IndexedHeader`s at the same height.
@@ -53,7 +53,7 @@ pub struct IndexedHeader {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Forks {
     /// blocks is the list of non-canonical indexed headers at the same height
-    #[prost(message, repeated, tag="3")]
+    #[prost(message, repeated, tag = "3")]
     pub headers: ::prost::alloc::vec::Vec<IndexedHeader>,
 }
 /// ChainInfo is the information of a CZ
@@ -61,18 +61,18 @@ pub struct Forks {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChainInfo {
     /// consumer_id is the ID of the consumer
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub consumer_id: ::prost::alloc::string::String,
     /// latest_header is the latest header in CZ's canonical chain
-    #[prost(message, optional, tag="2")]
+    #[prost(message, optional, tag = "2")]
     pub latest_header: ::core::option::Option<IndexedHeader>,
     /// latest_forks is the latest forks, formed as a series of IndexedHeader (from
     /// low to high)
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub latest_forks: ::core::option::Option<Forks>,
     /// timestamped_headers_count is the number of timestamped headers in CZ's
     /// canonical chain
-    #[prost(uint64, tag="4")]
+    #[prost(uint64, tag = "4")]
     pub timestamped_headers_count: u64,
 }
 /// FinalizedChainInfo is the information of a CZ that is BTC-finalised
@@ -80,23 +80,23 @@ pub struct ChainInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FinalizedChainInfo {
     /// consumer_id is the ID of the consumer
-    #[prost(string, tag="1")]
+    #[prost(string, tag = "1")]
     pub consumer_id: ::prost::alloc::string::String,
     /// finalized_chain_info is the info of the CZ
-    #[prost(message, optional, tag="2")]
+    #[prost(message, optional, tag = "2")]
     pub finalized_chain_info: ::core::option::Option<ChainInfo>,
     /// epoch_info is the metadata of the last BTC-finalised epoch
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub epoch_info: ::core::option::Option<super::super::epoching::v1::Epoch>,
     /// raw_checkpoint is the raw checkpoint of this epoch
-    #[prost(message, optional, tag="4")]
+    #[prost(message, optional, tag = "4")]
     pub raw_checkpoint: ::core::option::Option<super::super::checkpointing::v1::RawCheckpoint>,
     /// btc_submission_key is position of two BTC txs that include the raw
     /// checkpoint of this epoch
-    #[prost(message, optional, tag="5")]
+    #[prost(message, optional, tag = "5")]
     pub btc_submission_key: ::core::option::Option<super::super::btccheckpoint::v1::SubmissionKey>,
     /// proof is the proof that the chain info is finalized
-    #[prost(message, optional, tag="6")]
+    #[prost(message, optional, tag = "6")]
     pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
 }
 /// ProofEpochSealed is the proof that an epoch is sealed by the sealer header,
@@ -115,15 +115,16 @@ pub struct ProofEpochSealed {
     /// validator_set is the validator set of the sealed epoch
     /// This validator set has generated a BLS multisig on `app_hash` of
     /// the sealer header
-    #[prost(message, repeated, tag="1")]
-    pub validator_set: ::prost::alloc::vec::Vec<super::super::checkpointing::v1::ValidatorWithBlsKey>,
+    #[prost(message, repeated, tag = "1")]
+    pub validator_set:
+        ::prost::alloc::vec::Vec<super::super::checkpointing::v1::ValidatorWithBlsKey>,
     /// proof_epoch_info is the Merkle proof that the epoch's metadata is committed
     /// to `app_hash` of the sealer header
-    #[prost(message, optional, tag="2")]
+    #[prost(message, optional, tag = "2")]
     pub proof_epoch_info: ::core::option::Option<tendermint_proto::crypto::ProofOps>,
     /// proof_epoch_info is the Merkle proof that the epoch's validator set is
     /// committed to `app_hash` of the sealer header
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub proof_epoch_val_set: ::core::option::Option<tendermint_proto::crypto::ProofOps>,
 }
 /// ProofFinalizedChainInfo is a set of proofs that attest a chain info is
@@ -137,36 +138,37 @@ pub struct ProofEpochSealed {
 pub struct ProofFinalizedChainInfo {
     /// proof_cz_header_in_epoch is the proof that the CZ header is timestamped
     /// within a certain epoch
-    #[prost(message, optional, tag="1")]
+    #[prost(message, optional, tag = "1")]
     pub proof_cz_header_in_epoch: ::core::option::Option<tendermint_proto::crypto::ProofOps>,
     /// proof_epoch_sealed is the proof that the epoch is sealed
-    #[prost(message, optional, tag="2")]
+    #[prost(message, optional, tag = "2")]
     pub proof_epoch_sealed: ::core::option::Option<ProofEpochSealed>,
     /// proof_epoch_submitted is the proof that the epoch's checkpoint is included
     /// in BTC ledger It is the two TransactionInfo in the best (i.e., earliest)
     /// checkpoint submission
-    #[prost(message, repeated, tag="3")]
-    pub proof_epoch_submitted: ::prost::alloc::vec::Vec<super::super::btccheckpoint::v1::TransactionInfo>,
+    #[prost(message, repeated, tag = "3")]
+    pub proof_epoch_submitted:
+        ::prost::alloc::vec::Vec<super::super::btccheckpoint::v1::TransactionInfo>,
 }
 /// OutboundPacket represents packets sent from Babylon to other chains
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OutboundPacket {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="outbound_packet::Packet", tags="1, 2, 3")]
+    #[prost(oneof = "outbound_packet::Packet", tags = "1, 2, 3")]
     pub packet: ::core::option::Option<outbound_packet::Packet>,
 }
 /// Nested message and enum types in `OutboundPacket`.
 pub mod outbound_packet {
     /// packet is the actual message carried in the IBC packet
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Packet {
-        #[prost(message, tag="1")]
+        #[prost(message, tag = "1")]
         BtcTimestamp(super::BtcTimestamp),
-        #[prost(message, tag="2")]
+        #[prost(message, tag = "2")]
         BtcStaking(super::super::super::btcstaking::v1::BtcStakingIbcPacket),
-        #[prost(message, tag="3")]
+        #[prost(message, tag = "3")]
         BtcHeaders(super::BtcHeaders),
     }
 }
@@ -175,16 +177,16 @@ pub mod outbound_packet {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InboundPacket {
     /// packet is the actual message carried in the IBC packet
-    #[prost(oneof="inbound_packet::Packet", tags="1")]
+    #[prost(oneof = "inbound_packet::Packet", tags = "1")]
     pub packet: ::core::option::Option<inbound_packet::Packet>,
 }
 /// Nested message and enum types in `InboundPacket`.
 pub mod inbound_packet {
     /// packet is the actual message carried in the IBC packet
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Packet {
-        #[prost(message, tag="1")]
+        #[prost(message, tag = "1")]
         ConsumerSlashing(super::ConsumerSlashingIbcPacket),
     }
 }
@@ -193,7 +195,7 @@ pub mod inbound_packet {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BtcHeaders {
-    #[prost(message, repeated, tag="1")]
+    #[prost(message, repeated, tag = "1")]
     pub headers: ::prost::alloc::vec::Vec<super::super::btclightclient::v1::BtcHeaderInfo>,
 }
 /// BTCTimestamp is a BTC timestamp that carries information of a BTC-finalised epoch
@@ -205,32 +207,30 @@ pub struct BtcHeaders {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BtcTimestamp {
     /// header is the last CZ header in the finalized Babylon epoch
-    #[prost(message, optional, tag="1")]
+    #[prost(message, optional, tag = "1")]
     pub header: ::core::option::Option<IndexedHeader>,
     //
     // Data for BTC light client
-
     /// btc_headers is BTC headers between
     /// - the block AFTER the common ancestor of BTC tip at epoch `lastFinalizedEpoch-1` and BTC tip at epoch `lastFinalizedEpoch`
     /// - BTC tip at epoch `lastFinalizedEpoch`
     /// where `lastFinalizedEpoch` is the last finalised epoch in Babylon
-    #[prost(message, optional, tag="2")]
+    #[prost(message, optional, tag = "2")]
     pub btc_headers: ::core::option::Option<BtcHeaders>,
     //
     // Data for Babylon epoch chain
-
     /// epoch_info is the metadata of the sealed epoch
-    #[prost(message, optional, tag="3")]
+    #[prost(message, optional, tag = "3")]
     pub epoch_info: ::core::option::Option<super::super::epoching::v1::Epoch>,
     /// raw_checkpoint is the raw checkpoint that seals this epoch
-    #[prost(message, optional, tag="4")]
+    #[prost(message, optional, tag = "4")]
     pub raw_checkpoint: ::core::option::Option<super::super::checkpointing::v1::RawCheckpoint>,
     /// btc_submission_key is position of two BTC txs that include the raw checkpoint of this epoch
-    #[prost(message, optional, tag="5")]
+    #[prost(message, optional, tag = "5")]
     pub btc_submission_key: ::core::option::Option<super::super::btccheckpoint::v1::SubmissionKey>,
     ///
     /// Proofs that the header is finalized
-    #[prost(message, optional, tag="6")]
+    #[prost(message, optional, tag = "6")]
     pub proof: ::core::option::Option<ProofFinalizedChainInfo>,
 }
 /// ConsumerSlashingIBCPacket defines the slashing information that a Consumer sends to Babylon's ZoneConcierge upon a
@@ -240,7 +240,7 @@ pub struct BtcTimestamp {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ConsumerSlashingIbcPacket {
     /// / evidence is the FP slashing evidence that the Consumer sends to Babylon
-    #[prost(message, optional, tag="1")]
+    #[prost(message, optional, tag = "1")]
     pub evidence: ::core::option::Option<super::super::finality::v1::Evidence>,
 }
 /// QueryFinalizedChainsInfoResponse is response type for the
@@ -248,7 +248,7 @@ pub struct ConsumerSlashingIbcPacket {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryFinalizedChainsInfoResponse {
-    #[prost(message, repeated, tag="1")]
+    #[prost(message, repeated, tag = "1")]
     pub finalized_chains_info: ::prost::alloc::vec::Vec<FinalizedChainInfo>,
 }
 // @@protoc_insertion_point(module)
