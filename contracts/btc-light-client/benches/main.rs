@@ -65,7 +65,7 @@ fn setup_benchmark() -> (
 
     let test_headers = get_main_msg_test_headers();
 
-    let benchmark_msg = ExecuteMsg::InitBtcLightClient {
+    let benchmark_msg = ExecuteMsg::BtcHeaders {
         headers: test_headers[0..=1].to_owned(),
     };
 

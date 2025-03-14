@@ -327,7 +327,7 @@ pub fn handle_btc_headers_from_user(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use crate::{
         state::{Config, CONFIG},
         ExecuteMsg,
@@ -355,7 +355,6 @@ mod tests {
         let resp: ExecuteMsg = from_json(testdata).unwrap();
         match resp {
             ExecuteMsg::BtcHeaders { headers } => headers,
-            ExecuteMsg::InitBtcLightClient { .. } => unreachable!("unexpected init message"),
         }
     }
 

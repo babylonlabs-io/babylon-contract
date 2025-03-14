@@ -91,7 +91,8 @@ pub fn ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
-    ibc::ibc_packet_receive(deps, env, msg)
+    let mut deps_mut = deps;
+    ibc::ibc_packet_receive(&mut deps_mut, env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

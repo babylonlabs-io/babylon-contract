@@ -2,6 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{StdError, StdResult};
 
 use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
+use crate::state::config::Config;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -28,9 +29,9 @@ impl InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Initialize the BTC light client with a list of consecutive headers
-    InitBtcLightClient { headers: Vec<BtcHeader> },
-    /// Update the BTC light client with a list of consecutive headers
+    /// Add BTC headers to the light client. If not initialized, this will initialize
+    /// the light client with the provided headers. Otherwise, it will update the
+    /// existing chain with the new headers.
     BtcHeaders { headers: Vec<BtcHeader> },
 }
 
@@ -51,4 +52,6 @@ pub enum QueryMsg {
         limit: Option<u32>,
         reverse: Option<bool>,
     },
+    #[returns(Config)]
+    Config {},
 }
