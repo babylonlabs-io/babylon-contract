@@ -219,6 +219,20 @@
       "additionalProperties": false
     },
     {
+      "description": "CzLastHeight returns the last CZ height stored in the contract",
+      "type": "object",
+      "required": [
+        "cz_last_height"
+      ],
+      "properties": {
+        "cz_last_height": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "CzHeader returns the CZ header stored in the contract, by CZ height.",
       "type": "object",
       "required": [

@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::zoneconcierge::v1::{
-    outbound_packet::Packet as OutboundPacketType, BtcTimestamp, OutboundPacket, BtcHeaders,
+    outbound_packet::Packet as OutboundPacketType, BtcHeaders, BtcTimestamp, OutboundPacket,
 };
 
 use crate::state::config::CONFIG;

@@ -345,6 +345,7 @@ pub fn get_public_randomness_commitment() -> (String, PubRandCommit, Vec<u8>) {
         PubRandCommit {
             start_height: pub_rand_commitment_msg.start_height,
             num_pub_rand: pub_rand_commitment_msg.num_pub_rand,
+            height: 1,
             commitment: pub_rand_commitment_msg.commitment.to_vec(),
         },
         pub_rand_commitment_msg.sig.to_vec(),

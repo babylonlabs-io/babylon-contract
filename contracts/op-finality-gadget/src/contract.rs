@@ -66,6 +66,7 @@ pub fn execute(
             signature,
         } => handle_public_randomness_commit(
             deps,
+            &env,
             &fp_pubkey_hex,
             start_height,
             num_pub_rand,

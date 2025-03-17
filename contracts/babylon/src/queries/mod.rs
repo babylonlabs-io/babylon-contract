@@ -3,7 +3,7 @@ use crate::error::{
 };
 use crate::ibc::IBC_TRANSFER;
 use crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse};
-use crate::msg::cz_header::CzHeaderResponse;
+use crate::msg::cz_header::{CzHeaderResponse, CzHeightResponse};
 use crate::msg::epoch::{CheckpointResponse, EpochResponse};
 use crate::msg::ibc::TransferInfoResponse;
 use crate::state::babylon_epoch_chain::{
@@ -13,7 +13,7 @@ use crate::state::btc_light_client::{
     get_base_header, get_header, get_header_by_hash, get_headers, get_tip,
 };
 use crate::state::config::{Config, CONFIG};
-use crate::state::cz_header_chain::{get_cz_header, get_last_cz_header};
+use crate::state::cz_header_chain::{get_cz_header, get_last_cz_header, get_last_cz_height};
 use babylon_bitcoin::BlockHash;
 use cosmwasm_std::{Deps, StdResult};
 use std::str::FromStr;
@@ -91,6 +91,11 @@ pub fn babylon_checkpoint(
 pub fn cz_last_header(deps: Deps) -> Result<CzHeaderResponse, CZHeaderChainError> {
     let header = get_last_cz_header(deps.storage)?;
     Ok(CzHeaderResponse::from(&header))
+}
+
+pub fn cz_last_height(deps: Deps) -> Result<CzHeightResponse, CZHeaderChainError> {
+    let height = get_last_cz_height(deps.storage)?;
+    Ok(CzHeightResponse { height })
 }
 
 pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZHeaderChainError> {

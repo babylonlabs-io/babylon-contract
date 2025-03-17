@@ -85,10 +85,29 @@ pub struct FinalityProvider {
     /// finality provider has voted
     #[prost(uint32, tag="9")]
     pub highest_voted_height: u32,
-    /// consumer_id is the ID of the consumer the finality provider is operating on.
-    /// If it's missing / empty, it's assumed the finality provider is operating in the Babylon chain.
+    /// consumer_id is the ID of the consumer the finality provider is operating
+    /// on. If it's missing / empty, it's assumed the finality provider is
+    /// operating in the Babylon chain.
     #[prost(string, tag="10")]
     pub consumer_id: ::prost::alloc::string::String,
+    /// commission_info contains information details of the finality provider commission.
+    #[prost(message, optional, tag="11")]
+    pub commission_info: ::core::option::Option<CommissionInfo>,
+}
+/// CommissionInfo defines the information related to the commission of
+/// a finality provider.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CommissionInfo {
+    /// max_rate defines the maximum commission rate which validator can ever charge, as a fraction.
+    #[prost(string, tag="1")]
+    pub max_rate: ::prost::alloc::string::String,
+    /// max_change_rate defines the maximum daily increase of the validator commission, as a fraction.
+    #[prost(string, tag="2")]
+    pub max_change_rate: ::prost::alloc::string::String,
+    /// update_time is the last time the commission rate was changed.
+    #[prost(message, optional, tag="3")]
+    pub update_time: ::core::option::Option<::pbjson_types::Timestamp>,
 }
 /// BTCDelegation defines a BTC delegation
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -110,7 +129,8 @@ pub struct BtcDelegation {
     /// to multiple finality providers
     #[prost(bytes="bytes", repeated, tag="4")]
     pub fp_btc_pk_list: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
-    /// staking_time is the number of blocks for which the delegation is locked on BTC chain
+    /// staking_time is the number of blocks for which the delegation is locked on
+    /// BTC chain
     #[prost(uint32, tag="5")]
     pub staking_time: u32,
     /// start_height is the start BTC height of the BTC delegation
@@ -146,11 +166,12 @@ pub struct BtcDelegation {
     /// It will be a part of the witness for the staking tx output.
     #[prost(message, repeated, tag="13")]
     pub covenant_sigs: ::prost::alloc::vec::Vec<CovenantAdaptorSignatures>,
-    /// unbonding_time describes how long the funds will be locked either in unbonding output
-    /// or slashing change output
+    /// unbonding_time describes how long the funds will be locked either in
+    /// unbonding output or slashing change output
     #[prost(uint32, tag="14")]
     pub unbonding_time: u32,
-    /// btc_undelegation is the information about the early unbonding path of the BTC delegation
+    /// btc_undelegation is the information about the early unbonding path of the
+    /// BTC delegation
     #[prost(message, optional, tag="15")]
     pub btc_undelegation: ::core::option::Option<BtcUndelegation>,
     /// version of the params used to validate the delegation
@@ -173,13 +194,14 @@ pub struct DelegatorUnbondingInfo {
     #[prost(bytes="bytes", tag="1")]
     pub spend_stake_tx: ::prost::bytes::Bytes,
 }
-/// BTCUndelegation contains the information about the early unbonding path of the BTC delegation
+/// BTCUndelegation contains the information about the early unbonding path of
+/// the BTC delegation
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BtcUndelegation {
     /// unbonding_tx is the transaction which will transfer the funds from staking
-    /// output to unbonding output. Unbonding output will usually have lower timelock
-    /// than staking output.
+    /// output to unbonding output. Unbonding output will usually have lower
+    /// timelock than staking output.
     #[prost(bytes="bytes", tag="1")]
     pub unbonding_tx: ::prost::bytes::Bytes,
     /// slashing_tx is the slashing tx for unbonding transactions
@@ -221,10 +243,12 @@ pub struct SignatureInfo {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CovenantAdaptorSignatures {
-    /// cov_pk is the public key of the covenant emulator, used as the public key of the adaptor signature
+    /// cov_pk is the public key of the covenant emulator, used as the public key
+    /// of the adaptor signature
     #[prost(bytes="bytes", tag="1")]
     pub cov_pk: ::prost::bytes::Bytes,
-    /// adaptor_sigs is a list of adaptor signatures, each encrypted by a restaked BTC finality provider's public key
+    /// adaptor_sigs is a list of adaptor signatures, each encrypted by a restaked
+    /// BTC finality provider's public key
     #[prost(bytes="bytes", repeated, tag="2")]
     pub adaptor_sigs: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
 }
@@ -261,15 +285,17 @@ pub struct Params {
     /// max_staking_value_sat is the maximum of satoshis locked in staking output
     #[prost(int64, tag="4")]
     pub max_staking_value_sat: i64,
-    /// min_staking_time is the minimum lock time specified in staking output script
+    /// min_staking_time is the minimum lock time specified in staking output
+    /// script
     #[prost(uint32, tag="5")]
     pub min_staking_time_blocks: u32,
-    /// max_staking_time_blocks is the maximum lock time time specified in staking output script
+    /// max_staking_time_blocks is the maximum lock time time specified in staking
+    /// output script
     #[prost(uint32, tag="6")]
     pub max_staking_time_blocks: u32,
     /// PARAMETERS COVERING SLASHING
-    /// slashing_pk_script is the pk_script expected in slashing output ie. the first
-    /// output of slashing transaction
+    /// slashing_pk_script is the pk_script expected in slashing output ie. the
+    /// first output of slashing transaction
     #[prost(bytes="bytes", tag="7")]
     pub slashing_pk_script: ::prost::bytes::Bytes,
     /// min_slashing_tx_fee_sat is the minimum amount of tx fee (quantified
@@ -283,17 +309,18 @@ pub struct Params {
     #[prost(string, tag="9")]
     pub slashing_rate: ::prost::alloc::string::String,
     /// PARAMETERS COVERING UNBONDING
-    /// unbonding_time is the exact unbonding time required from unbonding transaction
-    /// it must be larger than `checkpoint_finalization_timeout` from `btccheckpoint` module
+    /// unbonding_time is the exact unbonding time required from unbonding
+    /// transaction it must be larger than `checkpoint_finalization_timeout` from
+    /// `btccheckpoint` module
     #[prost(uint32, tag="10")]
     pub unbonding_time_blocks: u32,
     /// unbonding_fee exact fee required for unbonding transaction
     #[prost(int64, tag="11")]
     pub unbonding_fee_sat: i64,
     /// PARAMETERS COVERING FINALITY PROVIDERS
-    /// min_commission_rate is the chain-wide minimum commission rate that a finality provider
-    /// can charge their delegators expressed as a decimal (e.g., 0.5 for 50%). Maximal precion
-    /// is 2 decimal places
+    /// min_commission_rate is the chain-wide minimum commission rate that a
+    /// finality provider can charge their delegators expressed as a decimal (e.g.,
+    /// 0.5 for 50%). Maximal precion is 2 decimal places
     #[prost(string, tag="12")]
     pub min_commission_rate: ::prost::alloc::string::String,
     /// base gas fee for delegation creation
@@ -304,7 +331,8 @@ pub struct Params {
     /// setting it to 0 means allow list is disabled
     #[prost(uint64, tag="14")]
     pub allow_list_expiration_height: u64,
-    /// btc_activation_height is the btc height from which parameters are activated (inclusive)
+    /// btc_activation_height is the btc height from which parameters are activated
+    /// (inclusive)
     #[prost(uint32, tag="15")]
     pub btc_activation_height: u32,
 }

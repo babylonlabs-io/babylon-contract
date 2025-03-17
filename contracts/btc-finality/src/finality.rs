@@ -5,7 +5,8 @@ use crate::state::finality::{
     BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, REWARDS, SIGNATURES, TOTAL_REWARDS,
 };
 use crate::state::public_randomness::{
-    get_last_pub_rand_commit, get_pub_rand_commit_for_height, PUB_RAND_COMMITS, PUB_RAND_VALUES,
+    get_last_pub_rand_commit, get_timestamped_pub_rand_commit_for_height, PUB_RAND_COMMITS,
+    PUB_RAND_VALUES,
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
@@ -26,6 +27,7 @@ use std::ops::Mul;
 
 pub fn handle_public_randomness_commit(
     deps: DepsMut,
+    env: &Env,
     fp_pubkey_hex: &str,
     start_height: u64,
     num_pub_rand: u64,
@@ -79,6 +81,7 @@ pub fn handle_public_randomness_commit(
     let pr_commit = PubRandCommit {
         start_height,
         num_pub_rand,
+        height: env.block.height,
         commitment: commitment.to_vec(),
     };
 
@@ -204,8 +207,9 @@ pub fn handle_finality_signature(
         _ => {}
     }
 
-    // Find the public randomness commitment for this height from this finality provider
-    let pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
+    // Find the timestamped public randomness commitment for this height from this finality provider
+    let pr_commit =
+        get_timestamped_pub_rand_commit_for_height(&deps.as_ref(), fp_btc_pk_hex, height)?;
 
     // Verify the finality signature message
     verify_finality_signature(

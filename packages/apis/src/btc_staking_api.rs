@@ -400,7 +400,6 @@ pub struct UnbondedBtcDelegation {
     pub unbonding_tx_sig: Binary,
 }
 
-
 #[cw_serde]
 pub enum SudoMsg {
     /// The SDK should call SudoMsg::BeginBlock{} once per block (in BeginBlock).

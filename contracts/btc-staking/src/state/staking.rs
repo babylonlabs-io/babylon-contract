@@ -219,9 +219,10 @@ pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 /// which becomes inefficient as the number of delegations per height grows.
 /// A better approach would be to use an IndexedMap with a MultiIndex on end_height,
 /// allowing more efficient queries and updates without loading the entire vector.
-/// 
+///
 /// Maps a BTC height to a list of staking transaction hashes that expire at that height
-pub const BTC_DELEGATION_EXPIRY_INDEX: Map<u32, Vec<[u8; HASH_SIZE]>> = Map::new("btc_delegation_expiry_index");
+pub const BTC_DELEGATION_EXPIRY_INDEX: Map<u32, Vec<[u8; HASH_SIZE]>> =
+    Map::new("btc_delegation_expiry_index");
 
 /// Btc Delegations info, by staking tx hash
 pub(crate) const BTC_DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> =

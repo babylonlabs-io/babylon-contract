@@ -14,6 +14,7 @@ use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::btc_light_client;
 use crate::state::config::{Config, CONFIG};
+use crate::state::cz_header_chain::CZ_HEIGHT_LAST;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -75,8 +76,15 @@ pub fn instantiate(
             );
             IBC_CHANNEL.save(deps.storage, &channel)?;
         }
-
         res = res.add_submessage(init_msg);
+    }
+    // Initialize last CZ height to 0 to avoid not found error
+    CZ_HEIGHT_LAST.save(deps.storage, &0)?;
+    // Mock last CZ height for multi-test
+    #[cfg(any(test, all(feature = "library", not(target_arch = "wasm32"))))]
+    {
+        let last_cz_height = 100;
+        CZ_HEIGHT_LAST.save(deps.storage, &last_cz_height)?;
     }
 
     if let Some(btc_finality_code_id) = msg.btc_finality_code_id {
@@ -216,6 +224,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
             &queries::babylon_checkpoint(deps, epoch_number)?,
         )?),
         QueryMsg::CzLastHeader {} => Ok(to_json_binary(&queries::cz_last_header(deps)?)?),
+        QueryMsg::CzLastHeight {} => Ok(to_json_binary(&queries::cz_last_height(deps)?)?),
         QueryMsg::CzHeader { height } => Ok(to_json_binary(&queries::cz_header(deps, height)?)?),
         QueryMsg::TransferInfo {} => Ok(to_json_binary(&queries::transfer_info(deps)?)?),
     }

@@ -39,6 +39,17 @@ pub struct CzHeaderResponse {
     pub babylon_tx_hash: String,
 }
 
+/// CzHeightResponse is the metadata of a CZ height.
+///
+/// This struct is for use in RPC requests and responses. It is a convenience, efficient way to
+/// return the height of the last finalised CZ header.
+///
+/// Adapted from `CzHeaderResponse`.
+#[cw_serde]
+pub struct CzHeightResponse {
+    pub height: u64,
+}
+
 /// Convert from `&IndexedHeader` to `CzHeaderResponse`.
 impl From<&IndexedHeader> for CzHeaderResponse {
     fn from(header: &IndexedHeader) -> Self {
