@@ -42,7 +42,7 @@ pub enum QueryMsg {
     /// or `None` to start from the beginning (end, if `reverse` is `true`).
     /// `limit` is the maximum number of commitments to return.
     /// `reverse` is an optional flag to return the commitments in reverse order
-    #[returns(PubRandCommit)]
+    #[returns(Vec<PubRandCommit>)]
     PubRandCommit {
         btc_pk_hex: String,
         start_after: Option<u64>,
