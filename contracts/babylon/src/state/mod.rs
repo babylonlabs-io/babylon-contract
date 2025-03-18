@@ -3,7 +3,7 @@ use cosmwasm_std::{DepsMut, StdError};
 
 use crate::bindings::msg_btc_finalized_header;
 use babylon_bindings::BabylonMsg;
-use babylon_proto::babylon::zoneconcierge::v1::{BtcHeaders, BtcTimestamp};
+use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 
 pub mod babylon_epoch_chain;
 pub mod config;
@@ -67,16 +67,6 @@ pub fn handle_btc_timestamp(
         let msg = msg_btc_finalized_header(cz_header)?;
         return Ok(Some(msg));
     }
-
-    Ok(None)
-}
-
-pub fn handle_btc_headers(
-    deps: &mut DepsMut,
-    btc_headers: &BtcHeaders,
-) -> Result<Option<BabylonMsg>, StdError> {
-    crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
-        .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
 
     Ok(None)
 }

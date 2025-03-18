@@ -87,12 +87,11 @@ pub fn ibc_channel_close(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_packet_receive(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
-    let mut deps_mut = deps;
-    ibc::ibc_packet_receive(&mut deps_mut, env, msg)
+    ibc::ibc_packet_receive(deps, env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
