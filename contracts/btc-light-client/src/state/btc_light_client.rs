@@ -1,19 +1,17 @@
-//! btc_light_client is the storage for the BTC header chain
 use babylon_bitcoin::{BlockHash, BlockHeader};
-use prost::Message;
-use std::str::FromStr;
-
+use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use cosmwasm_std::Order::{Ascending, Descending};
 use cosmwasm_std::{StdResult, Storage};
 use cw_storage_plus::{Bound, Item, Map};
 use hex::ToHex;
+use prost::Message;
+use std::str::FromStr;
 
-use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
-
-use crate::error::BTCLightclientError;
+use crate::error::ContractError;
 use crate::msg::btc_header::BtcHeader;
-use crate::state::config::CONFIG;
 use crate::utils::btc_light_client::{total_work, verify_headers, zero_work};
+
+use super::CONFIG;
 
 pub const BTC_TIP_KEY: &str = "btc_lc_tip";
 
@@ -31,25 +29,25 @@ pub fn is_initialized(storage: &mut dyn Storage) -> bool {
 }
 
 // getter/setter for base header
-pub fn get_base_header(storage: &dyn Storage) -> Result<BtcHeaderInfo, BTCLightclientError> {
+pub fn get_base_header(storage: &dyn Storage) -> Result<BtcHeaderInfo, ContractError> {
     // NOTE: if init is successful, then base header is guaranteed to be in storage and decodable
     let base_header_bytes = BTC_HEADER_BASE.load(storage)?;
-    BtcHeaderInfo::decode(base_header_bytes.as_slice()).map_err(BTCLightclientError::DecodeError)
+    BtcHeaderInfo::decode(base_header_bytes.as_slice()).map_err(ContractError::DecodeError)
 }
 
-fn set_base_header(storage: &mut dyn Storage, base_header: &BtcHeaderInfo) -> StdResult<()> {
+pub fn set_base_header(storage: &mut dyn Storage, base_header: &BtcHeaderInfo) -> StdResult<()> {
     let base_header_bytes = base_header.encode_to_vec();
     BTC_HEADER_BASE.save(storage, &base_header_bytes)
 }
 
 // getter/setter for chain tip
-pub fn get_tip(storage: &dyn Storage) -> Result<BtcHeaderInfo, BTCLightclientError> {
+pub fn get_tip(storage: &dyn Storage) -> Result<BtcHeaderInfo, ContractError> {
     let tip_bytes = BTC_TIP.load(storage)?;
     // NOTE: if init is successful, then tip header is guaranteed to be correct
-    BtcHeaderInfo::decode(tip_bytes.as_slice()).map_err(BTCLightclientError::DecodeError)
+    BtcHeaderInfo::decode(tip_bytes.as_slice()).map_err(ContractError::DecodeError)
 }
 
-fn set_tip(storage: &mut dyn Storage, tip: &BtcHeaderInfo) -> StdResult<()> {
+pub fn set_tip(storage: &mut dyn Storage, tip: &BtcHeaderInfo) -> StdResult<()> {
     let tip_bytes = &tip.encode_to_vec();
     BTC_TIP.save(storage, tip_bytes)
 }
@@ -58,7 +56,7 @@ fn set_tip(storage: &mut dyn Storage, tip: &BtcHeaderInfo) -> StdResult<()> {
 // storages, including
 // - insert all headers
 // - insert all hash-to-height indices
-fn insert_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) -> StdResult<()> {
+pub fn insert_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) -> StdResult<()> {
     // Add all the headers by height
     for new_header in new_headers.iter() {
         // insert header
@@ -72,11 +70,11 @@ fn insert_headers(storage: &mut dyn Storage, new_headers: &[BtcHeaderInfo]) -> S
 
 // remove_headers removes BTC headers from the header chain storages, including
 // - remove all hash-to-height indices
-fn remove_headers(
+pub fn remove_headers(
     storage: &mut dyn Storage,
     tip_header: &BtcHeaderInfo,
     parent_header: &BtcHeaderInfo,
-) -> Result<(), BTCLightclientError> {
+) -> Result<(), ContractError> {
     // Remove all the headers by hash starting from the tip, until hitting the parent header
     let mut rem_header = tip_header.clone();
     while rem_header.hash != parent_header.hash {
@@ -89,99 +87,97 @@ fn remove_headers(
 }
 
 // get_header retrieves the BTC header of a given height
-pub fn get_header(
-    storage: &dyn Storage,
-    height: u32,
-) -> Result<BtcHeaderInfo, BTCLightclientError> {
+pub fn get_header(storage: &dyn Storage, height: u32) -> Result<BtcHeaderInfo, ContractError> {
     // Try to find the header with the given hash
     let header_bytes = BTC_HEADERS
         .load(storage, height)
-        .map_err(|_| BTCLightclientError::BTCHeaderNotFoundError { height })?;
+        .map_err(|_| ContractError::BTCHeaderNotFoundError { height })?;
 
-    // Try to decode the header
-    let header = BtcHeaderInfo::decode(header_bytes.as_slice())
-        .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
-
-    Ok(header)
+    BtcHeaderInfo::decode(header_bytes.as_slice()).map_err(ContractError::DecodeError)
 }
 
 // get_header_by_hash retrieves the BTC header of a given hash
 pub fn get_header_by_hash(
     storage: &dyn Storage,
     hash: &[u8],
-) -> Result<BtcHeaderInfo, BTCLightclientError> {
-    let height = get_header_height(storage, hash)?;
+) -> Result<BtcHeaderInfo, ContractError> {
+    // Try to find the height with the given hash
+    let height =
+        BTC_HEIGHTS
+            .load(storage, hash)
+            .map_err(|_| ContractError::BTCHeightNotFoundError {
+                hash: hash.encode_hex::<String>(),
+            })?;
+
     get_header(storage, height)
 }
 
 // get_header height retrieves the BTC header height of a given BTC hash
-pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u32, BTCLightclientError> {
-    let height = BTC_HEIGHTS.load(storage, hash).map_err(|_| {
-        BTCLightclientError::BTCHeightNotFoundError {
-            hash: hash.encode_hex(),
-        }
-    })?;
+pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u32, ContractError> {
+    let height =
+        BTC_HEIGHTS
+            .load(storage, hash)
+            .map_err(|_| ContractError::BTCHeightNotFoundError {
+                hash: hash.encode_hex(),
+            })?;
     Ok(height)
 }
 
-// Settings for pagination
-const MAX_LIMIT: u32 = 30;
-const DEFAULT_LIMIT: u32 = 10;
-
-// get_headers retrieves the BTC headers after a given height, up to limit headers
+// get_headers retrieves BTC headers in a given range
 pub fn get_headers(
     storage: &dyn Storage,
     start_after: Option<u32>,
     limit: Option<u32>,
     reverse: Option<bool>,
-) -> Result<Vec<BtcHeaderInfo>, BTCLightclientError> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start_after = start_after.map(Bound::exclusive);
-    let (start, end, order) = if reverse.unwrap_or(false) {
-        (None, start_after, Descending)
-    } else {
-        (start_after, None, Ascending)
+) -> Result<Vec<BtcHeaderInfo>, ContractError> {
+    let limit = limit.unwrap_or(10) as usize;
+    let reverse = reverse.unwrap_or(false);
+
+    let (start, end, order) = match (start_after, reverse) {
+        (Some(start), true) => (None, Some(Bound::exclusive(start)), Descending),
+        (Some(start), false) => (Some(Bound::exclusive(start)), None, Ascending),
+        (None, true) => (None, None, Descending),
+        (None, false) => (None, None, Ascending),
     };
 
-    BTC_HEADERS
-        .range_raw(storage, start, end, order)
+    let headers = BTC_HEADERS
+        .range(storage, start, end, order)
         .take(limit)
         .map(|item| {
-            let (_, v) = item?;
-            Ok(BtcHeaderInfo::decode(&*v)?)
+            let (_, header_bytes) = item?;
+            BtcHeaderInfo::decode(header_bytes.as_slice()).map_err(ContractError::DecodeError)
         })
-        .collect()
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(headers)
 }
 
 /// init initialises the BTC header chain storage
 /// It takes BTC headers between
 /// - the BTC tip upon the last finalised epoch
 /// - the current tip
-pub fn init(
-    storage: &mut dyn Storage,
-    headers: &[BtcHeaderInfo],
-) -> Result<(), BTCLightclientError> {
+pub fn init(storage: &mut dyn Storage, headers: &[BtcHeaderInfo]) -> Result<(), ContractError> {
     let cfg = CONFIG.load(storage)?;
     let btc_network = babylon_bitcoin::chain_params::get_chain_params(cfg.network);
 
     // ensure there are >=w+1 headers, i.e. a base header and at least w subsequent
     // ones as a w-deep proof
     if (headers.len() as u32) < cfg.checkpoint_finalization_timeout + 1 {
-        return Err(BTCLightclientError::InitErrorLength(
+        return Err(ContractError::InitErrorLength(
             cfg.checkpoint_finalization_timeout + 1,
         ));
     }
 
     // base header is the first header in the list
-    let base_header = headers.first().ok_or(BTCLightclientError::InitError {})?;
+    let base_header = headers.first().ok_or(ContractError::InitError {})?;
 
     // decode this header to rust-bitcoin's type
     let base_btc_header: BlockHeader = babylon_bitcoin::deserialize(base_header.header.as_ref())
-        .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
+        .map_err(|_| ContractError::BTCHeaderDecodeError {})?;
 
     // verify the base header's pow
     if babylon_bitcoin::pow::verify_header_pow(&btc_network, &base_btc_header).is_err() {
-        return Err(BTCLightclientError::BTCHeaderError {});
+        return Err(ContractError::BTCHeaderError {});
     }
 
     // verify subsequent headers
@@ -196,10 +192,7 @@ pub fn init(
     // insert all headers
     insert_headers(storage, headers)?;
     // set tip header
-    set_tip(
-        storage,
-        headers.last().ok_or(BTCLightclientError::InitError {})?,
-    )?;
+    set_tip(storage, headers.last().ok_or(ContractError::InitError {})?)?;
     Ok(())
 }
 
@@ -210,7 +203,7 @@ pub fn init(
 pub fn init_from_user(
     storage: &mut dyn Storage,
     headers: &[BtcHeader],
-) -> Result<(), BTCLightclientError> {
+) -> Result<(), ContractError> {
     let mut prev_height: u32 = 0;
     let mut prev_work = zero_work();
     let headers = headers
@@ -221,7 +214,7 @@ pub fn init_from_user(
             prev_work = total_work(&btc_header)?;
             Ok(btc_header)
         })
-        .collect::<Result<Vec<BtcHeaderInfo>, BTCLightclientError>>()?;
+        .collect::<Result<Vec<BtcHeaderInfo>, ContractError>>()?;
     init(storage, &headers)
 }
 
@@ -239,7 +232,7 @@ pub fn init_from_user(
 pub fn handle_btc_headers_from_babylon(
     storage: &mut dyn Storage,
     new_headers: &[BtcHeaderInfo],
-) -> Result<(), BTCLightclientError> {
+) -> Result<(), ContractError> {
     let cfg = CONFIG.load(storage)?;
     let btc_network = babylon_bitcoin::chain_params::get_chain_params(cfg.network);
 
@@ -249,10 +242,10 @@ pub fn handle_btc_headers_from_babylon(
     // decode the first header in these new headers
     let first_new_header = new_headers
         .first()
-        .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
+        .ok_or(ContractError::BTCHeaderEmpty {})?;
     let first_new_btc_header: BlockHeader =
         babylon_bitcoin::deserialize(first_new_header.header.as_ref())
-            .map_err(|_| BTCLightclientError::BTCHeaderDecodeError {})?;
+            .map_err(|_| ContractError::BTCHeaderDecodeError {})?;
 
     if first_new_btc_header.prev_blockhash.as_ref() == cur_tip_hash.to_vec() {
         // Most common case: extending the current tip
@@ -264,9 +257,7 @@ pub fn handle_btc_headers_from_babylon(
         insert_headers(storage, new_headers)?;
 
         // Update tip
-        let new_tip = new_headers
-            .last()
-            .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
+        let new_tip = new_headers.last().ok_or(ContractError::BTCHeaderEmpty {})?;
         set_tip(storage, new_tip)?;
     } else {
         // Here we received a potential new fork
@@ -276,14 +267,12 @@ pub fn handle_btc_headers_from_babylon(
         // Verify each new header after `fork_parent` iteratively
         verify_headers(&btc_network, &fork_parent, new_headers)?;
 
-        let new_tip = new_headers
-            .last()
-            .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
+        let new_tip = new_headers.last().ok_or(ContractError::BTCHeaderEmpty {})?;
 
         let new_tip_work = total_work(new_tip)?;
         let cur_tip_work = total_work(&cur_tip)?;
         if new_tip_work <= cur_tip_work {
-            return Err(BTCLightclientError::BTCChainWithNotEnoughWork(
+            return Err(ContractError::BTCChainWithNotEnoughWork(
                 new_tip_work,
                 cur_tip_work,
             ));
@@ -311,10 +300,10 @@ pub fn handle_btc_headers_from_babylon(
 pub fn handle_btc_headers_from_user(
     storage: &mut dyn Storage,
     new_btc_headers: &[BtcHeader],
-) -> Result<(), BTCLightclientError> {
+) -> Result<(), ContractError> {
     let first_new_btc_header = new_btc_headers
         .first()
-        .ok_or(BTCLightclientError::BTCHeaderEmpty {})?;
+        .ok_or(ContractError::BTCHeaderEmpty {})?;
 
     // Decode the btc_header (byte-reversed) prev_blockhash
     let prev_blockhash = BlockHash::from_str(&first_new_btc_header.prev_blockhash)?;
@@ -338,29 +327,24 @@ pub fn handle_btc_headers_from_user(
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+pub mod tests {
+    use crate::{
+        state::{Config, CONFIG},
+        ExecuteMsg,
+    };
+
     use super::*;
-    use crate::msg::contract::ExecuteMsg;
-    use crate::state::config::Config;
-    use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
-    use cosmwasm_std::from_json;
-    use cosmwasm_std::testing::mock_dependencies;
+    use babylon_bitcoin::chain_params::Network;
+    use cosmwasm_std::{from_json, testing::mock_dependencies};
     use test_utils::{get_btc_lc_fork_headers, get_btc_lc_fork_msg, get_btc_lc_headers};
 
     pub(crate) fn setup(storage: &mut dyn Storage) -> u32 {
         // set config first
         let w: u32 = 2;
         let cfg = Config {
-            network: babylon_bitcoin::chain_params::Network::Regtest,
-            babylon_tag: vec![0x1, 0x2, 0x3, 0x4],
+            network: Network::Regtest,
             btc_confirmation_depth: 1,
             checkpoint_finalization_timeout: w,
-            notify_cosmos_zone: false,
-            btc_staking: None,
-            btc_finality: None,
-            consumer_name: None,
-            consumer_description: None,
-            denom: "ustake".to_string(),
         };
         CONFIG.save(storage, &cfg).unwrap();
         w
@@ -371,17 +355,17 @@ pub(crate) mod tests {
         let resp: ExecuteMsg = from_json(testdata).unwrap();
         match resp {
             ExecuteMsg::BtcHeaders { headers } => headers,
-            ExecuteMsg::Slashing { .. } => unreachable!("unexpected slashing message"),
         }
     }
 
     #[track_caller]
     fn ensure_headers(storage: &dyn Storage, headers: &[BtcHeaderInfo]) {
         for header_expected in headers {
-            let actual_height = get_header_height(storage, header_expected.hash.as_ref()).unwrap();
-            assert_eq!(header_expected.height, actual_height);
             let header_actual = get_header(storage, header_expected.height).unwrap();
             assert_eq!(*header_expected, header_actual);
+            let header_by_hash =
+                get_header_by_hash(storage, header_expected.hash.as_ref()).unwrap();
+            assert_eq!(*header_expected, header_by_hash);
         }
     }
 
@@ -514,7 +498,7 @@ pub(crate) mod tests {
         );
         assert!(matches!(
             res.unwrap_err(),
-            BTCLightclientError::BTCChainWithNotEnoughWork(_, _)
+            ContractError::BTCChainWithNotEnoughWork(_, _)
         ));
 
         // ensure base and tip are unchanged
@@ -551,10 +535,7 @@ pub(crate) mod tests {
 
         // handling invalid fork headers
         let res = handle_btc_headers_from_babylon(&mut storage, &invalid_fork_headers);
-        assert!(matches!(
-            res.unwrap_err(),
-            BTCLightclientError::BTCHeaderError {}
-        ));
+        assert!(matches!(res.unwrap_err(), ContractError::BTCHeaderError {}));
 
         // ensure base and tip are unchanged
         ensure_base_and_tip(&storage, &test_headers);
@@ -597,7 +578,7 @@ pub(crate) mod tests {
         let res = handle_btc_headers_from_babylon(&mut storage, &invalid_fork_headers);
         assert_eq!(
             res.unwrap_err(),
-            BTCLightclientError::BTCWrongHeight(len - 1, height, height + 1)
+            ContractError::BTCWrongHeight(len - 1, height, height + 1)
         );
 
         // ensure base and tip are unchanged
@@ -650,7 +631,7 @@ pub(crate) mod tests {
         let res = handle_btc_headers_from_babylon(&mut storage, &invalid_fork_headers);
         assert_eq!(
             res.unwrap_err(),
-            BTCLightclientError::BTCWrongCumulativeWork(
+            ContractError::BTCWrongCumulativeWork(
                 wrong_header_index,
                 total_work(&header).unwrap(),
                 total_work(&wrong_header).unwrap(),

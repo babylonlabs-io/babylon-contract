@@ -1,9 +1,8 @@
 name: babylonchain/babylon-contract/local-tests
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - '**'
 env:
   CARGO_TERM_COLOR: always
 jobs:

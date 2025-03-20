@@ -3,12 +3,9 @@ use cosmwasm_std::{Binary, StdError, StdResult};
 
 use babylon_apis::finality_api::Evidence;
 
-use crate::msg::btc_header::BtcHeader;
 #[cfg(not(target_arch = "wasm32"))]
 use {
-    crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
-    crate::msg::cz_header::CzHeaderResponse,
-    crate::msg::cz_header::CzHeightResponse,
+    crate::msg::cz_header::{CzHeaderResponse, CzHeightResponse},
     crate::msg::epoch::EpochResponse,
     crate::state::config::Config,
 };
@@ -34,6 +31,12 @@ pub struct InstantiateMsg {
     /// NOTE: If set to true, then the Cosmos zone needs to integrate the corresponding message handler
     /// as well
     pub notify_cosmos_zone: bool,
+    /// If set, this will instantiate a BTC light client contract
+    pub btc_light_client_code_id: Option<u64>,
+    /// If set, this will define the instantiation message for the BTC light client contract.
+    /// This message is opaque to the Babylon contract, and depends on the specific light client
+    /// being instantiated
+    pub btc_light_client_msg: Option<Binary>,
     /// If set, this will instantiate a BTC staking contract for BTC re-staking
     pub btc_staking_code_id: Option<u64>,
     /// If set, this will define the instantiation message for the BTC staking contract.
@@ -108,11 +111,6 @@ impl ContractMsg for InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    BtcHeaders {
-        /// `headers` is a list of BTC headers. Typically:
-        /// - A given delta of headers a user wants to add to the tip or fork of the BTC chain.
-        headers: Vec<BtcHeader>,
-    },
     /// `slashing` is a slashing event from the BTC staking contract.
     ///
     /// This will be forwarded over IBC to the Babylon side for propagation to other Consumers, and
@@ -126,29 +124,6 @@ pub enum QueryMsg {
     /// Config returns the current configuration of the babylon-contract
     #[returns(Config)]
     Config {},
-    /// BtcBaseHeader returns the base BTC header stored in the contract
-    #[returns(BtcHeaderResponse)]
-    BtcBaseHeader {},
-    /// BtcTipHeader returns the tip BTC header stored in the contract
-    #[returns(BtcHeaderResponse)]
-    BtcTipHeader {},
-    /// BtcHeader returns the BTC header information stored in the contract, by BTC height.
-    #[returns(BtcHeaderResponse)]
-    BtcHeader { height: u32 },
-    /// BtcHeaderByHash returns the BTC header information stored in the contract, by BTC hash.
-    ///
-    /// `hash` is the (byte-reversed) hex-encoded hash of the BTC header
-    #[returns(BtcHeaderResponse)]
-    BtcHeaderByHash { hash: String },
-    /// BtcHeaders returns the canonical BTC chain stored in the contract.
-    ///
-    /// `start_after` is the height of the header to start after, or `None` to start from the base
-    #[returns(BtcHeadersResponse)]
-    BtcHeaders {
-        start_after: Option<u32>,
-        limit: Option<u32>,
-        reverse: Option<bool>,
-    },
     /// BabylonBaseEpoch returns the base Babylon epoch stored in the contract
     #[returns(EpochResponse)]
     BabylonBaseEpoch {},

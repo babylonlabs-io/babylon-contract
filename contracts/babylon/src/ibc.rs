@@ -114,7 +114,7 @@ pub fn ibc_channel_close(
 /// We decode the contents of the packet and if it matches one of the packets we support, execute
 /// the relevant function, otherwise return an IBC Ack error.
 pub fn ibc_packet_receive(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
@@ -162,15 +162,13 @@ pub(crate) mod ibc_packet {
     use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
     pub fn handle_btc_timestamp(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_ts: &BtcTimestamp,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
-
+        let cfg = CONFIG.load(deps.storage)?;
         // handle the BTC timestamp, i.e., verify the BTC timestamp and update the contract state
-        let msg_option = crate::state::handle_btc_timestamp(storage, btc_ts)?;
+        let msg_option = crate::state::handle_btc_timestamp(deps, btc_ts)?;
 
         // construct response
         let mut resp: IbcReceiveResponse<BabylonMsg> =
@@ -191,12 +189,11 @@ pub(crate) mod ibc_packet {
     }
 
     pub fn handle_btc_staking(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_staking: &BtcStakingIbcPacket,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
+        let cfg = CONFIG.load(deps.storage)?;
 
         // Route the packet to the btc-staking contract
         let btc_staking_addr = cfg
@@ -251,24 +248,17 @@ pub(crate) mod ibc_packet {
     }
 
     pub fn handle_btc_headers(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_headers: &BtcHeaders,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
-
-        let msg_option = crate::state::handle_btc_headers(storage, btc_headers)?;
+        // Submit headers to BTC light client
+        crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
+            .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
 
         let mut resp: IbcReceiveResponse<BabylonMsg> =
             IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
         resp = resp.add_attribute("action", "receive_btc_headers");
-
-        if let Some(msg) = msg_option {
-            if cfg.notify_cosmos_zone {
-                resp = resp.add_message(msg);
-            }
-        }
 
         Ok(resp)
     }
@@ -350,6 +340,8 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
+            btc_light_client_code_id: None,
+            btc_light_client_msg: None,
             btc_staking_code_id: None,
             btc_staking_msg: None,
             btc_finality_code_id: None,

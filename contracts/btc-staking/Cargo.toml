@@ -47,6 +47,8 @@ babylon-bitcoin       = { path = "../../packages/bitcoin" }
 eots                  = { path = "../../packages/eots" }
 test-utils       = { path = "../../packages/test-utils" }
 
+btc-light-client   = { path = "../btc-light-client" }
+
 bitcoin          = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }

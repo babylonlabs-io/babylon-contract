@@ -17,11 +17,11 @@ use cosmwasm_vm::testing::{
 use cosmwasm_vm::Instance;
 
 use babylon_bindings::BabylonMsg;
-use babylon_contract::msg::btc_header::BtcHeader;
-use babylon_contract::msg::contract::{ExecuteMsg, InstantiateMsg};
+use btc_light_client::msg::btc_header::BtcHeader;
+use btc_light_client::msg::contract::{ExecuteMsg, InstantiateMsg};
 
 // Output of `cargo optimize`
-static WASM: &[u8] = include_bytes!("../../../artifacts/babylon_contract.wasm");
+static WASM: &[u8] = include_bytes!("../../../artifacts/btc_light_client.wasm");
 
 // From https://github.com/CosmWasm/wasmd/blob/7ea00e2ea858ed599141e322bd68171998a3259a/x/wasm/types/gas_register.go#L33
 const GAS_MULTIPLIER: u64 = 140_000_000;
@@ -43,18 +43,8 @@ pub fn setup_instance() -> Instance<MockApi, MockStorage, MockQuerier> {
     let mut deps = mock_instance_with_gas_limit(WASM, 10_000_000_000_000);
     let msg = InstantiateMsg {
         network: babylon_bitcoin::chain_params::Network::Regtest,
-        babylon_tag: "01020304".to_string(),
-        consumer_name: None,
-        consumer_description: None,
         btc_confirmation_depth: 10,
-        checkpoint_finalization_timeout: 1,
-        notify_cosmos_zone: false,
-        btc_staking_code_id: None,
-        btc_staking_msg: None,
-        btc_finality_code_id: None,
-        btc_finality_msg: None,
-        admin: None,
-        ics20_channel_id: None,
+        checkpoint_finalization_timeout: 2,
     };
     let info = mock_info(CREATOR, &[]);
     let res: Response = instantiate(&mut deps, mock_env(), info, msg).unwrap();

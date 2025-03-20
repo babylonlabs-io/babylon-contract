@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Initialize the BTC light client with a list of consecutive headers",
+      "type": "object",
+      "required": [
+        "init_btc_light_client"
+      ],
+      "properties": {
+        "init_btc_light_client": {
+          "type": "object",
+          "required": [
+            "headers"
+          ],
+          "properties": {
+            "headers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BtcHeader"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update the BTC light client with a list of consecutive headers",
+      "type": "object",
+      "required": [
+        "btc_headers"
+      ],
+      "properties": {
+        "btc_headers": {
+          "type": "object",
+          "required": [
+            "headers"
+          ],
+          "properties": {
+            "headers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BtcHeader"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "BtcHeader": {
+      "description": "Bitcoin header.\n\nContains all the block's information except the actual transactions, but including a root of a [merkle tree] committing to all transactions in the block.\n\nThis struct is for use in RPC requests and responses. It has convenience trait impls to convert to the internal representation (`BlockHeader`), and to the Babylon extended representation (`BtcHeaderInfo`). Adapted from `BlockHeader`.",
+      "type": "object",
+      "required": [
+        "bits",
+        "merkle_root",
+        "nonce",
+        "prev_blockhash",
+        "time",
+        "version"
+      ],
+      "properties": {
+        "bits": {
+          "description": "The target value below which the blockhash must lie, encoded as a a float (with well-defined rounding, of course).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "merkle_root": {
+          "description": "The root hash of the merkle tree of transactions in the block. Encoded as a (byte-reversed) hex string.",
+          "type": "string"
+        },
+        "nonce": {
+          "description": "The nonce, selected to obtain a low enough blockhash.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "prev_blockhash": {
+          "description": "Reference to the previous block in the chain. Encoded as a (byte-reversed) hex string.",
+          "type": "string"
+        },
+        "time": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "version": {
+          "description": "Originally protocol version, but repurposed for soft-fork signaling.\n\n### Relevant BIPs\n\n* [BIP9 - Version bits with timeout and delay](https://github.com/bitcoin/bips/blob/master/bip-0009.mediawiki) (current usage) * [BIP34 - Block v2, Height in Coinbase](https://github.com/bitcoin/bips/blob/master/bip-0034.mediawiki)",
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
