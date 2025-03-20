@@ -18,13 +18,13 @@ pub fn handle_btc_timestamp(
     deps: &mut DepsMut,
     btc_ts: &BtcTimestamp,
 ) -> Result<Option<BabylonMsg>, StdError> {
-    // extract and init/handle BTC headers
-    let btc_headers = btc_ts
-        .btc_headers
-        .as_ref()
-        .ok_or_else(|| StdError::generic_err("btc_headers is None"))?;
-    crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
-        .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
+    // only process BTC headers if they exist and are not empty
+    if let Some(btc_headers) = btc_ts.btc_headers.as_ref() {
+        if !btc_headers.headers.is_empty() {
+            crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
+                .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
+        }
+    }
 
     // extract and init/handle Babylon epoch chain
     let (epoch, raw_ckpt, proof_epoch_sealed, txs_info) =
