@@ -21,7 +21,7 @@ pub fn submit_headers(
     let btc_headers = btc_headers_from_info(headers)?;
 
     let base_header = headers.first().ok_or(ContractError::BtcHeaderEmpty {})?;
-    let first_work = hex::encode(total_work(base_header.work.as_ref())?.to_be_bytes());
+    let first_work = hex::encode(base_header.work.as_ref());
     let first_height = base_header.height;
 
     let msg = BtcLightClientExecuteMsg::BtcHeaders {

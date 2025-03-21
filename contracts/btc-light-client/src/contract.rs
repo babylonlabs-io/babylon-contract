@@ -9,6 +9,7 @@ use crate::msg::btc_header::BtcHeader;
 use crate::msg::contract::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::btc_light_client::{handle_btc_headers_from_user, init, is_initialized};
 use crate::state::config::{Config, CONFIG};
+use crate::utils::btc_light_client::total_work;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -104,11 +105,9 @@ fn handle_btc_headers(
             return Err(ContractError::InitErrorLength(cfg.btc_confirmation_depth));
         }
 
-        let first_work = first_work.unwrap();
-        let first_work: [u8; 32] = hex::decode(first_work)
-            .map_err(|_| ContractError::InvalidWork {})?
-            .try_into()
-            .map_err(|_| ContractError::InvalidWork {})?;
+        let first_work_hex = first_work.unwrap();
+        let first_work_bytes = hex::decode(first_work_hex)?;
+        let first_work = total_work(&first_work_bytes)?;
 
         init(deps.storage, &headers, &first_work, first_height.unwrap())?;
         Ok(Response::new().add_attribute("action", "init_btc_light_client"))

@@ -159,7 +159,7 @@ pub fn get_headers(
 pub fn init(
     storage: &mut dyn Storage,
     headers: &[BtcHeader],
-    first_work: &[u8; 32],
+    first_work: &Work,
     first_height: u32,
 ) -> Result<(), ContractError> {
     let cfg = CONFIG.load(storage)?;
@@ -177,8 +177,7 @@ pub fn init(
     let base_header = headers.first().ok_or(ContractError::InitError {
         msg: "base header is not provided".to_string(),
     })?;
-    let base_header =
-        base_header.to_btc_header_info(first_height, Work::from_be_bytes(*first_work))?;
+    let base_header = base_header.to_btc_header_info(first_height, *first_work)?;
 
     // decode this header to rust-bitcoin's type
     let base_btc_header: BlockHeader = babylon_bitcoin::deserialize(base_header.header.as_ref())
@@ -232,12 +231,7 @@ pub fn init_from_babylon(
     let base_header = headers.first().ok_or(ContractError::BTCHeaderEmpty {})?;
     let first_work = total_work(base_header.work.as_ref())?;
     let first_height = base_header.height;
-    init(
-        storage,
-        &btc_headers,
-        &first_work.to_be_bytes(),
-        first_height,
-    )
+    init(storage, &btc_headers, &first_work, first_height)
 }
 
 /// handle_btc_headers_from_babylon verifies and inserts a number of
