@@ -43,6 +43,22 @@ pub struct BtcHeader {
 impl BtcHeader {
     pub fn to_btc_header_info(
         &self,
+        height: u32,
+        work: babylon_bitcoin::Work,
+    ) -> Result<BtcHeaderInfo, ContractError> {
+        let block_header: BlockHeader = self.try_into()?;
+        Ok(BtcHeaderInfo {
+            header: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(&block_header)),
+            hash: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(
+                &block_header.block_hash(),
+            )),
+            height: height,
+            work: prost::bytes::Bytes::from(work.to_string()),
+        })
+    }
+
+    pub fn to_btc_header_info_from_prev(
+        &self,
         prev_height: u32,
         prev_work: babylon_bitcoin::Work,
     ) -> Result<BtcHeaderInfo, ContractError> {
@@ -338,7 +354,7 @@ mod tests {
             nonce: 3865470564,
         };
         let block_header = BlockHeader::try_from(&btc_header).unwrap();
-        let btc_header_info = btc_header.to_btc_header_info(
+        let btc_header_info = btc_header.to_btc_header_info_from_prev(
             10,
             Work::from_be_bytes(cosmwasm_std::Uint256::from(23456u64).to_be_bytes()),
         );
