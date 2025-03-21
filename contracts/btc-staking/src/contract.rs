@@ -178,7 +178,7 @@ fn handle_begin_block(deps: DepsMut, env: Env) -> Result<Response<BabylonMsg>, C
     // we process expired delegations directly in the staking contract's begin blocker.
     process_expired_btc_delegations(deps, env)?;
 
-    // TODO: Add events
+    // TODO: Add events (#124)
     Ok(Response::new())
 }
 

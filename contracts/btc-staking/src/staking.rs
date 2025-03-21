@@ -53,13 +53,13 @@ pub fn handle_btc_staking(
 
     for fp in new_fps {
         handle_new_fp(deps.storage, fp, env.block.height)?;
-        // TODO: Add event
+        // TODO: Add event (#124)
     }
 
     // Process active delegations
     for del in active_delegations {
         handle_active_delegation(deps.storage, env.block.height, del)?;
-        // TODO: Add event
+        // TODO: Add event (#124)
     }
 
     // Process slashed delegations
@@ -242,7 +242,7 @@ pub fn handle_active_delegation(
         },
     )?;
 
-    // TODO: Emit corresponding events
+    // TODO: Emit corresponding events (#124)
 
     Ok(())
 }
@@ -676,7 +676,7 @@ fn btc_undelegate(
     //  - Who are subscribers in this context?
     //  - How to notify them? Emit event?
 
-    // TODO? Record event that the BTC delegation becomes unbonded at this height
+    // TODO? Record event that the BTC delegation becomes unbonded at this height (#124)
 
     Ok(())
 }
@@ -719,7 +719,7 @@ pub(crate) fn slash_finality_provider(
     // Save the finality provider back
     FPS.save(deps.storage, fp_btc_pk_hex, &fp)?;
 
-    // TODO: Add events
+    // TODO: Add events (#124)
     Ok(Response::new())
 }
 

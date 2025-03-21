@@ -233,7 +233,7 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
     compute_active_finality_providers(deps, env.block.height, max_active_fps)?;
 
-    // TODO: Add events
+    // TODO: Add events (#124)
     Ok(Response::new())
 }
 

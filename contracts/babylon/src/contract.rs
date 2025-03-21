@@ -254,7 +254,7 @@ pub fn execute(
             } else {
                 btc_light_client::init_from_user(deps.storage, &btc_headers)?;
             }
-            // TODO: Add events
+            // TODO: Add events (#124)
             Ok(Response::new())
         }
         ExecuteMsg::Slashing { evidence } => {
@@ -296,7 +296,7 @@ pub fn execute(
                 let _ = ibc_msg;
             }
 
-            // TODO: Add events
+            // TODO: Add events (#124)
             Ok(res)
         }
     }

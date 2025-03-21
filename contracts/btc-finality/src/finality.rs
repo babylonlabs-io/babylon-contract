@@ -91,7 +91,7 @@ pub fn handle_public_randomness_commit(
         &pr_commit,
     )?;
 
-    // TODO: Add events
+    // TODO: Add events (#124)
     Ok(Response::new())
 }
 
