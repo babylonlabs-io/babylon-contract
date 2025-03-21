@@ -23,12 +23,16 @@ pub fn handle_btc_timestamp(
     if let Some(btc_headers) = btc_ts.btc_headers.as_ref() {
         if !btc_headers.headers.is_empty() {
             if btc_light_client::is_initialized(storage) {
-                btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers).map_err(|e| {
-                    StdError::generic_err(format!("failed to handle BTC headers from Babylon: {e}"))
-                })?;
+                btc_light_client::handle_btc_headers_from_babylon(storage, &btc_headers.headers)
+                    .map_err(|e| {
+                        StdError::generic_err(format!(
+                            "failed to handle BTC headers from Babylon: {e}"
+                        ))
+                    })?;
             } else {
-                btc_light_client::init(storage, &btc_headers.headers)
-                    .map_err(|e| StdError::generic_err(format!("failed to initialize BTC headers: {e}")))?;
+                btc_light_client::init(storage, &btc_headers.headers).map_err(|e| {
+                    StdError::generic_err(format!("failed to initialize BTC headers: {e}"))
+                })?;
             }
         }
     }
