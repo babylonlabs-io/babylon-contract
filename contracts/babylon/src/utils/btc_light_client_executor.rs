@@ -21,13 +21,13 @@ pub fn submit_headers(
     let btc_headers = btc_headers_from_info(headers)?;
 
     let base_header = headers.first().ok_or(ContractError::BtcHeaderEmpty {})?;
-    let base_work = total_work(base_header.work.as_ref())?.to_be_bytes();
-    let base_height = base_header.height;
+    let first_work = hex::encode(total_work(base_header.work.as_ref())?.to_be_bytes());
+    let first_height = base_header.height;
 
     let msg = BtcLightClientExecuteMsg::BtcHeaders {
         headers: btc_headers,
-        base_work: Some(base_work),
-        base_height: Some(base_height),
+        first_work: Some(first_work),
+        first_height: Some(first_height),
     };
     let wasm_msg = WasmMsg::Execute {
         contract_addr,

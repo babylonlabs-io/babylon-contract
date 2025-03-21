@@ -36,8 +36,8 @@ pub enum ExecuteMsg {
         headers: Vec<BtcHeader>,
         // TODO: below are temporary fields, they should be removed after
         // BTC light client has proper initialisation
-        base_work: Option<[u8; 32]>,
-        base_height: Option<u32>,
+        first_work: Option<String>,
+        first_height: Option<u32>,
     },
 }
 

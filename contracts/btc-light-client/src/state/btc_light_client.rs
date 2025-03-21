@@ -159,8 +159,8 @@ pub fn get_headers(
 pub fn init(
     storage: &mut dyn Storage,
     headers: &[BtcHeader],
-    base_work: &[u8; 32],
-    base_height: u32,
+    first_work: &[u8; 32],
+    first_height: u32,
 ) -> Result<(), ContractError> {
     let cfg = CONFIG.load(storage)?;
     let btc_network = babylon_bitcoin::chain_params::get_chain_params(cfg.network);
@@ -174,9 +174,11 @@ pub fn init(
     }
 
     // base header is the first header in the list
-    let base_header = headers.first().ok_or(ContractError::InitError {})?;
+    let base_header = headers.first().ok_or(ContractError::InitError {
+        msg: "base header is not provided".to_string(),
+    })?;
     let base_header =
-        base_header.to_btc_header_info(base_height, Work::from_be_bytes(*base_work))?;
+        base_header.to_btc_header_info(first_height, Work::from_be_bytes(*first_work))?;
 
     // decode this header to rust-bitcoin's type
     let base_btc_header: BlockHeader = babylon_bitcoin::deserialize(base_header.header.as_ref())
@@ -210,9 +212,9 @@ pub fn init(
     // set tip header
     set_tip(
         storage,
-        processed_headers
-            .last()
-            .ok_or(ContractError::InitError {})?,
+        processed_headers.last().ok_or(ContractError::InitError {
+            msg: "tip header is not provided".to_string(),
+        })?,
     )?;
     Ok(())
 }
@@ -228,9 +230,14 @@ pub fn init_from_babylon(
         .collect::<Result<Vec<BtcHeader>, _>>()
         .map_err(|_| ContractError::BTCHeaderDecodeError {})?;
     let base_header = headers.first().ok_or(ContractError::BTCHeaderEmpty {})?;
-    let base_work = total_work(base_header.work.as_ref())?;
-    let base_height = base_header.height;
-    init(storage, &btc_headers, &base_work.to_be_bytes(), base_height)
+    let first_work = total_work(base_header.work.as_ref())?;
+    let first_height = base_header.height;
+    init(
+        storage,
+        &btc_headers,
+        &first_work.to_be_bytes(),
+        first_height,
+    )
 }
 
 /// handle_btc_headers_from_babylon verifies and inserts a number of

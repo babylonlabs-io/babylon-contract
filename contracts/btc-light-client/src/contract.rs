@@ -1,3 +1,4 @@
+use babylon_bitcoin::Work;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
@@ -52,9 +53,9 @@ pub fn execute(
     match msg {
         ExecuteMsg::BtcHeaders {
             headers,
-            base_work,
-            base_height,
-        } => handle_btc_headers(deps, headers, base_work, base_height),
+            first_work,
+            first_height,
+        } => handle_btc_headers(deps, headers, first_work, first_height),
     }
 }
 
@@ -85,14 +86,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 fn handle_btc_headers(
     deps: DepsMut,
     headers: Vec<BtcHeader>,
-    base_work: Option<[u8; 32]>,
-    base_height: Option<u32>,
+    first_work: Option<String>,
+    first_height: Option<u32>,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Check if the BTC light client has been initialized
     if !is_initialized(deps.storage) {
         // Check if base work and height are provided
-        if base_work.is_none() || base_height.is_none() {
-            return Err(ContractError::InitError {});
+        if first_work.is_none() || first_height.is_none() {
+            return Err(ContractError::InitError {
+                msg: "base work or height is not provided".to_string(),
+            });
         }
 
         // Check if there are enough headers for initialization
@@ -101,12 +104,13 @@ fn handle_btc_headers(
             return Err(ContractError::InitErrorLength(cfg.btc_confirmation_depth));
         }
 
-        init(
-            deps.storage,
-            &headers,
-            &base_work.unwrap(),
-            base_height.unwrap(),
-        )?;
+        let first_work = first_work.unwrap();
+        let first_work: [u8; 32] = hex::decode(first_work)
+            .map_err(|_| ContractError::InvalidWork {})?
+            .try_into()
+            .map_err(|_| ContractError::InvalidWork {})?;
+
+        init(deps.storage, &headers, &first_work, first_height.unwrap())?;
         Ok(Response::new().add_attribute("action", "init_btc_light_client"))
     } else {
         handle_btc_headers_from_user(deps.storage, &headers)?;
