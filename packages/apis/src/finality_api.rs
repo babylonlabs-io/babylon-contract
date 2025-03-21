@@ -45,6 +45,7 @@ pub enum ExecuteMsg {
         height: u64,
         pub_rand: Binary,
         proof: Proof,
+        // FIXME: Rename to block_app_hash for consistency / clarity
         block_hash: Binary,
         signature: Binary,
     },

@@ -388,10 +388,10 @@ fn verify_finality_signature(
 
 /// `msg_to_sign` returns the message for an EOTS signature.
 ///
-/// The EOTS signature on a block will be (block_height || block_hash)
-fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
+/// The EOTS signature on a block will be (block_height || block_app_hash)
+fn msg_to_sign(height: u64, block_app_hash: &[u8]) -> Vec<u8> {
     let mut msg: Vec<u8> = height.to_be_bytes().to_vec();
-    msg.extend_from_slice(block_hash);
+    msg.extend_from_slice(block_app_hash);
     msg
 }
 
