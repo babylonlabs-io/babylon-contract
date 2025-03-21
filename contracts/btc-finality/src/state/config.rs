@@ -12,7 +12,6 @@ pub(crate) const PARAMS: Item<Params> = Item::new("params");
 pub(crate) const ADMIN: Admin = Admin::new("admin");
 
 /// Config are Babylon-selectable BTC finality configuration
-// TODO: Add / enable config entries as needed
 #[cw_serde]
 pub struct Config {
     pub denom: String,
@@ -21,7 +20,6 @@ pub struct Config {
     pub staking: Addr,
 }
 
-// TODO: Add / enable param entries as needed
 #[cw_serde]
 #[derive(Derivative)]
 #[derivative(Default)]
