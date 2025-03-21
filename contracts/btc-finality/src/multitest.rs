@@ -18,6 +18,7 @@ const BTC_STAKING_CONTRACT_ADDR: &str =
 const BTC_FINALITY_CONTRACT_ADDR: &str =
     "cosmwasm17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgsnuzwl9";
 
+// A user's address. Can be any address
 const USER_ADDR: &str = "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdum6l3wrwqwax8qts0zj9qp";
 
 mod instantiation {

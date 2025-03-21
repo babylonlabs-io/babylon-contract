@@ -13,7 +13,7 @@ pub fn verify_headers(
 ) -> Result<(), error::ContractError> {
     // verify each new header iteratively
     let mut last_header = first_header.clone();
-    let mut cum_work_old = total_work(&last_header)?;
+    let mut cum_work_old = total_work(last_header.work.as_ref())?;
     for (i, new_header) in new_headers.iter().enumerate() {
         // decode last header to rust-bitcoin's type
         let last_btc_header: BlockHeader =
@@ -28,7 +28,7 @@ pub fn verify_headers(
             .map_err(|_| error::ContractError::BTCHeaderError {})?;
 
         let header_work = btc_header.work();
-        let cum_work = total_work(new_header)?;
+        let cum_work = total_work(new_header.work.as_ref())?;
 
         // Validate cumulative work
         if cum_work_old + header_work != cum_work {
@@ -61,9 +61,9 @@ pub fn zero_work() -> Work {
 
 /// Returns the total work of the given header.
 /// The total work is the cumulative work of the given header and all of its ancestors.
-pub fn total_work(header: &BtcHeaderInfo) -> StdResult<Work> {
+pub fn total_work(work: &[u8]) -> StdResult<Work> {
     // TODO: Use a better encoding (String / binary)
-    let header_work = from_utf8(header.work.as_ref())?;
+    let header_work = from_utf8(work)?;
     let header_work_cw = cosmwasm_std::Uint256::from_str(header_work)?;
     Ok(Work::from_be_bytes(header_work_cw.to_be_bytes()))
 }

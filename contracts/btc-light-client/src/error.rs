@@ -23,8 +23,8 @@ pub enum ContractError {
     #[error("Invalid configuration: {msg}")]
     InvalidConfig { msg: String },
 
-    #[error("The given headers during initialization cannot be verified")]
-    InitError {},
+    #[error("The given headers during initialization cannot be verified: {msg}")]
+    InitError { msg: String },
 
     #[error("The given headers during initialization cannot be verified. Less than {0} headers")]
     InitErrorLength(u32),
@@ -67,6 +67,9 @@ pub enum ContractError {
 
     #[error("The BTC header info {0} height is wrong. Expected {1}, got {2}")]
     BTCWrongHeight(usize, u32, u32),
+
+    #[error("The work is invalid")]
+    InvalidWork {},
 
     #[error("The new chain's work ({0}), is not better than the current chain's work ({1})")]
     BTCChainWithNotEnoughWork(Work, Work),
