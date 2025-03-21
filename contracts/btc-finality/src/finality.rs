@@ -223,7 +223,7 @@ pub fn handle_finality_signature(
     )?;
 
     // The public randomness value is good, save it.
-    // TODO?: Don't save public randomness values, to save storage space
+    // TODO?: Don't save public randomness values, to save storage space (#124)
     PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand.to_vec())?;
 
     // Verify whether the voted block is a fork or not
@@ -605,7 +605,7 @@ pub fn compute_active_finality_providers(
     // TODO: Online FPs verification
     // TODO: Filter out slashed / offline / jailed FPs
     // Save the new set of active finality providers
-    // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
+    // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage (#124)
     FP_SET.save(deps.storage, height, &finality_providers)?;
 
     Ok(())
