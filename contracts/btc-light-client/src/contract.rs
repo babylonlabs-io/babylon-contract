@@ -6,9 +6,7 @@ use babylon_bindings::BabylonMsg;
 use crate::error::ContractError;
 use crate::msg::btc_header::BtcHeader;
 use crate::msg::contract::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::btc_light_client::{
-    handle_btc_headers_from_user, init_from_user, is_initialized,
-};
+use crate::state::btc_light_client::{handle_btc_headers_from_user, init, is_initialized};
 use crate::state::config::{Config, CONFIG};
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -52,7 +50,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        ExecuteMsg::BtcHeaders { headers } => handle_btc_headers(deps, headers),
+        ExecuteMsg::BtcHeaders {
+            headers,
+            base_work,
+            base_height,
+        } => handle_btc_headers(deps, headers, base_work, base_height),
     }
 }
 
@@ -83,16 +85,28 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 fn handle_btc_headers(
     deps: DepsMut,
     headers: Vec<BtcHeader>,
+    base_work: Option<[u8; 32]>,
+    base_height: Option<u32>,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Check if the BTC light client has been initialized
     if !is_initialized(deps.storage) {
+        // Check if base work and height are provided
+        if base_work.is_none() || base_height.is_none() {
+            return Err(ContractError::InitError {});
+        }
+
         // Check if there are enough headers for initialization
         let cfg = CONFIG.load(deps.storage)?;
         if headers.len() < cfg.btc_confirmation_depth as usize {
             return Err(ContractError::InitErrorLength(cfg.btc_confirmation_depth));
         }
 
-        init_from_user(deps.storage, &headers)?;
+        init(
+            deps.storage,
+            &headers,
+            &base_work.unwrap(),
+            base_height.unwrap(),
+        )?;
         Ok(Response::new().add_attribute("action", "init_btc_light_client"))
     } else {
         handle_btc_headers_from_user(deps.storage, &headers)?;

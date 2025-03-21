@@ -32,7 +32,13 @@ pub enum ExecuteMsg {
     /// Add BTC headers to the light client. If not initialized, this will initialize
     /// the light client with the provided headers. Otherwise, it will update the
     /// existing chain with the new headers.
-    BtcHeaders { headers: Vec<BtcHeader> },
+    BtcHeaders {
+        headers: Vec<BtcHeader>,
+        // TODO: below are temporary fields, they should be removed after
+        // BTC light client has proper initialisation
+        base_work: Option<[u8; 32]>,
+        base_height: Option<u32>,
+    },
 }
 
 #[cw_serde]

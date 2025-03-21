@@ -233,19 +233,6 @@ pub fn init_from_babylon(
     init(storage, &btc_headers, &base_work.to_be_bytes(), base_height)
 }
 
-/// `init_from_user` initialises the BTC header chain storage.
-/// Alternative to `init`, in which a user sends the initial batch of headers, instead of Babylon.
-///
-/// Starts from zero work and heights. Mostly useful for integration tests.
-pub fn init_from_user(
-    storage: &mut dyn Storage,
-    headers: &[BtcHeader],
-) -> Result<(), ContractError> {
-    let prev_height: u32 = 0;
-    let prev_work = zero_work();
-    init(storage, &headers, &prev_work.to_be_bytes(), prev_height)
-}
-
 /// handle_btc_headers_from_babylon verifies and inserts a number of
 /// finalised BTC headers to the header chain storage, and update
 /// the chain tip.
@@ -382,7 +369,7 @@ pub mod tests {
         let testdata = get_btc_lc_fork_msg();
         let resp: ExecuteMsg = from_json(testdata).unwrap();
         match resp {
-            ExecuteMsg::BtcHeaders { headers } => headers,
+            ExecuteMsg::BtcHeaders { headers, .. } => headers,
         }
     }
 

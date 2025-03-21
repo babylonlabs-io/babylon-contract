@@ -13,6 +13,8 @@ pub enum ContractError {
     ParseReply(#[from] ParseReplyError),
     #[error("Invalid reply id: {0}")]
     InvalidReplyId(u64),
+    #[error("The BTC header is empty")]
+    BtcHeaderEmpty {},
     #[error("The BTC light client contract is not set")]
     BtcLightClientNotSet {},
     #[error("{0}")]
