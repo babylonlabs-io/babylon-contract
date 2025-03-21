@@ -292,7 +292,7 @@ pub fn verify_active_delegation(
                 staking_time,
             )?;
 
-        // TODO: Ensure the unbonding tx has valid unbonding output, and get the unbonding output
+        // TODO: Ensure the unbonding tx has valid unbonding output, and get the unbonding output (#7.1)
         // index (#7.1)
         let unbonding_output_idx = 0;
         let unbonding_output = &unbonding_tx.output[unbonding_output_idx as usize];
