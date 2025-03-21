@@ -125,8 +125,8 @@ pub fn handle_active_delegation(
     // TODO: Ensure all finality providers
     // - are known to Babylon,
     // - at least 1 one of them is a Babylon finality provider,
-    // - are not slashed, and
-    // - their registered epochs are finalised
+    // - are not slashed (#82), and
+    // - their registered epochs are finalised, and timestamped (#130)
     // and then check whether the BTC stake is restaked to FPs of consumers
     // TODO: ensure the BTC delegation does not restake to too many finality providers
     // (pending concrete design)

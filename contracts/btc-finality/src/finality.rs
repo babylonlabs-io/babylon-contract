@@ -602,8 +602,8 @@ pub fn compute_active_finality_providers(
         batch = list_fps_by_power(&cfg.staking, &deps.querier, last, QUERY_LIMIT)?;
     }
 
-    // TODO: Online FPs verification
-    // TODO: Filter out slashed / offline / jailed FPs
+    // TODO: Online FPs verification (#82)
+    // TODO: Filter out slashed / offline / jailed FPs (#82)
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage (#124)
     FP_SET.save(deps.storage, height, &finality_providers)?;
