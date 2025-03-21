@@ -316,7 +316,7 @@ fn send_rewards_msg(
 }
 
 pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
-    // TODO: Use a raw query
+    // TODO: Use a raw query (#41)
     let query = encode_smart_query(
         staking_addr,
         &btc_staking::msg::QueryMsg::ActivatedHeight {},

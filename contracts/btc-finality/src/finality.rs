@@ -42,7 +42,7 @@ pub fn handle_public_randomness_commit(
     // TODO: ensure log_2(num_pub_rand) is an integer?
 
     // Ensure the finality provider is registered
-    // TODO: Use a raw query for performance and cost
+    // TODO: Use a raw query for performance and cost (#41)
     let _fp: FinalityProvider = deps
         .querier
         .query_wasm_smart(

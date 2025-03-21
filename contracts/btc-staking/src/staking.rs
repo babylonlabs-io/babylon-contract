@@ -729,7 +729,7 @@ fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
     // Query the Babylon contract
-    // TODO: use a raw query for performance / efficiency
+    // TODO: use a raw query for performance / efficiency (#41)
     let query_msg = BabylonQueryMsg::BtcTipHeader {};
     let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(babylon_addr, &query_msg)?;
 
