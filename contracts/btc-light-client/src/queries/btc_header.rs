@@ -48,7 +48,7 @@ mod tests {
     use cosmwasm_std::testing::mock_dependencies;
     use test_utils::get_btc_lc_headers;
 
-    use crate::state::btc_light_client::{init, init_from_babylon};
+    use crate::state::btc_light_client::init_from_babylon;
     use crate::state::config::{Config, CONFIG};
     use babylon_bitcoin::chain_params::Network;
 

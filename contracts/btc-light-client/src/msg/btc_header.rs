@@ -52,7 +52,7 @@ impl BtcHeader {
             hash: ::prost::bytes::Bytes::from(babylon_bitcoin::serialize(
                 &block_header.block_hash(),
             )),
-            height: height,
+            height,
             work: prost::bytes::Bytes::from(work.to_string()),
         })
     }

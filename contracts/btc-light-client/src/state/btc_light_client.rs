@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use crate::error::ContractError;
 use crate::msg::btc_header::BtcHeader;
-use crate::utils::btc_light_client::{total_work, verify_headers, zero_work};
+use crate::utils::btc_light_client::{total_work, verify_headers};
 
 use super::CONFIG;
 
@@ -224,7 +224,7 @@ pub fn init_from_babylon(
 ) -> Result<(), ContractError> {
     let btc_headers = headers
         .iter()
-        .map(|h| BtcHeader::try_from(h))
+        .map(BtcHeader::try_from)
         .collect::<Result<Vec<BtcHeader>, _>>()
         .map_err(|_| ContractError::BTCHeaderDecodeError {})?;
     let base_header = headers.first().ok_or(ContractError::BTCHeaderEmpty {})?;
