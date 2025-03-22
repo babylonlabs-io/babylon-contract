@@ -51,7 +51,7 @@ pub struct BtcDelegation {
 
 impl BtcDelegation {
     pub fn is_active(&self) -> bool {
-        // TODO: Implement full delegation status checks (needs BTC height)
+        // TODO: Implement full delegation status checks (needs BTC height) (related to #7.2)
         // self.get_status(btc_height, w) == BTCDelegationStatus::ACTIVE
         !self.is_unbonded_early() && !self.is_slashed()
     }
@@ -214,7 +214,7 @@ impl From<btc_staking_api::SignatureInfo> for SignatureInfo {
 /// Finality providers by their BTC public key
 pub(crate) const FPS: Map<&str, FinalityProvider> = Map::new("fps");
 
-/// TODO: Replace with IndexedMap for better efficiency
+/// TODO: Replace with IndexedMap for better efficiency (#126 follow-up)
 /// This current implementation stores all delegation hashes for a height in a single Vec,
 /// which becomes inefficient as the number of delegations per height grows.
 /// A better approach would be to use an IndexedMap with a MultiIndex on end_height,
@@ -228,10 +228,10 @@ pub const BTC_DELEGATION_EXPIRY_INDEX: Map<u32, Vec<[u8; HASH_SIZE]>> =
 pub(crate) const BTC_DELEGATIONS: Map<&[u8; HASH_SIZE], BtcDelegation> =
     Map::new("btc_delegations");
 /// Map of staking hashes by finality provider
-// TODO: Remove and use the delegations() map instead
+// TODO: Remove and use the delegations() map instead (related to #123)
 pub(crate) const FP_DELEGATIONS: Map<&str, Vec<Vec<u8>>> = Map::new("fp_delegations");
 /// Reverse map of finality providers by staking hash
-// TODO: Remove and use the delegations() reverse index instead
+// TODO: Remove and use the delegations() reverse index instead (related to #123)
 pub(crate) const DELEGATION_FPS: Map<&[u8; HASH_SIZE], Vec<String>> = Map::new("delegation_fps");
 
 pub const FP_STATE_KEY: &str = "fp_state";
@@ -270,11 +270,11 @@ pub struct FinalityProviderState {
     //TODO?: Rename to `total_delegation`
     pub power: u64,
     /// Points user is eligible to by single token delegation
-    //TODO: Rename to `delegation_points`
-    //TODO: Use Uint128
+    //TODO?: Rename to `delegation_points`
+    //TODO: Use Uint128 (similar to #123)
     pub points_per_stake: Uint256,
     /// Points which were not distributed previously
-    //TODO: Rename to `leftover_points`
-    //TODO: Use Uint128
+    //TODO?: Rename to `leftover_points`
+    //TODO: Use Uint128 (similar to #123)
     pub points_leftover: Uint256,
 }

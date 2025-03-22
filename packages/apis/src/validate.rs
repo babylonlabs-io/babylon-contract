@@ -26,15 +26,14 @@ impl Validate for NewFinalityProvider {
 
         let _btc_pk = hex::decode(&self.btc_pk_hex)?;
 
-        // TODO: Validate BTC public key (requires valid BTC PK test data)
+        // TODO: Validate BTC public key (requires valid BTC PK test data) (#7 extra)
         // PublicKey::from_slice(&btc_pk)
         //     .map_err(|_| StakingApiError::InvalidBtcPk(self.btc_pk_hex.clone()))?;
 
-        // TODO: Validate PoP
-        // match self.pop {
-        //     Some(ref pop) => pop.validate()?,
-        //     None => return Err(StakingApiError::MissingPop),
-        // }
+        match self.pop {
+            Some(ref pop) => pop.validate()?,
+            None => return Err(StakingApiError::MissingPop),
+        }
 
         // Validate consumer_id
         if self.consumer_id.is_empty() {
@@ -95,7 +94,7 @@ impl Validate for FinalityProviderDescription {
 }
 
 impl Validate for ProofOfPossessionBtc {
-    // TODO: Validate proof of possession
+    // TODO: Validate proof of possession (#7.0)
     fn validate(&self) -> Result<(), StakingApiError> {
         Ok(())
     }
@@ -125,7 +124,7 @@ impl Validate for ActiveBtcDelegation {
         let _: Transaction = deserialize(&self.slashing_tx)
             .map_err(|_| StakingApiError::InvalidBtcTx(hex::encode(&self.slashing_tx)))?;
 
-        // TODO: Verify delegator slashing Schnorr signature
+        // TODO: Verify delegator slashing Schnorr signature (#7.2)
 
         // Ensure the list of finality provider BTC PKs is not empty
         if self.fp_btc_pk_list.is_empty() {
@@ -134,7 +133,7 @@ impl Validate for ActiveBtcDelegation {
         // Ensure the list of finality provider BTC PKs is not duplicated
         check_duplicated_fps(self)?;
 
-        // TODO: Verifications about undelegation info / on-demand unbonding
+        // TODO: Verifications about undelegation info / on-demand unbonding (#7.2)
         // Check unbonding time is lower than max uint16
         if self.unbonding_time > u16::MAX as u32 {
             return Err(StakingApiError::ErrInvalidUnbondingTime(
@@ -173,7 +172,7 @@ impl Validate for UnbondedBtcDelegation {
             return Err(StakingApiError::EmptySignature);
         }
 
-        // TODO: Verify delegator unbonding Schnorr signature
+        // TODO: Verify delegator unbonding Schnorr signature (#7.3)
 
         Ok(())
     }

@@ -12,7 +12,6 @@ pub(crate) const PARAMS: Item<Params> = Item::new("params");
 pub(crate) const ADMIN: Admin = Admin::new("admin");
 
 /// Config are Babylon-selectable BTC staking configuration
-// TODO: Add / enable config entries as needed
 #[cw_serde]
 pub struct Config {
     pub babylon: Addr,
@@ -21,7 +20,6 @@ pub struct Config {
 }
 
 /// Params define Consumer-selectable BTC staking parameters
-// TODO: Add / enable param entries as needed
 #[cw_serde]
 #[derive(Derivative)]
 #[derivative(Default)]

@@ -41,7 +41,7 @@ pub enum QueryMsg {
     IsEnabled {},
 }
 
-// Note: copied from packages/apis/src/btc_staking_api.rs
+// Note: Adapted from packages/apis/src/btc_staking_api.rs / packages/apis/src/finality_api.rs
 #[cw_serde]
 pub enum ExecuteMsg {
     CommitPublicRandomness {
@@ -73,6 +73,7 @@ pub enum ExecuteMsg {
         height: u64,
         pub_rand: Binary,
         proof: Proof,
+        // FIXME: Rename to block_app_hash for consistency / clarity
         block_hash: Binary,
         signature: Binary,
     },

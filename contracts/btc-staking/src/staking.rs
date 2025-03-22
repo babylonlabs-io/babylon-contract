@@ -53,13 +53,13 @@ pub fn handle_btc_staking(
 
     for fp in new_fps {
         handle_new_fp(deps.storage, fp, env.block.height)?;
-        // TODO: Add event
+        // TODO: Add event (#124)
     }
 
     // Process active delegations
     for del in active_delegations {
         handle_active_delegation(deps.storage, env.block.height, del)?;
-        // TODO: Add event
+        // TODO: Add event (#124)
     }
 
     // Process slashed delegations
@@ -112,7 +112,7 @@ pub fn handle_active_delegation(
     height: u64,
     active_delegation: &ActiveBtcDelegation,
 ) -> Result<(), ContractError> {
-    // TODO: Get params
+    // TODO: Get params / improve active delegation validation (related to #7.2)
     // btc_confirmation_depth
     // checkpoint_finalization_timeout
     // minimum_unbonding_time
@@ -125,8 +125,8 @@ pub fn handle_active_delegation(
     // TODO: Ensure all finality providers
     // - are known to Babylon,
     // - at least 1 one of them is a Babylon finality provider,
-    // - are not slashed, and
-    // - their registered epochs are finalised
+    // - are not slashed (#82), and
+    // - their registered epochs are finalised, and timestamped (#130)
     // and then check whether the BTC stake is restaked to FPs of consumers
     // TODO: ensure the BTC delegation does not restake to too many finality providers
     // (pending concrete design)
@@ -242,7 +242,7 @@ pub fn handle_active_delegation(
         },
     )?;
 
-    // TODO: Emit corresponding events
+    // TODO: Emit corresponding events (#124)
 
     Ok(())
 }
@@ -503,7 +503,6 @@ fn distribute_rewards(
     height: u64,
 ) -> Result<Event, ContractError> {
     // Load fp distribution info
-    // TODO?: Use specific Distribution struct
     let mut fp_distribution = fps().load(deps.storage, fp)?;
 
     let total_stake = Uint256::from(fp_distribution.power);
@@ -594,7 +593,7 @@ fn send_rewards_msg(
     amount: Uint128,
 ) -> Result<(String, CosmosMsg<BabylonMsg>), ContractError> {
     // Query the babylon contract for transfer info
-    // TODO: Turn into a parameter set during instantiation to avoid query
+    // TODO: Turn into a parameter set during instantiation to avoid query (related to #41)
     let transfer_info: TransferInfoResponse = deps.querier.query_wasm_smart(
         cfg.babylon.to_string(),
         &babylon_contract::msg::contract::QueryMsg::TransferInfo {},
@@ -672,12 +671,7 @@ fn btc_undelegate(
     // Set BTC delegation back to KV store
     BTC_DELEGATIONS.save(storage, staking_tx_hash.as_ref(), btc_del)?;
 
-    // TODO? Notify subscriber about this unbonded BTC delegation
-    //  - Who are subscribers in this context?
-    //  - How to notify them? Emit event?
-
-    // TODO? Record event that the BTC delegation becomes unbonded at this height
-
+    // TODO: Record event that the BTC delegation becomes unbonded at this height (#124)
     Ok(())
 }
 
@@ -701,7 +695,7 @@ pub(crate) fn slash_finality_provider(
     fp.slashed_height = env.block.height;
 
     // Set BTC slashing height (if available from the babylon contract)
-    // FIXME: Turn this into a hard error
+    // FIXME: Turn this into a hard error (related to #7.2)
     // return fmt.Errorf("failed to get current BTC tip")
     let btc_height = get_btc_tip_height(&deps).unwrap_or_default();
     fp.slashed_btc_height = btc_height;
@@ -719,7 +713,7 @@ pub(crate) fn slash_finality_provider(
     // Save the finality provider back
     FPS.save(deps.storage, fp_btc_pk_hex, &fp)?;
 
-    // TODO: Add events
+    // TODO: Add events (#124)
     Ok(Response::new())
 }
 
@@ -729,7 +723,7 @@ fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
     let babylon_addr = CONFIG.load(deps.storage)?.babylon;
 
     // Query the Babylon contract
-    // TODO: use a raw query for performance / efficiency
+    // TODO: use a raw query for performance / efficiency (#41)
     let query_msg = BabylonQueryMsg::BtcTipHeader {};
     let tip: BtcHeaderResponse = deps.querier.query_wasm_smart(babylon_addr, &query_msg)?;
 
