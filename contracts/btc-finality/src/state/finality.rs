@@ -17,6 +17,9 @@ pub const NEXT_HEIGHT: Item<u64> = Item::new("next_height");
 /// `FP_SET` is the calculated list of the active finality providers by height
 pub const FP_SET: Map<u64, Vec<FinalityProviderInfo>> = Map::new("fp_set");
 
+/// Map of finality providers to block heights they had last signed a block.
+pub const BLOCK_SIGNERS: Map<&str, u64> = Map::new("block_signers");
+
 /// Map of double signing evidence by FP and block height
 pub const EVIDENCES: Map<(&str, u64), Evidence> = Map::new("evidences");
 

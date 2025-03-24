@@ -2,7 +2,7 @@ use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{Config, CONFIG, PARAMS};
 use crate::state::finality::{
-    BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, REWARDS, SIGNATURES, TOTAL_REWARDS,
+    BLOCKS, BLOCK_SIGNERS, EVIDENCES, FP_SET, NEXT_HEIGHT, REWARDS, SIGNATURES, TOTAL_REWARDS,
 };
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_timestamped_pub_rand_commit_for_height, PUB_RAND_COMMITS,
@@ -270,6 +270,9 @@ pub fn handle_finality_signature(
 
     // This signature is good, save the vote to the store
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
+
+    // Store the block height this finality provider has signed
+    BLOCK_SIGNERS.save(deps.storage, fp_btc_pk_hex, &height)?;
 
     // If this finality provider has signed the canonical block before, slash it via extracting its
     // secret key, and emit an event
