@@ -620,7 +620,8 @@ pub fn compute_active_finality_providers(
         .collect();
     let new_fps = cur_fps.difference(&old_fps);
     for fp in new_fps {
-        FP_START_HEIGHT.save(deps.storage, fp, &env.block.height)?;
+        // Active since the next block
+        FP_START_HEIGHT.save(deps.storage, fp, &(env.block.height + 1))?;
     }
 
     // Check for inactive finality providers, and jail them
