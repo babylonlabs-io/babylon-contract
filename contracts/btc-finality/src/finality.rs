@@ -648,7 +648,18 @@ pub fn compute_active_finality_providers(
         }
     })?;
 
-    // TODO: Filter out slashed / offline / jailed FPs (#82)
+    // Filter out jailed FPs
+    let finality_providers: Vec<FinalityProviderInfo> = finality_providers
+        .into_iter()
+        .filter(|fp| {
+            // Filter out FPs that are jailed.
+            // Error (shouldn't happen) is being mapped to "jailed forever"
+            let jailed = JAIL
+                .may_load(deps.storage, &fp.btc_pk_hex)
+                .unwrap_or(Some(0));
+            !matches!(jailed, Some(jail_time) if jail_time == 0 || jail_time > env.block.time.seconds())
+        })
+        .collect();
 
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage (#124)
