@@ -2,7 +2,8 @@ use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{Config, CONFIG, PARAMS};
 use crate::state::finality::{
-    BLOCKS, BLOCK_SIGNERS, EVIDENCES, FP_SET, NEXT_HEIGHT, REWARDS, SIGNATURES, TOTAL_REWARDS,
+    BLOCKS, EVIDENCES, FP_BLOCK_SIGNERS, FP_SET, FP_START_HEIGHT, JAIL, NEXT_HEIGHT, REWARDS,
+    SIGNATURES, TOTAL_REWARDS,
 };
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_timestamped_pub_rand_commit_for_height, PUB_RAND_COMMITS,
@@ -272,7 +273,7 @@ pub fn handle_finality_signature(
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
 
     // Store the block height this finality provider has signed
-    BLOCK_SIGNERS.save(deps.storage, fp_btc_pk_hex, &height)?;
+    FP_BLOCK_SIGNERS.save(deps.storage, fp_btc_pk_hex, &height)?;
 
     // If this finality provider has signed the canonical block before, slash it via extracting its
     // secret key, and emit an event
@@ -575,7 +576,7 @@ const QUERY_LIMIT: Option<u32> = Some(30);
 /// power of top finality providers, and records them in the contract state
 pub fn compute_active_finality_providers(
     deps: &mut DepsMut,
-    height: u64,
+    env: &Env,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
@@ -605,11 +606,53 @@ pub fn compute_active_finality_providers(
         batch = list_fps_by_power(&cfg.staking, &deps.querier, last, QUERY_LIMIT)?;
     }
 
-    // TODO: Online FPs verification (#82)
+    // Online FPs verification
+    // Store starting heights of fps entering the active set
+    let old_fps: HashSet<String> = FP_SET
+        .may_load(deps.storage, env.block.height - 1)?
+        .unwrap_or(vec![])
+        .iter()
+        .map(|fp| fp.btc_pk_hex.clone())
+        .collect();
+    let cur_fps: HashSet<String> = finality_providers
+        .iter()
+        .map(|fp| fp.btc_pk_hex.clone())
+        .collect();
+    let new_fps = cur_fps.difference(&old_fps);
+    for fp in new_fps {
+        FP_START_HEIGHT.save(deps.storage, fp, &env.block.height)?;
+    }
+
+    // Check for inactive finality providers, and jail them
+    let params = PARAMS.load(deps.storage)?;
+    finality_providers.iter().try_for_each(|fp| {
+        let mut last_sign_height = FP_BLOCK_SIGNERS.may_load(deps.storage, &fp.btc_pk_hex)?;
+        if last_sign_height.is_none() {
+            // Not a block signer yet, check their start height instead
+            last_sign_height = FP_START_HEIGHT.may_load(deps.storage, &fp.btc_pk_hex)?;
+        }
+        match last_sign_height {
+            Some(h) if h > env.block.height.saturating_sub(params.missed_blocks_window) => {
+                Ok::<_, ContractError>(())
+            }
+            _ => {
+                // fp is inactive for at least missed_blocks_window, jail! (if not already jailed)
+                JAIL.update(deps.storage, &fp.btc_pk_hex, |jailed| match jailed {
+                    Some(jail_time) if jail_time == 0 || jail_time > env.block.time.seconds() => {
+                        Ok::<_, ContractError>(jail_time)
+                    }
+                    _ => Ok(env.block.time.seconds() + params.jail_duration),
+                })?;
+                Ok(())
+            }
+        }
+    })?;
+
     // TODO: Filter out slashed / offline / jailed FPs (#82)
+
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage (#124)
-    FP_SET.save(deps.storage, height, &finality_providers)?;
+    FP_SET.save(deps.storage, env.block.height, &finality_providers)?;
 
     Ok(())
 }
