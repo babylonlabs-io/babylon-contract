@@ -86,6 +86,13 @@ pub enum QueryMsg {
     /// `Evidence` returns the evidence for a given FP and block height
     #[returns(EvidenceResponse)]
     Evidence { btc_pk_hex: String, height: u64 },
+
+    /// Returns the list of jailed finality providers
+    #[returns(JailedFinalityProvidersResponse)]
+    JailedFinalityProviders {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]
@@ -101,4 +108,16 @@ pub struct BlocksResponse {
 #[cw_serde]
 pub struct EvidenceResponse {
     pub evidence: Option<Evidence>,
+}
+
+#[cw_serde]
+pub struct JailedFinalityProvidersResponse {
+    pub jailed_finality_providers: Vec<JailedFinalityProvider>,
+}
+
+#[cw_serde]
+pub struct JailedFinalityProvider {
+    pub btc_pk_hex: String,
+    /// Here zero means 'forever'
+    pub jailed_until: u64,
 }
