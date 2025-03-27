@@ -133,6 +133,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::Evidence { btc_pk_hex, height } => Ok(to_json_binary(&queries::evidence(
             deps, btc_pk_hex, height,
         )?)?),
+        QueryMsg::JailedFinalityProviders { start_after, limit } => Ok(to_json_binary(
+            &queries::jailed_finality_providers(deps, start_after, limit)?,
+        )?),
     }
 }
 
