@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::finality::{
     compute_active_finality_providers, distribute_rewards_fps, handle_finality_signature,
-    handle_public_randomness_commit,
+    handle_jail, handle_public_randomness_commit, handle_unjail,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
@@ -187,6 +187,11 @@ pub fn execute(
             &commitment,
             &signature,
         ),
+        ExecuteMsg::Jail {
+            fp_pubkey_hex,
+            duration,
+        } => handle_jail(deps, &env, &info, &fp_pubkey_hex, duration),
+        ExecuteMsg::Unjail { fp_pubkey_hex } => handle_unjail(deps, &env, &info, &fp_pubkey_hex),
     }
 }
 
