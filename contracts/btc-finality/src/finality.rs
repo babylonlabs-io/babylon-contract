@@ -645,12 +645,10 @@ pub fn compute_active_finality_providers(
                 Ok::<_, ContractError>(())
             }
             _ => {
-                // fp is inactive for at least missed_blocks_window, jail! (if not already jailed)
+                // FP is inactive for at least missed_blocks_window, jail! (if not already jailed)
                 JAIL.update(deps.storage, &fp.btc_pk_hex, |jailed| match jailed {
-                    Some(jail_time) if jail_time == 0 || jail_time > env.block.time.seconds() => {
-                        Ok::<_, ContractError>(jail_time)
-                    }
-                    _ => Ok(env.block.time.seconds() + params.jail_duration),
+                    Some(jail_time) => Ok::<_, ContractError>(jail_time),
+                    None => Ok(env.block.time.seconds() + params.jail_duration),
                 })?;
                 Ok(())
             }
