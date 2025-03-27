@@ -1,6 +1,6 @@
 use crate::contract::encode_smart_query;
 use crate::error::ContractError;
-use crate::state::config::{Config, CONFIG, PARAMS};
+use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::finality::{
     BLOCKS, EVIDENCES, FP_BLOCK_SIGNERS, FP_SET, FP_START_HEIGHT, JAIL, NEXT_HEIGHT, REWARDS,
     SIGNATURES, TOTAL_REWARDS,
@@ -11,13 +11,14 @@ use crate::state::public_randomness::{
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_apis::to_canonical_addr;
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
 use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, QuerierWrapper, Response, StdResult,
-    Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
+    Response, StdResult, Storage, Uint128, WasmMsg,
 };
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
@@ -293,6 +294,99 @@ pub fn handle_finality_signature(
     }
 
     Ok(res)
+}
+
+pub fn handle_jail(
+    deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    fp_btc_pk_hex: &str,
+    jail_duration: u64,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+    // Ensure the finality provider exists
+    let staking_addr = CONFIG.load(deps.storage)?.staking;
+    deps.querier
+        .query_wasm_smart::<FinalityProvider>(
+            staking_addr.clone(),
+            &btc_staking::msg::QueryMsg::FinalityProvider {
+                btc_pk_hex: fp_btc_pk_hex.to_string(),
+            },
+        )
+        .map_err(|_| ContractError::FinalityProviderNotFound(fp_btc_pk_hex.to_string()))?;
+
+    // Set the jail time
+    let jail_until = if jail_duration == 0 {
+        0
+    } else {
+        env.block.time.seconds() + jail_duration
+    };
+    JAIL.save(deps.storage, fp_btc_pk_hex, &jail_until)?;
+
+    let until_attr = match jail_duration {
+        0 => "forever".to_owned(),
+        _ => jail_until.to_string(),
+    };
+
+    let res = Response::new()
+        .add_attribute("action", "jail")
+        .add_attribute("fp", fp_btc_pk_hex)
+        .add_attribute("until", until_attr);
+
+    Ok(res)
+}
+
+pub fn handle_unjail(
+    deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    fp_btc_pk_hex: &str,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // Admin can unjail anyone anytime
+    if ADMIN.is_admin(deps.as_ref(), &info.sender)? {
+        JAIL.remove(deps.storage, fp_btc_pk_hex);
+        return Ok(Response::new()
+            .add_attribute("action", "unjail")
+            .add_attribute("fp", fp_btc_pk_hex));
+    }
+
+    // Others can unjail only themselves
+    // First, ensure the finality provider is jailed
+    let jail_until = JAIL.load(deps.storage, fp_btc_pk_hex)?;
+
+    // Ensure the jail period has passed
+    if env.block.time.seconds() < jail_until {
+        return Err(ContractError::JailPeriodNotPassed(
+            fp_btc_pk_hex.to_string(),
+        ));
+    }
+
+    // Get the finality provider info to check if the sender is the finality provider's
+    // operator address in the BSN
+    let staking_addr = CONFIG.load(deps.storage)?.staking;
+    let fp: FinalityProvider = deps
+        .querier
+        .query_wasm_smart(
+            staking_addr.clone(),
+            &btc_staking::msg::QueryMsg::FinalityProvider {
+                btc_pk_hex: fp_btc_pk_hex.to_string(),
+            },
+        )
+        .map_err(|_| ContractError::FinalityProviderNotFound(fp_btc_pk_hex.to_string()))?;
+
+    // Compute canonical sender and FP operator addresses
+    let sender_canonical_addr = deps.api.addr_canonicalize(info.sender.as_ref())?;
+    let fp_canonical_addr = to_canonical_addr(&fp.addr, "bbn")?;
+    if sender_canonical_addr != fp_canonical_addr {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Unjail the finality provider
+    JAIL.remove(deps.storage, fp_btc_pk_hex);
+
+    Ok(Response::new()
+        .add_attribute("action", "unjail")
+        .add_attribute("fp", fp_btc_pk_hex))
 }
 
 /// `slash_finality_provider` slashes a finality provider with the given evidence including setting
