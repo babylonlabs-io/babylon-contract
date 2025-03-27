@@ -67,7 +67,7 @@ pub enum QueryMsg {
     #[returns(DelegationsByFPResponse)]
     DelegationsByFP { btc_pk_hex: String },
     /// `FinalityProviderInfo` returns the finality provider information by its BTC public key,
-    /// in hex format
+    /// in hex format.
     /// The information includes the aggregated power of the finality provider.
     ///
     /// `height` is the optional block height at which the power is being aggregated.
