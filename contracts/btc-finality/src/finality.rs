@@ -592,16 +592,14 @@ pub fn compute_active_finality_providers(
             .into_iter()
             .filter(|fp| {
                 // Filter out FPs with no voting power
-                if fp.power == 0
-                {
+                if fp.power == 0 {
                     return false;
                 }
                 // Filter out FPs that are jailed.
                 // Error (shouldn't happen) is being mapped to "jailed forever"
-                let jailed = JAIL
-                    .may_load(deps.storage, &fp.btc_pk_hex)
-                    .unwrap_or(Some(0));
-                !matches!(jailed, Some(jail_time) if jail_time == 0 || jail_time > env.block.time.seconds())
+                JAIL.may_load(deps.storage, &fp.btc_pk_hex)
+                    .unwrap_or(Some(0))
+                    .is_none()
             })
             .scan(total_power, |acc, fp| {
                 *acc += fp.power;
