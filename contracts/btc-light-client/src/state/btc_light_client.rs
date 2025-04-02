@@ -328,13 +328,14 @@ pub fn handle_btc_headers_from_user(
     let previous_header = get_header_by_hash(storage, prev_blockhash.as_ref())?;
 
     // Convert new_headers to `BtcHeaderInfo`s
-    let mut cur_height = previous_header.height;
-    let mut cur_work = total_work(previous_header.work.as_ref())?;
+    let mut prev_height = previous_header.height;
+    let mut prev_work = total_work(previous_header.work.as_ref())?;
     let mut new_headers_info = vec![];
     for new_btc_header in new_btc_headers.iter() {
-        let new_header_info = new_btc_header.to_btc_header_info_from_prev(cur_height, cur_work)?;
-        cur_height += 1;
-        cur_work = total_work(new_header_info.work.as_ref())?;
+        let new_header_info =
+            new_btc_header.to_btc_header_info_from_prev(prev_height, prev_work)?;
+        prev_height += 1;
+        prev_work = total_work(new_header_info.work.as_ref())?;
         new_headers_info.push(new_header_info);
     }
 
