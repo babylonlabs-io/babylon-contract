@@ -53,11 +53,11 @@ pub enum ContractError {
     #[error("The BTC header does not satisfy the difficulty requirement or is not consecutive")]
     BTCHeaderError {},
 
-    #[error("The BTC header with height {height} is not found in the storage")]
-    BTCHeaderNotFoundError { height: u32 },
+    #[error("The BTC header with hash {hash} is not found in the storage")]
+    BTCHeaderNotFoundError { hash: String },
 
-    #[error("The BTC height with hash {hash} is not found in the storage")]
-    BTCHeightNotFoundError { hash: String },
+    #[error("The BTC height {height} is not found in the storage")]
+    BTCHeightNotFoundError { height: u32 },
 
     #[error("The BTC header info cumulative work encoding is wrong")]
     BTCWrongCumulativeWorkEncoding {},

@@ -1,17 +1,14 @@
 use crate::error::ContractError;
 use crate::state::config::CONFIG;
-use babylon_bindings::BabylonMsg;
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use btc_light_client::msg::btc_header::btc_headers_from_info;
 use btc_light_client::msg::contract::ExecuteMsg as BtcLightClientExecuteMsg;
-use btc_light_client::utils::btc_light_client::total_work;
-use cosmwasm_std::{to_json_binary, DepsMut, Response, WasmMsg};
+use cosmwasm_std::{to_json_binary, DepsMut, WasmMsg};
 
-/// Submit BTC headers to the light client
-pub fn submit_headers(
+pub fn new_btc_headers_msg(
     deps: &mut DepsMut,
     headers: &[BtcHeaderInfo],
-) -> Result<Response<BabylonMsg>, ContractError> {
+) -> Result<WasmMsg, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
     let contract_addr = cfg
         .btc_light_client
@@ -35,7 +32,5 @@ pub fn submit_headers(
         funds: vec![],
     };
 
-    Ok(Response::new()
-        .add_message(wasm_msg)
-        .add_attribute("action", "submit_btc_headers"))
+    Ok(wasm_msg)
 }

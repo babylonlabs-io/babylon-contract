@@ -1,5 +1,5 @@
 //! state is the module that manages smart contract's system state
-use cosmwasm_std::{DepsMut, StdError};
+use cosmwasm_std::{DepsMut, StdError, WasmMsg};
 
 use crate::bindings::msg_btc_finalized_header;
 use babylon_bindings::BabylonMsg;
@@ -10,19 +10,27 @@ pub mod config;
 pub mod cz_header_chain;
 
 /// handle_btc_timestamp handles a BTC timestamp
-/// It returns an option if the BTC timestamp is verified, otherwise an error.
-/// The returned option is a `FinalizedHeader` Babylon message notifying a
-/// newly finalised CZ header, or None if this BTC timestamp does not carry
+/// It returns a tuple of (WasmMsg, BabylonMsg).
+/// The returned WasmMsg is a message to submit BTC headers to the BTC light client.
+/// The returned BabylonMsg is a message to notify a newly finalised CZ header, or None if this BTC timestamp does not carry
 /// a newly finalised CZ header.
 pub fn handle_btc_timestamp(
     deps: &mut DepsMut,
     btc_ts: &BtcTimestamp,
-) -> Result<Option<BabylonMsg>, StdError> {
+) -> Result<(Option<WasmMsg>, Option<BabylonMsg>), StdError> {
+    let mut wasm_msg = None;
+    let mut babylon_msg = None;
+
     // only process BTC headers if they exist and are not empty
     if let Some(btc_headers) = btc_ts.btc_headers.as_ref() {
         if !btc_headers.headers.is_empty() {
-            crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
-                .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
+            wasm_msg = Some(
+                crate::utils::btc_light_client_executor::new_btc_headers_msg(
+                    deps,
+                    &btc_headers.headers,
+                )
+                .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?,
+            );
         }
     }
 
@@ -65,8 +73,8 @@ pub fn handle_btc_timestamp(
         // Finalised CZ header verified, notify Cosmos zone about the newly finalised CZ header
         // Cosmos zone that deploys corresponding CosmWasm plugin will handle this message
         let msg = msg_btc_finalized_header(cz_header)?;
-        return Ok(Some(msg));
+        babylon_msg = Some(msg);
     }
 
-    Ok(None)
+    Ok((wasm_msg, babylon_msg))
 }

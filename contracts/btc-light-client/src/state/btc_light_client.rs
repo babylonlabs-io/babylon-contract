@@ -91,7 +91,7 @@ pub fn get_header(storage: &dyn Storage, height: u32) -> Result<BtcHeaderInfo, C
     // Try to find the header with the given hash
     let header_bytes = BTC_HEADERS
         .load(storage, height)
-        .map_err(|_| ContractError::BTCHeaderNotFoundError { height })?;
+        .map_err(|_| ContractError::BTCHeightNotFoundError { height })?;
 
     BtcHeaderInfo::decode(header_bytes.as_slice()).map_err(ContractError::DecodeError)
 }
@@ -105,7 +105,7 @@ pub fn get_header_by_hash(
     let height =
         BTC_HEIGHTS
             .load(storage, hash)
-            .map_err(|_| ContractError::BTCHeightNotFoundError {
+            .map_err(|_| ContractError::BTCHeaderNotFoundError {
                 hash: hash.encode_hex::<String>(),
             })?;
 
@@ -117,7 +117,7 @@ pub fn get_header_height(storage: &dyn Storage, hash: &[u8]) -> Result<u32, Cont
     let height =
         BTC_HEIGHTS
             .load(storage, hash)
-            .map_err(|_| ContractError::BTCHeightNotFoundError {
+            .map_err(|_| ContractError::BTCHeaderNotFoundError {
                 hash: hash.encode_hex(),
             })?;
     Ok(height)
