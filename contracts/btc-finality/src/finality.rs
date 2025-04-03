@@ -42,7 +42,7 @@ pub fn handle_public_randomness_commit(
     // TODO: ensure log_2(num_pub_rand) is an integer?
 
     // Ensure the finality provider is registered
-    // TODO: Use a raw query for performance and cost
+    // TODO: Use a raw query for performance and cost (#41)
     let _fp: FinalityProvider = deps
         .querier
         .query_wasm_smart(
@@ -91,7 +91,7 @@ pub fn handle_public_randomness_commit(
         &pr_commit,
     )?;
 
-    // TODO: Add events
+    // TODO: Add events (#124)
     Ok(Response::new())
 }
 
@@ -223,7 +223,7 @@ pub fn handle_finality_signature(
     )?;
 
     // The public randomness value is good, save it.
-    // TODO?: Don't save public randomness values, to save storage space
+    // TODO?: Don't save public randomness values, to save storage space (#124)
     PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand.to_vec())?;
 
     // Verify whether the voted block is a fork or not
@@ -388,10 +388,10 @@ fn verify_finality_signature(
 
 /// `msg_to_sign` returns the message for an EOTS signature.
 ///
-/// The EOTS signature on a block will be (block_height || block_hash)
-fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
+/// The EOTS signature on a block will be (block_height || block_app_hash)
+fn msg_to_sign(height: u64, block_app_hash: &[u8]) -> Vec<u8> {
     let mut msg: Vec<u8> = height.to_be_bytes().to_vec();
-    msg.extend_from_slice(block_hash);
+    msg.extend_from_slice(block_app_hash);
     msg
 }
 
@@ -602,10 +602,10 @@ pub fn compute_active_finality_providers(
         batch = list_fps_by_power(&cfg.staking, &deps.querier, last, QUERY_LIMIT)?;
     }
 
-    // TODO: Online FPs verification
-    // TODO: Filter out slashed / offline / jailed FPs
+    // TODO: Online FPs verification (#82)
+    // TODO: Filter out slashed / offline / jailed FPs (#82)
     // Save the new set of active finality providers
-    // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage
+    // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage (#124)
     FP_SET.save(deps.storage, height, &finality_providers)?;
 
     Ok(())

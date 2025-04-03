@@ -39,11 +39,11 @@ fn verify_pop(
                 .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
         }
         BTCSigType::BIP322 => {
-            // TODO: implement BIP322 verification
+            // TODO?: implement BIP322 verification (#7.0)
             return Ok(());
         }
         BTCSigType::ECDSA => {
-            // TODO: implement ECDSA verification
+            // TODO?: implement ECDSA verification (#7.0)
             return Ok(());
         }
     }
@@ -103,7 +103,7 @@ pub fn verify_new_fp(new_fp: &NewFinalityProvider) -> Result<(), ContractError> 
             .map_err(|e| ContractError::SecP256K1Error(e.to_string()))?;
 
         // get canonical FP address
-        // TODO: parameterise `bbn` prefix
+        // FIXME: parameterise `bbn` prefix
         let addr = new_fp.addr.clone();
         let address = to_canonical_addr(&addr, "bbn")?;
 
@@ -147,14 +147,14 @@ pub fn verify_active_delegation(
         // Check if data provided in request, matches data to which staking tx is
         // committed
 
-        // TODO: Check staking tx time-lock has correct values
+        // TODO: Check staking tx time-lock has correct values (#7.1)
         // get start_height and end_height of the time-lock
 
-        // TODO: Ensure staking tx is k-deep
+        // TODO: Ensure staking tx is k-deep (#7.1)
 
-        // TODO: Ensure staking tx time-lock has more than w BTC blocks left
+        // TODO: Ensure staking tx time-lock has more than w BTC blocks left (#7.1)
 
-        // TODO: Verify staking tx info, i.e. inclusion proof
+        // TODO: Verify staking tx info, i.e. inclusion proof (#7.1)
 
         // Check slashing tx and its consistency with staking tx
         let slashing_tx: Transaction = deserialize(&active_delegation.slashing_tx)
@@ -180,7 +180,7 @@ pub fn verify_active_delegation(
             active_delegation.unbonding_time as u16,
         )?;
 
-        // TODO: Verify proof of possession
+        // TODO: Verify proof of possession (#7.1)
 
         /*
             verify staker signature against slashing path of the staking tx script
@@ -248,7 +248,7 @@ pub fn verify_active_delegation(
             }
         }
 
-        // TODO: Check unbonding time (staking time from unbonding tx) is larger than min unbonding time
+        // TODO: Check unbonding time (staking time from unbonding tx) is larger than min unbonding time (#7.1)
         // which is larger value from:
         // - MinUnbondingTime
         // - CheckpointFinalizationTimeout
@@ -279,7 +279,7 @@ pub fn verify_active_delegation(
             ));
         }
 
-        // TODO: Check unbonding tx fees against staking tx
+        // TODO: Check unbonding tx fees against staking tx (#7.1)
         // - Fee is greater than 0.
         // - Unbonding output value is at least `MinUnbondingValue` percentage of staking output value.
 
@@ -292,8 +292,8 @@ pub fn verify_active_delegation(
                 staking_time,
             )?;
 
-        // TODO: Ensure the unbonding tx has valid unbonding output, and
-        // get the unbonding output index
+        // TODO: Ensure the unbonding tx has valid unbonding output, and get the unbonding output (#7.1)
+        // index (#7.1)
         let unbonding_output_idx = 0;
         let unbonding_output = &unbonding_tx.output[unbonding_output_idx as usize];
 

@@ -78,7 +78,7 @@ pub fn execute(
             height,
             pub_rand,
             proof,
-            block_hash,
+            block_hash: block_app_hash,
             signature,
         } => handle_finality_signature(
             deps,
@@ -88,7 +88,7 @@ pub fn execute(
             height,
             &pub_rand,
             &proof,
-            &block_hash,
+            &block_app_hash,
             &signature,
         ),
         ExecuteMsg::Slashing { sender, evidence } => handle_slashing(&sender, &evidence),

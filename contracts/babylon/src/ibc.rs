@@ -107,7 +107,7 @@ pub fn ibc_channel_close(
         .add_attribute("action", "ibc_close")
         .add_attribute("channel_id", channel_id))
 
-    // TODO: erase all contract state upon closing the channel
+    // TODO: erase all contract state upon closing the channel (#134.1)
 }
 
 /// Invoked when an IBC packet is received.
@@ -172,7 +172,7 @@ pub(crate) mod ibc_packet {
 
         // construct response
         let mut resp: IbcReceiveResponse<BabylonMsg> =
-            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
+            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format (#134.2)
                                                               // add attribute to response
         resp = resp.add_attribute("action", "receive_btc_timestamp");
 
@@ -238,7 +238,7 @@ pub(crate) mod ibc_packet {
 
         // construct response
         let mut resp: IbcReceiveResponse<BabylonMsg> =
-            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
+            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format (#134.2)
                                                               // add wasm message to response
         resp = resp.add_message(wasm_msg);
         // add attribute to response
@@ -257,7 +257,7 @@ pub(crate) mod ibc_packet {
             .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
 
         let mut resp: IbcReceiveResponse<BabylonMsg> =
-            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format
+            IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format (#134.2)
         resp = resp.add_attribute("action", "receive_btc_headers");
 
         Ok(resp)
@@ -312,7 +312,7 @@ pub fn ibc_packet_timeout(
     _env: Env,
     msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    // TODO: handle the timeout / error
+    // TODO: handle the timeout / error (#134.3)
     Err(ContractError::IbcTimeout(
         msg.packet.dest.channel_id,
         msg.packet.dest.port_id,
