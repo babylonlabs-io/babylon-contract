@@ -40,6 +40,7 @@ pub fn handle_btc_timestamp(
     if babylon_epoch_chain::is_initialized(deps) {
         babylon_epoch_chain::handle_epoch_and_checkpoint(
             deps,
+            btc_ts.btc_headers.as_ref(),
             epoch,
             raw_ckpt,
             proof_epoch_sealed,
@@ -49,9 +50,15 @@ pub fn handle_btc_timestamp(
             StdError::generic_err(format!("failed to handle Babylon epoch from Babylon: {e}"))
         })?;
     } else {
-        babylon_epoch_chain::init(deps, epoch, raw_ckpt, proof_epoch_sealed, &txs_info).map_err(
-            |e| StdError::generic_err(format!("failed to initialize Babylon epoch: {e}")),
-        )?;
+        babylon_epoch_chain::init(
+            deps,
+            btc_ts.btc_headers.as_ref(),
+            epoch,
+            raw_ckpt,
+            proof_epoch_sealed,
+            &txs_info,
+        )
+        .map_err(|e| StdError::generic_err(format!("failed to initialize Babylon epoch: {e}")))?;
     }
 
     // try to extract and handle CZ header
