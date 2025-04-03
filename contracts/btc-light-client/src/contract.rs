@@ -1,4 +1,3 @@
-use babylon_bitcoin::Work;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 

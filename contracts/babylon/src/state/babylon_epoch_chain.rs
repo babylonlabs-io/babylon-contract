@@ -2,7 +2,6 @@
 //! It maintains a chain of finalised Babylon epochs.
 //! NOTE: the Babylon epoch chain is always finalised, i.e. w-deep on BTC.
 use babylon_bitcoin::BlockHeader;
-
 use btc_light_client::msg::btc_header::BtcHeaderResponse;
 use prost::Message;
 use std::cmp::min;
@@ -124,7 +123,9 @@ fn verify_epoch_and_checkpoint(
                 .key
                 .clone()
                 .ok_or(BabylonEpochChainError::EmptyTxKey {})?;
-            let btc_header_hash = hex::encode(&tx_key.hash);
+            let mut btc_header_hash = tx_key.hash.to_vec();
+            btc_header_hash.reverse(); // reverse the hash to match the BTC header hash
+            let btc_header_hash = hex::encode(btc_header_hash);
             let btc_header_info = query_header_by_hash(deps, &btc_header_hash)
                 .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;
             Ok(btc_header_info)
