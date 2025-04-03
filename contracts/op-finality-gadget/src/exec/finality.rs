@@ -123,13 +123,13 @@ pub fn handle_finality_signature(
     height: u64,
     pub_rand: &[u8],
     proof: &Proof,
-    block_hash: &[u8],
+    block_app_hash: &[u8],
     signature: &[u8],
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Ensure the finality provider exists
     check_fp_exist(deps.as_ref(), fp_btc_pk_hex)?;
 
-    // TODO: Ensure the finality provider is not slashed at this time point
+    // TODO: Ensure the finality provider is not slashed at this time point (#82)
     // NOTE: It's possible that the finality provider equivocates for height h, and the signature is
     // processed at height h' > h. In this case:
     // - We should reject any new signature from this finality provider, since it's known to be adversarial.
@@ -177,12 +177,12 @@ pub fn handle_finality_signature(
         pub_rand,
         proof,
         &pr_commit,
-        block_hash,
+        block_app_hash,
         signature,
     )?;
 
     // The public randomness value is good, save it.
-    // TODO?: Don't save public randomness values, to save storage space
+    // TODO?: Don't save public randomness values, to save storage space (#122)
     PUB_RAND_VALUES.save(deps.storage, (fp_btc_pk_hex, height), &pub_rand.to_vec())?;
 
     // Build the response
@@ -192,9 +192,10 @@ pub fn handle_finality_signature(
     // extracting its secret key, and emit an event
     let canonical_sig: Option<Vec<u8>> =
         SIGNATURES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
-    let canonical_block_hash: Option<Vec<u8>> =
+    let canonical_block_app_hash: Option<Vec<u8>> =
         BLOCK_HASHES.may_load(deps.storage, (height, fp_btc_pk_hex))?;
-    if let (Some(canonical_sig), Some(canonical_block_hash)) = (canonical_sig, canonical_block_hash)
+    if let (Some(canonical_sig), Some(canonical_block_app_hash)) =
+        (canonical_sig, canonical_block_app_hash)
     {
         // the finality provider has voted for a fork before!
         // If this evidence is at the same height as this signature, slash this finality provider
@@ -204,10 +205,9 @@ pub fn handle_finality_signature(
             fp_btc_pk: hex::decode(fp_btc_pk_hex)?,
             block_height: height,
             pub_rand: pub_rand.to_vec(),
-            // TODO: we use block hash in place of app hash for now, to define new interface if needed
-            canonical_app_hash: canonical_block_hash,
+            canonical_app_hash: canonical_block_app_hash,
             canonical_finality_sig: canonical_sig,
-            fork_app_hash: block_hash.to_vec(),
+            fork_app_hash: block_app_hash.to_vec(),
             fork_finality_sig: signature.to_vec(),
         };
 
@@ -223,23 +223,27 @@ pub fn handle_finality_signature(
 
     // This signature is good, save the vote to the store
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
-    BLOCK_HASHES.save(deps.storage, (height, fp_btc_pk_hex), &block_hash.to_vec())?;
+    BLOCK_HASHES.save(
+        deps.storage,
+        (height, fp_btc_pk_hex),
+        &block_app_hash.to_vec(),
+    )?;
 
-    // Check if the key (height, block_hash) exists
+    // Check if the key (height, block_app_hash) exists
     let mut block_votes_fp_set = BLOCK_VOTES
-        .may_load(deps.storage, (height, block_hash))?
+        .may_load(deps.storage, (height, block_app_hash))?
         .unwrap_or_else(HashSet::new);
 
     // Add the fp_btc_pk_hex to the set
     block_votes_fp_set.insert(fp_btc_pk_hex.to_string());
 
     // Save the updated set back to storage
-    BLOCK_VOTES.save(deps.storage, (height, block_hash), &block_votes_fp_set)?;
+    BLOCK_VOTES.save(deps.storage, (height, block_app_hash), &block_votes_fp_set)?;
 
     let event = Event::new("submit_finality_signature")
         .add_attribute("fp_pubkey_hex", fp_btc_pk_hex)
         .add_attribute("block_height", height.to_string())
-        .add_attribute("block_hash", hex::encode(block_hash));
+        .add_attribute("block_app_hash", hex::encode(block_app_hash));
 
     res = res.add_event(event);
 
@@ -289,10 +293,10 @@ pub(crate) fn verify_finality_signature(
 
 /// `msg_to_sign` returns the message for an EOTS signature.
 ///
-/// The EOTS signature on a block will be (block_height || block_hash)
-fn msg_to_sign(height: u64, block_hash: &[u8]) -> Vec<u8> {
+/// The EOTS signature on a block will be (block_height || block_app_hash)
+fn msg_to_sign(height: u64, block_app_hash: &[u8]) -> Vec<u8> {
     let mut msg: Vec<u8> = height.to_be_bytes().to_vec();
-    msg.extend_from_slice(block_hash);
+    msg.extend_from_slice(block_app_hash);
     msg
 }
 

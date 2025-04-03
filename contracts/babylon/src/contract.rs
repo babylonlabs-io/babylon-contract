@@ -313,7 +313,7 @@ pub fn execute(
                 let _ = ibc_msg;
             }
 
-            // TODO: Add events
+            // TODO: Add events (#124)
             Ok(res)
         }
     }

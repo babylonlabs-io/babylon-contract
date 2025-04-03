@@ -423,7 +423,7 @@ impl Suite {
         height: u64,
         pub_rand: &[u8],
         proof: &tendermint_proto::crypto::Proof,
-        block_hash: &[u8],
+        block_app_hash: &[u8],
         finality_sig: &[u8],
     ) -> anyhow::Result<AppResponse> {
         // Execute the message at a higher height, so that:
@@ -441,7 +441,7 @@ impl Suite {
                 height,
                 pub_rand: pub_rand.into(),
                 proof: proof.into(),
-                block_hash: block_hash.into(),
+                block_hash: block_app_hash.into(),
                 signature: finality_sig.into(),
             },
             &[],

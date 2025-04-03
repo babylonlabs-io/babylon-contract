@@ -160,7 +160,7 @@ pub fn execute(
             height,
             pub_rand,
             proof,
-            block_hash,
+            block_hash: block_app_hash,
             signature,
         } => handle_finality_signature(
             deps,
@@ -169,7 +169,7 @@ pub fn execute(
             height,
             &pub_rand,
             &proof,
-            &block_hash,
+            &block_app_hash,
             &signature,
         ),
         ExecuteMsg::CommitPublicRandomness {
@@ -233,7 +233,7 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
     compute_active_finality_providers(deps, env.block.height, max_active_fps)?;
 
-    // TODO: Add events
+    // TODO: Add events (#124)
     Ok(Response::new())
 }
 
@@ -316,7 +316,7 @@ fn send_rewards_msg(
 }
 
 pub fn get_activated_height(staking_addr: &Addr, querier: &QuerierWrapper) -> StdResult<u64> {
-    // TODO: Use a raw query
+    // TODO: Use a raw query (#41)
     let query = encode_smart_query(
         staking_addr,
         &btc_staking::msg::QueryMsg::ActivatedHeight {},

@@ -550,7 +550,7 @@ mod distribution {
         // Call the next block begin blocker, to compute the active FP set
         // FIXME: The second FP is on the active set, and (in the current impl)
         // will get rewards without voting.
-        // After offline / inactive detection of FPs this wouldn't be so bad.
+        // After offline / inactive detection of FPs (#82) this wouldn't be so bad.
         let next_height = next_height + 1;
         suite.app.advance_blocks(1);
         suite
