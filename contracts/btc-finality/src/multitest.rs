@@ -636,3 +636,53 @@ mod distribution {
         assert_eq!(consumer_balance.amount.u128(), rewards_1);
     }
 }
+
+mod jailing {
+    use crate::msg::JailedFinalityProvider;
+
+    use crate::multitest::suite::SuiteBuilder;
+    use cw_controllers::AdminError;
+    use test_utils::create_new_finality_provider;
+
+    const FOREVER: u64 = 0;
+
+    #[test]
+    fn only_admin_can_jail() {
+        let mut suite = SuiteBuilder::new().build();
+
+        // Register a couple FPs
+        let fp1 = create_new_finality_provider(1);
+        let fp2 = create_new_finality_provider(2);
+        suite
+            .register_finality_providers(&[fp1.clone(), fp2.clone()])
+            .unwrap();
+
+        let admin = suite.admin().to_owned();
+
+        // Admin can jail forever
+        suite.jail(&admin, &fp1.btc_pk_hex, FOREVER).unwrap();
+
+        // Admin can jail for particular duration
+        suite.jail(&admin, &fp2.btc_pk_hex, 3600).unwrap();
+
+        let jailed_until = &suite.app.block_info().time.seconds() + 3600;
+
+        // Non-admin cannot jail
+        let err = suite.jail("anyone", &fp2.btc_pk_hex, FOREVER).unwrap_err();
+        assert!(err.downcast::<AdminError>().is_err());
+
+        assert_eq!(
+            suite.list_jailed_fps(None, None),
+            &[
+                JailedFinalityProvider {
+                    btc_pk_hex: fp1.btc_pk_hex,
+                    jailed_until: 0,
+                },
+                JailedFinalityProvider {
+                    btc_pk_hex: fp2.btc_pk_hex,
+                    jailed_until,
+                }
+            ]
+        )
+    }
+}

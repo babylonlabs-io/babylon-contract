@@ -7,8 +7,8 @@ pub use btc_header::{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::btc_light_client::tests::setup;
     use crate::state::btc_light_client::init_from_babylon;
+    use crate::state::btc_light_client::tests::setup;
     use cosmwasm_std::testing::mock_dependencies;
     use test_utils::get_btc_lc_headers;
 

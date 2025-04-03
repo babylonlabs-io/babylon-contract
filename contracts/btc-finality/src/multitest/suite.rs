@@ -2,8 +2,8 @@ use anyhow::Result as AnyResult;
 use derivative::Derivative;
 use hex::ToHex;
 
+use cosmwasm_std::testing::mock_dependencies;
 use cosmwasm_std::{to_json_binary, Addr, Coin};
-
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider, NewFinalityProvider};
@@ -14,6 +14,12 @@ use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
 
+use crate::msg;
+use crate::msg::{
+    EvidenceResponse, FinalitySignatureResponse, InstantiateMsg, JailedFinalityProvider,
+    JailedFinalityProvidersResponse,
+};
+use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 use btc_staking::msg::{
     ActivatedHeightResponse, AllPendingRewardsResponse, FinalityProviderInfo, PendingRewards,
 };
@@ -83,7 +89,7 @@ impl SuiteBuilder {
 
     #[track_caller]
     pub fn build(self) -> Suite {
-        let owner = Addr::unchecked("owner");
+        let owner = mock_dependencies().api.addr_make("owner");
 
         let mut app = BabylonApp::new_at_height(owner.as_str(), self.height.unwrap_or(1));
 
@@ -127,7 +133,13 @@ impl SuiteBuilder {
                         .unwrap(),
                     ),
                     btc_finality_code_id: Some(btc_finality_code_id),
-                    btc_finality_msg: None,
+                    btc_finality_msg: Some(
+                        to_json_binary(&InstantiateMsg {
+                            params: None,
+                            admin: Some(owner.to_string()),
+                        })
+                        .unwrap(),
+                    ),
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
@@ -480,5 +492,52 @@ impl Suite {
             },
             &[],
         )
+    }
+
+    #[track_caller]
+    pub fn jail(
+        &mut self,
+        sender: &str,
+        fp_pubkey_hex: &str,
+        duration: u64,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(sender),
+            self.finality.clone(),
+            &finality_api::ExecuteMsg::Jail {
+                fp_pubkey_hex: fp_pubkey_hex.to_owned(),
+                duration,
+            },
+            &[],
+        )
+    }
+
+    #[track_caller]
+    #[allow(dead_code)]
+    pub fn unjail(&mut self, sender: &str, fp_pubkey_hex: &str) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(sender),
+            self.finality.clone(),
+            &finality_api::ExecuteMsg::Unjail {
+                fp_pubkey_hex: fp_pubkey_hex.to_owned(),
+            },
+            &[],
+        )
+    }
+
+    #[track_caller]
+    pub fn list_jailed_fps(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<JailedFinalityProvider> {
+        self.app
+            .wrap()
+            .query_wasm_smart::<JailedFinalityProvidersResponse>(
+                self.finality.clone(),
+                &msg::QueryMsg::JailedFinalityProviders { start_after, limit },
+            )
+            .unwrap()
+            .jailed_finality_providers
     }
 }
