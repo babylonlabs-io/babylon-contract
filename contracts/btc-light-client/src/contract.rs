@@ -6,10 +6,9 @@ use babylon_bindings::BabylonMsg;
 use crate::error::ContractError;
 use crate::msg::btc_header::BtcHeader;
 use crate::msg::contract::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::btc_light_client::{
-    handle_btc_headers_from_user, init_from_user, is_initialized,
-};
+use crate::state::btc_light_client::{handle_btc_headers_from_user, init, is_initialized};
 use crate::state::config::{Config, CONFIG};
+use crate::utils::btc_light_client::total_work;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -52,7 +51,27 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     match msg {
-        ExecuteMsg::BtcHeaders { headers } => handle_btc_headers(deps, headers),
+        ExecuteMsg::BtcHeaders {
+            headers,
+            first_work,
+            first_height,
+        } => {
+            let api = deps.api;
+            let headers_len = headers.len();
+            let resp = match handle_btc_headers(deps, headers, first_work, first_height) {
+                Ok(resp) => {
+                    api.debug(&format!("Successfully handled {} BTC headers", headers_len));
+                    resp
+                }
+                Err(e) => {
+                    let err = format!("Failed to handle {} BTC headers: {}", headers_len, e);
+                    api.debug(&err);
+                    return Err(e);
+                }
+            };
+
+            Ok(resp)
+        }
     }
 }
 
@@ -83,16 +102,29 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 fn handle_btc_headers(
     deps: DepsMut,
     headers: Vec<BtcHeader>,
+    first_work: Option<String>,
+    first_height: Option<u32>,
 ) -> Result<Response<BabylonMsg>, ContractError> {
     // Check if the BTC light client has been initialized
     if !is_initialized(deps.storage) {
+        // Check if base work and height are provided
+        if first_work.is_none() || first_height.is_none() {
+            return Err(ContractError::InitError {
+                msg: "base work or height is not provided".to_string(),
+            });
+        }
+
         // Check if there are enough headers for initialization
         let cfg = CONFIG.load(deps.storage)?;
         if headers.len() < cfg.btc_confirmation_depth as usize {
             return Err(ContractError::InitErrorLength(cfg.btc_confirmation_depth));
         }
 
-        init_from_user(deps.storage, &headers)?;
+        let first_work_hex = first_work.unwrap();
+        let first_work_bytes = hex::decode(first_work_hex)?;
+        let first_work = total_work(&first_work_bytes)?;
+
+        init(deps.storage, &headers, &first_work, first_height.unwrap())?;
         Ok(Response::new().add_attribute("action", "init_btc_light_client"))
     } else {
         handle_btc_headers_from_user(deps.storage, &headers)?;

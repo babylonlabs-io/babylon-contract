@@ -23,8 +23,8 @@ pub enum ContractError {
     #[error("Invalid configuration: {msg}")]
     InvalidConfig { msg: String },
 
-    #[error("The given headers during initialization cannot be verified")]
-    InitError {},
+    #[error("The given headers during initialization cannot be verified: {msg}")]
+    InitError { msg: String },
 
     #[error("The given headers during initialization cannot be verified. Less than {0} headers")]
     InitErrorLength(u32),
@@ -53,11 +53,11 @@ pub enum ContractError {
     #[error("The BTC header does not satisfy the difficulty requirement or is not consecutive")]
     BTCHeaderError {},
 
-    #[error("The BTC header with height {height} is not found in the storage")]
-    BTCHeaderNotFoundError { height: u32 },
+    #[error("The BTC header with hash {hash} is not found in the storage")]
+    BTCHeaderNotFoundError { hash: String },
 
-    #[error("The BTC height with hash {hash} is not found in the storage")]
-    BTCHeightNotFoundError { hash: String },
+    #[error("The BTC height {height} is not found in the storage")]
+    BTCHeightNotFoundError { height: u32 },
 
     #[error("The BTC header info cumulative work encoding is wrong")]
     BTCWrongCumulativeWorkEncoding {},
@@ -67,6 +67,9 @@ pub enum ContractError {
 
     #[error("The BTC header info {0} height is wrong. Expected {1}, got {2}")]
     BTCWrongHeight(usize, u32, u32),
+
+    #[error("The work is invalid")]
+    InvalidWork {},
 
     #[error("The new chain's work ({0}), is not better than the current chain's work ({1})")]
     BTCChainWithNotEnoughWork(Work, Work),

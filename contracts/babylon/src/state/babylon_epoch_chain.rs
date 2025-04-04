@@ -2,7 +2,6 @@
 //! It maintains a chain of finalised Babylon epochs.
 //! NOTE: the Babylon epoch chain is always finalised, i.e. w-deep on BTC.
 use babylon_bitcoin::BlockHeader;
-
 use btc_light_client::msg::btc_header::BtcHeaderResponse;
 use prost::Message;
 use std::cmp::min;
@@ -13,7 +12,7 @@ use cw_storage_plus::{Item, Map};
 use babylon_proto::babylon::btccheckpoint::v1::TransactionInfo;
 use babylon_proto::babylon::checkpointing::v1::RawCheckpoint;
 use babylon_proto::babylon::epoching::v1::Epoch;
-use babylon_proto::babylon::zoneconcierge::v1::{BtcTimestamp, ProofEpochSealed};
+use babylon_proto::babylon::zoneconcierge::v1::{BtcHeaders, BtcTimestamp, ProofEpochSealed};
 
 use crate::error::BabylonEpochChainError;
 use crate::state::config::CONFIG;
@@ -101,6 +100,7 @@ struct VerifiedEpochAndCheckpoint {
 /// - whether the epoch is sealed by the validator set of this epoch
 fn verify_epoch_and_checkpoint(
     deps: Deps,
+    new_btc_headers: Option<&BtcHeaders>,
     epoch: &Epoch,
     raw_ckpt: &RawCheckpoint,
     proof_epoch_sealed: &ProofEpochSealed,
@@ -124,31 +124,46 @@ fn verify_epoch_and_checkpoint(
                 .key
                 .clone()
                 .ok_or(BabylonEpochChainError::EmptyTxKey {})?;
-            let btc_header_hash = hex::encode(&tx_key.hash);
-            let btc_header_info = query_header_by_hash(deps, &btc_header_hash)
-                .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;
+            let btc_header_hash = tx_key.hash.to_vec();
+
+            // get hash string in reverse order for matching BTC header hash
+            let mut btc_header_hash_reversed = btc_header_hash.clone();
+            btc_header_hash_reversed.reverse();
+            let btc_header_hash_str = hex::encode(btc_header_hash_reversed);
+
+            // First try to find header in new_btc_headers
+            // NOTE: we need to do this because the new_btc_headers will only be
+            // inserted after executing this message as a submessage. This is because
+            // of the actor model of CosmWasm contracts.
+            // TODO: find a better way to handle this
+            let btc_header_info = match new_btc_headers
+                .and_then(|headers| headers.headers.iter().find(|h| h.hash == btc_header_hash))
+            {
+                Some(header) => BtcHeaderResponse::try_from(header)?,
+                None => {
+                    // If not found in new headers, query from light client
+                    query_header_by_hash(deps, &btc_header_hash_str)
+                        .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?
+                }
+            };
             Ok(btc_header_info)
         })
         .collect::<Result<Vec<BtcHeaderResponse>, BabylonEpochChainError>>()?
         .try_into()
         .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;
 
+    // refresh min_height
     // this will be used for checking w-deep later
     let mut min_height: u32 = u32::MAX;
-
-    // ensure the given btc headers are in BTC light clients
     for btc_header in btc_headers.iter() {
-        let hash = btc_header.hash.clone();
-        let header = query_header_by_hash(deps, hash.as_ref())
-            .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?;
-        // refresh min_height
-        min_height = min(min_height, header.height);
+        min_height = min(min_height, btc_header.height);
     }
 
     // ensure at least 1 given btc headers are finalised, i.e., w-deep
     let tip_height = query_tip_header(deps)
         .map_err(|_| BabylonEpochChainError::BTCHeaderDecodeError {})?
-        .height;
+        .height
+        + new_btc_headers.map_or(0, |headers| headers.headers.len() as u32);
     if min_height + cfg.checkpoint_finalization_timeout > tip_height {
         return Err(BabylonEpochChainError::BTCHeaderNotDeepEnough {
             w: cfg.checkpoint_finalization_timeout,
@@ -241,6 +256,7 @@ pub fn extract_data_from_btc_ts(
 /// init initialises the Babylon epoch chain storage
 pub fn init(
     deps: &mut DepsMut,
+    btc_headers: Option<&BtcHeaders>,
     epoch: &Epoch,
     raw_ckpt: &RawCheckpoint,
     proof_epoch_sealed: &ProofEpochSealed,
@@ -249,8 +265,14 @@ pub fn init(
     // verify epoch and checkpoint, including
     // - whether the epoch is sealed or not
     // - whether the checkpoint is finalised
-    let verified_tuple =
-        verify_epoch_and_checkpoint(deps.as_ref(), epoch, raw_ckpt, proof_epoch_sealed, txs_info)?;
+    let verified_tuple = verify_epoch_and_checkpoint(
+        deps.as_ref(),
+        btc_headers,
+        epoch,
+        raw_ckpt,
+        proof_epoch_sealed,
+        txs_info,
+    )?;
 
     // all good, init base
     set_base_epoch(deps, epoch)?;
@@ -262,6 +284,7 @@ pub fn init(
 /// and inclusion proofs
 pub fn handle_epoch_and_checkpoint(
     deps: &mut DepsMut,
+    btc_headers: Option<&BtcHeaders>,
     epoch: &Epoch,
     raw_ckpt: &RawCheckpoint,
     proof_epoch_sealed: &ProofEpochSealed,
@@ -270,8 +293,14 @@ pub fn handle_epoch_and_checkpoint(
     // verify epoch and checkpoint, including
     // - whether the epoch/checkpoint are sealed or not
     // - whether the checkpoint is finalised
-    let verified_tuple =
-        verify_epoch_and_checkpoint(deps.as_ref(), epoch, raw_ckpt, proof_epoch_sealed, txs_info)?;
+    let verified_tuple = verify_epoch_and_checkpoint(
+        deps.as_ref(),
+        btc_headers,
+        epoch,
+        raw_ckpt,
+        proof_epoch_sealed,
+        txs_info,
+    )?;
 
     // all good, insert everything and update last finalised epoch
     Ok(insert_epoch_and_checkpoint(deps, &verified_tuple)?)

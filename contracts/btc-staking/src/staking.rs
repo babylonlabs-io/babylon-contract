@@ -723,6 +723,7 @@ fn get_btc_tip_height(deps: &DepsMut) -> Result<u32, ContractError> {
 
     // Query the BTC light client for the tip header
     let query_msg = btc_light_client::msg::contract::QueryMsg::BtcTipHeader {};
+    // TODO: use a raw query for performance / efficiency
     let tip: BtcHeaderResponse = deps
         .querier
         .query_wasm_smart(btc_light_client_addr, &query_msg)?;

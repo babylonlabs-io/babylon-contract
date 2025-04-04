@@ -52,6 +52,8 @@ pub fn instantiate(
 
     let mut res = Response::new().add_attribute("action", "instantiate");
 
+    // instantiate btc light client contract first
+    // It has to be before btc staking and finality contracts which depend on it
     if let Some(btc_light_client_code_id) = msg.btc_light_client_code_id {
         let btc_lc_init_msg = BtcLightClientInstantiateMsg {
             network: msg.network.clone(),

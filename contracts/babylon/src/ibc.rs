@@ -168,7 +168,7 @@ pub(crate) mod ibc_packet {
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
         let cfg = CONFIG.load(deps.storage)?;
         // handle the BTC timestamp, i.e., verify the BTC timestamp and update the contract state
-        let msg_option = crate::state::handle_btc_timestamp(deps, btc_ts)?;
+        let (wasm_msg, babylon_msg) = crate::state::handle_btc_timestamp(deps, btc_ts)?;
 
         // construct response
         let mut resp: IbcReceiveResponse<BabylonMsg> =
@@ -176,12 +176,16 @@ pub(crate) mod ibc_packet {
                                                               // add attribute to response
         resp = resp.add_attribute("action", "receive_btc_timestamp");
 
-        // if the BTC timestamp carries a Babylon message for the Cosmos zone, and
-        // the contract enables sending messages to the Cosmos zone, then
-        // add this message to response
-        if let Some(msg) = msg_option {
+        // add wasm message to response if it exists
+        if let Some(wasm_msg) = wasm_msg {
+            resp = resp.add_message(wasm_msg);
+        }
+
+        // add Babylon message to response if it exists and the
+        // contract enables sending messages to the Cosmos zone
+        if let Some(babylon_msg) = babylon_msg {
             if cfg.notify_cosmos_zone {
-                resp = resp.add_message(msg);
+                resp = resp.add_message(babylon_msg);
             }
         }
 
@@ -253,11 +257,19 @@ pub(crate) mod ibc_packet {
         btc_headers: &BtcHeaders,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
         // Submit headers to BTC light client
-        crate::utils::btc_light_client_executor::submit_headers(deps, &btc_headers.headers)
-            .map_err(|e| StdError::generic_err(format!("failed to submit BTC headers: {e}")))?;
+        let msg = crate::utils::btc_light_client_executor::new_btc_headers_msg(
+            deps,
+            &btc_headers.headers,
+        )
+        .map_err(|e| {
+            let err = format!("failed to submit BTC headers: {e}");
+            deps.api.debug(&err);
+            StdError::generic_err(err)
+        })?;
 
         let mut resp: IbcReceiveResponse<BabylonMsg> =
             IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format (#134.2)
+        resp = resp.add_message(msg);
         resp = resp.add_attribute("action", "receive_btc_headers");
 
         Ok(resp)

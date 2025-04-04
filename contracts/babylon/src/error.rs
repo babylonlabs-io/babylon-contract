@@ -13,6 +13,8 @@ pub enum ContractError {
     ParseReply(#[from] ParseReplyError),
     #[error("Invalid reply id: {0}")]
     InvalidReplyId(u64),
+    #[error("The BTC header is empty")]
+    BtcHeaderEmpty {},
     #[error("The BTC light client contract is not set")]
     BtcLightClientNotSet {},
     #[error("{0}")]
@@ -88,8 +90,6 @@ pub enum BabylonEpochChainError {
     },
     #[error("The checkpoint of epoch {epoch_number} is not found in the storage")]
     CheckpointNotFoundError { epoch_number: u64 },
-    #[error("The BTC header with hash {hash} is not found in the storage")]
-    BTCHeaderNotFoundError { hash: String },
     #[error("The BTC headers are not {w}-deep")]
     BTCHeaderNotDeepEnough { w: u32 },
     #[error("The checkpoint is not in the given BTC headers: {err_msg}")]

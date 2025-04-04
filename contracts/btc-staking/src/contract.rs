@@ -32,9 +32,9 @@ pub fn instantiate(
     nonpayable(&info)?;
     let denom = deps.querier.query_bonded_denom()?;
     let config = Config {
-        btc_light_client: Addr::unchecked("UNSET"), // To be set later, through `UpdateFinality`
+        btc_light_client: Addr::unchecked("UNSET"), // To be set later, through `UpdateContractAddresses`
         babylon: info.sender,
-        finality: Addr::unchecked("UNSET"), // To be set later, through `UpdateFinality`
+        finality: Addr::unchecked("UNSET"), // To be set later, through `UpdateContractAddresses`
         denom,
     };
     CONFIG.save(deps.storage, &config)?;
