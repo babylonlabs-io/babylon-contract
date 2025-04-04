@@ -639,6 +639,7 @@ mod distribution {
 
 mod jailing {
     use crate::msg::JailedFinalityProvider;
+    use cosmwasm_std::Addr;
 
     use crate::error::ContractError;
     use crate::multitest::suite::SuiteBuilder;
@@ -736,6 +737,62 @@ mod jailing {
             &[JailedFinalityProvider {
                 btc_pk_hex: fp1.btc_pk_hex,
                 jailed_until: 0,
+            },],
+        )
+    }
+
+    #[test]
+    fn anyone_can_unjail_himself_after_expiration() {
+        let mut suite = SuiteBuilder::new().build();
+
+        // Register a couple FPs
+        let fp1 = create_new_finality_provider(1);
+        let fp2 = create_new_finality_provider(2);
+        suite
+            .register_finality_providers(&[fp1.clone(), fp2.clone()])
+            .unwrap();
+
+        let admin = suite.admin().to_owned();
+        let fp1_bsn_addr = suite
+            .to_consumer_addr(&Addr::unchecked(&fp1.addr))
+            .unwrap()
+            .to_string();
+
+        // Jailing some FPs to have someone to unjail
+        suite.jail(&admin, &fp1.btc_pk_hex, 3600).unwrap();
+        suite.jail(&admin, &fp2.btc_pk_hex, 3600).unwrap();
+
+        let jailed_until = &suite.timestamp().seconds() + 3600;
+
+        // Move a bit forward, so some time passed, but not enough for any jailings to expire
+        suite.next_block().unwrap();
+
+        // Cannot unjail myself before expiration...
+        let err = suite.unjail(&fp1_bsn_addr, &fp1.btc_pk_hex).unwrap_err();
+        assert_eq!(
+            ContractError::JailPeriodNotPassed(fp1.btc_pk_hex.clone()),
+            err.downcast().unwrap(),
+        );
+
+        // And cannot unjail anyone else as well
+        let err = suite.unjail(&fp1_bsn_addr, &fp2.btc_pk_hex).unwrap_err();
+        assert!(err.downcast::<AdminError>().is_err());
+
+        // This time, go into the future so that the jail period expires
+        suite.advance_seconds(3800).unwrap();
+
+        // I can unjail myself (if I use my equivalent BSN address)
+        suite.unjail(&fp1_bsn_addr, &fp1.btc_pk_hex).unwrap();
+
+        // But I still cannot unjail others
+        let err = suite.unjail(&fp1_bsn_addr, &fp2.btc_pk_hex).unwrap_err();
+        assert!(err.downcast::<AdminError>().is_err());
+
+        assert_eq!(
+            &suite.list_jailed_fps(None, None),
+            &[JailedFinalityProvider {
+                btc_pk_hex: fp2.btc_pk_hex,
+                jailed_until,
             },],
         )
     }

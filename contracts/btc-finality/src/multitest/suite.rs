@@ -210,16 +210,27 @@ impl Suite {
     }
 
     pub fn next_block(&mut self) -> AnyResult<()> {
+        self.call_end_block(b"deadbeef", self.height())?;
         self.app.update_block(next_block);
-        // FIXME: Register sudo handlers in the app
-        // let _ = self.app.end_block()?;
-        // self.app.begin_block()?;
+        self.call_begin_block(b"deadbeef", self.height())?;
+        Ok(())
+    }
+
+    pub fn advance_seconds(&mut self, seconds: u64) -> AnyResult<()> {
+        self.call_end_block(b"deadbeef", self.height())?;
+        self.app.advance_seconds(seconds);
+        self.call_begin_block(b"deadbeef", self.height())?;
         Ok(())
     }
 
     /// Timestamp of current block
     pub fn timestamp(&self) -> Timestamp {
         self.app.block_info().time
+    }
+
+    /// Height of current block
+    pub fn height(&self) -> u64 {
+        self.app.block_info().height
     }
 
     #[track_caller]
