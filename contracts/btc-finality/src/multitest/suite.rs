@@ -3,8 +3,8 @@ use derivative::Derivative;
 use hex::ToHex;
 
 use cosmwasm_std::testing::mock_dependencies;
-use cosmwasm_std::{to_json_binary, Addr, Coin};
-use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Timestamp};
+use cw_multi_test::{next_block, AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider, NewFinalityProvider};
 use babylon_apis::error::StakingApiError;
@@ -167,7 +167,7 @@ impl SuiteBuilder {
 #[derivative(Debug)]
 pub struct Suite {
     #[derivative(Debug = "ignore")]
-    pub app: BabylonApp,
+    app: BabylonApp,
     /// The code id of the babylon contract
     code_id: u64,
     /// Babylon contract address
@@ -203,6 +203,23 @@ impl Suite {
     #[allow(dead_code)]
     pub fn admin(&self) -> &str {
         self.owner.as_str()
+    }
+
+    pub fn app(&mut self) -> &mut BabylonApp {
+        &mut self.app
+    }
+
+    pub fn next_block(&mut self) -> AnyResult<()> {
+        self.app.update_block(next_block);
+        // FIXME: Register sudo handlers in the app
+        // let _ = self.app.end_block()?;
+        // self.app.begin_block()?;
+        Ok(())
+    }
+
+    /// Timestamp of current block
+    pub fn timestamp(&self) -> Timestamp {
+        self.app.block_info().time
     }
 
     #[track_caller]

@@ -345,7 +345,7 @@ mod slashing {
 
         // Call the begin-block sudo handler at the next height, for completeness
         let next_height = initial_height + 1;
-        suite.app.advance_blocks(next_height - initial_height);
+        suite.app().advance_blocks(next_height - initial_height);
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
             .unwrap();
@@ -359,7 +359,7 @@ mod slashing {
         let submit_height = next_height;
         // Increase block height
         let next_height = next_height + 1;
-        suite.app.advance_blocks(next_height - submit_height);
+        suite.app().advance_blocks(next_height - submit_height);
         // Call the begin-block sudo handler at the next height, for completeness
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
@@ -427,7 +427,7 @@ mod slashing {
 
         // Call the next (final) block begin blocker, to compute the active FP set
         let final_height = next_height + 1;
-        suite.app.advance_blocks(final_height - next_height);
+        suite.app().advance_blocks(final_height - next_height);
         suite
             .call_begin_block("deadbeef02".as_bytes(), final_height)
             .unwrap();
@@ -510,7 +510,7 @@ mod distribution {
 
         // Call the begin-block sudo handler at the next height, for completeness
         let next_height = initial_height + 1;
-        suite.app.advance_blocks(next_height - initial_height);
+        suite.app().advance_blocks(next_height - initial_height);
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
             .unwrap();
@@ -524,7 +524,7 @@ mod distribution {
         let submit_height = next_height;
         // Increase block height
         let next_height = next_height + 1;
-        suite.app.advance_blocks(next_height - submit_height);
+        suite.app().advance_blocks(next_height - submit_height);
         // Call the begin-block sudo handler at the next height, for completeness
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
@@ -552,7 +552,7 @@ mod distribution {
         // will get rewards without voting.
         // After offline / inactive detection of FPs (#82) this wouldn't be so bad.
         let next_height = next_height + 1;
-        suite.app.advance_blocks(1);
+        suite.app().advance_blocks(1);
         suite
             .call_begin_block("deadbeef02".as_bytes(), next_height)
             .unwrap();
@@ -578,7 +578,7 @@ mod distribution {
         let finality_params = suite.get_btc_finality_params();
         let finality_epoch = finality_params.epoch_length;
         let next_epoch_height = (next_height / finality_epoch + 1) * finality_epoch;
-        suite.app.advance_blocks(next_epoch_height - next_height);
+        suite.app().advance_blocks(next_epoch_height - next_height);
         suite
             .call_begin_block("deadbeef03".as_bytes(), next_epoch_height)
             .unwrap();
@@ -640,6 +640,7 @@ mod distribution {
 mod jailing {
     use crate::msg::JailedFinalityProvider;
 
+    use crate::error::ContractError;
     use crate::multitest::suite::SuiteBuilder;
     use cw_controllers::AdminError;
     use test_utils::create_new_finality_provider;
@@ -665,7 +666,7 @@ mod jailing {
         // Admin can jail for particular duration
         suite.jail(&admin, &fp2.btc_pk_hex, 3600).unwrap();
 
-        let jailed_until = &suite.app.block_info().time.seconds() + 3600;
+        let jailed_until = &suite.timestamp().seconds() + 3600;
 
         // Non-admin cannot jail
         let err = suite.jail("anyone", &fp2.btc_pk_hex, FOREVER).unwrap_err();
@@ -683,6 +684,59 @@ mod jailing {
                     jailed_until,
                 }
             ]
+        )
+    }
+
+    #[test]
+    fn admin_can_unjail_almost_anyone() {
+        let mut suite = SuiteBuilder::new().build();
+
+        // Register a couple FPs
+        let fp1 = create_new_finality_provider(1);
+        let fp2 = create_new_finality_provider(2);
+        suite
+            .register_finality_providers(&[fp1.clone(), fp2.clone()])
+            .unwrap();
+
+        let admin = suite.admin().to_owned();
+
+        // Jailing some FPs to have someone to unjail
+        suite.jail(&admin, &fp1.btc_pk_hex, FOREVER).unwrap();
+        suite.jail(&admin, &fp2.btc_pk_hex, 3600).unwrap();
+
+        let jailed_until = &suite.timestamp().seconds() + 3600;
+
+        suite.next_block().unwrap();
+
+        // Verify jailed
+        assert_eq!(
+            &suite.list_jailed_fps(None, None),
+            &[
+                JailedFinalityProvider {
+                    btc_pk_hex: fp1.btc_pk_hex.clone(),
+                    jailed_until: 0,
+                },
+                JailedFinalityProvider {
+                    btc_pk_hex: fp2.btc_pk_hex.clone(),
+                    jailed_until,
+                },
+            ],
+        );
+
+        // Admin can't unjail if the jailing is forever
+        let err = suite.unjail(&admin, &fp1.btc_pk_hex).unwrap_err();
+        assert_eq!(ContractError::JailedForever {}, err.downcast().unwrap());
+
+        // But can unjail if time is finite (even if jail has not expired)
+        suite.unjail(&admin, &fp2.btc_pk_hex).unwrap();
+
+        // Verify fp2 is out of jail now
+        assert_eq!(
+            &suite.list_jailed_fps(None, None),
+            &[JailedFinalityProvider {
+                btc_pk_hex: fp1.btc_pk_hex,
+                jailed_until: 0,
+            },],
         )
     }
 }
