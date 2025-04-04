@@ -296,6 +296,8 @@ pub fn handle_finality_signature(
     Ok(res)
 }
 
+pub const JAIL_FOREVER: u64 = 0;
+
 pub fn handle_jail(
     deps: DepsMut,
     env: &Env,
@@ -316,15 +318,15 @@ pub fn handle_jail(
         .map_err(|_| ContractError::FinalityProviderNotFound(fp_btc_pk_hex.to_string()))?;
 
     // Set the jail time
-    let jail_until = if jail_duration == 0 {
-        0
+    let jail_until = if jail_duration == JAIL_FOREVER {
+        JAIL_FOREVER
     } else {
         env.block.time.seconds() + jail_duration
     };
     JAIL.save(deps.storage, fp_btc_pk_hex, &jail_until)?;
 
     let until_attr = match jail_duration {
-        0 => "forever".to_owned(),
+        JAIL_FOREVER => "forever".to_owned(),
         _ => jail_until.to_string(),
     };
 
@@ -342,20 +344,20 @@ pub fn handle_unjail(
     info: &MessageInfo,
     fp_btc_pk_hex: &str,
 ) -> Result<Response<BabylonMsg>, ContractError> {
-    // Admin can unjail anyone anytime
-    if ADMIN.is_admin(deps.as_ref(), &info.sender)? {
-        JAIL.remove(deps.storage, fp_btc_pk_hex);
-        return Ok(Response::new()
-            .add_attribute("action", "unjail")
-            .add_attribute("fp", fp_btc_pk_hex));
-    }
+    // Admin can unjail almost anyone
+    let is_admin = ADMIN.is_admin(deps.as_ref(), &info.sender)?;
 
     // Others can unjail only themselves
     // First, ensure the finality provider is jailed
     let jail_until = JAIL.load(deps.storage, fp_btc_pk_hex)?;
 
-    // Ensure the jail period has passed
-    if env.block.time.seconds() < jail_until {
+    // Ensure the jail is not forever
+    if jail_until == JAIL_FOREVER {
+        return Err(ContractError::JailedForever {});
+    }
+
+    // Ensure the jail period has passed (except for admin)
+    if !is_admin && env.block.time.seconds() < jail_until {
         return Err(ContractError::JailPeriodNotPassed(
             fp_btc_pk_hex.to_string(),
         ));
@@ -377,7 +379,7 @@ pub fn handle_unjail(
     // Compute canonical sender and FP operator addresses
     let sender_canonical_addr = deps.api.addr_canonicalize(info.sender.as_ref())?;
     let fp_canonical_addr = to_canonical_addr(&fp.addr, "bbn")?;
-    if sender_canonical_addr != fp_canonical_addr {
+    if !is_admin && sender_canonical_addr != fp_canonical_addr {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -692,7 +694,7 @@ pub fn compute_active_finality_providers(
                 // Filter out FPs that are jailed.
                 // Error (shouldn't happen) is being mapped to "jailed forever"
                 JAIL.may_load(deps.storage, &fp.btc_pk_hex)
-                    .unwrap_or(Some(0))
+                    .unwrap_or(Some(JAIL_FOREVER))
                     .is_none()
             })
             .scan(total_power, |acc, fp| {
