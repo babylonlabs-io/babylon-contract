@@ -1,5 +1,4 @@
 use crate::error;
-use crate::error::BTCLightclientError;
 use babylon_bitcoin::{BlockHeader, Work};
 use babylon_proto::babylon::btclightclient::v1::BtcHeaderInfo;
 use cosmwasm_std::{StdResult, Uint256};
@@ -11,29 +10,29 @@ pub fn verify_headers(
     btc_network: &babylon_bitcoin::chain_params::Params,
     first_header: &BtcHeaderInfo,
     new_headers: &[BtcHeaderInfo],
-) -> Result<(), error::BTCLightclientError> {
+) -> Result<(), error::ContractError> {
     // verify each new header iteratively
     let mut last_header = first_header.clone();
-    let mut cum_work_old = total_work(&last_header)?;
+    let mut cum_work_old = total_work(last_header.work.as_ref())?;
     for (i, new_header) in new_headers.iter().enumerate() {
         // decode last header to rust-bitcoin's type
         let last_btc_header: BlockHeader =
             babylon_bitcoin::deserialize(last_header.header.as_ref())
-                .map_err(|_| error::BTCLightclientError::BTCHeaderDecodeError {})?;
+                .map_err(|_| error::ContractError::BTCHeaderDecodeError {})?;
         // decode this header to rust-bitcoin's type
         let btc_header: BlockHeader = babylon_bitcoin::deserialize(new_header.header.as_ref())
-            .map_err(|_| error::BTCLightclientError::BTCHeaderDecodeError {})?;
+            .map_err(|_| error::ContractError::BTCHeaderDecodeError {})?;
 
         // validate whether btc_header extends last_btc_header
         babylon_bitcoin::pow::verify_next_header_pow(btc_network, &last_btc_header, &btc_header)
-            .map_err(|_| error::BTCLightclientError::BTCHeaderError {})?;
+            .map_err(|_| error::ContractError::BTCHeaderError {})?;
 
         let header_work = btc_header.work();
-        let cum_work = total_work(new_header)?;
+        let cum_work = total_work(new_header.work.as_ref())?;
 
         // Validate cumulative work
         if cum_work_old + header_work != cum_work {
-            return Err(BTCLightclientError::BTCWrongCumulativeWork(
+            return Err(error::ContractError::BTCWrongCumulativeWork(
                 i,
                 cum_work_old + header_work,
                 cum_work,
@@ -42,7 +41,7 @@ pub fn verify_headers(
         cum_work_old = cum_work;
         // Validate height
         if new_header.height != last_header.height + 1 {
-            return Err(BTCLightclientError::BTCWrongHeight(
+            return Err(error::ContractError::BTCWrongHeight(
                 i,
                 last_header.height + 1,
                 new_header.height,
@@ -62,9 +61,9 @@ pub fn zero_work() -> Work {
 
 /// Returns the total work of the given header.
 /// The total work is the cumulative work of the given header and all of its ancestors.
-pub fn total_work(header: &BtcHeaderInfo) -> StdResult<Work> {
+pub fn total_work(work: &[u8]) -> StdResult<Work> {
     // TODO: Use a better encoding (String / binary)
-    let header_work = from_utf8(header.work.as_ref())?;
+    let header_work = from_utf8(work)?;
     let header_work_cw = cosmwasm_std::Uint256::from_str(header_work)?;
     Ok(Work::from_be_bytes(header_work_cw.to_be_bytes()))
 }

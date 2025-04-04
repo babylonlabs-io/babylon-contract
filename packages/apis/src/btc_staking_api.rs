@@ -14,9 +14,12 @@ pub const HASH_SIZE: usize = 32;
 pub enum ExecuteMsg {
     /// Change the admin
     UpdateAdmin { admin: Option<String> },
-    /// Set the BTC finality addr.
+    /// Set the BTC light client addr and BTC finality addr.
     /// Only admin or the babylon contract can set this
-    UpdateFinality { finality: String },
+    UpdateContractAddresses {
+        btc_light_client: String,
+        finality: String,
+    },
     /// BTC Staking operations
     BtcStaking {
         new_fp: Vec<NewFinalityProvider>,
