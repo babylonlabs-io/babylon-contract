@@ -14,6 +14,8 @@ pub struct Config {
     /// NOTE: if set to true, then the Cosmos zone needs to integrate the corresponding message
     /// handler as well
     pub notify_cosmos_zone: bool,
+    /// If set, this stores a BTC light client contract used for BTC light client on the Consumer
+    pub btc_light_client: Option<Addr>,
     /// If set, this stores a BTC staking contract used for BTC re-staking
     pub btc_staking: Option<Addr>,
     /// If set, this stores a BTC finality contract used for BTC finality on the Consumer

@@ -14,6 +14,7 @@ pub(crate) const ADMIN: Admin = Admin::new("admin");
 /// Config are Babylon-selectable BTC staking configuration
 #[cw_serde]
 pub struct Config {
+    pub btc_light_client: Addr,
     pub babylon: Addr,
     pub finality: Addr,
     pub denom: String,

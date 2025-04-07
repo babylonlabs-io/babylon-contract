@@ -1,0 +1,63 @@
+[package]
+name = "btc-light-client"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+# See https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
+bench = false
+doctest = false
+
+[[bin]]
+name = "schema"
+path = "src/bin/schema.rs"
+bench = false
+test = false
+
+[features]
+# Add feature "cranelift" to default if you need 32 bit or ARM support
+default = []
+# Use cranelift backend instead of singlepass. This is required for development on 32 bit or ARM machines.
+cranelift = ["cosmwasm-vm/cranelift"]
+# for quicker tests, cargo test --lib
+library = []
+
+[dependencies]
+babylon-apis     = { path = "../../packages/apis" }
+babylon-bindings = { path = "../../packages/bindings" }
+babylon-proto    = { path = "../../packages/proto" }
+babylon-bitcoin  = { path = "../../packages/bitcoin" }
+cosmwasm-schema  = { workspace = true }
+cosmwasm-std     = { workspace = true }
+cw2              = { workspace = true }
+cw-storage-plus  = { workspace = true }
+cw-utils         = { workspace = true }
+hex              = { workspace = true }
+thiserror        = { workspace = true }
+prost            = { workspace = true }
+serde            = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+babylon-bindings-test  = { path = "../../packages/bindings-test" }
+test-utils             = { path = "../../packages/test-utils" }
+
+cosmwasm-vm            = { workspace = true }
+cw-multi-test          = { workspace = true }
+
+anyhow                 = { workspace = true }
+assert_matches         = { workspace = true }
+derivative             = { workspace = true }
+# bench dependencies
+criterion              = { workspace = true }
+thousands              = { workspace = true }
+
+[[bench]]
+name = "main"
+harness = false 

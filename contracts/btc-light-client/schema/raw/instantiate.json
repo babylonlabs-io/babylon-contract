@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "btc_confirmation_depth",
+    "checkpoint_finalization_timeout",
+    "network"
+  ],
+  "properties": {
+    "btc_confirmation_depth": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "checkpoint_finalization_timeout": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "network": {
+      "$ref": "#/definitions/Network"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Network": {
+      "type": "string",
+      "enum": [
+        "mainnet",
+        "testnet",
+        "signet",
+        "regtest"
+      ]
+    }
+  }
+}

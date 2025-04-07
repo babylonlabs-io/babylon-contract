@@ -51,11 +51,14 @@ prost            = { workspace = true }
 ics23            = { workspace = true }
 sha2             = { workspace = true }
 
+btc-light-client = { path = "../btc-light-client", features = [ "library" ] }
+
 [dev-dependencies]
-babylon-bindings-test  = { path = "../../packages/bindings-test" }
-btc-staking            = { path = "../btc-staking", features = [ "library" ] }
-btc-finality           = { path = "../btc-finality", features = [ "library" ] }
-test-utils             = { path = "../../packages/test-utils" }
+babylon-bindings-test        = { path = "../../packages/bindings-test" }
+btc-staking                  = { path = "../btc-staking", features = [ "library" ] }
+btc-finality                 = { path = "../btc-finality", features = [ "library" ] }
+btc-light-client             = { path = "../btc-light-client", features = [ "library" ] }
+test-utils                   = { path = "../../packages/test-utils" }
 
 cosmwasm-vm            = { workspace = true }
 cw-multi-test          = { workspace = true }
@@ -67,7 +70,3 @@ pbjson-types           = { workspace = true }
 # bench dependencies
 criterion              = { workspace = true }
 thousands              = { workspace = true }
-
-[[bench]]
-name = "main"
-harness = false

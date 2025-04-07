@@ -114,7 +114,7 @@ pub fn ibc_channel_close(
 /// We decode the contents of the packet and if it matches one of the packets we support, execute
 /// the relevant function, otherwise return an IBC Ack error.
 pub fn ibc_packet_receive(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     _env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse<BabylonMsg>, Never> {
@@ -162,15 +162,13 @@ pub(crate) mod ibc_packet {
     use cosmwasm_std::{to_json_binary, IbcChannel, IbcMsg, WasmMsg};
 
     pub fn handle_btc_timestamp(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_ts: &BtcTimestamp,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
-
+        let cfg = CONFIG.load(deps.storage)?;
         // handle the BTC timestamp, i.e., verify the BTC timestamp and update the contract state
-        let msg_option = crate::state::handle_btc_timestamp(storage, btc_ts)?;
+        let (wasm_msg, babylon_msg) = crate::state::handle_btc_timestamp(deps, btc_ts)?;
 
         // construct response
         let mut resp: IbcReceiveResponse<BabylonMsg> =
@@ -178,12 +176,16 @@ pub(crate) mod ibc_packet {
                                                               // add attribute to response
         resp = resp.add_attribute("action", "receive_btc_timestamp");
 
-        // if the BTC timestamp carries a Babylon message for the Cosmos zone, and
-        // the contract enables sending messages to the Cosmos zone, then
-        // add this message to response
-        if let Some(msg) = msg_option {
+        // add wasm message to response if it exists
+        if let Some(wasm_msg) = wasm_msg {
+            resp = resp.add_message(wasm_msg);
+        }
+
+        // add Babylon message to response if it exists and the
+        // contract enables sending messages to the Cosmos zone
+        if let Some(babylon_msg) = babylon_msg {
             if cfg.notify_cosmos_zone {
-                resp = resp.add_message(msg);
+                resp = resp.add_message(babylon_msg);
             }
         }
 
@@ -191,12 +193,11 @@ pub(crate) mod ibc_packet {
     }
 
     pub fn handle_btc_staking(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_staking: &BtcStakingIbcPacket,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
+        let cfg = CONFIG.load(deps.storage)?;
 
         // Route the packet to the btc-staking contract
         let btc_staking_addr = cfg
@@ -251,24 +252,25 @@ pub(crate) mod ibc_packet {
     }
 
     pub fn handle_btc_headers(
-        deps: DepsMut,
+        deps: &mut DepsMut,
         _caller: String,
         btc_headers: &BtcHeaders,
     ) -> StdResult<IbcReceiveResponse<BabylonMsg>> {
-        let storage = deps.storage;
-        let cfg = CONFIG.load(storage)?;
-
-        let msg_option = crate::state::handle_btc_headers(storage, btc_headers)?;
+        // Submit headers to BTC light client
+        let msg = crate::utils::btc_light_client_executor::new_btc_headers_msg(
+            deps,
+            &btc_headers.headers,
+        )
+        .map_err(|e| {
+            let err = format!("failed to submit BTC headers: {e}");
+            deps.api.debug(&err);
+            StdError::generic_err(err)
+        })?;
 
         let mut resp: IbcReceiveResponse<BabylonMsg> =
             IbcReceiveResponse::new(StdAck::success(vec![])); // TODO: design response format (#134.2)
+        resp = resp.add_message(msg);
         resp = resp.add_attribute("action", "receive_btc_headers");
-
-        if let Some(msg) = msg_option {
-            if cfg.notify_cosmos_zone {
-                resp = resp.add_message(msg);
-            }
-        }
 
         Ok(resp)
     }
@@ -350,6 +352,8 @@ mod tests {
             btc_confirmation_depth: 10,
             checkpoint_finalization_timeout: 100,
             notify_cosmos_zone: false,
+            btc_light_client_code_id: None,
+            btc_light_client_msg: None,
             btc_staking_code_id: None,
             btc_staking_msg: None,
             btc_finality_code_id: None,
