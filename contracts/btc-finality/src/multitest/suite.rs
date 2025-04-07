@@ -14,17 +14,15 @@ use babylon_bindings::BabylonMsg;
 use babylon_bindings_test::BabylonApp;
 use babylon_bitcoin::chain_params::Network;
 
-use crate::msg;
-use crate::msg::{
-    EvidenceResponse, FinalitySignatureResponse, InstantiateMsg, JailedFinalityProvider,
-    JailedFinalityProvidersResponse,
-};
-use crate::multitest::{CONTRACT1_ADDR, CONTRACT2_ADDR};
 use btc_staking::msg::{
     ActivatedHeightResponse, AllPendingRewardsResponse, FinalityProviderInfo, PendingRewards,
 };
 
-use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
+use crate::msg::QueryMsg::JailedFinalityProviders;
+use crate::msg::{
+    EvidenceResponse, FinalitySignatureResponse, InstantiateMsg, JailedFinalityProvider,
+    JailedFinalityProvidersResponse,
+};
 use crate::multitest::{
     BTC_FINALITY_CONTRACT_ADDR, BTC_LIGHT_CLIENT_CONTRACT_ADDR, BTC_STAKING_CONTRACT_ADDR,
     USER_ADDR,
@@ -563,7 +561,7 @@ impl Suite {
             .wrap()
             .query_wasm_smart::<JailedFinalityProvidersResponse>(
                 self.finality.clone(),
-                &msg::QueryMsg::JailedFinalityProviders { start_after, limit },
+                &JailedFinalityProviders { start_after, limit },
             )
             .unwrap()
             .jailed_finality_providers
