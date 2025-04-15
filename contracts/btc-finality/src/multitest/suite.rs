@@ -20,8 +20,8 @@ use btc_staking::msg::{
 
 use crate::msg::QueryMsg::JailedFinalityProviders;
 use crate::msg::{
-    EvidenceResponse, FinalitySignatureResponse, InstantiateMsg, JailedFinalityProvider,
-    JailedFinalityProvidersResponse,
+    ActiveFinalityProvidersResponse, EvidenceResponse, FinalitySignatureResponse, InstantiateMsg,
+    JailedFinalityProvider, JailedFinalityProvidersResponse,
 };
 use crate::multitest::{
     BTC_FINALITY_CONTRACT_ADDR, BTC_LIGHT_CLIENT_CONTRACT_ADDR, BTC_STAKING_CONTRACT_ADDR,
@@ -215,9 +215,9 @@ impl Suite {
     }
 
     pub fn advance_seconds(&mut self, seconds: u64) -> AnyResult<()> {
-        self.call_end_block(b"deadbeef", self.height())?;
+        // self.call_end_block(b"deadbeef", self.height())?;
         self.app.advance_seconds(seconds);
-        self.call_begin_block(b"deadbeef", self.height())?;
+        // self.call_begin_block(b"deadbeef", self.height())?;
         Ok(())
     }
 
@@ -539,7 +539,6 @@ impl Suite {
     }
 
     #[track_caller]
-    #[allow(dead_code)]
     pub fn unjail(&mut self, sender: &str, fp_pubkey_hex: &str) -> AnyResult<AppResponse> {
         self.app.execute_contract(
             Addr::unchecked(sender),
@@ -565,5 +564,16 @@ impl Suite {
             )
             .unwrap()
             .jailed_finality_providers
+    }
+
+    pub fn get_active_finality_providers(&self, height: u64) -> Vec<FinalityProviderInfo> {
+        self.app
+            .wrap()
+            .query_wasm_smart::<ActiveFinalityProvidersResponse>(
+                self.finality.clone(),
+                &crate::msg::QueryMsg::ActiveFinalityProviders { height },
+            )
+            .unwrap()
+            .active_finality_providers
     }
 }

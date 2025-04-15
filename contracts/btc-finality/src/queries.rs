@@ -6,12 +6,12 @@ use babylon_apis::finality_api::IndexedBlock;
 
 use crate::error::ContractError;
 use crate::msg::{
-    BlocksResponse, EvidenceResponse, FinalitySignatureResponse, JailedFinalityProvider,
-    JailedFinalityProvidersResponse,
+    ActiveFinalityProvidersResponse, BlocksResponse, EvidenceResponse, FinalitySignatureResponse,
+    JailedFinalityProvider, JailedFinalityProvidersResponse,
 };
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES, JAIL, SIGNATURES};
+use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, JAIL, SIGNATURES};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -100,5 +100,16 @@ pub fn jailed_finality_providers(
         .collect::<Result<Vec<JailedFinalityProvider>, _>>()?;
     Ok(JailedFinalityProvidersResponse {
         jailed_finality_providers,
+    })
+}
+
+pub fn active_finality_providers(
+    deps: Deps,
+    height: u64,
+) -> Result<ActiveFinalityProvidersResponse, ContractError> {
+    let active_fps = FP_SET.may_load(deps.storage, height)?.unwrap_or_default();
+
+    Ok(ActiveFinalityProvidersResponse {
+        active_finality_providers: active_fps,
     })
 }

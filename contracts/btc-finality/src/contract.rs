@@ -136,6 +136,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::JailedFinalityProviders { start_after, limit } => Ok(to_json_binary(
             &queries::jailed_finality_providers(deps, start_after, limit)?,
         )?),
+        QueryMsg::ActiveFinalityProviders { height } => Ok(to_json_binary(
+            &queries::active_finality_providers(deps, height)?,
+        )?),
     }
 }
 
