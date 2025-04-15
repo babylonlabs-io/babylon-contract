@@ -1031,8 +1031,10 @@ mod jailing {
         // Advance height
         let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
 
-        // FIXME: But he's being jailed again, for not signing... (need to wait for the missed blocks window)
+        // FP1 is active again.
+        // It will only be jailed for being offline if it misses a number of `missed_blocks_window` blocks
         let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 0);
+        assert_eq!(active_fps.len(), 1);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
     }
 }
