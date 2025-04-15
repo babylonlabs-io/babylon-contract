@@ -710,7 +710,7 @@ mod jailing {
 
         let jailed_until = &suite.timestamp().seconds() + 3600;
 
-        suite.next_block().unwrap();
+        suite.next_block("dddd".as_bytes()).unwrap();
 
         // Verify jailed
         assert_eq!(
@@ -768,7 +768,7 @@ mod jailing {
         let jailed_until = &suite.timestamp().seconds() + 3600;
 
         // Move a bit forward, so some time passed, but not enough for any jailings to expire
-        suite.next_block().unwrap();
+        suite.next_block("eeee".as_bytes()).unwrap();
 
         // Cannot unjail myself before expiration...
         let err = suite.unjail(&fp1_bsn_addr, &fp1.btc_pk_hex).unwrap_err();
@@ -815,6 +815,7 @@ mod jailing {
         let mut suite = SuiteBuilder::new()
             .with_funds(initial_funds)
             .with_height(initial_height)
+            .with_missed_blocks(1000)
             .build();
 
         // Register a couple FPs
@@ -846,24 +847,17 @@ mod jailing {
             .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
             .unwrap();
 
-        // Call the begin-block sudo handler at the next height, for completeness
-        let next_height = initial_height + 1;
-        suite.app().advance_blocks(next_height - initial_height);
-        suite
-            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
-            .unwrap();
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        suite
-            .call_end_block(&add_finality_signature.block_app_hash, next_height)
-            .unwrap();
+        // Advance height
+        let next_height = suite
+            .next_block(add_finality_signature.block_app_hash.as_ref())
+            .unwrap()
+            .height;
 
         // Submit a finality signature from that finality provider at next height (initial_height + 1)
         let submit_height = next_height;
         // Increase block height
         let next_height = next_height + 1;
-        suite.app().advance_blocks(next_height - submit_height);
-        // Call the begin-block sudo handler at the next height, for completeness
+        suite.app().advance_blocks(1);
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
             .unwrap();
@@ -880,68 +874,43 @@ mod jailing {
             )
             .unwrap();
 
-        // Call the end-block sudo handler for completeness / realism
         suite
             .call_end_block(&add_finality_signature.block_app_hash, next_height)
             .unwrap();
 
-        // Jail fp2, so that it's not on the active set
+        // Jail FP2, so that it's not on the active set
         suite.jail(&admin, &new_fp2.btc_pk_hex, 3600).unwrap();
 
         // Call the next block begin blocker, to compute the active FP set
         // FIXME: The second FP is on the active set, and (in the current impl)
         // will get rewards without voting.
         // After offline / inactive detection of FPs (#82) this wouldn't be so bad.
-        let next_height = next_height + 1;
-        suite.app().advance_blocks(1);
-        suite
-            .call_begin_block("deadbeef02".as_bytes(), next_height)
-            .unwrap();
-        // Call the end-block sudo handler for completeness / realism
-        suite
-            .call_end_block("deadbeef02".as_bytes(), next_height)
-            .unwrap();
+        let next_height = suite.next_block("deadbeef02".as_bytes()).unwrap().height;
 
         // Get the active FP set
         let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 1);
         // Only unjailed fps are selected
+        assert_eq!(active_fps.len(), 1);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
 
-        // Moving forward so jailing periods expired
+        // Moving forward so jailing period expires
         suite.advance_seconds(4000).unwrap();
-        suite.app().advance_blocks(1);
-        let next_height = next_height + 1;
-        suite
-            .call_begin_block("deadbeef03".as_bytes(), next_height)
-            .unwrap();
-        // Call the end-block sudo handler for completeness / realism
-        suite
-            .call_end_block("deadbeef03".as_bytes(), next_height)
-            .unwrap();
+        let next_height = suite.next_block("deadbeef03".as_bytes()).unwrap().height;
 
         // But FPs are still not selected, as they have to be unjailed
         let active_fps = suite.get_active_finality_providers(next_height);
         assert_eq!(active_fps.len(), 1);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
 
-        // Unjail FP1 fails (not jailed)
+        // Unjail FP1 fails (because not jailed)
         suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap_err();
 
-        // Unjail FP2 succeeds (jailed)
+        // Unjail FP2 succeeds (already jailed)
         suite.unjail(&admin, &new_fp2.btc_pk_hex).unwrap();
 
         // Advance height
-        suite.app().advance_blocks(1);
-        let next_height = next_height + 1;
-        suite
-            .call_begin_block("deadbeef04".as_bytes(), next_height)
-            .unwrap();
-        // Call the end-block sudo handler for completeness / realism
-        suite
-            .call_end_block("deadbeef04".as_bytes(), next_height)
-            .unwrap();
-        // suite.next_block().unwrap();
+        let next_height = suite.next_block("deadbeef04".as_bytes()).unwrap().height;
+
         let active_fps = suite.get_active_finality_providers(next_height);
         assert_eq!(active_fps.len(), 2);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
