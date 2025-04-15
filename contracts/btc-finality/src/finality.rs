@@ -2,7 +2,7 @@ use crate::contract::encode_smart_query;
 use crate::error::ContractError;
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::finality::{
-    BLOCKS, EVIDENCES, FP_BLOCK_SIGNERS, FP_SET, FP_START_HEIGHT, JAIL, NEXT_HEIGHT, REWARDS,
+    BLOCKS, EVIDENCES, FP_BLOCK_SIGNER, FP_SET, FP_START_HEIGHT, JAIL, NEXT_HEIGHT, REWARDS,
     SIGNATURES, TOTAL_REWARDS,
 };
 use crate::state::public_randomness::{
@@ -274,7 +274,7 @@ pub fn handle_finality_signature(
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
 
     // Store the block height this finality provider has signed
-    FP_BLOCK_SIGNERS.save(deps.storage, fp_btc_pk_hex, &height)?;
+    FP_BLOCK_SIGNER.save(deps.storage, fp_btc_pk_hex, &height)?;
 
     // If this finality provider has signed the canonical block before, slash it via extracting its
     // secret key, and emit an event
@@ -388,7 +388,7 @@ pub fn handle_unjail(
     // Remove the start height, so that it can be reset
     FP_START_HEIGHT.remove(deps.storage, fp_btc_pk_hex);
     // Remove the last block signing height, so that it can be reset
-    FP_BLOCK_SIGNERS.remove(deps.storage, fp_btc_pk_hex);
+    FP_BLOCK_SIGNER.remove(deps.storage, fp_btc_pk_hex);
 
     Ok(Response::new()
         .add_attribute("action", "unjail")
@@ -738,7 +738,7 @@ pub fn compute_active_finality_providers(
     // Check for inactive finality providers, and jail them
     let params = PARAMS.load(deps.storage)?;
     finality_providers.iter().try_for_each(|fp| {
-        let mut last_sign_height = FP_BLOCK_SIGNERS.may_load(deps.storage, &fp.btc_pk_hex)?;
+        let mut last_sign_height = FP_BLOCK_SIGNER.may_load(deps.storage, &fp.btc_pk_hex)?;
         if last_sign_height.is_none() {
             // Not a block signer yet, check their start height instead
             last_sign_height = FP_START_HEIGHT.may_load(deps.storage, &fp.btc_pk_hex)?;
