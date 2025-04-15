@@ -1000,7 +1000,6 @@ mod jailing {
         // will get rewards without voting.
         // After offline / inactive detection of FPs (#82) this wouldn't be so bad.
         let next_height = suite.next_block("deadbeef02".as_bytes()).unwrap().height;
-        println!("Next height 1: {}", next_height);
 
         // Get the active FP set
         let active_fps = suite.get_active_finality_providers(next_height);
@@ -1012,25 +1011,28 @@ mod jailing {
         // Moving forward so offline detection kicks in
         suite.advance_seconds(4000).unwrap();
         // It requires two blocks for the active FP set to be fully updated
-        suite.next_block("deadbeef03".as_bytes()).unwrap().height;
+        suite.next_block("deadbeef03".as_bytes()).unwrap();
         let next_height = suite.next_block("deadbeef04".as_bytes()).unwrap().height;
 
+        // Both FPs are jailed for being offline!
         let active_fps = suite.get_active_finality_providers(next_height);
-        // FIXME: Both FPs should be jailed because of being offline...
-        assert_eq!(active_fps.len(), 1);
-        // assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-        // FIXME: FP2 is still in the active set...
-        assert_eq!(active_fps[0].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
+        assert_eq!(active_fps.len(), 0);
 
-        // Unjail FP1 succeeds (jailed because of being offline)
+        // Unjail FP1 succeeds
         suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
 
         // Advance height
         let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
 
         let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 2);
+        assert_eq!(active_fps.len(), 1);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-        assert_eq!(active_fps[1].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
+
+        // Advance height
+        let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
+
+        // FIXME: But he's being jailed again, for not signing... (need to wait for the missed blocks window)
+        let active_fps = suite.get_active_finality_providers(next_height);
+        assert_eq!(active_fps.len(), 0);
     }
 }
