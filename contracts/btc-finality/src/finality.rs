@@ -385,6 +385,10 @@ pub fn handle_unjail(
 
     // Unjail the finality provider
     JAIL.remove(deps.storage, fp_btc_pk_hex);
+    // Remove the start height, so that it can be reset
+    FP_START_HEIGHT.remove(deps.storage, fp_btc_pk_hex);
+    // Remove the last block signing height, so that it can be reset
+    FP_BLOCK_SIGNERS.remove(deps.storage, fp_btc_pk_hex);
 
     Ok(Response::new()
         .add_attribute("action", "unjail")
@@ -724,7 +728,7 @@ pub fn compute_active_finality_providers(
         .collect();
     let new_fps = cur_fps.difference(&old_fps);
     for fp in new_fps {
-        // Active since the next block. Only set if not already set
+        // Active since the next block. Only save if not already set
         FP_START_HEIGHT.update(deps.storage, fp, |h| match h {
             Some(h) => Ok::<_, ContractError>(h),
             None => Ok(env.block.height + 1),
