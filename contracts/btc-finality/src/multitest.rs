@@ -225,14 +225,9 @@ mod finality {
             .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
             .unwrap();
 
-        // Call the begin-block sudo handler, for completeness
+        // Call the begin-block / end-block sudo handler(s), for completeness
         suite
-            .call_begin_block(&add_finality_signature.block_app_hash, initial_height + 1)
-            .unwrap();
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        suite
-            .call_end_block(&add_finality_signature.block_app_hash, initial_height + 1)
+            .next_block(&add_finality_signature.block_app_hash)
             .unwrap();
 
         // Submit a finality signature from that finality provider at height initial_height + 1
@@ -345,14 +340,8 @@ mod slashing {
 
         // Call the begin-block sudo handler at the next height, for completeness
         let next_height = initial_height + 1;
-        suite.app().advance_blocks(next_height - initial_height);
         suite
-            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
-            .unwrap();
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        suite
-            .call_end_block(&add_finality_signature.block_app_hash, next_height)
+            .next_block(&add_finality_signature.block_app_hash)
             .unwrap();
 
         // Submit a finality signature from that finality provider at next height (initial_height + 1)
@@ -426,16 +415,7 @@ mod slashing {
             .unwrap();
 
         // Call the next (final) block begin blocker, to compute the active FP set
-        let final_height = next_height + 1;
-        suite.app().advance_blocks(final_height - next_height);
-        suite
-            .call_begin_block("deadbeef02".as_bytes(), final_height)
-            .unwrap();
-
-        // Call the next (final) block end blocker, to process the finality signatures
-        suite
-            .call_end_block("deadbeef02".as_bytes(), final_height)
-            .unwrap();
+        suite.next_block("deadbeef02".as_bytes()).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
         let indexed_block = suite.get_indexed_block(submit_height);
@@ -508,16 +488,10 @@ mod distribution {
             .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
             .unwrap();
 
-        // Call the begin-block sudo handler at the next height, for completeness
+        // Call the begin-end block sudo handlers
         let next_height = initial_height + 1;
-        suite.app().advance_blocks(next_height - initial_height);
         suite
-            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
-            .unwrap();
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        suite
-            .call_end_block(&add_finality_signature.block_app_hash, next_height)
+            .next_block(&add_finality_signature.block_app_hash)
             .unwrap();
 
         // Submit a finality signature from that finality provider at next height (initial_height + 1)
@@ -547,20 +521,13 @@ mod distribution {
             .call_end_block(&add_finality_signature.block_app_hash, next_height)
             .unwrap();
 
-        // Call the next block begin blocker, to compute the active FP set
-        // FIXME: The second FP is on the active set, and (in the current impl)
+        // Call the next block blockers, to compute the active FP set
+        // Note: The second FP is on the active set, and (in the current impl)
         // will get rewards without voting.
-        // After offline / inactive detection of FPs (#82) this wouldn't be so bad.
+        // Since offline / inactive detection of FPs is at work, this isn't so bad, as the inactive
+        // FP will be eventually removed from the set.
         let next_height = next_height + 1;
-        suite.app().advance_blocks(1);
-        suite
-            .call_begin_block("deadbeef02".as_bytes(), next_height)
-            .unwrap();
-
-        // Call the next (final) block end blocker, to process the finality signatures
-        suite
-            .call_end_block("deadbeef02".as_bytes(), next_height)
-            .unwrap();
+        suite.next_block("deadbeef02".as_bytes()).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
         let indexed_block = suite.get_indexed_block(submit_height);
@@ -578,13 +545,10 @@ mod distribution {
         let finality_params = suite.get_btc_finality_params();
         let finality_epoch = finality_params.epoch_length;
         let next_epoch_height = (next_height / finality_epoch + 1) * finality_epoch;
-        suite.app().advance_blocks(next_epoch_height - next_height);
         suite
-            .call_begin_block("deadbeef03".as_bytes(), next_epoch_height)
-            .unwrap();
-        suite
-            .call_end_block("deadbeef03".as_bytes(), next_epoch_height)
-            .unwrap();
+            .app()
+            .advance_blocks(next_epoch_height - next_height - 1);
+        suite.next_block("deadbeef03".as_bytes()).unwrap();
 
         // Assert that rewards have been generated, sent to the staking contract, and
         // distributed among delegators
