@@ -415,7 +415,7 @@ mod slashing {
             .unwrap();
 
         // Call the next (final) block begin blocker, to compute the active FP set
-        suite.next_block("deadbeef02".as_bytes()).unwrap();
+        suite.next_block("deadbeef01".as_bytes()).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
         let indexed_block = suite.get_indexed_block(submit_height);
@@ -527,7 +527,7 @@ mod distribution {
         // Since offline / inactive detection of FPs is at work, this isn't so bad, as the inactive
         // FP will be eventually removed from the set.
         let next_height = next_height + 1;
-        suite.next_block("deadbeef02".as_bytes()).unwrap();
+        suite.next_block("deadbeef01".as_bytes()).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
         let indexed_block = suite.get_indexed_block(submit_height);
@@ -548,7 +548,7 @@ mod distribution {
         suite
             .app()
             .advance_blocks(next_epoch_height - next_height - 1);
-        suite.next_block("deadbeef03".as_bytes()).unwrap();
+        suite.next_block("deadbeef02".as_bytes()).unwrap();
 
         // Assert that rewards have been generated, sent to the staking contract, and
         // distributed among delegators
@@ -694,7 +694,7 @@ mod jailing {
         // The second FP is on the active set, and (in the current impl)
         // will get rewards without voting.
         // After offline detection, it'll be removed from the set.
-        let next_height = suite.next_block("deadbeef02".as_bytes()).unwrap().height;
+        let next_height = suite.next_block("deadbeef01".as_bytes()).unwrap().height;
 
         // Get the active FP set
         let active_fps = suite.get_active_finality_providers(next_height);
@@ -706,8 +706,8 @@ mod jailing {
         // Moving forward so offline detection kicks in
         suite.advance_seconds(4000).unwrap();
         // It requires two blocks for the active FP set to be fully updated
-        suite.next_block("deadbeef03".as_bytes()).unwrap();
-        let next_height = suite.next_block("deadbeef04".as_bytes()).unwrap().height;
+        suite.next_block("deadbeef02".as_bytes()).unwrap();
+        let next_height = suite.next_block("deadbeef03".as_bytes()).unwrap().height;
 
         // Both FPs are jailed for being offline!
         let jailed_until = &suite.timestamp().seconds() + 86400 - 5;
@@ -742,7 +742,7 @@ mod jailing {
         );
 
         // Advance height
-        let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
+        let next_height = suite.next_block("deadbeef04".as_bytes()).unwrap().height;
 
         // FP1 is active again.
         // It will only be jailed for being offline if it misses a number of `missed_blocks_window`
@@ -753,7 +753,7 @@ mod jailing {
 
         // Moving forward so jailing period expires
         suite.advance_seconds(86385).unwrap();
-        let next_height = suite.next_block("deadbeef06".as_bytes()).unwrap().height;
+        let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
 
         // But FP2 is still not selected, as it has to be unjailed
         let active_fps = suite.get_active_finality_providers(next_height);
@@ -790,7 +790,7 @@ mod jailing {
         suite.unjail(&fp2_bsn_addr, &new_fp2.btc_pk_hex).unwrap();
 
         // Advance height
-        let next_height = suite.next_block("deadbeef08".as_bytes()).unwrap().height;
+        let next_height = suite.next_block("deadbeef06".as_bytes()).unwrap().height;
 
         // But FP1 has been jailed again (offline)
         let active_fps = suite.get_active_finality_providers(next_height);
@@ -799,7 +799,7 @@ mod jailing {
 
         // Unjail FP1 succeeds (it has been jailed for being offline again)
         suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
-        let next_height = suite.next_block("deadbeef09".as_bytes()).unwrap().height;
+        let next_height = suite.next_block("deadbeef07".as_bytes()).unwrap().height;
 
         let active_fps = suite.get_active_finality_providers(next_height);
         assert_eq!(active_fps.len(), 2);
