@@ -531,24 +531,6 @@ impl Suite {
     }
 
     #[track_caller]
-    pub fn jail(
-        &mut self,
-        sender: &str,
-        fp_pubkey_hex: &str,
-        duration: u64,
-    ) -> AnyResult<AppResponse> {
-        self.app.execute_contract(
-            Addr::unchecked(sender),
-            self.finality.clone(),
-            &finality_api::ExecuteMsg::Jail {
-                fp_pubkey_hex: fp_pubkey_hex.to_owned(),
-                duration,
-            },
-            &[],
-        )
-    }
-
-    #[track_caller]
     pub fn unjail(&mut self, sender: &str, fp_pubkey_hex: &str) -> AnyResult<AppResponse> {
         self.app.execute_contract(
             Addr::unchecked(sender),

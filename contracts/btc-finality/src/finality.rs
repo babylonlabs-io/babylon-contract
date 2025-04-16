@@ -298,46 +298,6 @@ pub fn handle_finality_signature(
 
 pub const JAIL_FOREVER: u64 = 0;
 
-pub fn handle_jail(
-    deps: DepsMut,
-    env: &Env,
-    info: &MessageInfo,
-    fp_btc_pk_hex: &str,
-    jail_duration: u64,
-) -> Result<Response<BabylonMsg>, ContractError> {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-    // Ensure the finality provider exists
-    let staking_addr = CONFIG.load(deps.storage)?.staking;
-    deps.querier
-        .query_wasm_smart::<FinalityProvider>(
-            staking_addr.clone(),
-            &btc_staking::msg::QueryMsg::FinalityProvider {
-                btc_pk_hex: fp_btc_pk_hex.to_string(),
-            },
-        )
-        .map_err(|_| ContractError::FinalityProviderNotFound(fp_btc_pk_hex.to_string()))?;
-
-    // Set the jail time
-    let jail_until = if jail_duration == JAIL_FOREVER {
-        JAIL_FOREVER
-    } else {
-        env.block.time.seconds() + jail_duration
-    };
-    JAIL.save(deps.storage, fp_btc_pk_hex, &jail_until)?;
-
-    let until_attr = match jail_duration {
-        JAIL_FOREVER => "forever".to_owned(),
-        _ => jail_until.to_string(),
-    };
-
-    let res = Response::new()
-        .add_attribute("action", "jail")
-        .add_attribute("fp", fp_btc_pk_hex)
-        .add_attribute("until", until_attr);
-
-    Ok(res)
-}
-
 pub fn handle_unjail(
     deps: DepsMut,
     env: &Env,
