@@ -38,7 +38,7 @@ pub struct Params {
     /// `epoch_length` is the number of blocks that defines an epoch
     #[derivative(Default(value = "50"))] // 50 * ~6.5s = ~5min
     pub epoch_length: u64,
-    /// Missed number of blocks a validator can be jailed for due to offline detection
+    /// Missed number of blocks an FP can be jailed for due to offline detection
     #[derivative(Default(value = "250"))]
     pub missed_blocks_window: u64,
     /// `jail_duration` (in seconds) is the minimum period of time that a finality provider remains
