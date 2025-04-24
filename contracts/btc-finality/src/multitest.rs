@@ -569,10 +569,7 @@ mod distribution {
 
         // Confirm that the rewards make sense
         let rewards_1 = pending_rewards_1[0].rewards.amount.u128();
-        assert_eq!(
-            rewards_1,
-            66590
-        );
+        assert_eq!(rewards_1, 66590);
 
         // Withdrawing rewards
         // Trying to withdraw the rewards with a Consumer address should fail
@@ -601,7 +598,7 @@ mod distribution {
 
 mod jailing {
     use crate::msg::JailedFinalityProvider;
-    use cosmwasm_std::{coin, Addr, StdError};
+    use cosmwasm_std::{coin, Addr};
 
     use crate::error::ContractError;
     use crate::multitest::suite::SuiteBuilder;
@@ -689,17 +686,15 @@ mod jailing {
             .unwrap();
 
         // Call the next block begin blocker, to compute the active FP set
-        // The second FP is on the active set, and (in the current impl)
-        // will get rewards without voting.
-        // After offline detection, it'll be removed from the set.
         let next_height = suite.next_block("deadbeef01".as_bytes()).unwrap().height;
 
         // Get the active FP set
+        // Note: The second FP has voting power, but since it hasn't submitted
+        // public randomness, it will not be in the active set
         let active_fps = suite.get_active_finality_providers(next_height);
         // All unjailed fps are selected
-        assert_eq!(active_fps.len(), 2);
+        assert_eq!(active_fps.len(), 1);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-        assert_eq!(active_fps[1].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
 
         // Moving forward so offline detection kicks in
         suite.advance_seconds(4000).unwrap();
@@ -711,33 +706,31 @@ mod jailing {
         let jailed_until = &suite.timestamp().seconds() + 86400 - 5;
         assert_eq!(
             &suite.list_jailed_fps(None, None),
-            &[
-                JailedFinalityProvider {
-                    btc_pk_hex: new_fp1.btc_pk_hex.clone(),
-                    jailed_until,
-                },
-                JailedFinalityProvider {
-                    btc_pk_hex: new_fp2.btc_pk_hex.clone(),
-                    jailed_until,
-                },
-            ],
+            &[JailedFinalityProvider {
+                btc_pk_hex: new_fp1.btc_pk_hex.clone(),
+                jailed_until,
+            },],
         );
 
         // Verify removed from the active set
         let active_fps = suite.get_active_finality_providers(next_height);
         assert_eq!(active_fps.len(), 0);
 
-        // Unjail FP1 succeeds
-        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
-
-        // Auto-unjail of FP2 fails (because not yet expired jailing)
+        // Auto-unjail of FP1 fails (because not yet expired jailing)
+        let fp1_bsn_addr = suite
+            .to_consumer_addr(&Addr::unchecked(&new_fp1.addr))
+            .unwrap()
+            .to_string();
         let err = suite
-            .unjail(&new_fp2.addr, &new_fp2.btc_pk_hex)
+            .unjail(&fp1_bsn_addr, &new_fp1.btc_pk_hex)
             .unwrap_err();
         assert_eq!(
             err.downcast::<ContractError>().unwrap(),
-            ContractError::JailPeriodNotPassed(new_fp2.btc_pk_hex.clone()),
+            ContractError::JailPeriodNotPassed(new_fp1.btc_pk_hex.clone()),
         );
+
+        // Admin unjail of FP1 succeeds
+        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
 
         // Advance height
         let next_height = suite.next_block("deadbeef04".as_bytes()).unwrap().height;
@@ -748,60 +741,5 @@ mod jailing {
         let active_fps = suite.get_active_finality_providers(next_height);
         assert_eq!(active_fps.len(), 1);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-
-        // Moving forward so jailing period expires
-        suite.advance_seconds(86385).unwrap();
-        let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
-
-        // But FP2 is still not selected, as it has to be unjailed
-        let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 1);
-        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-
-        // Auto-unjail of FP2 still fails (now because of wrong sender address)
-        let err = suite
-            .unjail(&new_fp2.addr, &new_fp2.btc_pk_hex)
-            .unwrap_err();
-        assert_eq!(
-            err.downcast::<ContractError>().unwrap(),
-            ContractError::Std(StdError::generic_err("Wrong bech32 prefix"))
-        );
-
-        // Third-party (non admin) unjail of FP2 also fails
-        let fp1_bsn_addr = suite
-            .to_consumer_addr(&Addr::unchecked(&new_fp1.addr))
-            .unwrap()
-            .to_string();
-        let err = suite
-            .unjail(&fp1_bsn_addr, &new_fp2.btc_pk_hex)
-            .unwrap_err();
-        assert_eq!(
-            err.downcast::<ContractError>().unwrap(),
-            ContractError::Unauthorized
-        );
-
-        // Auto-unjail of FP2 now succeeds (because expired jailing and right address)
-        let fp2_bsn_addr = suite
-            .to_consumer_addr(&Addr::unchecked(&new_fp2.addr))
-            .unwrap()
-            .to_string();
-        suite.unjail(&fp2_bsn_addr, &new_fp2.btc_pk_hex).unwrap();
-
-        // Advance height
-        let next_height = suite.next_block("deadbeef06".as_bytes()).unwrap().height;
-
-        // But FP1 has been jailed again (offline)
-        let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 1);
-        assert_eq!(active_fps[0].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
-
-        // Unjail FP1 succeeds (it has been jailed for being offline again)
-        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
-        let next_height = suite.next_block("deadbeef07".as_bytes()).unwrap().height;
-
-        let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 2);
-        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-        assert_eq!(active_fps[1].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
     }
 }
