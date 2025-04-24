@@ -660,6 +660,13 @@ pub fn compute_active_finality_providers(
                 JAIL.may_load(deps.storage, &fp.btc_pk_hex)
                     .unwrap_or(Some(JAIL_FOREVER))
                     .is_none()
+                // Filter out FPs that don't have timestamped public randomness
+                // Error (shouldn't happen) is being mapped to "no pub rand commit for height"
+                && PUB_RAND_COMMITS
+                    .may_load(
+                        deps.storage,
+                        (&fp.btc_pk_hex, env.block.height),
+                    ).unwrap_or(None).is_some()
             })
             .scan(total_power, |acc, fp| {
                 *acc += fp.power;
