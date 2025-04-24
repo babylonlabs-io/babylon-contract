@@ -122,13 +122,8 @@ pub fn handle_active_delegation(
     active_delegation.validate()?;
 
     // TODO: Ensure all finality providers
-    // - are known to Babylon,
-    // - at least 1 one of them is a Babylon finality provider,
-    // - are not slashed (#82), and
-    // - their registered epochs are finalised, and timestamped (#130)
-    // and then check whether the BTC stake is restaked to FPs of consumers
-    // TODO: ensure the BTC delegation does not restake to too many finality providers
-    // (pending concrete design)
+    // - Are not slashed. (done)
+    // - They have timestamped public randomness (#130)
 
     // Parse staking tx
     let staking_tx: Transaction = deserialize(&active_delegation.staking_tx)
@@ -172,7 +167,8 @@ pub fn handle_active_delegation(
     let fps = fps();
     let mut registered_fp = false;
     for fp_btc_pk_hex in &active_delegation.fp_btc_pk_list {
-        // Skip if finality provider is not registered, as it can belong to another Consumer, or Babylon
+        // Skip if finality provider is not registered, as it can belong to another Consumer,
+        // or Babylon
         if !FPS.has(storage, fp_btc_pk_hex) {
             continue;
         }
