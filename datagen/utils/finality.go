@@ -24,7 +24,7 @@ const (
 
 const (
 	commitPubRandHeight = 100
-	commitPubRandAmount = 10
+	commitPubRandAmount = 1000
 	pubRandIndex        = 1
 )
 
