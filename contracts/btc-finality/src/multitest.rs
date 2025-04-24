@@ -225,14 +225,9 @@ mod finality {
             .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
             .unwrap();
 
-        // Call the begin-block sudo handler, for completeness
+        // Call the begin-block / end-block sudo handler(s), for completeness
         suite
-            .call_begin_block(&add_finality_signature.block_app_hash, initial_height + 1)
-            .unwrap();
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        suite
-            .call_end_block(&add_finality_signature.block_app_hash, initial_height + 1)
+            .next_block(&add_finality_signature.block_app_hash)
             .unwrap();
 
         // Submit a finality signature from that finality provider at height initial_height + 1
@@ -345,21 +340,15 @@ mod slashing {
 
         // Call the begin-block sudo handler at the next height, for completeness
         let next_height = initial_height + 1;
-        suite.app.advance_blocks(next_height - initial_height);
         suite
-            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
-            .unwrap();
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        suite
-            .call_end_block(&add_finality_signature.block_app_hash, next_height)
+            .next_block(&add_finality_signature.block_app_hash)
             .unwrap();
 
         // Submit a finality signature from that finality provider at next height (initial_height + 1)
         let submit_height = next_height;
         // Increase block height
         let next_height = next_height + 1;
-        suite.app.advance_blocks(next_height - submit_height);
+        suite.app().advance_blocks(next_height - submit_height);
         // Call the begin-block sudo handler at the next height, for completeness
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
@@ -426,16 +415,7 @@ mod slashing {
             .unwrap();
 
         // Call the next (final) block begin blocker, to compute the active FP set
-        let final_height = next_height + 1;
-        suite.app.advance_blocks(final_height - next_height);
-        suite
-            .call_begin_block("deadbeef02".as_bytes(), final_height)
-            .unwrap();
-
-        // Call the next (final) block end blocker, to process the finality signatures
-        suite
-            .call_end_block("deadbeef02".as_bytes(), final_height)
-            .unwrap();
+        suite.next_block("deadbeef01".as_bytes()).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
         let indexed_block = suite.get_indexed_block(submit_height);
@@ -508,23 +488,17 @@ mod distribution {
             .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
             .unwrap();
 
-        // Call the begin-block sudo handler at the next height, for completeness
+        // Call the begin-end block sudo handlers
         let next_height = initial_height + 1;
-        suite.app.advance_blocks(next_height - initial_height);
         suite
-            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
-            .unwrap();
-
-        // Call the end-block sudo handler, so that the block is indexed in the store
-        suite
-            .call_end_block(&add_finality_signature.block_app_hash, next_height)
+            .next_block(&add_finality_signature.block_app_hash)
             .unwrap();
 
         // Submit a finality signature from that finality provider at next height (initial_height + 1)
         let submit_height = next_height;
         // Increase block height
         let next_height = next_height + 1;
-        suite.app.advance_blocks(next_height - submit_height);
+        suite.app().advance_blocks(next_height - submit_height);
         // Call the begin-block sudo handler at the next height, for completeness
         suite
             .call_begin_block(&add_finality_signature.block_app_hash, next_height)
@@ -547,20 +521,13 @@ mod distribution {
             .call_end_block(&add_finality_signature.block_app_hash, next_height)
             .unwrap();
 
-        // Call the next block begin blocker, to compute the active FP set
-        // FIXME: The second FP is on the active set, and (in the current impl)
+        // Call the next block blockers, to compute the active FP set
+        // Note: The second FP is on the active set, and (in the current impl)
         // will get rewards without voting.
-        // After offline / inactive detection of FPs (#82) this wouldn't be so bad.
+        // Since offline / inactive detection of FPs is at work, this isn't so bad, as the inactive
+        // FP will be eventually removed from the set.
         let next_height = next_height + 1;
-        suite.app.advance_blocks(1);
-        suite
-            .call_begin_block("deadbeef02".as_bytes(), next_height)
-            .unwrap();
-
-        // Call the next (final) block end blocker, to process the finality signatures
-        suite
-            .call_end_block("deadbeef02".as_bytes(), next_height)
-            .unwrap();
+        suite.next_block("deadbeef01".as_bytes()).unwrap();
 
         // Assert the canonical block has been indexed (and finalised)
         let indexed_block = suite.get_indexed_block(submit_height);
@@ -578,13 +545,10 @@ mod distribution {
         let finality_params = suite.get_btc_finality_params();
         let finality_epoch = finality_params.epoch_length;
         let next_epoch_height = (next_height / finality_epoch + 1) * finality_epoch;
-        suite.app.advance_blocks(next_epoch_height - next_height);
         suite
-            .call_begin_block("deadbeef03".as_bytes(), next_epoch_height)
-            .unwrap();
-        suite
-            .call_end_block("deadbeef03".as_bytes(), next_epoch_height)
-            .unwrap();
+            .app()
+            .advance_blocks(next_epoch_height - next_height - 1);
+        suite.next_block("deadbeef02".as_bytes()).unwrap();
 
         // Assert that rewards have been generated, sent to the staking contract, and
         // distributed among delegators
@@ -634,5 +598,212 @@ mod distribution {
         // And are now in the staker (Consumer's) balance
         let consumer_balance = suite.get_balance(&staker1_addr_consumer, &rewards_denom);
         assert_eq!(consumer_balance.amount.u128(), rewards_1);
+    }
+}
+
+mod jailing {
+    use crate::msg::JailedFinalityProvider;
+    use cosmwasm_std::{coin, Addr, StdError};
+
+    use crate::error::ContractError;
+    use crate::multitest::suite::SuiteBuilder;
+    use test_utils::{
+        create_new_finality_provider, get_add_finality_sig, get_derived_btc_delegation,
+        get_pub_rand_value, get_public_randomness_commitment,
+    };
+
+    #[test]
+    fn offline_fps_are_jailed() {
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+        let pub_rand_one = get_pub_rand_value();
+        // Read equivalent / consistent add finality signature test data
+        let add_finality_signature = get_add_finality_sig();
+        let proof = add_finality_signature.proof.unwrap();
+
+        let initial_height = pub_rand.start_height;
+        let initial_funds = &[coin(10_000_000_000_000, "TOKEN")];
+
+        let mut suite = SuiteBuilder::new()
+            .with_funds(initial_funds)
+            .with_height(initial_height)
+            .with_missed_blocks(700)
+            .build();
+
+        // Register a couple FPs
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp1 = create_new_finality_provider(1);
+        let new_fp2 = create_new_finality_provider(2);
+
+        suite
+            .register_finality_providers(&[new_fp1.clone(), new_fp2.clone()])
+            .unwrap();
+
+        // Get admin for jail and unjail ops
+        let admin = suite.admin().to_owned();
+
+        // Add a couple delegations, so that the finality providers have some power
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+        let mut del2 = get_derived_btc_delegation(2, &[2]);
+        // Reduce its delegation amount so that the other FP can finalize blocks alone
+        del2.total_sat /= 3;
+
+        suite
+            .add_delegations(&[del1.clone(), del2.clone()])
+            .unwrap();
+
+        // Submit public randomness commitment for the FP and the involved heights
+        suite
+            .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
+            .unwrap();
+
+        // Advance height
+        let next_height = suite
+            .next_block(add_finality_signature.block_app_hash.as_ref())
+            .unwrap()
+            .height;
+
+        // Submit a finality signature from that finality provider at next height (initial_height + 1)
+        let submit_height = next_height;
+        // Increase block height
+        let next_height = next_height + 1;
+        suite.app().advance_blocks(1);
+        suite
+            .call_begin_block(&add_finality_signature.block_app_hash, next_height)
+            .unwrap();
+
+        let finality_signature = add_finality_signature.finality_sig.to_vec();
+        suite
+            .submit_finality_signature(
+                &pk_hex,
+                submit_height,
+                &pub_rand_one,
+                &proof,
+                &add_finality_signature.block_app_hash,
+                &finality_signature,
+            )
+            .unwrap();
+
+        suite
+            .call_end_block(&add_finality_signature.block_app_hash, next_height)
+            .unwrap();
+
+        // Call the next block begin blocker, to compute the active FP set
+        // The second FP is on the active set, and (in the current impl)
+        // will get rewards without voting.
+        // After offline detection, it'll be removed from the set.
+        let next_height = suite.next_block("deadbeef01".as_bytes()).unwrap().height;
+
+        // Get the active FP set
+        let active_fps = suite.get_active_finality_providers(next_height);
+        // All unjailed fps are selected
+        assert_eq!(active_fps.len(), 2);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
+        assert_eq!(active_fps[1].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
+
+        // Moving forward so offline detection kicks in
+        suite.advance_seconds(4000).unwrap();
+        // It requires two blocks for the active FP set to be fully updated
+        suite.next_block("deadbeef02".as_bytes()).unwrap();
+        let next_height = suite.next_block("deadbeef03".as_bytes()).unwrap().height;
+
+        // Both FPs are jailed for being offline!
+        let jailed_until = &suite.timestamp().seconds() + 86400 - 5;
+        assert_eq!(
+            &suite.list_jailed_fps(None, None),
+            &[
+                JailedFinalityProvider {
+                    btc_pk_hex: new_fp1.btc_pk_hex.clone(),
+                    jailed_until,
+                },
+                JailedFinalityProvider {
+                    btc_pk_hex: new_fp2.btc_pk_hex.clone(),
+                    jailed_until,
+                },
+            ],
+        );
+
+        // Verify removed from the active set
+        let active_fps = suite.get_active_finality_providers(next_height);
+        assert_eq!(active_fps.len(), 0);
+
+        // Unjail FP1 succeeds
+        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
+
+        // Auto-unjail of FP2 fails (because not yet expired jailing)
+        let err = suite
+            .unjail(&new_fp2.addr, &new_fp2.btc_pk_hex)
+            .unwrap_err();
+        assert_eq!(
+            err.downcast::<ContractError>().unwrap(),
+            ContractError::JailPeriodNotPassed(new_fp2.btc_pk_hex.clone()),
+        );
+
+        // Advance height
+        let next_height = suite.next_block("deadbeef04".as_bytes()).unwrap().height;
+
+        // FP1 is active again.
+        // It will only be jailed for being offline if it misses a number of `missed_blocks_window`
+        // blocks again
+        let active_fps = suite.get_active_finality_providers(next_height);
+        assert_eq!(active_fps.len(), 1);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
+
+        // Moving forward so jailing period expires
+        suite.advance_seconds(86385).unwrap();
+        let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
+
+        // But FP2 is still not selected, as it has to be unjailed
+        let active_fps = suite.get_active_finality_providers(next_height);
+        assert_eq!(active_fps.len(), 1);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
+
+        // Auto-unjail of FP2 still fails (now because of wrong sender address)
+        let err = suite
+            .unjail(&new_fp2.addr, &new_fp2.btc_pk_hex)
+            .unwrap_err();
+        assert_eq!(
+            err.downcast::<ContractError>().unwrap(),
+            ContractError::Std(StdError::generic_err("Wrong bech32 prefix"))
+        );
+
+        // Third-party (non admin) unjail of FP2 also fails
+        let fp1_bsn_addr = suite
+            .to_consumer_addr(&Addr::unchecked(&new_fp1.addr))
+            .unwrap()
+            .to_string();
+        let err = suite
+            .unjail(&fp1_bsn_addr, &new_fp2.btc_pk_hex)
+            .unwrap_err();
+        assert_eq!(
+            err.downcast::<ContractError>().unwrap(),
+            ContractError::Unauthorized
+        );
+
+        // Auto-unjail of FP2 now succeeds (because expired jailing and right address)
+        let fp2_bsn_addr = suite
+            .to_consumer_addr(&Addr::unchecked(&new_fp2.addr))
+            .unwrap()
+            .to_string();
+        suite.unjail(&fp2_bsn_addr, &new_fp2.btc_pk_hex).unwrap();
+
+        // Advance height
+        let next_height = suite.next_block("deadbeef06".as_bytes()).unwrap().height;
+
+        // But FP1 has been jailed again (offline)
+        let active_fps = suite.get_active_finality_providers(next_height);
+        assert_eq!(active_fps.len(), 1);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
+
+        // Unjail FP1 succeeds (it has been jailed for being offline again)
+        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
+        let next_height = suite.next_block("deadbeef07".as_bytes()).unwrap().height;
+
+        let active_fps = suite.get_active_finality_providers(next_height);
+        assert_eq!(active_fps.len(), 2);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
+        assert_eq!(active_fps[1].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
     }
 }

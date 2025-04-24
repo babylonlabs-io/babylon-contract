@@ -49,6 +49,13 @@ pub enum ExecuteMsg {
         block_hash: Binary,
         signature: Binary,
     },
+    /// Unjails finality provider.
+    /// Admin can unjail anyone anytime, others can unjail only themselves, and only if the jail
+    /// period passed.
+    Unjail {
+        /// FP to unjail
+        fp_pubkey_hex: String,
+    },
 }
 
 /// `IndexedBlock` is the necessary metadata and finalization status of a block

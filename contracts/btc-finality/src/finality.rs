@@ -1,8 +1,9 @@
 use crate::contract::encode_smart_query;
 use crate::error::ContractError;
-use crate::state::config::{Config, CONFIG, PARAMS};
+use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
 use crate::state::finality::{
-    BLOCKS, EVIDENCES, FP_SET, NEXT_HEIGHT, REWARDS, SIGNATURES, TOTAL_REWARDS,
+    BLOCKS, EVIDENCES, FP_BLOCK_SIGNER, FP_SET, FP_START_HEIGHT, JAIL, NEXT_HEIGHT, REWARDS,
+    SIGNATURES, TOTAL_REWARDS,
 };
 use crate::state::public_randomness::{
     get_last_pub_rand_commit, get_timestamped_pub_rand_commit_for_height, PUB_RAND_COMMITS,
@@ -10,13 +11,14 @@ use crate::state::public_randomness::{
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
+use babylon_apis::to_canonical_addr;
 use babylon_bindings::BabylonMsg;
 use babylon_merkle::Proof;
 use btc_staking::msg::{FinalityProviderInfo, FinalityProvidersByPowerResponse};
 use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
-    to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, QuerierWrapper, Response, StdResult,
-    Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
+    Response, StdResult, Storage, Uint128, WasmMsg,
 };
 use k256::ecdsa::signature::Verifier;
 use k256::schnorr::{Signature, VerifyingKey};
@@ -271,6 +273,9 @@ pub fn handle_finality_signature(
     // This signature is good, save the vote to the store
     SIGNATURES.save(deps.storage, (height, fp_btc_pk_hex), &signature.to_vec())?;
 
+    // Store the block height this finality provider has signed
+    FP_BLOCK_SIGNER.save(deps.storage, fp_btc_pk_hex, &height)?;
+
     // If this finality provider has signed the canonical block before, slash it via extracting its
     // secret key, and emit an event
     if let Some(mut evidence) = EVIDENCES.may_load(deps.storage, (fp_btc_pk_hex, height))? {
@@ -289,6 +294,65 @@ pub fn handle_finality_signature(
     }
 
     Ok(res)
+}
+
+pub const JAIL_FOREVER: u64 = 0;
+
+pub fn handle_unjail(
+    deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    fp_btc_pk_hex: &str,
+) -> Result<Response<BabylonMsg>, ContractError> {
+    // Admin can unjail almost anyone
+    let is_admin = ADMIN.is_admin(deps.as_ref(), &info.sender)?;
+
+    // Others can unjail only themselves
+    // First, ensure the finality provider is jailed
+    let jail_until = JAIL.load(deps.storage, fp_btc_pk_hex)?;
+
+    // Ensure the jail is not forever
+    if jail_until == JAIL_FOREVER {
+        return Err(ContractError::JailedForever {});
+    }
+
+    // Ensure the jail period has passed (except for admin)
+    if !is_admin && env.block.time.seconds() < jail_until {
+        return Err(ContractError::JailPeriodNotPassed(
+            fp_btc_pk_hex.to_string(),
+        ));
+    }
+
+    // Get the finality provider info to check if the sender is the finality provider's
+    // operator address in the BSN
+    let staking_addr = CONFIG.load(deps.storage)?.staking;
+    let fp: FinalityProvider = deps
+        .querier
+        .query_wasm_smart(
+            staking_addr.clone(),
+            &btc_staking::msg::QueryMsg::FinalityProvider {
+                btc_pk_hex: fp_btc_pk_hex.to_string(),
+            },
+        )
+        .map_err(|_| ContractError::FinalityProviderNotFound(fp_btc_pk_hex.to_string()))?;
+
+    // Compute canonical sender and FP operator addresses
+    let sender_canonical_addr = deps.api.addr_canonicalize(info.sender.as_ref())?;
+    let fp_canonical_addr = to_canonical_addr(&fp.addr, "bbn")?;
+    if !is_admin && sender_canonical_addr != fp_canonical_addr {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Unjail the finality provider
+    JAIL.remove(deps.storage, fp_btc_pk_hex);
+    // Remove the start height, so that it can be reset
+    FP_START_HEIGHT.remove(deps.storage, fp_btc_pk_hex);
+    // Remove the last block signing height, so that it can be reset
+    FP_BLOCK_SIGNER.remove(deps.storage, fp_btc_pk_hex);
+
+    Ok(Response::new()
+        .add_attribute("action", "unjail")
+        .add_attribute("fp", fp_btc_pk_hex))
 }
 
 /// `slash_finality_provider` slashes a finality provider with the given evidence including setting
@@ -572,7 +636,7 @@ const QUERY_LIMIT: Option<u32> = Some(30);
 /// power of top finality providers, and records them in the contract state
 pub fn compute_active_finality_providers(
     deps: &mut DepsMut,
-    height: u64,
+    env: &Env,
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
@@ -588,13 +652,21 @@ pub fn compute_active_finality_providers(
             .into_iter()
             .filter(|fp| {
                 // Filter out FPs with no voting power
-                fp.power > 0
+                if fp.power == 0 {
+                    return false;
+                }
+                // Filter out FPs that are jailed.
+                // Error (shouldn't happen) is being mapped to "jailed forever"
+                JAIL.may_load(deps.storage, &fp.btc_pk_hex)
+                    .unwrap_or(Some(JAIL_FOREVER))
+                    .is_none()
             })
             .scan(total_power, |acc, fp| {
                 *acc += fp.power;
                 Some((fp, *acc))
             })
             .unzip();
+
         finality_providers.extend_from_slice(&filtered);
         total_power = running_total.last().copied().unwrap_or_default();
 
@@ -602,11 +674,53 @@ pub fn compute_active_finality_providers(
         batch = list_fps_by_power(&cfg.staking, &deps.querier, last, QUERY_LIMIT)?;
     }
 
-    // TODO: Online FPs verification (#82)
-    // TODO: Filter out slashed / offline / jailed FPs (#82)
+    // Online FPs verification
+    // Store starting heights of fps entering the active set
+    let old_fps: HashSet<String> = FP_SET
+        .may_load(deps.storage, env.block.height - 1)?
+        .unwrap_or(vec![])
+        .iter()
+        .map(|fp| fp.btc_pk_hex.clone())
+        .collect();
+    let cur_fps: HashSet<String> = finality_providers
+        .iter()
+        .map(|fp| fp.btc_pk_hex.clone())
+        .collect();
+    let new_fps = cur_fps.difference(&old_fps);
+    for fp in new_fps {
+        // Active since the next block. Only save if not already set
+        FP_START_HEIGHT.update(deps.storage, fp, |h| match h {
+            Some(h) => Ok::<_, ContractError>(h),
+            None => Ok(env.block.height + 1),
+        })?;
+    }
+
+    // Check for inactive finality providers, and jail them
+    let params = PARAMS.load(deps.storage)?;
+    finality_providers.iter().try_for_each(|fp| {
+        let mut last_sign_height = FP_BLOCK_SIGNER.may_load(deps.storage, &fp.btc_pk_hex)?;
+        if last_sign_height.is_none() {
+            // Not a block signer yet, check their start height instead
+            last_sign_height = FP_START_HEIGHT.may_load(deps.storage, &fp.btc_pk_hex)?;
+        }
+        match last_sign_height {
+            Some(h) if h > env.block.height.saturating_sub(params.missed_blocks_window) => {
+                Ok::<_, ContractError>(())
+            }
+            _ => {
+                // FP is inactive for at least missed_blocks_window, jail! (if not already jailed)
+                JAIL.update(deps.storage, &fp.btc_pk_hex, |jailed| match jailed {
+                    Some(jail_time) => Ok::<_, ContractError>(jail_time),
+                    None => Ok(env.block.time.seconds() + params.jail_duration),
+                })?;
+                Ok(())
+            }
+        }
+    })?;
+
     // Save the new set of active finality providers
     // TODO: Purge old (height - finality depth) FP_SET entries to avoid bloating the storage (#124)
-    FP_SET.save(deps.storage, height, &finality_providers)?;
+    FP_SET.save(deps.storage, env.block.height, &finality_providers)?;
 
     Ok(())
 }

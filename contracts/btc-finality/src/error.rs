@@ -102,4 +102,8 @@ pub enum ContractError {
     InvalidRewardsRecipient {},
     #[error("{0}")]
     PubRandCommitNotBTCTimestamped(String),
+    #[error("Jail for {0} did not yet expire")]
+    JailPeriodNotPassed(String),
+    #[error("Cannot unjail FP who's been jailed forever")]
+    JailedForever {},
 }

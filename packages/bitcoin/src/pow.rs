@@ -1,5 +1,3 @@
-use bitcoin::Work;
-
 use crate::BlockHeader;
 
 // RetargetAdjustmentFactor in https://github.com/btcsuite/btcd/blob/master/chaincfg/params.go

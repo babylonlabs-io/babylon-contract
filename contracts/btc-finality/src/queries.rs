@@ -5,10 +5,13 @@ use cw_storage_plus::Bound;
 use babylon_apis::finality_api::IndexedBlock;
 
 use crate::error::ContractError;
-use crate::msg::{BlocksResponse, EvidenceResponse, FinalitySignatureResponse};
+use crate::msg::{
+    ActiveFinalityProvidersResponse, BlocksResponse, EvidenceResponse, FinalitySignatureResponse,
+    JailedFinalityProvider, JailedFinalityProvidersResponse,
+};
 use crate::state::config::{Config, Params};
 use crate::state::config::{CONFIG, PARAMS};
-use crate::state::finality::{BLOCKS, EVIDENCES, SIGNATURES};
+use crate::state::finality::{BLOCKS, EVIDENCES, FP_SET, JAIL, SIGNATURES};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
@@ -76,4 +79,37 @@ pub fn blocks(
 pub fn evidence(deps: Deps, btc_pk_hex: String, height: u64) -> StdResult<EvidenceResponse> {
     let evidence = EVIDENCES.may_load(deps.storage, (&btc_pk_hex, height))?;
     Ok(EvidenceResponse { evidence })
+}
+
+pub fn jailed_finality_providers(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Result<JailedFinalityProvidersResponse, ContractError> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start_after = start_after.as_ref().map(|s| Bound::exclusive(&**s));
+    let jailed_finality_providers = JAIL
+        .range(deps.storage, start_after, None, Ascending)
+        .take(limit)
+        .map(|item| {
+            item.map(|(k, v)| JailedFinalityProvider {
+                btc_pk_hex: k,
+                jailed_until: v,
+            })
+        })
+        .collect::<Result<Vec<JailedFinalityProvider>, _>>()?;
+    Ok(JailedFinalityProvidersResponse {
+        jailed_finality_providers,
+    })
+}
+
+pub fn active_finality_providers(
+    deps: Deps,
+    height: u64,
+) -> Result<ActiveFinalityProvidersResponse, ContractError> {
+    let active_fps = FP_SET.may_load(deps.storage, height)?.unwrap_or_default();
+
+    Ok(ActiveFinalityProvidersResponse {
+        active_finality_providers: active_fps,
+    })
 }

@@ -5,9 +5,9 @@ use {
     cw_controllers::AdminResponse,
 };
 
-use babylon_apis::finality_api::{Evidence, IndexedBlock};
-
 use crate::state::config::Params;
+use babylon_apis::finality_api::{Evidence, IndexedBlock};
+use btc_staking::msg::FinalityProviderInfo;
 
 #[cw_serde]
 #[derive(Default)]
@@ -86,6 +86,16 @@ pub enum QueryMsg {
     /// `Evidence` returns the evidence for a given FP and block height
     #[returns(EvidenceResponse)]
     Evidence { btc_pk_hex: String, height: u64 },
+
+    /// Returns the list of jailed finality providers
+    #[returns(JailedFinalityProvidersResponse)]
+    JailedFinalityProviders {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Returns the set of active finality providers at a given height
+    #[returns(ActiveFinalityProvidersResponse)]
+    ActiveFinalityProviders { height: u64 },
 }
 
 #[cw_serde]
@@ -101,4 +111,21 @@ pub struct BlocksResponse {
 #[cw_serde]
 pub struct EvidenceResponse {
     pub evidence: Option<Evidence>,
+}
+
+#[cw_serde]
+pub struct JailedFinalityProvidersResponse {
+    pub jailed_finality_providers: Vec<JailedFinalityProvider>,
+}
+
+#[cw_serde]
+pub struct JailedFinalityProvider {
+    pub btc_pk_hex: String,
+    /// Here zero means 'forever'
+    pub jailed_until: u64,
+}
+
+#[cw_serde]
+pub struct ActiveFinalityProvidersResponse {
+    pub active_finality_providers: Vec<FinalityProviderInfo>,
 }

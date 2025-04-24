@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::finality::{
     compute_active_finality_providers, distribute_rewards_fps, handle_finality_signature,
-    handle_public_randomness_commit,
+    handle_public_randomness_commit, handle_unjail,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::config::{Config, ADMIN, CONFIG, PARAMS};
@@ -133,6 +133,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::Evidence { btc_pk_hex, height } => Ok(to_json_binary(&queries::evidence(
             deps, btc_pk_hex, height,
         )?)?),
+        QueryMsg::JailedFinalityProviders { start_after, limit } => Ok(to_json_binary(
+            &queries::jailed_finality_providers(deps, start_after, limit)?,
+        )?),
+        QueryMsg::ActiveFinalityProviders { height } => Ok(to_json_binary(
+            &queries::active_finality_providers(deps, height)?,
+        )?),
     }
 }
 
@@ -187,6 +193,7 @@ pub fn execute(
             &commitment,
             &signature,
         ),
+        ExecuteMsg::Unjail { fp_pubkey_hex } => handle_unjail(deps, &env, &info, &fp_pubkey_hex),
     }
 }
 
@@ -231,7 +238,7 @@ fn handle_begin_block(deps: &mut DepsMut, env: Env) -> Result<Response<BabylonMs
 
     // Compute active finality provider set
     let max_active_fps = PARAMS.load(deps.storage)?.max_active_finality_providers as usize;
-    compute_active_finality_providers(deps, env.block.height, max_active_fps)?;
+    compute_active_finality_providers(deps, &env, max_active_fps)?;
 
     // TODO: Add events (#124)
     Ok(Response::new())

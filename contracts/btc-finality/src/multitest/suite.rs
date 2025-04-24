@@ -2,9 +2,9 @@ use anyhow::Result as AnyResult;
 use derivative::Derivative;
 use hex::ToHex;
 
-use cosmwasm_std::{to_json_binary, Addr, Coin};
-
-use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
+use cosmwasm_std::testing::mock_dependencies;
+use cosmwasm_std::{to_json_binary, Addr, BlockInfo, Coin, Timestamp};
+use cw_multi_test::{next_block, AppResponse, Contract, ContractWrapper, Executor};
 
 use babylon_apis::btc_staking_api::{ActiveBtcDelegation, FinalityProvider, NewFinalityProvider};
 use babylon_apis::error::StakingApiError;
@@ -18,7 +18,11 @@ use btc_staking::msg::{
     ActivatedHeightResponse, AllPendingRewardsResponse, FinalityProviderInfo, PendingRewards,
 };
 
-use crate::msg::{EvidenceResponse, FinalitySignatureResponse};
+use crate::msg::QueryMsg::JailedFinalityProviders;
+use crate::msg::{
+    ActiveFinalityProvidersResponse, EvidenceResponse, FinalitySignatureResponse, InstantiateMsg,
+    JailedFinalityProvider, JailedFinalityProvidersResponse,
+};
 use crate::multitest::{
     BTC_FINALITY_CONTRACT_ADDR, BTC_LIGHT_CLIENT_CONTRACT_ADDR, BTC_STAKING_CONTRACT_ADDR,
     USER_ADDR,
@@ -68,6 +72,7 @@ fn contract_babylon() -> Box<dyn Contract<BabylonMsg>> {
 pub struct SuiteBuilder {
     height: Option<u64>,
     init_funds: Vec<Coin>,
+    missed_blocks_window: Option<u64>,
 }
 
 impl SuiteBuilder {
@@ -81,9 +86,14 @@ impl SuiteBuilder {
         self
     }
 
+    pub fn with_missed_blocks(mut self, missed_blocks: u64) -> Self {
+        self.missed_blocks_window = Some(missed_blocks);
+        self
+    }
+
     #[track_caller]
     pub fn build(self) -> Suite {
-        let owner = Addr::unchecked("owner");
+        let owner = mock_dependencies().api.addr_make("owner");
 
         let mut app = BabylonApp::new_at_height(owner.as_str(), self.height.unwrap_or(1));
 
@@ -106,6 +116,7 @@ impl SuiteBuilder {
             app.store_code_with_creator(owner.clone(), contract_btc_finality());
         let contract_code_id = app.store_code_with_creator(owner.clone(), contract_babylon());
         let staking_params = btc_staking::test_utils::staking_params();
+        let finality_params = crate::test_utils::finality_params(self.missed_blocks_window);
         let contract = app
             .instantiate_contract(
                 contract_code_id,
@@ -127,7 +138,13 @@ impl SuiteBuilder {
                         .unwrap(),
                     ),
                     btc_finality_code_id: Some(btc_finality_code_id),
-                    btc_finality_msg: None,
+                    btc_finality_msg: Some(
+                        to_json_binary(&InstantiateMsg {
+                            params: Some(finality_params),
+                            admin: Some(owner.to_string()),
+                        })
+                        .unwrap(),
+                    ),
                     admin: Some(owner.to_string()),
                     consumer_name: Some("TestConsumer".to_string()),
                     consumer_description: Some("Test Consumer Description".to_string()),
@@ -155,7 +172,7 @@ impl SuiteBuilder {
 #[derivative(Debug)]
 pub struct Suite {
     #[derivative(Debug = "ignore")]
-    pub app: BabylonApp,
+    app: BabylonApp,
     /// The code id of the babylon contract
     code_id: u64,
     /// Babylon contract address
@@ -191,6 +208,37 @@ impl Suite {
     #[allow(dead_code)]
     pub fn admin(&self) -> &str {
         self.owner.as_str()
+    }
+
+    pub fn app(&mut self) -> &mut BabylonApp {
+        &mut self.app
+    }
+
+    pub fn next_block(&mut self, app_hash: &[u8]) -> AnyResult<BlockInfo> {
+        self.app.update_block(next_block);
+        let block = self.app().block_info();
+
+        self.call_begin_block(app_hash, block.height)?;
+        // Call the end-block sudo handler, so that the block is indexed in the store
+        self.call_end_block(app_hash, block.height)?;
+
+        Ok(block)
+    }
+
+    pub fn advance_seconds(&mut self, seconds: u64) -> AnyResult<()> {
+        self.app.advance_seconds(seconds);
+        Ok(())
+    }
+
+    /// Timestamp of current block
+    pub fn timestamp(&self) -> Timestamp {
+        self.app.block_info().time
+    }
+
+    /// Height of current block
+    #[allow(dead_code)]
+    pub fn height(&self) -> u64 {
+        self.app.block_info().height
     }
 
     #[track_caller]
@@ -480,5 +528,44 @@ impl Suite {
             },
             &[],
         )
+    }
+
+    #[track_caller]
+    pub fn unjail(&mut self, sender: &str, fp_pubkey_hex: &str) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(sender),
+            self.finality.clone(),
+            &finality_api::ExecuteMsg::Unjail {
+                fp_pubkey_hex: fp_pubkey_hex.to_owned(),
+            },
+            &[],
+        )
+    }
+
+    #[track_caller]
+    pub fn list_jailed_fps(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<JailedFinalityProvider> {
+        self.app
+            .wrap()
+            .query_wasm_smart::<JailedFinalityProvidersResponse>(
+                self.finality.clone(),
+                &JailedFinalityProviders { start_after, limit },
+            )
+            .unwrap()
+            .jailed_finality_providers
+    }
+
+    pub fn get_active_finality_providers(&self, height: u64) -> Vec<FinalityProviderInfo> {
+        self.app
+            .wrap()
+            .query_wasm_smart::<ActiveFinalityProvidersResponse>(
+                self.finality.clone(),
+                &crate::msg::QueryMsg::ActiveFinalityProviders { height },
+            )
+            .unwrap()
+            .active_finality_providers
     }
 }
