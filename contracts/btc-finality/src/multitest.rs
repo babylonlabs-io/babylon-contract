@@ -522,10 +522,8 @@ mod distribution {
             .unwrap();
 
         // Call the next block blockers, to compute the active FP set
-        // Note: The second FP is on the active set, and (in the current impl)
-        // will get rewards without voting.
-        // Since offline / inactive detection of FPs is at work, this isn't so bad, as the inactive
-        // FP will be eventually removed from the set.
+        // Note: The second FP has voting power, but since it hasn't submitted
+        // public randomness, it will not be in the active set
         let next_height = next_height + 1;
         suite.next_block("deadbeef01".as_bytes()).unwrap();
 
@@ -566,14 +564,14 @@ mod distribution {
         assert_eq!(pending_rewards_2.len(), 1);
         assert_eq!(pending_rewards_2[0].fp_pubkey_hex, new_fp2.btc_pk_hex);
         assert_eq!(pending_rewards_2[0].rewards.denom, rewards_denom);
-        assert!(pending_rewards_2[0].rewards.amount.u128() > 0);
+        // No rewards since the FP hasn't submitted public randomness
+        assert!(pending_rewards_2[0].rewards.amount.is_zero());
 
-        // Confirm that the distribution makes sense
+        // Confirm that the rewards make sense
         let rewards_1 = pending_rewards_1[0].rewards.amount.u128();
-        let rewards_2 = pending_rewards_2[0].rewards.amount.u128();
         assert_eq!(
-            rewards_1 / rewards_2,
-            del1.total_sat as u128 / del2.total_sat as u128
+            rewards_1,
+            66590
         );
 
         // Withdrawing rewards
