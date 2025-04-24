@@ -70,6 +70,30 @@ pub fn get_timestamped_pub_rand_commit_for_height(
     Ok(pr_commit)
 }
 
+// `has_timestamped_pub_rand_commit_for_height` checks that the FP has timestamped public
+// randomness commitment for the given height and (optionally given) last finalized height.
+// If the last finalized height is not given, it will be queried from the babylon contract.
+pub fn has_timestamped_pub_rand_commit_for_height(
+    deps: &Deps,
+    fp_btc_pk_hex: &str,
+    height: u64,
+    last_finalized_height: Option<u64>,
+) -> Result<bool, ContractError> {
+    let pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
+
+    // Ensure the finality provider's corresponding randomness commitment is already finalised by
+    // BTC timestamping
+    let finalized_height = last_finalized_height.unwrap_or(get_last_finalized_height(deps)?);
+    if finalized_height == 0 {
+        return Ok(false);
+    }
+    if finalized_height < pr_commit.height {
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
 pub fn get_first_pub_rand_commit(
     storage: &dyn Storage,
     fp_btc_pk_hex: &str,

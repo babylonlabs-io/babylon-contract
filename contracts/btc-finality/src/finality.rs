@@ -6,8 +6,9 @@ use crate::state::finality::{
     SIGNATURES, TOTAL_REWARDS,
 };
 use crate::state::public_randomness::{
-    get_last_pub_rand_commit, get_timestamped_pub_rand_commit_for_height, PUB_RAND_COMMITS,
-    PUB_RAND_VALUES,
+    get_last_finalized_height, get_last_pub_rand_commit,
+    get_timestamped_pub_rand_commit_for_height, has_timestamped_pub_rand_commit_for_height,
+    PUB_RAND_COMMITS, PUB_RAND_VALUES,
 };
 use babylon_apis::btc_staking_api::FinalityProvider;
 use babylon_apis::finality_api::{Evidence, IndexedBlock, PubRandCommit};
@@ -640,6 +641,9 @@ pub fn compute_active_finality_providers(
     max_active_fps: usize,
 ) -> Result<(), ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
+    // Get last finalized height (for timestamped public randomness checks)
+    let last_finalized_height = get_last_finalized_height(&deps.as_ref())?;
+
     // Get all finality providers from the staking contract, filtered
     let mut batch = list_fps_by_power(&cfg.staking, &deps.querier, None, QUERY_LIMIT)?;
 
@@ -662,11 +666,8 @@ pub fn compute_active_finality_providers(
                     .is_none()
                 // Filter out FPs that don't have timestamped public randomness
                 // Error (shouldn't happen) is being mapped to "no pub rand commit for height"
-                && PUB_RAND_COMMITS
-                    .may_load(
-                        deps.storage,
-                        (&fp.btc_pk_hex, env.block.height),
-                    ).unwrap_or(None).is_some()
+                && has_timestamped_pub_rand_commit_for_height(&deps.as_ref(), &fp.btc_pk_hex, env.block.height, Some(last_finalized_height))
+                    .unwrap_or(false)
             })
             .scan(total_power, |acc, fp| {
                 *acc += fp.power;
