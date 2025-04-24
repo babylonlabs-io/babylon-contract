@@ -26,18 +26,22 @@
       "additionalProperties": false
     },
     {
-      "description": "Set the BTC finality addr. Only admin or the babylon contract can set this",
+      "description": "Set the BTC light client addr and BTC finality addr. Only admin or the babylon contract can set this",
       "type": "object",
       "required": [
-        "update_finality"
+        "update_contract_addresses"
       ],
       "properties": {
-        "update_finality": {
+        "update_contract_addresses": {
           "type": "object",
           "required": [
+            "btc_light_client",
             "finality"
           ],
           "properties": {
+            "btc_light_client": {
+              "type": "string"
+            },
             "finality": {
               "type": "string"
             }

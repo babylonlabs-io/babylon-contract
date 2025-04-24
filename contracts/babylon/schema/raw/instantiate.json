@@ -46,6 +46,26 @@
         }
       ]
     },
+    "btc_light_client_code_id": {
+      "description": "If set, this will instantiate a BTC light client contract",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "btc_light_client_msg": {
+      "description": "If set, this will define the instantiation message for the BTC light client contract. This message is opaque to the Babylon contract, and depends on the specific light client being instantiated",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Binary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "btc_staking_code_id": {
       "description": "If set, this will instantiate a BTC staking contract for BTC re-staking",
       "type": [
