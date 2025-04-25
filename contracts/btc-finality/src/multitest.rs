@@ -284,6 +284,61 @@ mod finality {
             }
         );
     }
+
+    // Timestamped public randomness is needed for active set participation
+    #[test]
+    fn finality_round_requires_timestamped_pubrand() {
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+
+        let initial_height = pub_rand.start_height - 1; // so that the pubrand timestamp is in range after one block
+        let initial_funds = &[coin(1_000_000_000_000, "TOKEN")];
+
+        let mut suite = SuiteBuilder::new()
+            .with_funds(initial_funds)
+            .with_height(initial_height)
+            .build();
+
+        // Register one FP
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
+
+        suite
+            .register_finality_providers(&[new_fp.clone()])
+            .unwrap();
+
+        // Add a delegation, so that the finality provider has some power
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+
+        suite.add_delegations(&[del1.clone()]).unwrap();
+
+        // Check that the finality provider power has been updated
+        let fp_info = suite.get_finality_provider_info(&new_fp.btc_pk_hex, None);
+        assert_eq!(fp_info.power, del1.total_sat);
+
+        // Call the begin-block / end-block sudo handler(s)
+        let height = suite.next_block("deadbeef01".as_bytes()).unwrap().height;
+
+        // Assert the finality provider is not in the active set
+        let active_fps = suite.get_active_finality_providers(height);
+        assert_eq!(active_fps.len(), 0);
+
+        // Now commit the public randomness for it
+        suite
+            .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
+            .unwrap();
+
+        // Call the begin-block / end-block sudo handler(s)
+        let height = suite.next_block("deadbeef02".as_bytes()).unwrap().height;
+
+        // Assert the finality provider is now in the active set
+        let active_fps = suite.get_active_finality_providers(height);
+        assert_eq!(active_fps.len(), 1);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp.btc_pk_hex.clone(),);
+    }
 }
 
 mod slashing {
