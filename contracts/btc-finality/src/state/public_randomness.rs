@@ -78,20 +78,18 @@ pub fn has_timestamped_pub_rand_commit_for_height(
     fp_btc_pk_hex: &str,
     height: u64,
     last_finalized_height: Option<u64>,
-) -> Result<bool, ContractError> {
-    let pr_commit = get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height)?;
+) -> bool {
+    let pr_commit = match get_pub_rand_commit_for_height(deps.storage, fp_btc_pk_hex, height) {
+        Ok(pr_commit) => pr_commit,
+        Err(_) => return false,
+    };
 
     // Ensure the finality provider's corresponding randomness commitment is already finalised by
     // BTC timestamping
-    let finalized_height = last_finalized_height.unwrap_or(get_last_finalized_height(deps)?);
-    if finalized_height == 0 {
-        return Ok(false);
-    }
-    if finalized_height < pr_commit.height {
-        return Ok(false);
-    }
+    let finalized_height =
+        last_finalized_height.unwrap_or(get_last_finalized_height(deps).unwrap_or(0));
 
-    Ok(true)
+    finalized_height >= pr_commit.height
 }
 
 pub fn get_first_pub_rand_commit(

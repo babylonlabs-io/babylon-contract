@@ -665,9 +665,7 @@ pub fn compute_active_finality_providers(
                     .unwrap_or(Some(JAIL_FOREVER))
                     .is_none()
                 // Filter out FPs that don't have timestamped public randomness
-                // Error (shouldn't happen) is being mapped to "no pub rand commit for height"
                 && has_timestamped_pub_rand_commit_for_height(&deps.as_ref(), &fp.btc_pk_hex, env.block.height, Some(last_finalized_height))
-                    .unwrap_or(false)
             })
             .scan(total_power, |acc, fp| {
                 *acc += fp.power;
