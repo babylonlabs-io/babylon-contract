@@ -5,11 +5,15 @@
   "type": "object",
   "required": [
     "babylon",
+    "btc_light_client",
     "denom",
     "finality"
   ],
   "properties": {
     "babylon": {
+      "$ref": "#/definitions/Addr"
+    },
+    "btc_light_client": {
       "$ref": "#/definitions/Addr"
     },
     "denom": {

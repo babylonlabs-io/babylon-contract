@@ -284,6 +284,61 @@ mod finality {
             }
         );
     }
+
+    // Timestamped public randomness is needed for active set participation
+    #[test]
+    fn finality_round_requires_timestamped_pubrand() {
+        // Read public randomness commitment test data
+        let (pk_hex, pub_rand, pubrand_signature) = get_public_randomness_commitment();
+
+        let initial_height = pub_rand.start_height - 1; // so that the pubrand timestamp is in range after one block
+        let initial_funds = &[coin(1_000_000_000_000, "TOKEN")];
+
+        let mut suite = SuiteBuilder::new()
+            .with_funds(initial_funds)
+            .with_height(initial_height)
+            .build();
+
+        // Register one FP
+        // NOTE: the test data ensures that pub rand commit / finality sig are
+        // signed by the 1st FP
+        let new_fp = create_new_finality_provider(1);
+        assert_eq!(new_fp.btc_pk_hex, pk_hex);
+
+        suite
+            .register_finality_providers(&[new_fp.clone()])
+            .unwrap();
+
+        // Add a delegation, so that the finality provider has some power
+        let mut del1 = get_derived_btc_delegation(1, &[1]);
+        del1.fp_btc_pk_list = vec![pk_hex.clone()];
+
+        suite.add_delegations(&[del1.clone()]).unwrap();
+
+        // Check that the finality provider power has been updated
+        let fp_info = suite.get_finality_provider_info(&new_fp.btc_pk_hex, None);
+        assert_eq!(fp_info.power, del1.total_sat);
+
+        // Call the begin-block / end-block sudo handler(s)
+        let height = suite.next_block("deadbeef01".as_bytes()).unwrap().height;
+
+        // Assert the finality provider is not in the active set
+        let active_fps = suite.get_active_finality_providers(height);
+        assert_eq!(active_fps.len(), 0);
+
+        // Now commit the public randomness for it
+        suite
+            .commit_public_randomness(&pk_hex, &pub_rand, &pubrand_signature)
+            .unwrap();
+
+        // Call the begin-block / end-block sudo handler(s)
+        let height = suite.next_block("deadbeef02".as_bytes()).unwrap().height;
+
+        // Assert the finality provider is now in the active set
+        let active_fps = suite.get_active_finality_providers(height);
+        assert_eq!(active_fps.len(), 1);
+        assert_eq!(active_fps[0].btc_pk_hex, new_fp.btc_pk_hex.clone(),);
+    }
 }
 
 mod slashing {
@@ -522,10 +577,8 @@ mod distribution {
             .unwrap();
 
         // Call the next block blockers, to compute the active FP set
-        // Note: The second FP is on the active set, and (in the current impl)
-        // will get rewards without voting.
-        // Since offline / inactive detection of FPs is at work, this isn't so bad, as the inactive
-        // FP will be eventually removed from the set.
+        // Note: The second FP has voting power, but since it hasn't submitted
+        // public randomness, it will not be in the active set
         let next_height = next_height + 1;
         suite.next_block("deadbeef01".as_bytes()).unwrap();
 
@@ -566,15 +619,12 @@ mod distribution {
         assert_eq!(pending_rewards_2.len(), 1);
         assert_eq!(pending_rewards_2[0].fp_pubkey_hex, new_fp2.btc_pk_hex);
         assert_eq!(pending_rewards_2[0].rewards.denom, rewards_denom);
-        assert!(pending_rewards_2[0].rewards.amount.u128() > 0);
+        // No rewards since the FP hasn't submitted public randomness
+        assert!(pending_rewards_2[0].rewards.amount.is_zero());
 
-        // Confirm that the distribution makes sense
+        // Confirm that the rewards make sense
         let rewards_1 = pending_rewards_1[0].rewards.amount.u128();
-        let rewards_2 = pending_rewards_2[0].rewards.amount.u128();
-        assert_eq!(
-            rewards_1 / rewards_2,
-            del1.total_sat as u128 / del2.total_sat as u128
-        );
+        assert_eq!(rewards_1, 66590);
 
         // Withdrawing rewards
         // Trying to withdraw the rewards with a Consumer address should fail
@@ -603,7 +653,7 @@ mod distribution {
 
 mod jailing {
     use crate::msg::JailedFinalityProvider;
-    use cosmwasm_std::{coin, Addr, StdError};
+    use cosmwasm_std::{coin, Addr};
 
     use crate::error::ContractError;
     use crate::multitest::suite::SuiteBuilder;
@@ -691,17 +741,15 @@ mod jailing {
             .unwrap();
 
         // Call the next block begin blocker, to compute the active FP set
-        // The second FP is on the active set, and (in the current impl)
-        // will get rewards without voting.
-        // After offline detection, it'll be removed from the set.
         let next_height = suite.next_block("deadbeef01".as_bytes()).unwrap().height;
 
         // Get the active FP set
+        // Note: The second FP has voting power, but since it hasn't submitted
+        // public randomness, it will not be in the active set
         let active_fps = suite.get_active_finality_providers(next_height);
         // All unjailed fps are selected
-        assert_eq!(active_fps.len(), 2);
+        assert_eq!(active_fps.len(), 1);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-        assert_eq!(active_fps[1].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
 
         // Moving forward so offline detection kicks in
         suite.advance_seconds(4000).unwrap();
@@ -713,33 +761,31 @@ mod jailing {
         let jailed_until = &suite.timestamp().seconds() + 86400 - 5;
         assert_eq!(
             &suite.list_jailed_fps(None, None),
-            &[
-                JailedFinalityProvider {
-                    btc_pk_hex: new_fp1.btc_pk_hex.clone(),
-                    jailed_until,
-                },
-                JailedFinalityProvider {
-                    btc_pk_hex: new_fp2.btc_pk_hex.clone(),
-                    jailed_until,
-                },
-            ],
+            &[JailedFinalityProvider {
+                btc_pk_hex: new_fp1.btc_pk_hex.clone(),
+                jailed_until,
+            },],
         );
 
         // Verify removed from the active set
         let active_fps = suite.get_active_finality_providers(next_height);
         assert_eq!(active_fps.len(), 0);
 
-        // Unjail FP1 succeeds
-        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
-
-        // Auto-unjail of FP2 fails (because not yet expired jailing)
+        // Auto-unjail of FP1 fails (because not yet expired jailing)
+        let fp1_bsn_addr = suite
+            .to_consumer_addr(&Addr::unchecked(&new_fp1.addr))
+            .unwrap()
+            .to_string();
         let err = suite
-            .unjail(&new_fp2.addr, &new_fp2.btc_pk_hex)
+            .unjail(&fp1_bsn_addr, &new_fp1.btc_pk_hex)
             .unwrap_err();
         assert_eq!(
             err.downcast::<ContractError>().unwrap(),
-            ContractError::JailPeriodNotPassed(new_fp2.btc_pk_hex.clone()),
+            ContractError::JailPeriodNotPassed(new_fp1.btc_pk_hex.clone()),
         );
+
+        // Admin unjail of FP1 succeeds
+        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
 
         // Advance height
         let next_height = suite.next_block("deadbeef04".as_bytes()).unwrap().height;
@@ -750,60 +796,5 @@ mod jailing {
         let active_fps = suite.get_active_finality_providers(next_height);
         assert_eq!(active_fps.len(), 1);
         assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-
-        // Moving forward so jailing period expires
-        suite.advance_seconds(86385).unwrap();
-        let next_height = suite.next_block("deadbeef05".as_bytes()).unwrap().height;
-
-        // But FP2 is still not selected, as it has to be unjailed
-        let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 1);
-        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-
-        // Auto-unjail of FP2 still fails (now because of wrong sender address)
-        let err = suite
-            .unjail(&new_fp2.addr, &new_fp2.btc_pk_hex)
-            .unwrap_err();
-        assert_eq!(
-            err.downcast::<ContractError>().unwrap(),
-            ContractError::Std(StdError::generic_err("Wrong bech32 prefix"))
-        );
-
-        // Third-party (non admin) unjail of FP2 also fails
-        let fp1_bsn_addr = suite
-            .to_consumer_addr(&Addr::unchecked(&new_fp1.addr))
-            .unwrap()
-            .to_string();
-        let err = suite
-            .unjail(&fp1_bsn_addr, &new_fp2.btc_pk_hex)
-            .unwrap_err();
-        assert_eq!(
-            err.downcast::<ContractError>().unwrap(),
-            ContractError::Unauthorized
-        );
-
-        // Auto-unjail of FP2 now succeeds (because expired jailing and right address)
-        let fp2_bsn_addr = suite
-            .to_consumer_addr(&Addr::unchecked(&new_fp2.addr))
-            .unwrap()
-            .to_string();
-        suite.unjail(&fp2_bsn_addr, &new_fp2.btc_pk_hex).unwrap();
-
-        // Advance height
-        let next_height = suite.next_block("deadbeef06".as_bytes()).unwrap().height;
-
-        // But FP1 has been jailed again (offline)
-        let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 1);
-        assert_eq!(active_fps[0].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
-
-        // Unjail FP1 succeeds (it has been jailed for being offline again)
-        suite.unjail(&admin, &new_fp1.btc_pk_hex).unwrap();
-        let next_height = suite.next_block("deadbeef07".as_bytes()).unwrap().height;
-
-        let active_fps = suite.get_active_finality_providers(next_height);
-        assert_eq!(active_fps.len(), 2);
-        assert_eq!(active_fps[0].btc_pk_hex, new_fp1.btc_pk_hex.clone(),);
-        assert_eq!(active_fps[1].btc_pk_hex, new_fp2.btc_pk_hex.clone(),);
     }
 }

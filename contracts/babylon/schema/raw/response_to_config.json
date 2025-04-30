@@ -35,6 +35,17 @@
         }
       ]
     },
+    "btc_light_client": {
+      "description": "If set, this stores a BTC light client contract used for BTC light client on the Consumer",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "btc_staking": {
       "description": "If set, this stores a BTC staking contract used for BTC re-staking",
       "anyOf": [
