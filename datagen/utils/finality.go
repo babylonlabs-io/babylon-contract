@@ -10,10 +10,10 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cometbft/cometbft/crypto/merkle"
 
-	"github.com/babylonlabs-io/babylon/crypto/eots"
-	"github.com/babylonlabs-io/babylon/testutil/datagen"
-	bbn "github.com/babylonlabs-io/babylon/types"
-	ftypes "github.com/babylonlabs-io/babylon/x/finality/types"
+	"github.com/babylonlabs-io/babylon/v2/crypto/eots"
+	"github.com/babylonlabs-io/babylon/v2/testutil/datagen"
+	bbn "github.com/babylonlabs-io/babylon/v2/types"
+	ftypes "github.com/babylonlabs-io/babylon/v2/x/finality/types"
 )
 
 const (
