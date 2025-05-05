@@ -7,7 +7,7 @@ use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 
 pub mod babylon_epoch_chain;
 pub mod config;
-pub mod cz_header_chain;
+pub mod consumer_header_chain;
 
 /// `handle_btc_timestamp` handles a BTC timestamp.
 /// It returns a tuple of (WasmMsg, BabylonMsg).
@@ -68,14 +68,24 @@ pub fn handle_btc_timestamp(
             .proof
             .as_ref()
             .ok_or(StdError::generic_err("empty proof"))?;
-        let proof_consumer_header_in_epoch = proof
-            .proof_consumer_header_in_epoch
-            .as_ref()
-            .ok_or(StdError::generic_err("empty proof_consumer_header_in_epoch"))?;
-        cz_header_chain::handle_cz_header(deps, consumer_header, epoch, proof_consumer_header_in_epoch)
-            .map_err(|e| {
-                StdError::generic_err(format!("failed to handle Consumer header from Babylon: {e}"))
-            })?;
+        let proof_consumer_header_in_epoch =
+            proof
+                .proof_consumer_header_in_epoch
+                .as_ref()
+                .ok_or(StdError::generic_err(
+                    "empty proof_consumer_header_in_epoch",
+                ))?;
+        consumer_header_chain::handle_cz_header(
+            deps,
+            consumer_header,
+            epoch,
+            proof_consumer_header_in_epoch,
+        )
+        .map_err(|e| {
+            StdError::generic_err(format!(
+                "failed to handle Consumer header from Babylon: {e}"
+            ))
+        })?;
 
         // Finalised Consumer header verified.
         // Notify the Consumer about the newly finalised Consumer header.

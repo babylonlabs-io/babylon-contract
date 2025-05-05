@@ -5,7 +5,7 @@ use babylon_apis::finality_api::Evidence;
 
 #[cfg(not(target_arch = "wasm32"))]
 use {
-    crate::msg::cz_header::{CzHeaderResponse, CzHeightResponse},
+    crate::msg::consumer_header::{CzHeaderResponse, CzHeightResponse},
     crate::msg::epoch::EpochResponse,
     crate::state::config::Config,
 };

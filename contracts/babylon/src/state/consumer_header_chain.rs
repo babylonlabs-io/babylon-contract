@@ -65,7 +65,11 @@ fn verify_cz_header(
     let _cfg = CONFIG.load(deps.storage)?;
 
     // check if the corresponding CZ header is in the Babylon epoch
-    utils::cz_header_chain::verify_cz_header_in_epoch(cz_header, epoch, proof_cz_header_in_epoch)?;
+    utils::consumer_header_chain::verify_cz_header_in_epoch(
+        cz_header,
+        epoch,
+        proof_cz_header_in_epoch,
+    )?;
 
     // TODO: check if IndexedHeader is conflicted or not. Still not sure if this check should happen
     // in a relayer/monitor or the smart contract, given that smart contract has no access to the

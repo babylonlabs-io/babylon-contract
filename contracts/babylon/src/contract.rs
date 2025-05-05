@@ -14,7 +14,7 @@ use crate::ibc::{ibc_packet, IBC_CHANNEL, IBC_TRANSFER};
 use crate::msg::contract::{ContractMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::config::{Config, CONFIG};
-use crate::state::cz_header_chain::CZ_HEIGHT_LAST;
+use crate::state::consumer_header_chain::CZ_HEIGHT_LAST;
 
 pub const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

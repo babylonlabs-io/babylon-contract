@@ -1,13 +1,13 @@
 use crate::error::{BabylonEpochChainError, CZHeaderChainError, ContractError};
 use crate::ibc::IBC_TRANSFER;
-use crate::msg::cz_header::{CzHeaderResponse, CzHeightResponse};
+use crate::msg::consumer_header::{CzHeaderResponse, CzHeightResponse};
 use crate::msg::epoch::{CheckpointResponse, EpochResponse};
 use crate::msg::ibc::TransferInfoResponse;
 use crate::state::babylon_epoch_chain::{
     get_base_epoch, get_checkpoint, get_epoch, get_last_finalized_epoch,
 };
 use crate::state::config::{Config, CONFIG};
-use crate::state::cz_header_chain::{get_cz_header, get_last_cz_header, get_last_cz_height};
+use crate::state::consumer_header_chain::{get_cz_header, get_last_cz_header, get_last_cz_height};
 use cosmwasm_std::{Deps, StdResult};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
