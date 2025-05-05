@@ -50,7 +50,7 @@ func GenBTCTimestamp(dir string) {
 	// chain is at height 1 thus epoch 1
 
 	/*
-		generate CZ header and its inclusion proof to an epoch
+		generate Consumer header and its inclusion proof to an epoch
 	*/
 	// enter block 11, 1st block of epoch 2
 	epochInterval := ek.GetParams(h.Ctx).EpochInterval
