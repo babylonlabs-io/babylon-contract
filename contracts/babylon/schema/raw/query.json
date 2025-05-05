@@ -93,13 +93,13 @@
       "additionalProperties": false
     },
     {
-      "description": "CzLastHeader returns the last CZ epoch stored in the contract",
+      "description": "LastConsumerHeader returns the last Consumer epoch stored in the contract",
       "type": "object",
       "required": [
-        "cz_last_header"
+        "last_consumer_header"
       ],
       "properties": {
-        "cz_last_header": {
+        "last_consumer_header": {
           "type": "object",
           "additionalProperties": false
         }
@@ -107,13 +107,13 @@
       "additionalProperties": false
     },
     {
-      "description": "CzLastHeight returns the last CZ height stored in the contract",
+      "description": "LastConsumerHeight returns the last Consumer height stored in the contract",
       "type": "object",
       "required": [
-        "cz_last_height"
+        "last_consumer_height"
       ],
       "properties": {
-        "cz_last_height": {
+        "last_consumer_height": {
           "type": "object",
           "additionalProperties": false
         }
@@ -121,13 +121,13 @@
       "additionalProperties": false
     },
     {
-      "description": "CzHeader returns the CZ header stored in the contract, by CZ height.",
+      "description": "ConsumerHeader returns the Consumer header stored in the contract, by Consumer height.",
       "type": "object",
       "required": [
-        "cz_header"
+        "consumer_header"
       ],
       "properties": {
-        "cz_header": {
+        "consumer_header": {
           "type": "object",
           "required": [
             "height"
