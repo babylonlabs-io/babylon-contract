@@ -110,14 +110,14 @@ pub fn get_last_pub_rand_commit(
 
 pub fn get_last_finalized_height(deps: &Deps) -> Result<u64, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
-    // Query the last finalized height for the CZ / BSN from the babylon contract
+    // Query the last finalized height of this Consumer from the babylon contract
     // TODO: Use a raw query for performance and efficiency (#41)
-    let cz_last_height: ConsumerHeightResponse = deps.querier.query_wasm_smart(
+    let last_consumer_height: ConsumerHeightResponse = deps.querier.query_wasm_smart(
         cfg.babylon,
         &babylon_contract::msg::contract::QueryMsg::LastConsumerHeight {},
     )?;
 
-    Ok(cz_last_height.height)
+    Ok(last_consumer_height.height)
 }
 
 // Settings for pagination
