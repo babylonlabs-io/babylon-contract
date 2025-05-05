@@ -114,7 +114,7 @@ pub fn get_last_finalized_height(deps: &Deps) -> Result<u64, ContractError> {
     // TODO: Use a raw query for performance and efficiency (#41)
     let cz_last_height: ConsumerHeightResponse = deps.querier.query_wasm_smart(
         cfg.babylon,
-        &babylon_contract::msg::contract::QueryMsg::CzLastHeight {},
+        &babylon_contract::msg::contract::QueryMsg::LastConsumerHeight {},
     )?;
 
     Ok(cz_last_height.height)

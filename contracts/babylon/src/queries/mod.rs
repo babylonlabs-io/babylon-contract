@@ -42,17 +42,21 @@ pub fn babylon_checkpoint(
     Ok(CheckpointResponse::from(&raw_checkpoint))
 }
 
-pub fn cz_last_header(deps: Deps) -> Result<ConsumerHeaderResponse, ConsumerHeaderChainError> {
+pub fn last_consumer_header(
+    deps: Deps,
+) -> Result<ConsumerHeaderResponse, ConsumerHeaderChainError> {
     let header = get_last_consumer_header(deps)?;
     Ok(ConsumerHeaderResponse::from(&header))
 }
 
-pub fn cz_last_height(deps: Deps) -> Result<ConsumerHeightResponse, ConsumerHeaderChainError> {
+pub fn last_consumer_height(
+    deps: Deps,
+) -> Result<ConsumerHeightResponse, ConsumerHeaderChainError> {
     let height = get_last_consumer_height(deps)?;
     Ok(ConsumerHeightResponse { height })
 }
 
-pub(crate) fn cz_header(
+pub(crate) fn consumer_header(
     deps: Deps,
     height: u64,
 ) -> Result<ConsumerHeaderResponse, ConsumerHeaderChainError> {

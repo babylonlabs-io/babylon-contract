@@ -101,13 +101,13 @@ pub fn instantiate(
         }
         res = res.add_submessage(init_msg);
     }
-    // Initialize last CZ height to 0 to avoid not found error
+    // Initialize the last Consumer height to 0 to avoid not found error
     CONSUMER_HEIGHT_LAST.save(deps.storage, &0)?;
-    // Mock last CZ height for multi-test
+    // Mock the last Consumer height for multi-test
     #[cfg(any(test, all(feature = "library", not(target_arch = "wasm32"))))]
     {
-        let last_cz_height = 100;
-        CONSUMER_HEIGHT_LAST.save(deps.storage, &last_cz_height)?;
+        let last_consumer_height = 100;
+        CONSUMER_HEIGHT_LAST.save(deps.storage, &last_consumer_height)?;
     }
 
     if let Some(btc_finality_code_id) = msg.btc_finality_code_id {
@@ -251,9 +251,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
         QueryMsg::BabylonCheckpoint { epoch_number } => Ok(to_json_binary(
             &queries::babylon_checkpoint(deps, epoch_number)?,
         )?),
-        QueryMsg::CzLastHeader {} => Ok(to_json_binary(&queries::cz_last_header(deps)?)?),
-        QueryMsg::CzLastHeight {} => Ok(to_json_binary(&queries::cz_last_height(deps)?)?),
-        QueryMsg::CzHeader { height } => Ok(to_json_binary(&queries::cz_header(deps, height)?)?),
+        QueryMsg::LastConsumerHeader {} => {
+            Ok(to_json_binary(&queries::last_consumer_header(deps)?)?)
+        }
+        QueryMsg::LastConsumerHeight {} => {
+            Ok(to_json_binary(&queries::last_consumer_height(deps)?)?)
+        }
+        QueryMsg::ConsumerHeader { height } => {
+            Ok(to_json_binary(&queries::consumer_header(deps, height)?)?)
+        }
         QueryMsg::TransferInfo {} => Ok(to_json_binary(&queries::transfer_info(deps)?)?),
     }
 }

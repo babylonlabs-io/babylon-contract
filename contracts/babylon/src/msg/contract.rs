@@ -136,15 +136,15 @@ pub enum QueryMsg {
     /// BabylonCheckpoint returns the Babylon checkpoint stored in the contract, by epoch number.
     #[returns(EpochResponse)]
     BabylonCheckpoint { epoch_number: u64 },
-    /// CzLastHeader returns the last CZ epoch stored in the contract
+    /// LastConsumerHeader returns the last Consumer epoch stored in the contract
     #[returns(ConsumerHeaderResponse)]
-    CzLastHeader {},
-    /// CzLastHeight returns the last CZ height stored in the contract
+    LastConsumerHeader {},
+    /// LastConsumerHeight returns the last Consumer height stored in the contract
     #[returns(ConsumerHeightResponse)]
-    CzLastHeight {},
-    /// CzHeader returns the CZ header stored in the contract, by CZ height.
+    LastConsumerHeight {},
+    /// ConsumerHeader returns the Consumer header stored in the contract, by Consumer height.
     #[returns(ConsumerHeaderResponse)]
-    CzHeader { height: u64 },
+    ConsumerHeader { height: u64 },
     /// TransferInfo returns the IBC transfer information stored in the contract
     /// for ICS-020 rewards transfer.
     #[returns(Option<String>)]
