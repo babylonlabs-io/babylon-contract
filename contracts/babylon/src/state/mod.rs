@@ -75,7 +75,7 @@ pub fn handle_btc_timestamp(
                 .ok_or(StdError::generic_err(
                     "empty proof_consumer_header_in_epoch",
                 ))?;
-        consumer_header_chain::handle_cz_header(
+        consumer_header_chain::handle_consumer_header(
             deps,
             consumer_header,
             epoch,

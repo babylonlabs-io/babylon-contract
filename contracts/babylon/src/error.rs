@@ -22,7 +22,7 @@ pub enum ContractError {
     #[error("{0}")]
     BabylonEpochError(#[from] BabylonEpochChainError),
     #[error("{0}")]
-    CzHeaderError(#[from] CZHeaderChainError),
+    CzHeaderError(#[from] ConsumerHeaderChainError),
     #[error("{0}")]
     Payment(#[from] PaymentError),
     #[error("API error: {0}")]
@@ -50,7 +50,7 @@ pub enum ContractError {
 }
 
 #[derive(Error, Debug, PartialEq)]
-pub enum CZHeaderChainError {
+pub enum ConsumerHeaderChainError {
     #[error("{0}")]
     StdError(#[from] StdError),
     #[error("The given headers during initialization cannot be verified")]
@@ -64,9 +64,9 @@ pub enum CZHeaderChainError {
     #[error("The CZ header cannot be decoded")]
     CZHeaderDecodeError {},
     #[error("The CZ header with height {height} is not found in the storage")]
-    CZHeaderNotFoundError { height: u64 },
+    ConsumerHeaderNotFoundError { height: u64 },
     #[error("There is no finalized CZ header yet")]
-    NoCZHeader {},
+    NoConsumerHeader {},
 }
 
 #[derive(Error, Debug, PartialEq)]

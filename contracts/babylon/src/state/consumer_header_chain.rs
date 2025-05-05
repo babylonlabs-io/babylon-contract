@@ -1,6 +1,6 @@
-//! cz_header_chain is the storage for the chain of **finalised** CZ headers.
-//! It maintains a chain of finalised CZ headers.
-//! NOTE: the CZ header chain is always finalised, i.e., w-deep on BTC.
+//! `consumer_header_chain` is the storage for the chain of **finalised** Consumer headers.
+//! It maintains a chain of finalised Consumer headers.
+//! NOTE: The Consumer header chain is always finalised, i.e., w-deep on BTC.
 use prost::Message;
 use tendermint_proto::crypto::ProofOps;
 
@@ -13,62 +13,70 @@ use babylon_proto::babylon::zoneconcierge::v1::IndexedHeader;
 use crate::state::config::CONFIG;
 use crate::{error, utils};
 
-pub const CZ_HEADERS: Map<u64, Vec<u8>> = Map::new("cz_headers");
-pub const CZ_HEADER_LAST: Item<Vec<u8>> = Item::new("cz_header_last");
-pub const CZ_HEIGHT_LAST: Item<u64> = Item::new("cz_height_last");
+pub const CONSUMER_HEADERS: Map<u64, Vec<u8>> = Map::new("consumer_headers");
+pub const CONSUMER_HEADER_LAST: Item<Vec<u8>> = Item::new("consumer_header_last");
+pub const CONSUMER_HEIGHT_LAST: Item<u64> = Item::new("consumer_height_last");
 
-// getter/setter for last finalised CZ header
-pub fn get_last_cz_header(deps: Deps) -> Result<IndexedHeader, error::CZHeaderChainError> {
-    let last_cz_header_bytes = CZ_HEADER_LAST
+// getter/setter for last finalised Consumer header
+pub fn get_last_consumer_header(
+    deps: Deps,
+) -> Result<IndexedHeader, error::ConsumerHeaderChainError> {
+    let last_consumer_header_bytes = CONSUMER_HEADER_LAST
         .load(deps.storage)
-        .map_err(|_| error::CZHeaderChainError::NoCZHeader {})?;
-    IndexedHeader::decode(last_cz_header_bytes.as_slice())
-        .map_err(error::CZHeaderChainError::DecodeError)
+        .map_err(|_| error::ConsumerHeaderChainError::NoConsumerHeader {})?;
+    IndexedHeader::decode(last_consumer_header_bytes.as_slice())
+        .map_err(error::ConsumerHeaderChainError::DecodeError)
 }
 
-// Getter/setter for last finalised CZ height
-// Zero means no finalised CZ header yet
-pub fn get_last_cz_height(deps: Deps) -> StdResult<u64> {
-    CZ_HEIGHT_LAST.load(deps.storage)
+// Getter/setter for last finalised Consumer height.
+// Zero means no finalised Consumer header yet
+pub fn get_last_consumer_height(deps: Deps) -> StdResult<u64> {
+    CONSUMER_HEIGHT_LAST.load(deps.storage)
 }
 
-fn set_last_cz_header(deps: &mut DepsMut, last_cz_header: &IndexedHeader) -> StdResult<()> {
-    let last_cz_header_bytes = &last_cz_header.encode_to_vec();
-    CZ_HEADER_LAST
-        .save(deps.storage, last_cz_header_bytes)
-        // Save the height of the last finalised CZ header in passing as well
-        .and(CZ_HEIGHT_LAST.save(deps.storage, &last_cz_header.height))
+fn set_last_consumer_header(
+    deps: &mut DepsMut,
+    last_consumer_header: &IndexedHeader,
+) -> StdResult<()> {
+    let last_consumer_header_bytes = &last_consumer_header.encode_to_vec();
+    CONSUMER_HEADER_LAST
+        .save(deps.storage, last_consumer_header_bytes)
+        // Save the height of the last finalised Consumer header in passing as well
+        .and(CONSUMER_HEIGHT_LAST.save(deps.storage, &last_consumer_header.height))
 }
 
-/// get_cz_header gets a CZ header of a given height
-pub fn get_cz_header(deps: Deps, height: u64) -> Result<IndexedHeader, error::CZHeaderChainError> {
+/// get_consumer_header gets a Consumer header of a given height
+pub fn get_consumer_header(
+    deps: Deps,
+    height: u64,
+) -> Result<IndexedHeader, error::ConsumerHeaderChainError> {
     // try to find the indexed header at the given height
-    let cz_header_bytes = CZ_HEADERS
+    let consumer_header_bytes = CONSUMER_HEADERS
         .load(deps.storage, height)
-        .map_err(|_| error::CZHeaderChainError::CZHeaderNotFoundError { height })?;
+        .map_err(|_| error::ConsumerHeaderChainError::ConsumerHeaderNotFoundError { height })?;
 
     // try to decode the indexed_header
-    let indexed_header = IndexedHeader::decode(cz_header_bytes.as_slice())?;
+    let indexed_header = IndexedHeader::decode(consumer_header_bytes.as_slice())?;
 
     Ok(indexed_header)
 }
 
-/// verify_cz_header verifies whether a CZ header is committed to a Babylon epoch, including
+/// verify_consumer_header verifies whether a Consumer header is committed to a Babylon epoch, including
 /// - The Babylon tx carrying this header is included in a Babylon block
 /// - The Babylon block's AppHash is committed to the AppHashRoot of the epoch
-fn verify_cz_header(
+fn verify_consumer_header(
     deps: Deps,
-    cz_header: &IndexedHeader,
+    consumer_header: &IndexedHeader,
     epoch: &Epoch,
-    proof_cz_header_in_epoch: &ProofOps,
-) -> Result<(), error::CZHeaderChainError> {
+    proof_consumer_header_in_epoch: &ProofOps,
+) -> Result<(), error::ConsumerHeaderChainError> {
     let _cfg = CONFIG.load(deps.storage)?;
 
-    // check if the corresponding CZ header is in the Babylon epoch
-    utils::consumer_header_chain::verify_cz_header_in_epoch(
-        cz_header,
+    // check if the corresponding Consumer header is in the Babylon epoch
+    utils::consumer_header_chain::verify_consumer_header_in_epoch(
+        consumer_header,
         epoch,
-        proof_cz_header_in_epoch,
+        proof_consumer_header_in_epoch,
     )?;
 
     // TODO: check if IndexedHeader is conflicted or not. Still not sure if this check should happen
@@ -78,24 +86,29 @@ fn verify_cz_header(
     Ok(())
 }
 
-fn insert_cz_header(deps: &mut DepsMut, cz_header: &IndexedHeader) -> StdResult<()> {
+fn insert_consumer_header(deps: &mut DepsMut, consumer_header: &IndexedHeader) -> StdResult<()> {
     // insert indexed header
-    let cz_header_bytes = cz_header.encode_to_vec();
-    CZ_HEADERS.save(deps.storage, cz_header.height, &cz_header_bytes)?;
+    let consumer_header_bytes = consumer_header.encode_to_vec();
+    CONSUMER_HEADERS.save(deps.storage, consumer_header.height, &consumer_header_bytes)?;
 
     // update last finalised header
-    set_last_cz_header(deps, cz_header)
+    set_last_consumer_header(deps, consumer_header)
 }
 
 // TODO: unit test
-pub fn handle_cz_header(
+pub fn handle_consumer_header(
     deps: &mut DepsMut,
-    cz_header: &IndexedHeader,
+    consumer_header: &IndexedHeader,
     epoch: &Epoch,
-    proof_cz_header_in_epoch: &ProofOps,
-) -> Result<(), error::CZHeaderChainError> {
-    verify_cz_header(deps.as_ref(), cz_header, epoch, proof_cz_header_in_epoch)?;
-    insert_cz_header(deps, cz_header)?;
+    proof_consumer_header_in_epoch: &ProofOps,
+) -> Result<(), error::ConsumerHeaderChainError> {
+    verify_consumer_header(
+        deps.as_ref(),
+        consumer_header,
+        epoch,
+        proof_consumer_header_in_epoch,
+    )?;
+    insert_consumer_header(deps, consumer_header)?;
 
     Ok(())
 }

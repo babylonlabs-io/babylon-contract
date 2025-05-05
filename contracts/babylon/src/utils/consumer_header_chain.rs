@@ -6,14 +6,14 @@ use tendermint_proto::crypto::ProofOps;
 
 /// verify_tx_in_block verifies whether a tx with tx_hash is committed to
 /// the Merkle root hash of a Tendermint block
-pub fn verify_cz_header_in_epoch(
+pub fn verify_consumer_header_in_epoch(
     cz_header: &IndexedHeader,
     epoch: &Epoch,
     proof_cz_header_in_epoch: &ProofOps,
-) -> Result<(), error::CZHeaderChainError> {
+) -> Result<(), error::ConsumerHeaderChainError> {
     // verify CZ header has correct epoch number
     if cz_header.babylon_epoch != epoch.epoch_number {
-        return Err(error::CZHeaderChainError::EpochNumberError {});
+        return Err(error::ConsumerHeaderChainError::EpochNumberError {});
     }
 
     // Ensure the CZ header is committed to the app_hash of the sealer header
@@ -28,7 +28,7 @@ pub fn verify_cz_header_in_epoch(
         &cz_header_bytes,
         proof_cz_header_in_epoch,
     )
-    .map_err(|_| error::CZHeaderChainError::ProofError {})?;
+    .map_err(|_| error::ConsumerHeaderChainError::ProofError {})?;
 
     Ok(())
 }
