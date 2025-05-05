@@ -1,6 +1,6 @@
 use crate::error::{BabylonEpochChainError, CZHeaderChainError, ContractError};
 use crate::ibc::IBC_TRANSFER;
-use crate::msg::consumer_header::{CzHeaderResponse, CzHeightResponse};
+use crate::msg::consumer_header::{ConsumerHeaderResponse, ConsumerHeightResponse};
 use crate::msg::epoch::{CheckpointResponse, EpochResponse};
 use crate::msg::ibc::TransferInfoResponse;
 use crate::state::babylon_epoch_chain::{
@@ -40,19 +40,22 @@ pub fn babylon_checkpoint(
     Ok(CheckpointResponse::from(&raw_checkpoint))
 }
 
-pub fn cz_last_header(deps: Deps) -> Result<CzHeaderResponse, CZHeaderChainError> {
+pub fn cz_last_header(deps: Deps) -> Result<ConsumerHeaderResponse, CZHeaderChainError> {
     let header = get_last_cz_header(deps)?;
-    Ok(CzHeaderResponse::from(&header))
+    Ok(ConsumerHeaderResponse::from(&header))
 }
 
-pub fn cz_last_height(deps: Deps) -> Result<CzHeightResponse, CZHeaderChainError> {
+pub fn cz_last_height(deps: Deps) -> Result<ConsumerHeightResponse, CZHeaderChainError> {
     let height = get_last_cz_height(deps)?;
-    Ok(CzHeightResponse { height })
+    Ok(ConsumerHeightResponse { height })
 }
 
-pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZHeaderChainError> {
+pub(crate) fn cz_header(
+    deps: Deps,
+    height: u64,
+) -> Result<ConsumerHeaderResponse, CZHeaderChainError> {
     let header = get_cz_header(deps, height)?;
-    Ok(CzHeaderResponse::from(&header))
+    Ok(ConsumerHeaderResponse::from(&header))
 }
 
 pub(crate) fn transfer_info(deps: Deps) -> Result<TransferInfoResponse, ContractError> {

@@ -3,32 +3,30 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Timestamp;
 use hex::ToHex;
 
-/// CzHeaderResponse is the metadata of a CZ header.
+/// ConsumerHeaderResponse is the metadata of a Consumer header.
 ///
 /// This struct is for use in RPC requests and responses. It has convenience helpers to convert
 /// from the internal representation (`IndexedHeader`).
 ///
 /// Adapted from `IndexedHeader`.
 #[cw_serde]
-pub struct CzHeaderResponse {
+pub struct ConsumerHeaderResponse {
     /// consumer_id is the unique ID of the consumer
     pub consumer_id: String,
     /// hash is the hash of this header.
     /// Hex-encoded string of 32 bytes
     pub hash: String,
-    /// height is the height of this header in the CZ ledger.
-    /// (hash, height) jointly provides the position of the header on CZ ledger
+    /// height is the height of this header in the Consumer's ledger.
+    /// (hash, height) jointly provides the position of the header on the Consumer ledger
     pub height: u64,
-    /// time is the timestamp of this header in the CZ ledger.
-    /// It is needed for the CZ to unbond all mature validators/delegations before this timestamp
-    /// when this header is BTC-finalised
+    /// time is the timestamp of this header in the Consumer's ledger.
+    /// It's necessary for the Consumer to unbond all mature validators/delegations before this
+    /// timestamp when this header is BTC-finalised
     pub time: Option<Timestamp>,
-    /// babylon_header_hash is the hash of the babylon block that includes this CZ
-    /// header
+    /// babylon_header_hash is the hash of the babylon block that includes this Consumer header.
     /// Hex-encoded string of 32 bytes
     pub babylon_header_hash: String,
-    /// babylon_header_height is the height of the babylon block that includes this CZ
-    /// header
+    /// babylon_header_height is the height of the babylon block that includes this Consumer header
     pub babylon_header_height: u64,
     /// epoch is the epoch number of this header in the Babylon ledger
     pub babylon_epoch: u64,
@@ -39,21 +37,21 @@ pub struct CzHeaderResponse {
     pub babylon_tx_hash: String,
 }
 
-/// CzHeightResponse is the metadata of a CZ height.
+/// ConsumerHeightResponse is the metadata of a Consumer height.
 ///
 /// This struct is for use in RPC requests and responses. It is a convenience, efficient way to
-/// return the height of the last finalised CZ header.
+/// return the height of the last finalised Consumer header.
 ///
-/// Adapted from `CzHeaderResponse`.
+/// Adapted from `ConsumerHeaderResponse`.
 #[cw_serde]
-pub struct CzHeightResponse {
+pub struct ConsumerHeightResponse {
     pub height: u64,
 }
 
-/// Convert from `&IndexedHeader` to `CzHeaderResponse`.
-impl From<&IndexedHeader> for CzHeaderResponse {
+/// Convert from `&IndexedHeader` to `ConsumerHeaderResponse`.
+impl From<&IndexedHeader> for ConsumerHeaderResponse {
     fn from(header: &IndexedHeader) -> Self {
-        CzHeaderResponse {
+        ConsumerHeaderResponse {
             consumer_id: header.consumer_id.clone(),
             hash: header.hash.encode_hex(),
             height: header.height,
@@ -69,8 +67,8 @@ impl From<&IndexedHeader> for CzHeaderResponse {
     }
 }
 
-/// Convert from `IndexedHeader` to `CzHeaderResponse`.
-impl From<IndexedHeader> for CzHeaderResponse {
+/// Convert from `IndexedHeader` to `ConsumerHeaderResponse`.
+impl From<IndexedHeader> for ConsumerHeaderResponse {
     fn from(header: IndexedHeader) -> Self {
         Self::from(&header)
     }
@@ -96,7 +94,7 @@ mod tests {
             babylon_tx_hash: prost::bytes::Bytes::from("babylon_tx_hash"),
         };
 
-        let indexed_header_response = CzHeaderResponse::from(&indexed_header);
+        let indexed_header_response = ConsumerHeaderResponse::from(&indexed_header);
 
         assert_eq!(indexed_header_response.consumer_id, "consumer_id");
         assert_eq!(indexed_header_response.hash, hex::encode("hash"));

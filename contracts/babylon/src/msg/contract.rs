@@ -5,7 +5,7 @@ use babylon_apis::finality_api::Evidence;
 
 #[cfg(not(target_arch = "wasm32"))]
 use {
-    crate::msg::consumer_header::{CzHeaderResponse, CzHeightResponse},
+    crate::msg::consumer_header::{ConsumerHeaderResponse, ConsumerHeightResponse},
     crate::msg::epoch::EpochResponse,
     crate::state::config::Config,
 };
@@ -137,13 +137,13 @@ pub enum QueryMsg {
     #[returns(EpochResponse)]
     BabylonCheckpoint { epoch_number: u64 },
     /// CzLastHeader returns the last CZ epoch stored in the contract
-    #[returns(CzHeaderResponse)]
+    #[returns(ConsumerHeaderResponse)]
     CzLastHeader {},
     /// CzLastHeight returns the last CZ height stored in the contract
-    #[returns(CzHeightResponse)]
+    #[returns(ConsumerHeightResponse)]
     CzLastHeight {},
     /// CzHeader returns the CZ header stored in the contract, by CZ height.
-    #[returns(CzHeaderResponse)]
+    #[returns(ConsumerHeaderResponse)]
     CzHeader { height: u64 },
     /// TransferInfo returns the IBC transfer information stored in the contract
     /// for ICS-020 rewards transfer.
