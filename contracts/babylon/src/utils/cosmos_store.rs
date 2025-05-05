@@ -23,7 +23,7 @@ pub fn get_valset_key(epoch_number: u64) -> Vec<u8> {
     epoch_valset_key
 }
 
-pub fn get_cz_header_key(chain_id: &String, height: u64) -> Vec<u8> {
+pub fn get_consumer_header_key(chain_id: &String, height: u64) -> Vec<u8> {
     // https://github.com/babylonlabs-io/babylon/blob/8638c950fd2de1ac5dc69a8b9f710c1fa720c155/x/zoneconcierge/types/keys.go#L33
     let mut key = [0x13].to_vec();
     key.extend(chain_id.as_bytes());
