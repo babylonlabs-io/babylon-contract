@@ -5,7 +5,7 @@ use cw_storage_plus::{Bound, Map};
 use crate::error::ContractError;
 use crate::state::config::CONFIG;
 use babylon_apis::finality_api::PubRandCommit;
-use babylon_contract::msg::cz_header::CzHeightResponse;
+use babylon_contract::msg::consumer_header::ConsumerHeightResponse;
 
 /// Map of public randomness commitments by fp and block height
 pub const PUB_RAND_COMMITS: Map<(&str, u64), PubRandCommit> = Map::new("fp_pub_rand_commit");
@@ -110,14 +110,14 @@ pub fn get_last_pub_rand_commit(
 
 pub fn get_last_finalized_height(deps: &Deps) -> Result<u64, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
-    // Query the last finalized height for the CZ / BSN from the babylon contract
+    // Query the last finalized height of this Consumer from the babylon contract
     // TODO: Use a raw query for performance and efficiency (#41)
-    let cz_last_height: CzHeightResponse = deps.querier.query_wasm_smart(
+    let last_consumer_height: ConsumerHeightResponse = deps.querier.query_wasm_smart(
         cfg.babylon,
-        &babylon_contract::msg::contract::QueryMsg::CzLastHeight {},
+        &babylon_contract::msg::contract::QueryMsg::LastConsumerHeight {},
     )?;
 
-    Ok(cz_last_height.height)
+    Ok(last_consumer_height.height)
 }
 
 // Settings for pagination

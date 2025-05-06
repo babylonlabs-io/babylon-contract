@@ -7,13 +7,13 @@ use babylon_proto::babylon::zoneconcierge::v1::BtcTimestamp;
 
 pub mod babylon_epoch_chain;
 pub mod config;
-pub mod cz_header_chain;
+pub mod consumer_header_chain;
 
-/// handle_btc_timestamp handles a BTC timestamp
+/// `handle_btc_timestamp` handles a BTC timestamp.
 /// It returns a tuple of (WasmMsg, BabylonMsg).
 /// The returned WasmMsg is a message to submit BTC headers to the BTC light client.
-/// The returned BabylonMsg is a message to notify a newly finalised CZ header, or None if this BTC timestamp does not carry
-/// a newly finalised CZ header.
+/// The returned BabylonMsg is a message to notify of a newly finalised Consumer header, or None if
+/// this BTC timestamp does not carry a newly finalised Consumer header
 pub fn handle_btc_timestamp(
     deps: &mut DepsMut,
     btc_ts: &BtcTimestamp,
@@ -61,25 +61,36 @@ pub fn handle_btc_timestamp(
         .map_err(|e| StdError::generic_err(format!("failed to initialize Babylon epoch: {e}")))?;
     }
 
-    // try to extract and handle CZ header
-    // it's possible that there is no CZ header checkpointed in this epoch
-    if let Some(cz_header) = btc_ts.header.as_ref() {
+    // Try to extract and handle the Consumer header.
+    // It's possible that there is no Consumer header checkpointed in this epoch
+    if let Some(consumer_header) = btc_ts.header.as_ref() {
         let proof = btc_ts
             .proof
             .as_ref()
             .ok_or(StdError::generic_err("empty proof"))?;
-        let proof_cz_header_in_epoch = proof
-            .proof_cz_header_in_epoch
-            .as_ref()
-            .ok_or(StdError::generic_err("empty proof_cz_header_in_epoch"))?;
-        cz_header_chain::handle_cz_header(deps, cz_header, epoch, proof_cz_header_in_epoch)
-            .map_err(|e| {
-                StdError::generic_err(format!("failed to handle CZ header from Babylon: {e}"))
-            })?;
+        let proof_consumer_header_in_epoch =
+            proof
+                .proof_consumer_header_in_epoch
+                .as_ref()
+                .ok_or(StdError::generic_err(
+                    "empty proof_consumer_header_in_epoch",
+                ))?;
+        consumer_header_chain::handle_consumer_header(
+            deps,
+            consumer_header,
+            epoch,
+            proof_consumer_header_in_epoch,
+        )
+        .map_err(|e| {
+            StdError::generic_err(format!(
+                "failed to handle Consumer header from Babylon: {e}"
+            ))
+        })?;
 
-        // Finalised CZ header verified, notify Cosmos zone about the newly finalised CZ header
-        // Cosmos zone that deploys corresponding CosmWasm plugin will handle this message
-        let msg = msg_btc_finalized_header(cz_header)?;
+        // Finalised Consumer header verified.
+        // Notify the Consumer about the newly finalised Consumer header.
+        // A Cosmos chain that deploys the corresponding CosmWasm plugin will handle this message
+        let msg = msg_btc_finalized_header(consumer_header)?;
         babylon_msg = Some(msg);
     }
 

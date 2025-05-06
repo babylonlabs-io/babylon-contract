@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CzHeaderResponse",
-  "description": "CzHeaderResponse is the metadata of a CZ header.\n\nThis struct is for use in RPC requests and responses. It has convenience helpers to convert from the internal representation (`IndexedHeader`).\n\nAdapted from `IndexedHeader`.",
+  "title": "ConsumerHeaderResponse",
+  "description": "ConsumerHeaderResponse is the metadata of a Consumer header.\n\nThis struct is for use in RPC requests and responses. It has convenience helpers to convert from the internal representation (`IndexedHeader`).\n\nAdapted from `IndexedHeader`.",
   "type": "object",
   "required": [
     "babylon_epoch",
@@ -20,11 +20,11 @@
       "minimum": 0.0
     },
     "babylon_header_hash": {
-      "description": "babylon_header_hash is the hash of the babylon block that includes this CZ header Hex-encoded string of 32 bytes",
+      "description": "babylon_header_hash is the hash of the babylon block that includes this Consumer header. Hex-encoded string of 32 bytes",
       "type": "string"
     },
     "babylon_header_height": {
-      "description": "babylon_header_height is the height of the babylon block that includes this CZ header",
+      "description": "babylon_header_height is the height of the babylon block that includes this Consumer header",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
@@ -42,13 +42,13 @@
       "type": "string"
     },
     "height": {
-      "description": "height is the height of this header in the CZ ledger. (hash, height) jointly provides the position of the header on CZ ledger",
+      "description": "height is the height of this header in the Consumer's ledger. (hash, height) jointly provides the position of the header on the Consumer ledger",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
     },
     "time": {
-      "description": "time is the timestamp of this header in the CZ ledger. It is needed for the CZ to unbond all mature validators/delegations before this timestamp when this header is BTC-finalised",
+      "description": "time is the timestamp of this header in the Consumer's ledger. It's necessary for the Consumer to unbond all mature validators/delegations before this timestamp when this header is BTC-finalised",
       "anyOf": [
         {
           "$ref": "#/definitions/Timestamp"

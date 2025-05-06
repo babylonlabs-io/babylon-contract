@@ -1,13 +1,15 @@
-use crate::error::{BabylonEpochChainError, CZHeaderChainError, ContractError};
+use crate::error::{BabylonEpochChainError, ConsumerHeaderChainError, ContractError};
 use crate::ibc::IBC_TRANSFER;
-use crate::msg::cz_header::{CzHeaderResponse, CzHeightResponse};
+use crate::msg::consumer_header::{ConsumerHeaderResponse, ConsumerHeightResponse};
 use crate::msg::epoch::{CheckpointResponse, EpochResponse};
 use crate::msg::ibc::TransferInfoResponse;
 use crate::state::babylon_epoch_chain::{
     get_base_epoch, get_checkpoint, get_epoch, get_last_finalized_epoch,
 };
 use crate::state::config::{Config, CONFIG};
-use crate::state::cz_header_chain::{get_cz_header, get_last_cz_header, get_last_cz_height};
+use crate::state::consumer_header_chain::{
+    get_consumer_header, get_last_consumer_header, get_last_consumer_height,
+};
 use cosmwasm_std::{Deps, StdResult};
 
 pub fn config(deps: Deps) -> StdResult<Config> {
@@ -40,19 +42,26 @@ pub fn babylon_checkpoint(
     Ok(CheckpointResponse::from(&raw_checkpoint))
 }
 
-pub fn cz_last_header(deps: Deps) -> Result<CzHeaderResponse, CZHeaderChainError> {
-    let header = get_last_cz_header(deps)?;
-    Ok(CzHeaderResponse::from(&header))
+pub fn last_consumer_header(
+    deps: Deps,
+) -> Result<ConsumerHeaderResponse, ConsumerHeaderChainError> {
+    let header = get_last_consumer_header(deps)?;
+    Ok(ConsumerHeaderResponse::from(&header))
 }
 
-pub fn cz_last_height(deps: Deps) -> Result<CzHeightResponse, CZHeaderChainError> {
-    let height = get_last_cz_height(deps)?;
-    Ok(CzHeightResponse { height })
+pub fn last_consumer_height(
+    deps: Deps,
+) -> Result<ConsumerHeightResponse, ConsumerHeaderChainError> {
+    let height = get_last_consumer_height(deps)?;
+    Ok(ConsumerHeightResponse { height })
 }
 
-pub(crate) fn cz_header(deps: Deps, height: u64) -> Result<CzHeaderResponse, CZHeaderChainError> {
-    let header = get_cz_header(deps, height)?;
-    Ok(CzHeaderResponse::from(&header))
+pub(crate) fn consumer_header(
+    deps: Deps,
+    height: u64,
+) -> Result<ConsumerHeaderResponse, ConsumerHeaderChainError> {
+    let header = get_consumer_header(deps, height)?;
+    Ok(ConsumerHeaderResponse::from(&header))
 }
 
 pub(crate) fn transfer_info(deps: Deps) -> Result<TransferInfoResponse, ContractError> {
