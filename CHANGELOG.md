@@ -2,7 +2,42 @@
 
 ## [Unreleased](https://github.com/babylonlabs-io/babylon-contract/tree/HEAD)
 
-[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.13.0...HEAD)
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.14.0...HEAD)
+
+## [v0.14.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.14.0) (2025-05-14)
+
+[Full Changelog](https://github.com/babylonlabs-io/babylon-contract/compare/v0.13.0-rc.0...v0.14.0)
+
+**Implemented enhancements:**
+
+- refactor: split BTC light client contract and Babylon contract [\#53](https://github.com/babylonlabs-io/babylon-contract/issues/53)
+
+**Closed issues:**
+
+- Impact of Contract Address Changes on Token Holdings [\#144](https://github.com/babylonlabs-io/babylon-contract/issues/144)
+- Refactor: Rename outdated `CZ` terminology [\#132](https://github.com/babylonlabs-io/babylon-contract/issues/132)
+- filter out non-timestamped FPs from active FP list [\#130](https://github.com/babylonlabs-io/babylon-contract/issues/130)
+- Online FPs verification [\#121](https://github.com/babylonlabs-io/babylon-contract/issues/121)
+- Go over TODOs and create issues [\#116](https://github.com/babylonlabs-io/babylon-contract/issues/116)
+- move BTC timestamping utility functions to `packages/` [\#105](https://github.com/babylonlabs-io/babylon-contract/issues/105)
+- Implement efficient voting power rotation algorithm [\#91](https://github.com/babylonlabs-io/babylon-contract/issues/91)
+- timestamping public randomness support [\#83](https://github.com/babylonlabs-io/babylon-contract/issues/83)
+- Jailing of inactive finality providers [\#82](https://github.com/babylonlabs-io/babylon-contract/issues/82)
+- Allowing contract to choose its own w [\#4](https://github.com/babylonlabs-io/babylon-contract/issues/4)
+
+**Merged pull requests:**
+
+- F/rename old cz [\#141](https://github.com/babylonlabs-io/babylon-contract/pull/141) ([maurolacy](https://github.com/maurolacy))
+- F/filter non timestamped [\#140](https://github.com/babylonlabs-io/babylon-contract/pull/140) ([maurolacy](https://github.com/maurolacy))
+- F/jailing inactive [\#138](https://github.com/babylonlabs-io/babylon-contract/pull/138) ([maurolacy](https://github.com/maurolacy))
+- f/TODOs annotation [\#135](https://github.com/babylonlabs-io/babylon-contract/pull/135) ([maurolacy](https://github.com/maurolacy))
+- fix: handle empty btc headers in timestamp packet [\#133](https://github.com/babylonlabs-io/babylon-contract/pull/133) ([gusin13](https://github.com/gusin13))
+- Feat/btc light client refactor [\#129](https://github.com/babylonlabs-io/babylon-contract/pull/129) ([SebastianElvis](https://github.com/SebastianElvis))
+- F/public randomness ts [\#128](https://github.com/babylonlabs-io/babylon-contract/pull/128) ([maurolacy](https://github.com/maurolacy))
+- feat: consumer delegation expiry [\#126](https://github.com/babylonlabs-io/babylon-contract/pull/126) ([gusin13](https://github.com/gusin13))
+- F/ibc timeout [\#117](https://github.com/babylonlabs-io/babylon-contract/pull/117) ([maurolacy](https://github.com/maurolacy))
+- refactor: move ics23\_commitment to a new package [\#113](https://github.com/babylonlabs-io/babylon-contract/pull/113) ([SebastianElvis](https://github.com/SebastianElvis))
+- feat: Update consumer BTC light client [\#112](https://github.com/babylonlabs-io/babylon-contract/pull/112) ([gusin13](https://github.com/gusin13))
 
 ## [v0.13.0](https://github.com/babylonlabs-io/babylon-contract/tree/v0.13.0) (2025-02-11)
 
