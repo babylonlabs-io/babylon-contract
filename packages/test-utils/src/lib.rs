@@ -40,6 +40,13 @@ const ADD_FINALITY_SIG_DATA: &str = "add_finality_sig_{}_msg.dat";
 
 const EOTS_DATA: &str = "eots_testdata.json";
 
+pub fn find_project_path() -> Option<PathBuf> {
+    PathBuf::from(file!())
+        .parent()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+}
+
 fn find_workspace_root() -> PathBuf {
     // Get the current working directory
     let cwd = env::current_dir().unwrap();
@@ -51,10 +58,14 @@ fn find_workspace_root() -> PathBuf {
 }
 
 fn find_testdata_path() -> PathBuf {
-    find_workspace_root()
-        .join("packages")
-        .join("test-utils")
-        .join("testdata")
+    let project_path = find_project_path().unwrap_or(PathBuf::from("packages/test-utils"));
+    let project_path = if project_path.is_relative() {
+        let workspace_root = find_workspace_root();
+        workspace_root.join(project_path)
+    } else {
+        project_path
+    };
+    project_path.join("testdata")
 }
 
 #[derive(Serialize, Deserialize, Debug)]
