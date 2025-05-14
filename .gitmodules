@@ -1,4 +1,3 @@
 [submodule "packages/proto/babylon"]
-path = packages/proto/babylon
-url = git@github.com:babylonlabs-io/babylon.git
-branch = base/consumer-chain-support
+  path = packages/proto/babylon
+	url = https://github.com/babylonlabs-io/babylon.git
