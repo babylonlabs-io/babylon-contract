@@ -35,9 +35,9 @@ pub fn query_finality_provider(
     )?;
 
     let res_decoded = Bufany::deserialize(&res_data).unwrap();
-    // see https://github.com/babylonlabs-io/babylon/blob/base/consumer-chain-support/proto/babylon/btcstkconsumer/v1/query.proto#L110
+    // see https://github.com/babylonlabs-io/babylon/blob/main/proto/babylon/btcstkconsumer/v1/query.proto#L110
     let res_fp = res_decoded.message(1).unwrap();
-    // see https://github.com/babylonlabs-io/babylon/blob/base/consumer-chain-support/proto/babylon/btcstkconsumer/v1/query.proto#L116
+    // see https://github.com/babylonlabs-io/babylon/blob/main/proto/babylon/btcstkconsumer/v1/query.proto#L114
     // to understand how the index is determined here i.e. 6-10
     let res: FinalityProviderResponse = FinalityProviderResponse {
         slashed_babylon_height: res_fp.uint64(6).unwrap(),
