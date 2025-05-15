@@ -1,4 +1,4 @@
-name: babylonchain/babylon-contract/deploy
+name: babylonlabs/babylon-contract/deploy
 on:
   push:
     tags:
@@ -27,6 +27,7 @@ jobs:
           artifacts/babylon_contract.wasm
           artifacts/btc_staking.wasm
           artifacts/btc_finality.wasm
+          artifacts/btc_light_client.wasm
           artifacts/checksums.txt
     - name: Show data
       run: |-
@@ -37,7 +38,7 @@ jobs:
         zip ./babylon_contract.wasm.zip artifacts/babylon_contract.wasm
         zip ./btc_staking.wasm.zip artifacts/btc_staking.wasm
         zip ./btc_finality.wasm.zip artifacts/btc_finality.wasm
-        zip ./op_finality_gadget.wasm.zip artifacts/op_finality_gadget.wasm
+        zip ./btc_light_client.wasm.zip artifacts/btc_light_client.wasm
     - name: Create a Release
       id: create-release
       uses: actions/create-release@v1
@@ -80,15 +81,15 @@ jobs:
         asset_path: ./btc_finality.wasm.zip
         asset_name: btc_finality.wasm.zip
         asset_content_type: application/zip
-    - name: Upload op_finality_gadget
-      id: upload-op_finality_gadget
+    - name: Upload btc_light_client
+      id: upload-btc_light_client
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./op_finality_gadget.wasm.zip
-        asset_name: op_finality_gadget.wasm.zip
+        asset_path: ./btc_light_client.wasm.zip
+        asset_name: btc_light_client.wasm.zip
         asset_content_type: application/zip
     - name: Upload checksums
       id: upload-checksums
@@ -105,6 +106,7 @@ jobs:
         (cd ./contracts/babylon && cargo run --bin schema)
         (cd ./contracts/btc-staking && cargo run --bin btc-staking-schema)
         (cd ./contracts/btc-finality && cargo run --bin btc-finality-schema)
+        (cd ./contracts/btc-light-client && cargo run --bin btc-light-client-schema)
     - name: Consolidate schemas
       run: |-
         mkdir -p ./schemas

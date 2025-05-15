@@ -1,8 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{StdError, StdResult};
 
-use crate::msg::btc_header::{BtcHeader, BtcHeaderResponse, BtcHeadersResponse};
-use crate::state::config::Config;
+use crate::msg::btc_header::BtcHeader;
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    crate::msg::btc_header::{BtcHeaderResponse, BtcHeadersResponse},
+    crate::state::config::Config,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {

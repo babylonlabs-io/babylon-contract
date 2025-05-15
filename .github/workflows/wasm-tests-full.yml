@@ -1,4 +1,4 @@
-name: babylonchain/babylon-contract/wasm-tests
+name: babylonlabs/babylon-contract/wasm-tests-full
 on:
   pull_request:
     branches:
@@ -27,3 +27,4 @@ jobs:
           artifacts/babylon_contract.wasm
           artifacts/btc_staking.wasm
           artifacts/btc_finality.wasm
+          artifacts/btc_light_client.wasm
