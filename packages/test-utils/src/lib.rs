@@ -1,4 +1,3 @@
-use cargo_metadata::MetadataCommand;
 use hex::ToHex;
 use k256::schnorr::{Signature, SigningKey};
 use prost::{bytes::Bytes, Message};
@@ -40,21 +39,12 @@ const ADD_FINALITY_SIG_DATA: &str = "add_finality_sig_{}_msg.dat";
 
 const EOTS_DATA: &str = "eots_testdata.json";
 
-fn find_workspace_root() -> PathBuf {
-    // Get the current working directory
-    let cwd = env::current_dir().unwrap();
-
-    // Use cargo_metadata to find the root manifest for the workspace
-    let mut metadata_cmd = MetadataCommand::new();
-    let metadata = metadata_cmd.current_dir(cwd).no_deps().exec().unwrap();
-    metadata.workspace_root.into_std_path_buf()
+pub fn find_project_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
 fn find_testdata_path() -> PathBuf {
-    find_workspace_root()
-        .join("packages")
-        .join("test-utils")
-        .join("testdata")
+    find_project_path().join("testdata")
 }
 
 #[derive(Serialize, Deserialize, Debug)]
