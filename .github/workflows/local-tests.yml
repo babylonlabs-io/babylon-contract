@@ -21,4 +21,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4.1.0
     - name: Build contracts, check formats, and run unit tests (full validation)
-      run: cargo test --lib --features full-validation
+      run: |
+        rustup component add rustfmt
+        cargo fmt -- --check
+        cargo test --lib --features full-validation
