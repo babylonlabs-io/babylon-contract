@@ -11,7 +11,6 @@ publish.workspace = true
 babylon-apis     = { path = "../apis" }
 babylon-proto    = { path = "../proto" }
 babylon-bitcoin  = { path = "../bitcoin" }
-cargo_metadata   = { workspace = true }
 cosmwasm-std     = { workspace = true }
 hex              = { workspace = true }
 k256             = { workspace = true }
