@@ -1,4 +1,4 @@
-name: babylonchain/babylon-contract/deploy
+name: babylonlabs/babylon-contract/deploy
 on:
   push:
     tags:

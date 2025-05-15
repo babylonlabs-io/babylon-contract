@@ -1,4 +1,4 @@
-name: babylonchain/babylon-contract/local-tests
+name: babylonlabs/babylon-contract/local-tests
 on:
   pull_request:
     branches:

@@ -1,4 +1,4 @@
-name: babylonchain/babylon-contract/wasm-tests
+name: babylonlabs/babylon-contract/wasm-tests-full
 on:
   pull_request:
     branches:
