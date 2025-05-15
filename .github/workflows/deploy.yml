@@ -37,7 +37,6 @@ jobs:
         zip ./babylon_contract.wasm.zip artifacts/babylon_contract.wasm
         zip ./btc_staking.wasm.zip artifacts/btc_staking.wasm
         zip ./btc_finality.wasm.zip artifacts/btc_finality.wasm
-        zip ./op_finality_gadget.wasm.zip artifacts/op_finality_gadget.wasm
     - name: Create a Release
       id: create-release
       uses: actions/create-release@v1
@@ -79,16 +78,6 @@ jobs:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
         asset_path: ./btc_finality.wasm.zip
         asset_name: btc_finality.wasm.zip
-        asset_content_type: application/zip
-    - name: Upload op_finality_gadget
-      id: upload-op_finality_gadget
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./op_finality_gadget.wasm.zip
-        asset_name: op_finality_gadget.wasm.zip
         asset_content_type: application/zip
     - name: Upload checksums
       id: upload-checksums
